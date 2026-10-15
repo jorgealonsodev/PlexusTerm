@@ -53,7 +53,11 @@ vi.mock("../terminal/TerminalView", () => ({
       onCwd?.("/srv/app");
       onSession?.(id);
       const a = registerWriter?.((data) => pane.written.push([id, data]));
-      const b = registerAssistTarget?.({ selection: () => pane.selection, focus: pane.focus });
+      const b = registerAssistTarget?.({
+        selection: () => pane.selection,
+        focus: pane.focus,
+        insert: (text) => pane.written.push([id, text]),
+      });
       return () => {
         a?.();
         b?.();

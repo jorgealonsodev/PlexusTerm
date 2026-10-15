@@ -511,7 +511,8 @@ function AppContent() {
 
   /** Types an AI command into the chat's terminal, never run (no Enter), and focuses it. */
   const insertFromChat = (tab: Tab, link: ChatLink, command: string) => {
-    writers.write([link.terminalPaneId], command);
+    // Typed like the user's own keys (so Enter records it in the history), only into this terminal.
+    assistTargets.get(link.terminalPaneId)?.insert(command);
     dispatch({ type: "focusPane", key: tab.key, paneId: link.terminalPaneId });
     assistTargets.get(link.terminalPaneId)?.focus();
   };
