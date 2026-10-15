@@ -9,6 +9,7 @@ import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo }
 import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
+import { PaneCloseButton } from "./features/panes/PaneCloseButton";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
@@ -66,7 +67,6 @@ import {
   Power,
   ScanSearch,
   Wrench,
-  X,
   KeyRound,
   Radio,
   Rows2,
@@ -669,22 +669,7 @@ function AppContent() {
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                           />
                           {paneIds(tab.layout).length > 1 && (
-                            // The × only shows while the pointer is in this corner of the pane.
-                            <div className="pane__corner">
-                            <button
-                              className="pane__close"
-                              aria-label="Close pane"
-                              title="Close pane (Ctrl+Shift+W closes the focused one)"
-                              // Keep the keyboard focus where it is.
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                              onClick={() => dispatch({ type: "closePane", key: tab.key, paneId })}
-                            >
-                              <X size={14} />
-                            </button>
-                            </div>
+                            <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />
                           )}
                           {multiExec && (
                             <button
