@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
 import { MacroEditDialog } from "./features/macros/MacroEditDialog";
 import { MacrosPanel } from "./features/macros/MacrosPanel";
@@ -47,6 +47,9 @@ import type { Tunnel } from "./features/tunnels/tunnels";
 import { useTunnelLauncher } from "./features/tunnels/useTunnelLauncher";
 import { useTunnels } from "./features/tunnels/useTunnels";
 import wordmarkUrl from "./assets/plexusterm-wordmark.svg";
+import wordmarkLightUrl from "./assets/plexusterm-wordmark-light.svg";
+import { applyUiTheme } from "./features/settings/uiTheme";
+import { themeById } from "./features/terminal/themes";
 import "./App.css";
 
 const LOCAL: SessionTarget = { type: "local" };
@@ -161,6 +164,9 @@ function AppContent() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  // The whole window follows the terminal colour scheme, like an editor theme.
+  const scheme = themeById(terminalSettings.settings.theme);
+  useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
   const sessions = useSessionLibrary();
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
@@ -416,7 +422,7 @@ function AppContent() {
   return (
     <div className="app">
       <header className="toolbar">
-        <img className="brand" src={wordmarkUrl} alt="PlexusTerm" />
+        <img className="brand" src={scheme.dark ? wordmarkUrl : wordmarkLightUrl} alt="PlexusTerm" />
         <button className="btn" onClick={openLocal}>
           Terminal
         </button>

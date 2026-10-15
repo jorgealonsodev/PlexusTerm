@@ -55,4 +55,19 @@ describe("App settings (S15.2, S15.6)", () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(saved().slice(-1)[0]).toMatchObject({ fontSize: 20, rightClickPastes: false });
   });
+
+  it("colours the whole interface with the chosen scheme and swaps the logo for light schemes", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--bg")).toBe("#1e1e2e");
+    expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).not.toContain("light");
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(root.style.getPropertyValue("--bg")).toBe("#fdf6e3");
+    expect(root.style.getPropertyValue("color-scheme")).toBe("light");
+    expect(root.dataset.theme).toBe("light");
+    expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).toContain("light");
+  });
 });
