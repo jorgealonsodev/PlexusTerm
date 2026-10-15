@@ -25,3 +25,6 @@ dist-ssr
 
 # Release assets (scripts/package-release.sh)
 dist-release/
+
+# CodeGraph local index
+.codegraph/
