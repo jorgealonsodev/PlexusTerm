@@ -18,7 +18,7 @@ import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { stepFontSize } from "./features/settings/settings";
-import { SettingsDialog } from "./features/settings/SettingsDialog";
+import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
 import { chainTarget, collectLogins } from "./features/sessions/jumpHosts";
@@ -43,7 +43,14 @@ import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { initialTabs, tabsReducer } from "./features/tabs/tabs";
-import { TerminalView } from "./features/terminal/TerminalView";
+import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
+import { AssistantPanel, type AssistContext } from "./features/ai/AssistantPanel";
+import { aiComplete, describeAiError } from "./features/ai/aiClient";
+import { aiConfigOf, aiHint } from "./features/ai/aiContext";
+import { createAiLimiter } from "./features/ai/aiLimiter";
+import { matchesShortcut } from "./features/settings/shortcutCapture";
+import { hostKeyOf } from "./features/history/history";
+import { commandHistory } from "./features/history/historyStore";
 import { TunnelEditDialog } from "./features/tunnels/TunnelEditDialog";
 import { TunnelsPanel } from "./features/tunnels/TunnelsPanel";
 import type { Tunnel } from "./features/tunnels/tunnels";
@@ -88,7 +95,7 @@ type Modal =
   | { kind: "mosh" }
   | { kind: "editSession"; session: LibrarySession; isNew: boolean }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
-  | { kind: "settings" }
+  | { kind: "settings"; section?: SettingsSection }
   | { kind: "wakeOnLan" }
   | { kind: "keyGen" }
   | { kind: "portScan" }
@@ -96,7 +103,18 @@ type Modal =
   | { kind: "editMacro"; macro: Macro; isNew: boolean }
   /** A recording just stopped: name it or discard it (S16.2). */
   | { kind: "nameMacro"; steps: Step[] }
+  /** The on-demand AI assistant over the focused pane (S3); paneId null without a terminal. */
+  | { kind: "assistant"; paneId: string | null; context: AssistContext }
   | null;
+
+/** Short status of a pane's last failed AI suggestion (S2), with the full message as tooltip. */
+interface AiHint {
+  text: string;
+  detail: string;
+}
+
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** The macro playing now and its progress (S16.3). */
 interface RunningMacro {
@@ -228,6 +246,12 @@ function AppContent() {
   const recorded = useRef<string[]>([]);
   const [running, setRunning] = useState<RunningMacro | null>(null);
   const runRef = useRef<MacroRun | null>(null);
+  const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
+  const [aiLimit] = useState(() => createAiLimiter());
+  const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
+  /** Bumped on every assistant open: a new key restarts the X's spin (S5); 0 = not spinning. */
+  const [spin, setSpin] = useState(0);
+  const platform = usePlatform();
 
   const updatePane = useCallback((paneId: string, patch: Partial<PaneMeta>) => {
     setPaneMeta((prev) => {
@@ -246,6 +270,10 @@ function AppContent() {
   useEffect(() => {
     const open = new Set(state.tabs.flatMap((t) => paneIds(t.layout)));
     setPaneMeta((prev) => {
+      const ids = Object.keys(prev).filter((id) => open.has(id));
+      return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
+    });
+    setAiHints((prev) => {
       const ids = Object.keys(prev).filter((id) => open.has(id));
       return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
     });
@@ -414,10 +442,56 @@ function AppContent() {
   };
 
   const { updateWith: updateSettingsWith } = terminalSettings;
+  const settings = terminalSettings.settings;
+
+  /** Completes the typed line of `paneId` with the AI provider (S2); errors only leave a hint. */
+  const aiSuggestFor = (paneId: string) => async (context: AiSuggestContext) => {
+    const config = aiConfigOf(settings);
+    const request = { line: context.line, os: platform, cwd: context.cwd, history: context.history };
+    try {
+      const completion = await aiLimit(paneId, () => aiComplete(config, request));
+      setAiHints((prev) => {
+        if (!(paneId in prev)) return prev;
+        const { [paneId]: _cleared, ...rest } = prev;
+        return rest;
+      });
+      return completion ? context.line + completion : null;
+    } catch (err) {
+      setAiHints((prev) => ({ ...prev, [paneId]: { text: aiHint(err), detail: describeAiError(err) } }));
+      return null;
+    }
+  };
+
+  /** Opens the assistant over the focused pane of the active tab, spinning the X (S3, S5). */
+  const openAssistant = () => {
+    const paneId = activeTab?.focusedPane ?? null;
+    const hostKey = activeTab ? hostKeyOf(activeTab.target) : null;
+    void commandHistory.ready();
+    const { commandHistory: historyOn, aiHistoryContext } = settings;
+    setModal({
+      kind: "assistant",
+      paneId,
+      context: {
+        os: platform,
+        cwd: (paneId && paneMeta[paneId]?.cwd) || null,
+        history: () => (historyOn && hostKey ? commandHistory.recent(hostKey, aiHistoryContext) : []),
+        selection: (paneId && assistTargets.get(paneId)?.selection()) || "",
+      },
+    });
+    if (!prefersReducedMotion()) setSpin((n) => n + 1);
+  };
+  // Another dialog keeps its place: the shortcut does not replace it.
+  const assistantKeys = useRef({ openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null });
+  assistantKeys.current = { openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null };
 
   // Terminals let these keys through unhandled (see TerminalView), so the window sees them.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, assistantKeys.current.shortcut)) {
+        e.preventDefault();
+        if (!assistantKeys.current.blocked) assistantKeys.current.openAssistant();
+        return;
+      }
       const shortcut = shortcutFor(e);
       if (!shortcut) return;
       e.preventDefault();
@@ -460,7 +534,21 @@ function AppContent() {
   return (
     <div className="app">
       <header className={`toolbar${compactToolbar ? " toolbar--compact" : ""}`} ref={toolbarRef}>
-        <img className="brand" src={scheme.dark ? markUrl : markLightUrl} alt="PlexusTerm" title="PlexusTerm" />
+        <button
+          type="button"
+          className="brand-button"
+          aria-label="AI assistant"
+          title={`AI assistant (${settings.assistantShortcut})`}
+          onClick={openAssistant}
+        >
+          <img
+            key={spin}
+            className={`brand${spin ? " brand--spin" : ""}`}
+            src={scheme.dark ? markUrl : markLightUrl}
+            alt="PlexusTerm"
+            onAnimationEnd={() => setSpin(0)}
+          />
+        </button>
         <button className="btn btn--icon" title="Terminal (Ctrl+Shift+T)" onClick={openLocal}>
           <SquareTerminal size={16} />
           <span className="btn__label">Terminal</span>
@@ -673,10 +761,17 @@ function AppContent() {
                             }}
                             registerWriter={(write) => writers.register(paneId, write)}
                             registerMacroTarget={(target) => macroTargets.register(paneId, target)}
+                            registerAssistTarget={(target) => assistTargets.register(paneId, target)}
+                            aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId) : undefined}
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                           />
+                          {aiHints[paneId] && (
+                            <div className="pane__ai-hint" title={aiHints[paneId].detail}>
+                              {aiHints[paneId].text}
+                            </div>
+                          )}
                           {paneIds(tab.layout).length > 1 && (
                             <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />
                           )}
@@ -808,6 +903,7 @@ function AppContent() {
       {modal?.kind === "settings" && (
         <SettingsDialog
           settings={terminalSettings.settings}
+          initialSection={modal.section}
           onCancel={() => setModal(null)}
           onSave={(next) => {
             terminalSettings.update(next);
@@ -834,6 +930,27 @@ function AppContent() {
           onSave={(name) => {
             macros.dispatch({ type: "save", macro: { id: crypto.randomUUID(), name, steps: modal.steps } });
             setModal(null);
+          }}
+        />
+      )}
+      {modal?.kind === "assistant" && (
+        <AssistantPanel
+          settings={settings}
+          context={modal.context}
+          canInsert={modal.paneId !== null}
+          onClose={() => {
+            const paneId = modal.paneId;
+            setModal(null);
+            if (paneId) assistTargets.get(paneId)?.focus();
+          }}
+          onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
+          onInsert={(command) => {
+            const paneId = modal.paneId;
+            setModal(null);
+            if (!paneId) return;
+            // Typed into the pane, never run: no Enter is sent.
+            writers.write([paneId], command);
+            assistTargets.get(paneId)?.focus();
           }}
         />
       )}

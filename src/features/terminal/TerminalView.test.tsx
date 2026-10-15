@@ -248,6 +248,46 @@ describe("TerminalView", () => {
       expect(screen.queryByLabelText("Find in terminal")).toBeNull();
     });
 
+    it("keeps the assistant shortcut from the shell, following its setting (S3)", () => {
+      const { rerender } = renderView();
+      const press = (key: string, mods: Partial<KeyboardEvent>) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      expect(press(" ", { ctrlKey: true, shiftKey: true })).toBe(false);
+      expect(press(" ", { ctrlKey: true })).toBe(true);
+      rerender(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, assistantShortcut: "Alt+K" }}
+        />,
+      );
+      expect(press("k", { altKey: true })).toBe(false);
+      expect(press(" ", { ctrlKey: true, shiftKey: true })).toBe(true);
+    });
+
+    it("hands the assistant the pane's selection and a way to focus it back (S3)", () => {
+      let assist: { selection: () => string; focus: () => void } | null = null;
+      const unregister = vi.fn();
+      const { unmount } = renderView({
+        registerAssistTarget: (target) => {
+          assist = target;
+          return unregister;
+        },
+      });
+      expect(assist!.selection()).toBe("");
+      const t = term() as unknown as { hasSelection: () => boolean; getSelection: () => string; focus: () => void };
+      t.hasSelection = () => true;
+      t.getSelection = () => "error: permission denied";
+      t.focus = vi.fn();
+      expect(assist!.selection()).toBe("error: permission denied");
+      assist!.focus();
+      expect(t.focus).toHaveBeenCalled();
+      unmount();
+      expect(unregister).toHaveBeenCalled();
+    });
+
     it("logs received output to the chosen file without escape sequences", async () => {
       let emit: (msg: { event: string; data: unknown }) => void = () => {};
       backend.start.mockImplementationOnce((_options, onEvent) => {

@@ -55,6 +55,43 @@ body,
   margin-right: 2px;
 }
 
+/* The X mark opens the AI assistant (S5); it looks like the plain logo. */
+.brand-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.brand-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* One full turn on every open; App remounts the image to restart it mid-spin. */
+.brand--spin {
+  animation: brand-spin 600ms ease-out;
+}
+
+@keyframes brand-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand--spin {
+    animation: none;
+  }
+}
+
 .btn {
   background: var(--surface-2);
   color: var(--text);
@@ -1357,4 +1394,82 @@ textarea::placeholder {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+}
+
+/* The on-demand AI assistant (S3). */
+.dialog.assistant {
+  width: min(560px, 100%);
+}
+
+.assistant__prompt {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.assistant__prompt:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.assistant__selection,
+.assistant__command {
+  margin: 0;
+  padding: 6px 8px;
+  overflow: auto;
+  font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.assistant__selection {
+  max-height: 120px;
+  color: var(--muted);
+}
+
+.assistant__command {
+  color: var(--text);
+}
+
+.assistant__answer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assistant__notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+}
+
+.assistant__loading {
+  align-self: center;
+  margin-right: auto;
+}
+
+/* Why the last AI suggestion failed (S2): small and out of the way, bottom right of the pane. */
+.pane__ai-hint {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  z-index: 2;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border-radius: 4px;
+  pointer-events: auto;
 }

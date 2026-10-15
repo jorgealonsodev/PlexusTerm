@@ -26,6 +26,7 @@ import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
 import type { MacroTarget } from "../macros/player";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
+import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
@@ -68,6 +69,16 @@ interface TerminalViewProps {
   aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
   /** The command history behind inline suggestions (S1); the app's history when omitted. */
   history?: HistoryStore;
+  /** Hands out what the assistant needs from this pane (S3); returns its unregister function. */
+  registerAssistTarget?: (target: AssistTarget) => () => void;
+}
+
+/** What the on-demand assistant uses from a pane (S3). */
+export interface AssistTarget {
+  /** The selected text, or "" when nothing is selected. */
+  selection: () => string;
+  /** Gives the keyboard back to the terminal. */
+  focus: () => void;
 }
 
 export interface AiSuggestContext {
@@ -162,6 +173,7 @@ export function TerminalView({
   registerMacroTarget,
   aiSuggest,
   history = commandHistory,
+  registerAssistTarget,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -207,8 +219,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -232,6 +244,8 @@ export function TerminalView({
     // Find, copy and paste belong to this pane and are handled here.
     term.attachCustomKeyEventHandler((e) => {
       if (acceptRef.current(e)) return false;
+      // The assistant shortcut (S3) is the window's, like the app shortcuts below.
+      if (matchesShortcut(e, settingsRef.current.assistantShortcut)) return false;
       const shortcut = shortcutFor(e);
       if (shortcut === null) return true;
       if (e.type === "keydown") {
@@ -494,6 +508,11 @@ export function TerminalView({
       notice: (text) => term.write(`\r\n${red(text)}`),
     });
 
+    const unregisterAssistTarget = callbacks.current.registerAssistTarget?.({
+      selection: () => (term.hasSelection() ? term.getSelection() : ""),
+      focus: () => term.focus(),
+    });
+
     const subs = [
       term.onData(typed),
       term.onWriteParsed(refreshGhost),
@@ -545,6 +564,7 @@ export function TerminalView({
       acceptRef.current = () => false;
       unregisterWriter?.();
       unregisterMacroTarget?.();
+      unregisterAssistTarget?.();
       outputListeners.clear();
       observer.disconnect();
       subs.forEach((s) => s.dispose());

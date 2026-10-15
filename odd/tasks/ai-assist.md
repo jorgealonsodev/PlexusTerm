@@ -14,7 +14,7 @@ Objective: inline command suggestions in the terminal (on by default, learning f
 
 - [x] T1 — S1, S4 (history + inline part) — delegated (writer trigger: parallel units) — Line tracking, history store, ghost-text suggestions, accept keys, settings toggles. Writer: RED→GREEN, Vitest 579, tsc OK; parent registered history commands, cargo history 4/4. Pending: visual check of ghost alignment; independent verifier at feature end.
 - [x] T2 — S2, S3, S4 (provider part) — delegated (writer trigger: parallel units) — Rust AI providers (Anthropic, Gemini, OpenAI, OpenAI-compatible), keyring keys, ai_complete/ai_assist, tests with a local mock server. Writer: RED→GREEN, cargo ai 48; parent registered (mod ai, AiClient state, 5 commands): cargo 316 + 5 ignored, Vitest 587, clippy clean. Docs: claude-api skill, context7 /websites/ai_google_dev_api, /websites/developers_openai_api_reference, /ollama/ollama. Gemini default model changed to gemini-3.5-flash-lite (Google: 2.5 only for returning users). Pending: independent verifier (credentials, new TLS deps).
-- [ ] T3 — S2, S3, S5 — delegated (writer trigger: long-session backstop) — Wire AI completion into inline suggestions; assistant panel + customizable shortcut; X button with the 360° spin; user-guide AI section.
+- [x] T3 — S2, S3, S5 — delegated (writer trigger: long-session backstop) — Wire AI completion into inline suggestions; assistant panel + customizable shortcut; X button with the 360° spin; user-guide AI section. Writer: RED→GREEN, Vitest 611; parent added SettingsDialog initialSection so "Open AI settings" lands on the AI section (RED→GREEN). Pending: independent verifier; visual check of spin/hint/panel; real API calls.
 
 ## Log
 
@@ -26,4 +26,5 @@ Objective: inline command suggestions in the terminal (on by default, learning f
 - L6 (2026-10-15): T1 integrated. Open: ghost alignment not checked visually; scroll hiding relies on term.onScroll; zsh right prompts/autosuggestions hide our ghost; one prompt check per input chunk.
 - L7 (2026-10-15): T2 integrated. reqwest added directly with rustls (Tauri's copy had no TLS). Commands come back one line, control characters removed (no ESC/CR/LF), multi-line joined with " && ". Assumptions: Gemini generationConfig names from older references; no thinkingConfig/reasoning_effort sent. Not tried against real APIs.
 - L8 (2026-10-15): S5 added from the user's request (X opens the assistant and spins 360°).
+- L9 (2026-10-15): T3 integrated. Open: inserted commands are typed through the writers registry and so are not recorded in history; the "shortcut ignored while another dialog is open" guard has no test.
 

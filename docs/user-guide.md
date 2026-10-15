@@ -12,6 +12,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
+| [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI assistant |
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
 | [Windows](#windows) | What differs on Windows 10/11 |
@@ -174,7 +175,7 @@ The SFTP browser and **Follow terminal folder** use the focused pane of the acti
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions](#command-suggestions)) and **About** (version and project links); **Save** keeps the changes of every section:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version and project links); **Save** keeps the changes of every section:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
 - **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
@@ -211,7 +212,9 @@ Pasted text is sent like typed text, so multi-exec forwards it too, and shells t
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
 
-### Command suggestions
+## Command suggestions and AI
+
+### Inline suggestions
 
 While you type a command in any terminal pane (local, SSH, Telnet, Mosh or serial), PlexusTerm draws the rest of a command you ran before in grey after the cursor. Suggestions come from your own command history, so they work with no AI configured: commands of the same host first, then those of every host, the most recent and most often used first.
 
@@ -225,12 +228,42 @@ The **AI** section of Settings holds:
 
 - **Inline suggestions** (on by default): the grey suggestions above.
 - **Command history** (on by default): records commands and suggests from them. **Clear history** empties `history.json` at once.
-- **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider after a short pause in typing. Only the typed line, the current folder (when the shell reports it) and the host's last history commands are sent, never the terminal output, and nothing typed at a password prompt.
+- **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider (see [AI suggestions](#ai-suggestions)).
 - **Provider**: Anthropic, Gemini, OpenAI or OpenAI-compatible; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
 - **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model). Changing the provider while the model is still a provider default switches it to the new provider's default.
 - **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once.
 - **History commands sent as context** (0-20, default 5).
 - **Assistant shortcut** (default Ctrl+Shift+Space): click the field and press the new combination; Escape keeps the current one. It needs Ctrl, Alt or Meta, and combinations PlexusTerm already uses are refused.
+
+### AI suggestions
+
+With **AI suggestions** on, when the history has no suggestion for the typed line PlexusTerm waits for a short pause in typing (about 400 ms; typing again cancels it) and asks the AI provider how the command goes on. The answer is drawn in grey like a history suggestion and accepted with the same keys.
+
+- Sent: the typed line, the operating system, the current folder (only when the shell reports it through OSC 7) and the host's last history commands (**History commands sent as context**, 0 sends none; none either while **Command history** is off).
+- Never sent: the terminal output, anything typed at a password or passphrase prompt, anything typed in a full-screen program.
+- Each pane sends at most one request at a time and at most one per second; only the newest line waits, older ones are dropped.
+- Failures never interrupt typing: the pane shows a small grey hint in its bottom right corner, such as **AI: no API key**, **AI: key rejected**, **AI: rate limited** or **AI: unavailable** (hover it for the provider's message). It goes away with the next answer.
+
+### Providers and API keys
+
+| Provider | Default model | Notes |
+| --- | --- | --- |
+| Anthropic (default) | `claude-opus-5-5` | Messages API. With the Claude Opus 5.5 models, PlexusTerm lets Anthropic retry on a recommended model when the chosen one cannot answer (server-side fallback). A faster, cheaper model can be typed in **Model**. |
+| Gemini | `gemini-3.5-flash-lite` | Google Gemini API. |
+| OpenAI | none: type your model | OpenAI API. |
+| OpenAI-compatible | none: type your model | Any endpoint with the OpenAI API at **Base URL**: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`), OpenRouter (`https://openrouter.ai/api/v1`). A key is optional; local servers usually need none. |
+
+API keys are stored only in the system keyring (one per provider), never in `settings.json`; Settings shows only whether a key is saved. Requests go from the PlexusTerm backend straight to the provider over HTTPS (or to the base URL you set). OpenCode is not supported yet.
+
+### AI assistant
+
+The assistant answers a request in plain words with a command for the focused terminal. Open it with **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or by clicking the PlexusTerm X at the left of the toolbar. The X turns once each time the assistant opens (not when the system asks for reduced motion).
+
+- Describe what you want and press **Enter** or **Ask** (**Shift+Enter** starts a new line). **Cancel** drops a slow answer.
+- The answer is one command and a short explanation. **Insert** types the command into the focused pane without Enter, so nothing runs until you press Enter yourself; **Copy** puts it on the clipboard. Inserted commands are not recorded in the command history.
+- **Include selected text** (available when the pane has a selection) also sends the selected text, shown in the panel before you ask; at most 2000 characters are sent. It is never sent unless ticked.
+- Besides your request, the assistant sends the operating system, the current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
+- When no key is saved for the provider, the panel says so and **Open AI settings** opens Settings, where the key is saved in the **AI** section.
 
 ## Macros
 
@@ -302,6 +335,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Escape (while a macro plays) | Stop the macro |
 | Right Arrow / End (with a grey suggestion) | Accept the suggested command |
 | Ctrl+Right (with a grey suggestion) | Accept the next word of the suggestion |
+| Ctrl+Shift+Space (changeable) | Open the AI assistant |
 | Middle click on a tab | Close that tab |
 | Right click on a tab | Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 
