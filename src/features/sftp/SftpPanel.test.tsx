@@ -217,15 +217,17 @@ describe("SftpPanel entry menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("Open and Download… download a file to the chosen place", async () => {
+  it("Open opens a file with the default program; Download… downloads it", async () => {
     vi.mocked(save).mockResolvedValue("/local/notes.txt");
     render(panel());
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Open"));
-    await waitFor(() => expect(mocked.download).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/local/notes.txt"));
+    await waitFor(() => expect(mocked.edit).toHaveBeenCalledWith(1, "/home/u/notes.txt", { kind: "default" }));
+    expect(save).not.toHaveBeenCalled();
+    expect(mocked.download).not.toHaveBeenCalled();
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Download…"));
-    await waitFor(() => expect(mocked.download).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocked.download).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/local/notes.txt"));
   });
 
   it("Delete asks first and removes the entry", async () => {

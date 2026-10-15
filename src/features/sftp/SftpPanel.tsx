@@ -250,7 +250,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         ]
       : [];
     return [
-      { label: "Open", onSelect: () => void openEntry(entry) },
+      // A folder opens in the browser; a file opens in its default program (saves upload back).
+      { label: "Open", onSelect: () => (isFile ? editWith(entry, { kind: "default" }) : void openEntry(entry)) },
       ...fileItems,
       { label: "Download…", onSelect: () => void download(entry), disabled: !isFile },
       { separator: true },
