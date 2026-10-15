@@ -71,6 +71,7 @@ Macros are saved as plain text, including anything typed while recording.
 - [User guide](docs/user-guide.md): how every feature works and its limits.
 - [Building and releasing](docs/building-and-releasing.md): running from source, tests, packaging and publishing a release.
 - [Brand assets](assets/brand/README.md): logo, wordmark and colours.
+- [Credits](THIRD_PARTY_NOTICES.md): the colour schemes' authors and original projects, and third-party licences.
 
 ## Development
 
