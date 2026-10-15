@@ -186,6 +186,18 @@ async fn a_failed_download_keeps_the_existing_local_file_and_leaves_no_temp_file
 }
 
 #[tokio::test]
+async fn create_file_makes_an_empty_file_and_never_replaces_one() {
+    let root = tempfile::tempdir().unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    create_file(&sftp, "/new.txt").await.unwrap();
+    assert_eq!(std::fs::read(root.path().join("new.txt")).unwrap(), b"");
+    std::fs::write(root.path().join("keep.txt"), b"data").unwrap();
+    let err = create_file(&sftp, "/keep.txt").await.unwrap_err();
+    assert!(err.to_string().contains("cannot create file /keep.txt"), "{err}");
+    assert_eq!(std::fs::read(root.path().join("keep.txt")).unwrap(), b"data");
+}
+
+#[tokio::test]
 async fn mkdir_then_remove_an_empty_directory() {
     let root = tempfile::tempdir().unwrap();
     let (sftp, _mgr, _dir) = session(root.path()).await;

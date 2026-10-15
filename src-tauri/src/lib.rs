@@ -271,6 +271,11 @@ async fn sftp_mkdir(id: u32, path: String, ssh: State<'_, SshManager>) -> Result
 }
 
 #[tauri::command]
+async fn sftp_create_file(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<(), SftpError> {
+    sftp::create_file(&*ssh.sftp(id).await?, &path).await
+}
+
+#[tauri::command]
 async fn sftp_remove(
     id: u32,
     path: String,
@@ -450,6 +455,7 @@ pub fn run() {
             sftp_download,
             sftp_upload,
             sftp_mkdir,
+            sftp_create_file,
             sftp_remove,
             sftp_rename,
             sessions_load,

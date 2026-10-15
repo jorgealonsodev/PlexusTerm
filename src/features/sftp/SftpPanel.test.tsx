@@ -24,6 +24,7 @@ vi.mock("./sftpClient", async (importOriginal) => {
       download: vi.fn(),
       upload: vi.fn(),
       mkdir: vi.fn(),
+      createFile: vi.fn(),
       remove: vi.fn(),
       rename: vi.fn(),
       chmod: vi.fn(),
@@ -146,6 +147,17 @@ describe("SftpPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     await type("New folder name", " docs ");
     await waitFor(() => expect(mocked.mkdir).toHaveBeenCalledWith(1, "/home/u/docs"));
+  });
+
+  it("creates an empty file with the typed name, and nothing when cancelled", async () => {
+    render(panel());
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "New file" }));
+    await answer("New file name", "Cancel");
+    expect(mocked.createFile).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "New file" }));
+    await type("New file name", " todo.md ");
+    await waitFor(() => expect(mocked.createFile).toHaveBeenCalledWith(1, "/home/u/todo.md"));
   });
 
   it("asks before replacing files on upload and uploads only when accepted", async () => {
