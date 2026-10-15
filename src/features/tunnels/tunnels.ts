@@ -120,5 +120,9 @@ export function describeTunnel(t: Tunnel): string {
 
 /** Listen addresses only reachable from this machine. */
 export function isLoopback(host: string): boolean {
-  return ["127.0.0.1", "localhost", "::1"].includes(host.trim().toLowerCase());
+  const h = host.trim().toLowerCase().replace(/^\[(.*)\]$/, "$1");
+  if (h === "localhost" || h === "::1" || h === "0:0:0:0:0:0:0:1") return true;
+  // Any address of 127.0.0.0/8, written as four decimal octets.
+  const octets = /^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  return octets !== null && octets.slice(1).every((o) => Number(o) <= 255);
 }

@@ -565,3 +565,18 @@ fn copy_names_never_leave_the_private_folder() {
         assert_eq!(local.file_name().unwrap(), expected, "{remote}");
     }
 }
+
+#[test]
+fn a_compare_target_must_be_an_absolute_local_path() {
+    use super::commands::compare_target;
+    let absolute = std::env::temp_dir().join("notes.txt");
+    assert_eq!(
+        compare_target(absolute.to_str().unwrap()).unwrap(),
+        absolute
+    );
+    for bad in ["notes.txt", "-o", "--help", "../etc/passwd", ""] {
+        let err = compare_target(bad).unwrap_err();
+        let json = serde_json::to_value(&err).unwrap();
+        assert_eq!(json["kind"], "sftp", "{bad}");
+    }
+}

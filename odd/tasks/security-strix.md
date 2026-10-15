@@ -14,7 +14,7 @@ Objective: fix the findings of the Strix scan (run plexusterm_2e93) that were ve
 ## Tasks
 
 - [x] T1 — S1 — inline — localized SECRET_WORDS (es, de, fr, pt, ja, zh, ko, ar, hi, ru) + full-width colon/question mark; lineTracker tests + TerminalView end-to-end test (RED on old regex, GREEN); guide updated.
-- [ ] T2 — S4 — inline
+- [x] T2 — S4 — inline — Run refuses C0/C1/U+2028/2029 characters; sftp_compare requires an absolute local path (compare_target); isLoopback covers 127.0.0.0/8, [::1], 0:0:0:0:0:0:0:1. RED→GREEN for each.
 - [ ] T3 — S2 — inline
 - [ ] T4 — S3, S5 — inline
 
