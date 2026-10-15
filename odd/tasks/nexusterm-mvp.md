@@ -93,6 +93,22 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S18.5 CI: `.github/workflows/ci.yml` with a matrix ubuntu-latest + windows-latest running `pnpm install`, `pnpm test`, `cargo test --lib`, and `pnpm tauri build` (deb+appimage on Linux, nsis+msi on Windows) uploading the bundles as artifacts. It only runs when the user pushes; pushing stays the user's decision.
   - S18.6 README: Windows section (build requirements, what differs, what is untested locally).
 
+- S19 (user, 2026-10-15): "cuando publiquemos la release tenemos que tener:" — the user's list, verbatim (template name "miservicio", version 1.2.0 as the example):
+  ```
+  miservicio_1.2.0_linux_amd64.tar.gz
+  miservicio_1.2.0_linux_arm64.tar.gz
+  miservicio_1.2.0_linux_amd64.deb
+  miservicio_1.2.0_linux_arm64.deb
+  miservicio_1.2.0_linux_x86_64.rpm
+  miservicio_1.2.0_linux_aarch64.rpm
+  checksums.txt
+  ```
+  - S19.1 (assumption: "miservicio" is the template name) Release assets are named `nexusterm_<version>_linux_amd64.tar.gz`, `nexusterm_<version>_linux_arm64.tar.gz`, `nexusterm_<version>_linux_amd64.deb`, `nexusterm_<version>_linux_arm64.deb`, `nexusterm_<version>_linux_x86_64.rpm`, `nexusterm_<version>_linux_aarch64.rpm` and `checksums.txt` (SHA-256 of every other asset, `sha256sum` format). `<version>` comes from the git tag `v<version>`, which must equal the version in tauri.conf.json/Cargo.toml/package.json (the release fails otherwise).
+  - S19.2 The tar.gz holds a top-level `nexusterm_<version>_linux_<arch>/` folder with the `nexusterm` binary, `nexusterm.desktop`, the icons, README.md and an `install.sh` for a per-user install (~/.local).
+  - S19.3 arm64 packages are built natively on GitHub's `ubuntu-24.04-arm` runners (free for public repositories; the repository is public), amd64 on `ubuntu-24.04`.
+  - S19.4 (assumption) Windows installers are added as extra assets named `nexusterm_<version>_windows_x86_64.msi` and `nexusterm_<version>_windows_x86_64-setup.exe`, also covered by checksums.txt.
+  - S19.5 A `scripts/package-release.sh <version> <arch>` builds and names the Linux assets the same way locally and in CI. The release workflow (`.github/workflows/release.yml`) runs on pushing a `v*` tag and creates a **draft** GitHub Release with all assets; publishing the draft stays a manual decision.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -124,6 +140,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T13 — S17 (S17.1-S17.4) — delegated (writer trigger: long-session context backstop) — Telnet and Mosh sessions. Writer: telnet protocol state machine + manager, mosh via SSH exec + local mosh-client with MOSH_KEY in env only (serde(skip) env, redacted Debug), More menu, kinds telnet/mosh, MobaXterm type 98 → telnet; cargo 171, vitest 379. Verifier: 0 blockers (3000-stream telnet fuzz, key never in argv/Debug/errors). Parent: real servers in a Docker container — telnetd (banner, command, NAWS 40x128) and mosh-server 1.4.0 (trust prompt, UDP session, shell works; /proc shows argv without key, MOSH_KEY only in env). Parent fixes: subnegotiation capped at 1 KiB (A1, RED→GREEN), MOSH/CONNECT redaction widened (A3, RED→GREEN); A7 IPv6 not reproducible (test added, passes). Left: A2 malformed IAC in SB, A4 possible detach race (worked in real test), A5 documented, A6 saved-session edge cases. cargo 174/174.
 
 - [x] T14 — S18 (S18.1-S18.6) — delegated (writer trigger: long-session context backstop) — Windows support. Writer: platform.rs (home, ~ expansion, default shell pwsh/powershell/COMSPEC, known_hosts, agent pipe, write_private), Windows serial via available_ports, Mosh unavailable message, platform() command + PlatformProvider, unix-only tests gated, CI workflow ubuntu+windows; cargo 183, vitest 385, Windows clippy clean, Windows tests compile. Parent: ran the Windows test binary under Wine (isolated prefix, no display) — 147/148; real Windows bug: concurrent renames onto the same file → "Access denied" → storage writes serialized in-process + rename retried on Windows (platform::replace_file); Wine 148/148 x3. Linux smoke: local shell still /bin/bash. One unidentified intermittent Linux test failure seen once in 27 runs.
+
+- [ ] T15 — S19 (S19.1-S19.5) — delegated (writer trigger: long-session context backstop) — Release artifacts and workflow.
 
 ## Log
 
@@ -162,3 +180,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L33 (2026-10-15): "haz lo que te creas mas optimo" — next unit T13 (Telnet + Mosh). Installed mosh 1.4.0 locally (mosh-client).
 - L34 (2026-10-15): "haz lo que te creas mas optimo" — feature set considered sufficient (remaining MobaXterm items are secondary or covered by Remmina); starting the Windows port. Installed mingw-w64, nasm, cmake and the x86_64-pc-windows-gnu Rust target. Baseline cross-check: 7 errors (storage.rs and mosh unix permissions, serialport::TTYPort, AgentClient::connect_uds/connect_env).
 - L35 (2026-10-15): Windows validated by cross-compilation + Wine 9.0 test run (WebView2Loader.dll copied next to the test exe in the scratchpad); GUI on Windows not run (CI will build NSIS/MSI when pushed).
+- L36 (2026-10-15): User: "cuando publiquemos la release tenemos que tener:" + artifact list (S19). Repository jorgealonsodev/NexusTerm is PUBLIC and empty (nothing pushed yet); version 0.1.0.
