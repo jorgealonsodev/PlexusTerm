@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { SshTarget } from "../sessions/types";
 import { parseQuickConnect, type QuickConnectForm } from "./quickConnect";
+import { fieldSetter, SshFields } from "./SshFields";
 
 interface QuickConnectDialogProps {
   onConnect: (target: SshTarget) => void;
@@ -20,8 +21,6 @@ const emptyForm: QuickConnectForm = {
 export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogProps) {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
-  const set = (field: keyof QuickConnectForm) => (e: { target: { value: string } }) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -34,46 +33,7 @@ export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogPr
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="qc-title">
         <h2 id="qc-title">SSH session</h2>
-        <div className="form-row">
-          <label className="field field--grow">
-            Remote host
-            <input autoFocus value={form.host} onChange={set("host")} placeholder="host or user@host:port" />
-          </label>
-          <label className="field field--port">
-            Port
-            <input value={form.port} onChange={set("port")} placeholder="22" inputMode="numeric" />
-          </label>
-        </div>
-        <label className="field">
-          Username
-          <input value={form.username} onChange={set("username")} autoComplete="username" />
-        </label>
-        <label className="field">
-          Authentication
-          <select value={form.method} onChange={set("method")}>
-            <option value="password">Password</option>
-            <option value="key">Private key</option>
-            <option value="agent">SSH agent</option>
-          </select>
-        </label>
-        {form.method === "password" && (
-          <label className="field">
-            Password
-            <input type="password" value={form.password} onChange={set("password")} autoComplete="current-password" />
-          </label>
-        )}
-        {form.method === "key" && (
-          <>
-            <label className="field">
-              Private key
-              <input value={form.keyPath} onChange={set("keyPath")} />
-            </label>
-            <label className="field">
-              Passphrase (optional)
-              <input type="password" value={form.passphrase} onChange={set("passphrase")} />
-            </label>
-          </>
-        )}
+        <SshFields form={form} set={fieldSetter(setForm)} withSecrets autoFocusHost />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>

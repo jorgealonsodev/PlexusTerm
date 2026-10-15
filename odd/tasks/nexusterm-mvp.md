@@ -18,7 +18,7 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
 - [x] T2 — S5 — inline — SSH session backend (russh) + tab integration. RED→GREEN: cargo 20/20 (in-process russh server: password, key, host-key policy, resize, exit status), vitest 22/22; UI smoke OK (trust prompt → shell echo). Real OpenSSH interop not tested (no sshd installed).
-- [ ] T3 — S6 — inline — Session manager UI + persistence.
+- [x] T3 — S6 — inline — Session manager UI + persistence. RED→GREEN: cargo storage 6/6 (atomic write, 0600, concurrent saves RED without unique temp names), vitest library/sessionForm; panel component tests added after implementation (regression). UI smoke: folder via prompt, session saved without password, password prompt → connect error shown.
 - [ ] T4 — S7 — inline — SFTP side browser.
 
 ## Log
@@ -30,3 +30,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L5 (2026-10-15): T1 done. Bug found in smoke test: StrictMode double mount made the disposed PTY's exit event close the live tab; fixed by ignoring events after dispose.
 - L6 (2026-10-15): "haz lo que creas mas optim" — user delegates scope/order; proceeding with T2→T4 as proposed (S4-S7 accepted).
 - L7 (2026-10-15): T2 done. Smoke bug: terminal lost focus after the host-key overlay; fixed by refocusing. Host key policy: changed keys are always refused, unknown hosts need explicit fingerprint trust. Agent auth untested (no identities loaded).
+- L8 (2026-10-15): T2 independent verifier: no blockers; advisories queued as correction batch T2b (writer/reader stall on large paste, different-algorithm host key shown as plain unknown, Debug leaks password, IPv6 parsing, agent loop stops on first error). T3 smoke bugs fixed: native select rendered light (color-scheme: dark).
