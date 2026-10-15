@@ -51,7 +51,7 @@ If the file cannot be read, the panel shows the error and disables editing so th
 
 ## SFTP browser
 
-The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses the remote files of the active SSH tab over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
@@ -81,11 +81,30 @@ Stopping closes the listener, the open connections and the SSH connection; runni
 
 Tunnels are stored in `~/.config/dev.nexusterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).
 
+## Split panes and multi-execution
+
+**Split right** (Ctrl+Shift+D) and **Split down** (Ctrl+Shift+E) divide the focused pane of the current tab in two, up to 4 panes per tab.
+The new pane opens another terminal for the same target: a local shell, or a new SSH connection to the same host that reuses the credentials the tab already holds in memory (nothing new is stored).
+Drag the divider between two panes to resize them (each side keeps at least 15%). The focused pane has an accent border; click a pane or use Alt+Arrow to move the focus.
+Ctrl+Shift+W, or the shell exiting, closes only that pane; the tab closes with its last pane.
+
+**Multi-exec** (Ctrl+Shift+M) sends what you type in the focused pane to every other open terminal pane, in every tab. A banner shows how many terminals receive the input and has a **Turn off** button.
+While it is on, each pane shows an **exclude** toggle in its top-right corner to leave that pane out; panes that are still connecting do not receive input either. Typing in an excluded pane only reaches that pane.
+Multi-execution is off when the app starts and is never saved.
+
+The SFTP browser and **Follow terminal folder** use the focused pane of the active tab.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
 | --- | --- |
 | Ctrl+Shift+T | New local terminal tab |
 | Ctrl+Shift+S | New SSH session (quick connect) |
-| Ctrl+Shift+W | Close current tab |
+| Ctrl+Shift+D | Split the focused pane right |
+| Ctrl+Shift+E | Split the focused pane down |
+| Ctrl+Shift+W | Close the focused pane (the tab closes with its last pane) |
+| Alt+Arrow | Move the focus to the neighbouring pane |
+| Ctrl+Shift+M | Turn multi-execution on or off |
 | Middle click on a tab | Close that tab |
+
+These shortcuts are handled by the app and never reach the shell.

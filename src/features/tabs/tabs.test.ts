@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionTarget } from "../sessions/types";
+import { paneIds } from "../panes/paneLayout";
 import { initialTabs, tabsReducer, type TabsState } from "./tabs";
 
 const open = (state: TabsState, target: SessionTarget = { type: "local" }) =>
@@ -64,5 +65,75 @@ describe("tabsReducer", () => {
     const one = open(initialTabs);
     const state = tabsReducer(one, { type: "rename", key: one.tabs[0].key, title: "vim" });
     expect(state.tabs[0].title).toBe("vim");
+  });
+});
+
+describe("tabsReducer panes", () => {
+  const ids = (state: TabsState, index = 0) => paneIds(state.tabs[index].layout);
+  const split = (state: TabsState, direction: "row" | "column" = "row", index = 0) =>
+    tabsReducer(state, { type: "split", key: state.tabs[index].key, direction });
+
+  it("opens a tab with one focused pane; pane ids are unique across tabs", () => {
+    const state = open(open(initialTabs));
+    expect(ids(state, 0)).toHaveLength(1);
+    expect(state.tabs[0].focusedPane).toBe(ids(state, 0)[0]);
+    expect(ids(state, 0)[0]).not.toBe(ids(state, 1)[0]);
+  });
+
+  it("splitting adds a pane after the focused one and focuses it", () => {
+    const one = open(initialTabs);
+    const [first] = ids(one);
+    const state = split(one, "column");
+    expect(ids(state)).toHaveLength(2);
+    expect(ids(state)[0]).toBe(first);
+    expect(state.tabs[0].focusedPane).toBe(ids(state)[1]);
+    expect(state.tabs[0].layout).toMatchObject({ kind: "split", direction: "column" });
+  });
+
+  it("refuses a fifth pane", () => {
+    const four = split(split(split(open(initialTabs))));
+    expect(ids(four)).toHaveLength(4);
+    expect(split(four)).toBe(four);
+  });
+
+  it("closing a pane keeps the tab and focuses a remaining pane", () => {
+    const state = split(open(initialTabs));
+    const [a, b] = ids(state);
+    const closed = tabsReducer(state, { type: "closePane", key: state.tabs[0].key, paneId: b });
+    expect(ids(closed)).toEqual([a]);
+    expect(closed.tabs[0].focusedPane).toBe(a);
+  });
+
+  it("closing an unfocused pane keeps the focus", () => {
+    let state = split(split(open(initialTabs)));
+    const [a, , c] = ids(state);
+    state = tabsReducer(state, { type: "closePane", key: state.tabs[0].key, paneId: a });
+    expect(state.tabs[0].focusedPane).toBe(c);
+  });
+
+  it("closing the last pane closes the tab", () => {
+    const two = open(open(initialTabs));
+    const state = tabsReducer(two, { type: "closePane", key: two.tabs[1].key, paneId: ids(two, 1)[0] });
+    expect(state.tabs).toHaveLength(1);
+    expect(state.activeKey).toBe(two.tabs[0].key);
+  });
+
+  it("focuses a pane by id or by direction", () => {
+    let state = split(open(initialTabs));
+    const key = state.tabs[0].key;
+    const [a, b] = ids(state);
+    state = tabsReducer(state, { type: "focusPane", key, paneId: a });
+    expect(state.tabs[0].focusedPane).toBe(a);
+    state = tabsReducer(state, { type: "focusDirection", key, direction: "right" });
+    expect(state.tabs[0].focusedPane).toBe(b);
+    expect(tabsReducer(state, { type: "focusDirection", key, direction: "right" })).toBe(state);
+    expect(tabsReducer(state, { type: "focusPane", key, paneId: "unknown" })).toBe(state);
+  });
+
+  it("resizes a split with the ratio clamped", () => {
+    const state = split(open(initialTabs));
+    const key = state.tabs[0].key;
+    const resized = tabsReducer(state, { type: "resizeSplit", key, splitId: state.tabs[0].layout.id, ratio: 0.95 });
+    expect(resized.tabs[0].layout).toMatchObject({ kind: "split", ratio: 0.85 });
   });
 });

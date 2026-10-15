@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
+import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
+import { MultiExecBanner } from "./features/panes/MultiExecBanner";
+import { PaneGrid } from "./features/panes/PaneGrid";
+import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
+import { shortcutFor } from "./features/panes/shortcuts";
 import { toTarget, type SavedSession } from "./features/sessions/library";
 import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
@@ -27,13 +32,14 @@ type Modal =
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | null;
 
-/** What a terminal tab reported about its backend session. */
-interface TabSession {
+/** What a terminal pane reported about its backend session, plus its multi-execution exclusion. */
+interface PaneMeta {
   sessionId: number | null;
   cwd: string | null;
+  excluded: boolean;
 }
 
-const NO_SESSION: TabSession = { sessionId: null, cwd: null };
+const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false };
 
 const draftSession = (folder: string): SavedSession => ({
   id: crypto.randomUUID(),
@@ -70,29 +76,52 @@ export default function App() {
     tunnels.reportError,
     tunnels.list.tunnels,
   );
-  const [tabSessions, setTabSessions] = useState<Record<string, TabSession>>({});
+  const [paneMeta, setPaneMeta] = useState<Record<string, PaneMeta>>({});
   const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
   const [followCwd, setFollowCwd] = useState(true);
+  // Multi-execution is off at start and never persisted (S11.4).
+  const [multiExec, setMultiExec] = useState(false);
+  const [writers] = useState(createWriterRegistry);
 
-  const updateTabSession = useCallback((key: string, patch: Partial<TabSession>) => {
-    setTabSessions((prev) => {
-      const current = prev[key] ?? NO_SESSION;
+  const updatePane = useCallback((paneId: string, patch: Partial<PaneMeta>) => {
+    setPaneMeta((prev) => {
+      const current = prev[paneId] ?? NO_SESSION;
       const next = { ...current, ...patch };
-      return next.sessionId === current.sessionId && next.cwd === current.cwd ? prev : { ...prev, [key]: next };
+      return next.sessionId === current.sessionId && next.cwd === current.cwd && next.excluded === current.excluded
+        ? prev
+        : { ...prev, [paneId]: next };
     });
   }, []);
 
-  // Forget what closed tabs reported.
+  // Forget what closed panes reported.
   useEffect(() => {
-    setTabSessions((prev) => {
-      const keys = Object.keys(prev).filter((key) => state.tabs.some((t) => t.key === key));
-      return keys.length === Object.keys(prev).length ? prev : Object.fromEntries(keys.map((k) => [k, prev[k]]));
+    const open = new Set(state.tabs.flatMap((t) => paneIds(t.layout)));
+    setPaneMeta((prev) => {
+      const ids = Object.keys(prev).filter((id) => open.has(id));
+      return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
     });
   }, [state.tabs]);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
-  const activeSession = (activeTab && tabSessions[activeTab.key]) ?? NO_SESSION;
+  // SFTP and the followed folder belong to the focused pane of the active tab (S11.5).
+  const activePane = activeTab?.focusedPane ?? null;
+  const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
+  const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
+
+  const allPanes: PaneInfo[] = state.tabs.flatMap((t) =>
+    paneIds(t.layout).map((id) => ({
+      id,
+      sessionId: paneMeta[id]?.sessionId ?? null,
+      excluded: paneMeta[id]?.excluded ?? false,
+    })),
+  );
+
+  /** Mirrors what is typed in the focused pane of the active tab to the other panes of the group. */
+  const broadcast = (paneId: string, data: string) => {
+    if (!multiExec || !activeTab || activeTab.focusedPane !== paneId) return;
+    writers.write(broadcastTargets(allPanes, paneId), data);
+  };
 
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
@@ -107,23 +136,33 @@ export default function App() {
     if (name?.trim()) sessions.dispatch({ type: "addFolder", path: parent ? `${parent}/${name}` : name });
   };
 
+  // Terminals let these keys through unhandled (see TerminalView), so the window sees them.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey && e.shiftKey)) return;
-      if (e.key === "T") {
-        e.preventDefault();
-        openLocal();
-      } else if (e.key === "S") {
-        e.preventDefault();
-        setModal({ kind: "quickConnect" });
-      } else if (e.key === "W" && state.activeKey) {
-        e.preventDefault();
-        dispatch({ type: "close", key: state.activeKey });
+      const shortcut = shortcutFor(e);
+      if (!shortcut) return;
+      e.preventDefault();
+      switch (shortcut.type) {
+        case "newTerminal":
+          return openLocal();
+        case "quickConnect":
+          return setModal({ kind: "quickConnect" });
+        case "toggleMultiExec":
+          return setMultiExec((on) => !on);
       }
+      if (!activeTab) return;
+      const key = activeTab.key;
+      if (shortcut.type === "closePane") dispatch({ type: "closePane", key, paneId: activeTab.focusedPane });
+      else if (shortcut.type === "split") dispatch({ type: "split", key, direction: shortcut.direction });
+      else dispatch({ type: "focusDirection", key, direction: shortcut.direction });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openLocal, state.activeKey]);
+  }, [openLocal, activeTab]);
+
+  const split = (direction: "row" | "column") => {
+    if (activeTab) dispatch({ type: "split", key: activeTab.key, direction });
+  };
 
   return (
     <div className="app">
@@ -135,7 +174,24 @@ export default function App() {
         <button className="btn" onClick={() => setModal({ kind: "quickConnect" })}>
           SSH
         </button>
+        <button className="btn" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
+          Split right
+        </button>
+        <button className="btn" disabled={!canSplit} title="Ctrl+Shift+E" onClick={() => split("column")}>
+          Split down
+        </button>
+        <button
+          className={`btn${multiExec ? " btn--pressed" : ""}`}
+          aria-pressed={multiExec}
+          title="Ctrl+Shift+M"
+          onClick={() => setMultiExec((on) => !on)}
+        >
+          Multi-exec
+        </button>
       </header>
+      {multiExec && (
+        <MultiExecBanner count={multiExecGroup(allPanes).length} onTurnOff={() => setMultiExec(false)} />
+      )}
       <div className="body">
         <Sidebar
           view={sidebarView}
@@ -145,7 +201,7 @@ export default function App() {
             activeTab &&
             sftpSessionId !== null && (
               <SftpPanel
-                key={`${activeTab.key}:${sftpSessionId}`}
+                key={`${activePane}:${sftpSessionId}`}
                 sessionId={sftpSessionId}
                 cwd={activeSession.cwd}
                 follow={followCwd}
@@ -208,21 +264,59 @@ export default function App() {
             onNew={openLocal}
           />
           <main className="workspace">
-            {state.tabs.map((tab) => (
-              <TerminalView
-                key={tab.key}
-                target={tab.target}
-                active={tab.key === state.activeKey}
-                onTitle={(title) => dispatch({ type: "rename", key: tab.key, title })}
-                onExit={() => dispatch({ type: "close", key: tab.key })}
-                onCwd={(cwd) => updateTabSession(tab.key, { cwd })}
-                onSession={(sessionId) => {
-                  updateTabSession(tab.key, { sessionId });
-                  // A new SSH connection brings its file browser to the front.
-                  if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
-                }}
-              />
-            ))}
+            {state.tabs.map((tab) => {
+              const active = tab.key === state.activeKey;
+              return (
+                <div key={tab.key} className="tab-panes" hidden={!active}>
+                  <PaneGrid
+                    layout={tab.layout}
+                    focusedPane={tab.focusedPane}
+                    onFocusPane={(paneId) => dispatch({ type: "focusPane", key: tab.key, paneId })}
+                    onResize={(splitId, ratio) => dispatch({ type: "resizeSplit", key: tab.key, splitId, ratio })}
+                    renderPane={(paneId) => {
+                      const excluded = paneMeta[paneId]?.excluded ?? false;
+                      return (
+                        <>
+                          <TerminalView
+                            target={tab.target}
+                            active={active}
+                            focused={paneId === tab.focusedPane}
+                            onTitle={(title) => {
+                              if (paneId === tab.focusedPane) dispatch({ type: "rename", key: tab.key, title });
+                            }}
+                            onExit={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                            onCwd={(cwd) => updatePane(paneId, { cwd })}
+                            onSession={(sessionId) => {
+                              updatePane(paneId, { sessionId });
+                              // A new SSH connection brings its file browser to the front.
+                              if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
+                            }}
+                            onInput={(data) => broadcast(paneId, data)}
+                            registerWriter={(write) => writers.register(paneId, write)}
+                          />
+                          {multiExec && (
+                            <button
+                              className={`pane__exclude${excluded ? " pane__exclude--on" : ""}`}
+                              aria-pressed={excluded}
+                              aria-label="Exclude from multi-execution"
+                              title={excluded ? "Excluded from multi-execution" : "Exclude from multi-execution"}
+                              // Keep the keyboard focus where it is.
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onClick={() => updatePane(paneId, { excluded: !excluded })}
+                            >
+                              {excluded ? "excluded" : "exclude"}
+                            </button>
+                          )}
+                        </>
+                      );
+                    }}
+                  />
+                </div>
+              );
+            })}
             {state.tabs.length === 0 && (
               <div className="empty">
                 <p>No open sessions.</p>

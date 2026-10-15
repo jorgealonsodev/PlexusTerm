@@ -132,6 +132,94 @@ body,
   background: var(--bg);
 }
 
+.tab-panes,
+.pane-grid {
+  position: absolute;
+  inset: 0;
+}
+
+.tab-panes[hidden] {
+  display: none;
+}
+
+.pane {
+  position: absolute;
+}
+
+.pane--split {
+  border: 1px solid var(--border);
+}
+
+.pane--focused {
+  border-color: var(--accent);
+}
+
+.pane-divider {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.pane-divider--row {
+  width: 6px;
+  transform: translateX(-3px);
+  cursor: col-resize;
+}
+
+.pane-divider--column {
+  height: 6px;
+  transform: translateY(-3px);
+  cursor: row-resize;
+}
+
+.pane-divider:hover,
+.pane-divider:active {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Bottom-right and translucent: prompts and output start at the top of a pane. */
+.pane__exclude {
+  position: absolute;
+  bottom: 6px;
+  right: 14px;
+  z-index: 3;
+  opacity: 0.75;
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pane__exclude--on {
+  color: var(--bg);
+  background: var(--muted);
+}
+
+.btn--pressed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.multiexec-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 12px;
+  color: var(--bg);
+  background: #f0b45e;
+  font-weight: 600;
+}
+
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
