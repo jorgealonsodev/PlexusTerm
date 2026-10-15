@@ -1,6 +1,6 @@
 /** Mirrors the Rust `SshError` enum serialized with `#[serde(tag = "kind")]`. */
 export type SshError =
-  | { kind: "unknownHost"; host: string; fingerprint: string }
+  | { kind: "unknownHost"; host: string; fingerprint: string; otherKnownKeys: string[] }
   | { kind: "hostKeyChanged"; host: string; fingerprint: string; line: number }
   | { kind: "authFailed" }
   | { kind: "unknownSession"; id: number }
@@ -14,10 +14,20 @@ export function toSshError(err: unknown): SshError {
   return { kind: "connection", message: String(err) };
 }
 
+/** Shown when the server offers a key type that differs from the ones recorded for it. */
+export function otherKeysWarning(otherKnownKeys: string[]): string {
+  return (
+    `This host already has ${otherKnownKeys.join(", ")} key(s) recorded in known_hosts. ` +
+    "The server may have changed its key type, or someone may be intercepting the connection."
+  );
+}
+
 export function describeSshError(err: SshError): string {
   switch (err.kind) {
-    case "unknownHost":
-      return `The authenticity of host ${err.host} can't be established. Fingerprint: ${err.fingerprint}`;
+    case "unknownHost": {
+      const text = `The authenticity of host ${err.host} can't be established. Fingerprint: ${err.fingerprint}`;
+      return err.otherKnownKeys.length ? `${text}\r\n${otherKeysWarning(err.otherKnownKeys)}` : text;
+    }
     case "hostKeyChanged":
       return [
         "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!",

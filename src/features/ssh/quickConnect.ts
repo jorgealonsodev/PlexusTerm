@@ -31,10 +31,16 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
     username = username || host.slice(0, at);
     host = host.slice(at + 1);
   }
-  const hostPort = /^(.+):(\d+)$/.exec(host);
-  if (hostPort) {
-    host = hostPort[1];
-    portText = portText || hostPort[2];
+  const bracketed = /^\[([^\]]+)\](?::(\d+))?$/.exec(host);
+  if (bracketed) {
+    // [IPv6] or [IPv6]:port
+    host = bracketed[1];
+    portText = portText || (bracketed[2] ?? "");
+  } else if ((host.match(/:/g) ?? []).length === 1) {
+    // host:port; a bare IPv6 address (several colons) carries no port.
+    const [name, port] = host.split(":");
+    host = name;
+    portText = portText || port;
   }
 
   if (!host) return fail("Host is required");

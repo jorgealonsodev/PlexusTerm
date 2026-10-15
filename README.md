@@ -22,7 +22,10 @@ Host keys are verified against `~/.ssh/known_hosts`, like OpenSSH:
 
 - a known, matching key connects directly;
 - an unknown host shows its SHA256 fingerprint and is only recorded after you choose **Trust and connect**;
+  if keys of another type are already recorded for that host, the dialog warns about it (the server may have changed its key type);
 - a key that differs from the recorded one is always refused. Remove the old entry with `ssh-keygen -R <host>` if the change is expected.
+
+Known limitations of the known_hosts parser (russh): `@revoked` / `@cert-authority` markers and wildcard patterns are not supported, and hostnames are matched case-sensitively; in those cases you get the unknown-host prompt instead of a silent connection.
 
 ## Saved sessions
 
