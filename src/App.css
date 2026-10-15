@@ -45,7 +45,7 @@ body,
   color: var(--accent);
 }
 
-.toolbar__btn {
+.btn {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
@@ -55,7 +55,7 @@ body,
   cursor: pointer;
 }
 
-.toolbar__btn:hover {
+.btn:hover {
   border-color: var(--accent);
 }
 
@@ -115,6 +115,15 @@ body,
   min-height: 0;
 }
 
+.terminal-pane {
+  position: absolute;
+  inset: 0;
+}
+
+.terminal-pane[hidden] {
+  display: none;
+}
+
 .terminal-host {
   position: absolute;
   inset: 0;
@@ -122,8 +131,115 @@ body,
   background: var(--bg);
 }
 
-.terminal-host[hidden] {
-  display: none;
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #08131c;
+  font-weight: 600;
+}
+
+.btn--primary:hover {
+  filter: brightness(1.1);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(5 8 12 / 0.6);
+}
+
+.terminal-pane .overlay {
+  position: absolute;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(440px, 100%);
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.45);
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.dialog p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.field--grow {
+  flex: 1;
+}
+
+.field--port {
+  width: 80px;
+}
+
+.field input,
+.field select {
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-error {
+  color: #ef6b73;
+}
+
+.fingerprint {
+  padding: 8px;
+  overflow-wrap: anywhere;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.empty__actions {
+  display: flex;
+  gap: 8px;
 }
 
 .empty {
