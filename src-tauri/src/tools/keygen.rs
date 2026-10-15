@@ -1,21 +1,28 @@
-//! Tools > SSH key generator (S2): generates an Ed25519 key pair, saves it to files and
+//! Tools > SSH key generator (S2, S7): generates Ed25519, RSA and ECDSA key pairs or loads
+//! an existing private key (OpenSSH or PuTTY `.ppk`), lets the comment and passphrase
+//! change, saves the public key, the private key (OpenSSH) or a PuTTY `.ppk` file, and
 //! installs the public key on a server like `ssh-copy-id`.
 //!
-//! The private key stays in the backend: [`generate`] keeps it in a [`KeyStore`] under an
-//! id and returns only the public key, which [`save`] and [`install`] then refer to. The
-//! private key only ever leaves memory as the file written by [`save`].
+//! The private key stays in the backend: [`generate`] and [`load`] keep it in a
+//! [`KeyStore`] under an id and return only its public half, which the other functions
+//! then refer to. The private key only ever leaves memory as the files written by
+//! [`save_private`], [`export_ppk`] and [`save`].
 
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 use russh::ChannelMsg;
-use russh::keys::ssh_key::LineEnding;
+use russh::keys::ssh_key::private::{KeypairData, RsaKeypair};
 use russh::keys::ssh_key::rand_core::UnwrapErr;
+use russh::keys::ssh_key::{EcdsaCurve, LineEnding};
 use russh::keys::{Algorithm, HashAlg, PrivateKey};
 use zeroize::Zeroizing;
+
+mod ppk;
 
 use crate::ssh::{
     Chain, Connection, SshError, SshManager, SshTarget, connect_authenticated, disconnect_jumps,
@@ -24,8 +31,11 @@ use crate::ssh::{
 /// Longest comment accepted (OpenSSH has no limit; this keeps lines readable).
 const MAX_COMMENT: usize = 256;
 
-/// Generated keys kept at once; the oldest is dropped beyond this.
+/// Keys kept at once; the oldest is dropped beyond this.
 const MAX_KEYS: usize = 8;
+
+/// Largest key file [`load`] reads (an RSA 16384 `.ppk` is about 12 KiB).
+const MAX_KEY_FILE: u64 = 64 * 1024;
 
 /// How long the install command may take on the server.
 const INSTALL_TIMEOUT: Duration = Duration::from_secs(20);
@@ -36,7 +46,16 @@ const MAX_OUTPUT: usize = 16 * 1024;
 const ADDED: &str = "PLEXUSTERM_KEY_ADDED";
 const PRESENT: &str = "PLEXUSTERM_KEY_PRESENT";
 
-/// Errors of generating and saving keys. Serialized as `{ kind, ... }` (camelCase).
+/// Public key types accepted in an `authorized_keys` line by [`install_command`].
+const KEY_TYPES: [&str; 5] = [
+    "ssh-ed25519",
+    "ssh-rsa",
+    "ecdsa-sha2-nistp256",
+    "ecdsa-sha2-nistp384",
+    "ecdsa-sha2-nistp521",
+];
+
+/// Errors of generating, loading and saving keys. Serialized as `{ kind, ... }` (camelCase).
 #[derive(Debug, thiserror::Error, serde::Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum KeygenError {
@@ -49,6 +68,11 @@ pub enum KeygenError {
     UnknownKey,
     #[error("{message}")]
     Io { message: String },
+    /// The key file is encrypted and no passphrase was given.
+    #[error("the key is protected by a passphrase")]
+    PassphraseRequired,
+    #[error("wrong passphrase")]
+    WrongPassphrase,
 }
 
 fn invalid(message: impl Into<String>) -> KeygenError {
@@ -57,7 +81,27 @@ fn invalid(message: impl Into<String>) -> KeygenError {
     }
 }
 
-/// What the frontend gets back from [`generate`]: never the private key.
+/// The key types and sizes offered (S7): no DSA, no SSH-1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+pub enum KeyType {
+    #[default]
+    #[serde(rename = "ed25519")]
+    Ed25519,
+    #[serde(rename = "rsa-2048")]
+    Rsa2048,
+    #[serde(rename = "rsa-3072")]
+    Rsa3072,
+    #[serde(rename = "rsa-4096")]
+    Rsa4096,
+    #[serde(rename = "ecdsa-p256")]
+    EcdsaP256,
+    #[serde(rename = "ecdsa-p384")]
+    EcdsaP384,
+    #[serde(rename = "ecdsa-p521")]
+    EcdsaP521,
+}
+
+/// What the frontend gets back for a key: never the private key.
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GeneratedKey {
@@ -66,6 +110,11 @@ pub struct GeneratedKey {
     pub public_key: String,
     /// `SHA256:...`, as printed by `ssh-keygen -l`.
     pub fingerprint: String,
+    pub comment: String,
+    /// `ED25519`, `RSA 3072`, `ECDSA P-256`...
+    pub key_type: String,
+    /// Whether the saved private key is protected by a passphrase.
+    pub encrypted: bool,
 }
 
 /// Whether [`install`] added the key or found it already there.
@@ -76,14 +125,18 @@ pub enum InstallOutcome {
     AlreadyPresent,
 }
 
-/// A generated key pair. Deliberately not `Debug`: it holds the private key.
+/// A key pair. Deliberately not `Debug`: it holds the private key.
 struct StoredKey {
-    /// OpenSSH private key file contents, encrypted when a passphrase was given.
+    /// The decrypted key (ssh-key zeroizes its private parts on drop).
+    key: PrivateKey,
+    /// Its passphrase; empty means none.
+    passphrase: Zeroizing<String>,
+    /// OpenSSH private key file contents, encrypted when there is a passphrase.
     private_openssh: Zeroizing<String>,
     public_key: String,
 }
 
-/// Generated keys by id, until the dialog that made them is closed.
+/// Keys by id, until the dialog that made or loaded them is closed.
 #[derive(Default)]
 pub struct KeyStore {
     next_id: AtomicU32,
@@ -101,6 +154,17 @@ impl KeyStore {
         }
         keys.insert(id, key);
         id
+    }
+
+    /// Replaces key `id`; false when it is no longer there.
+    fn replace(&self, id: u32, key: StoredKey) -> bool {
+        match self.keys.lock().unwrap().get_mut(&id) {
+            Some(slot) => {
+                *slot = key;
+                true
+            }
+            None => false,
+        }
     }
 
     fn with<T>(&self, id: u32, f: impl FnOnce(&StoredKey) -> T) -> Option<T> {
@@ -130,41 +194,191 @@ fn validate_comment(comment: &str) -> Result<&str, KeygenError> {
     Ok(comment)
 }
 
-/// Generates an Ed25519 key pair with `comment`, encrypted with `passphrase` when given
-/// (empty means none), keeps it in `store` and returns its public half.
+fn rng() -> UnwrapErr<rand::rngs::SysRng> {
+    UnwrapErr(rand::rngs::SysRng)
+}
+
+/// `ED25519`, `RSA 3072`, `ECDSA P-256`; `None` for the types this tool does not handle.
+fn type_label(key: &PrivateKey) -> Option<String> {
+    match key.key_data() {
+        KeypairData::Ed25519(_) => Some("ED25519".into()),
+        KeypairData::Rsa(pair) => Some(format!("RSA {}", pair.key_size())),
+        KeypairData::Ecdsa(pair) => Some(
+            match pair.curve() {
+                EcdsaCurve::NistP256 => "ECDSA P-256",
+                EcdsaCurve::NistP384 => "ECDSA P-384",
+                EcdsaCurve::NistP521 => "ECDSA P-521",
+            }
+            .into(),
+        ),
+        _ => None,
+    }
+}
+
+/// Builds what the store keeps for the decrypted `key` with `passphrase` (empty: none).
+fn seal(key: PrivateKey, passphrase: &str) -> Result<StoredKey, KeygenError> {
+    let public_key = key
+        .public_key()
+        .to_openssh()
+        .map_err(|err| invalid(format!("cannot encode the public key: {err}")))?;
+    let encrypted;
+    let file_key = if passphrase.is_empty() {
+        &key
+    } else {
+        encrypted = key
+            .encrypt(&mut rng(), passphrase)
+            .map_err(|err| invalid(format!("cannot encrypt the key: {err}")))?;
+        &encrypted
+    };
+    let private_openssh = file_key
+        .to_openssh(LineEnding::LF)
+        .map_err(|err| invalid(format!("cannot encode the private key: {err}")))?;
+    Ok(StoredKey {
+        key,
+        passphrase: Zeroizing::new(passphrase.to_string()),
+        private_openssh,
+        public_key,
+    })
+}
+
+/// What the frontend may see of `stored`.
+fn describe(id: u32, stored: &StoredKey) -> GeneratedKey {
+    let public = stored.key.public_key();
+    GeneratedKey {
+        id,
+        public_key: stored.public_key.clone(),
+        fingerprint: public.fingerprint(HashAlg::Sha256).to_string(),
+        comment: public.comment().as_str_lossy().to_string(),
+        key_type: type_label(&stored.key).unwrap_or_default(),
+        encrypted: !stored.passphrase.is_empty(),
+    }
+}
+
+/// Keeps `key` (decrypted) in `store` with `passphrase` and describes it.
+fn keep(store: &KeyStore, key: PrivateKey, passphrase: &str) -> Result<GeneratedKey, KeygenError> {
+    let stored = seal(key, passphrase)?;
+    let described = describe(0, &stored);
+    let id = store.insert(stored);
+    Ok(GeneratedKey { id, ..described })
+}
+
+/// Generates a key pair of `key_type` with `comment`, encrypted with `passphrase` when
+/// given (empty means none), keeps it in `store` and returns its public half.
 pub fn generate(
     store: &KeyStore,
+    key_type: KeyType,
     passphrase: Option<&str>,
     comment: &str,
 ) -> Result<GeneratedKey, KeygenError> {
     let comment = validate_comment(comment)?;
-    let mut rng = UnwrapErr(rand::rngs::SysRng);
-    let mut key = PrivateKey::random(&mut rng, Algorithm::Ed25519)
-        .map_err(|err| invalid(format!("cannot generate the key: {err}")))?;
-    key.set_comment(comment);
-    let public = key.public_key();
-    let public_key = public
-        .to_openssh()
-        .map_err(|err| invalid(format!("cannot encode the public key: {err}")))?;
-    let fingerprint = public.fingerprint(HashAlg::Sha256).to_string();
-    let key = match passphrase.filter(|p| !p.is_empty()) {
-        Some(passphrase) => key
-            .encrypt(&mut rng, passphrase)
-            .map_err(|err| invalid(format!("cannot encrypt the key: {err}")))?,
-        None => key,
+    let mut random = rng();
+    let rsa = |bits: usize| -> Result<PrivateKey, russh::keys::ssh_key::Error> {
+        PrivateKey::new(KeypairData::from(RsaKeypair::random(&mut rng(), bits)?), "")
     };
-    let private_openssh = key
-        .to_openssh(LineEnding::LF)
-        .map_err(|err| invalid(format!("cannot encode the private key: {err}")))?;
-    let id = store.insert(StoredKey {
-        private_openssh,
-        public_key: public_key.clone(),
-    });
-    Ok(GeneratedKey {
-        id,
-        public_key,
-        fingerprint,
-    })
+    let ecdsa = |curve| Algorithm::Ecdsa { curve };
+    let key = match key_type {
+        KeyType::Ed25519 => PrivateKey::random(&mut random, Algorithm::Ed25519),
+        KeyType::Rsa2048 => rsa(2048),
+        KeyType::Rsa3072 => rsa(3072),
+        KeyType::Rsa4096 => rsa(4096),
+        KeyType::EcdsaP256 => PrivateKey::random(&mut random, ecdsa(EcdsaCurve::NistP256)),
+        KeyType::EcdsaP384 => PrivateKey::random(&mut random, ecdsa(EcdsaCurve::NistP384)),
+        KeyType::EcdsaP521 => PrivateKey::random(&mut random, ecdsa(EcdsaCurve::NistP521)),
+    };
+    let mut key = key.map_err(|err| invalid(format!("cannot generate the key: {err}")))?;
+    key.set_comment(comment);
+    keep(store, key, passphrase.unwrap_or(""))
+}
+
+/// Parses a private key file (OpenSSH, or PuTTY `.ppk` v2/v3) and decrypts it with
+/// `passphrase` when it is encrypted; also says whether it was.
+fn parse_private(contents: &str, passphrase: &str) -> Result<(PrivateKey, bool), KeygenError> {
+    if contents.starts_with("PuTTY-User-Key-File-") {
+        let encrypted = contents
+            .lines()
+            .any(|l| l.starts_with("Encryption: ") && l.trim_end() != "Encryption: none");
+        if encrypted && passphrase.is_empty() {
+            return Err(KeygenError::PassphraseRequired);
+        }
+        let given = encrypted.then(|| passphrase.to_string());
+        let key = PrivateKey::from_ppk(contents, given).map_err(|err| {
+            // ssh-key reports a failed MAC check; with a passphrase, that is a wrong one.
+            if encrypted && err.to_string().contains("incorrect MAC") {
+                KeygenError::WrongPassphrase
+            } else {
+                invalid(format!("not a valid PuTTY key file: {err}"))
+            }
+        })?;
+        return Ok((key, encrypted));
+    }
+    let key = PrivateKey::from_openssh(contents.trim())
+        .map_err(|_| invalid("not an OpenSSH or PuTTY private key file"))?;
+    if !key.is_encrypted() {
+        return Ok((key, false));
+    }
+    if passphrase.is_empty() {
+        return Err(KeygenError::PassphraseRequired);
+    }
+    let key = key
+        .decrypt(passphrase)
+        .map_err(|_| KeygenError::WrongPassphrase)?;
+    Ok((key, true))
+}
+
+/// Loads the private key file at `path` (OpenSSH or PuTTY `.ppk`), decrypting it with
+/// `passphrase` when it is encrypted, keeps it in `store` with that passphrase and
+/// returns its public half.
+pub fn load(
+    store: &KeyStore,
+    path: &Path,
+    passphrase: Option<&str>,
+) -> Result<GeneratedKey, KeygenError> {
+    let read_error = |err: std::io::Error| KeygenError::Io {
+        message: format!("cannot read {}: {err}", path.display()),
+    };
+    let file = std::fs::File::open(path).map_err(read_error)?;
+    let mut contents = Zeroizing::new(String::new());
+    file.take(MAX_KEY_FILE + 1)
+        .read_to_string(&mut contents)
+        .map_err(|err| match err.kind() {
+            std::io::ErrorKind::InvalidData => invalid("not an OpenSSH or PuTTY private key file"),
+            _ => read_error(err),
+        })?;
+    if contents.len() as u64 > MAX_KEY_FILE {
+        return Err(invalid("not an OpenSSH or PuTTY private key file"));
+    }
+    let passphrase = passphrase.unwrap_or("");
+    let (key, encrypted) = parse_private(&contents, passphrase)?;
+    if type_label(&key).is_none() {
+        return Err(invalid(format!(
+            "{} keys are not supported (only Ed25519, RSA and ECDSA)",
+            key.algorithm()
+        )));
+    }
+    validate_comment(key.comment().as_str_lossy())?;
+    // An unencrypted file stays unencrypted even if a passphrase was typed.
+    keep(store, key, if encrypted { passphrase } else { "" })
+}
+
+/// Sets the comment and passphrase (empty removes it) of key `id`; save it again to
+/// keep the change.
+pub fn update(
+    store: &KeyStore,
+    id: u32,
+    comment: &str,
+    passphrase: Option<&str>,
+) -> Result<GeneratedKey, KeygenError> {
+    let comment = validate_comment(comment)?;
+    let mut key = store
+        .with(id, |stored| stored.key.clone())
+        .ok_or(KeygenError::UnknownKey)?;
+    key.set_comment(comment);
+    let stored = seal(key, passphrase.unwrap_or(""))?;
+    let described = describe(id, &stored);
+    if !store.replace(id, stored) {
+        return Err(KeygenError::UnknownKey);
+    }
+    Ok(described)
 }
 
 /// `path` with `.pub` appended (`id_ed25519` -> `id_ed25519.pub`).
@@ -184,6 +398,9 @@ fn io(path: &Path, err: std::io::Error) -> KeygenError {
 /// `overwrite` is set. The mode is set before any byte is written, also on a replaced file.
 fn write_file(path: &Path, contents: &[u8], mode: u32, overwrite: bool) -> Result<(), KeygenError> {
     use std::io::Write;
+    if path.as_os_str().is_empty() {
+        return Err(invalid("choose where to save the key"));
+    }
     let mut options = std::fs::OpenOptions::new();
     options.write(true);
     if overwrite {
@@ -241,10 +458,52 @@ pub fn save(store: &KeyStore, id: u32, path: &Path, overwrite: bool) -> Result<(
     )
 }
 
-/// An `ssh-ed25519` public key line safe to put in a shell command: the key type, base64,
-/// and an optional comment without control characters.
+/// Saves the public key line of key `id` as `path` (0644), replacing it only if `overwrite`.
+pub fn save_public(
+    store: &KeyStore,
+    id: u32,
+    path: &Path,
+    overwrite: bool,
+) -> Result<(), KeygenError> {
+    let public = store
+        .with(id, |key| key.public_key.clone())
+        .ok_or(KeygenError::UnknownKey)?;
+    write_file(path, format!("{public}\n").as_bytes(), 0o644, overwrite)
+}
+
+/// Saves the OpenSSH private key of key `id` (encrypted when it has a passphrase) as
+/// `path` (0600), replacing it only if `overwrite`.
+pub fn save_private(
+    store: &KeyStore,
+    id: u32,
+    path: &Path,
+    overwrite: bool,
+) -> Result<(), KeygenError> {
+    let private = store
+        .with(id, |key| key.private_openssh.clone())
+        .ok_or(KeygenError::UnknownKey)?;
+    write_file(path, private.as_bytes(), 0o600, overwrite)
+}
+
+/// Saves key `id` as a PuTTY `.ppk` version 3 file (encrypted with its passphrase when it
+/// has one) as `path` (0600), replacing it only if `overwrite`.
+pub fn export_ppk(
+    store: &KeyStore,
+    id: u32,
+    path: &Path,
+    overwrite: bool,
+) -> Result<(), KeygenError> {
+    let (key, passphrase) = store
+        .with(id, |stored| (stored.key.clone(), stored.passphrase.clone()))
+        .ok_or(KeygenError::UnknownKey)?;
+    let contents = ppk::encode(&key, Some(&passphrase), &mut rng()).map_err(invalid)?;
+    write_file(path, contents.as_bytes(), 0o600, overwrite)
+}
+
+/// A public key line of one of [`KEY_TYPES`] safe to put in a shell command: the key
+/// type, base64, and an optional comment without control characters.
 fn validate_public_line(line: &str) -> Result<(&str, &str), String> {
-    let invalid = || "not an ssh-ed25519 public key line".to_string();
+    let invalid = || "not a supported public key line".to_string();
     if line.chars().any(char::is_control) {
         return Err(invalid());
     }
@@ -257,7 +516,7 @@ fn validate_public_line(line: &str) -> Result<(&str, &str), String> {
         && blob
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/' || b == b'=');
-    if kind != "ssh-ed25519" || !blob_ok {
+    if !KEY_TYPES.contains(&kind) || !blob_ok {
         return Err(invalid());
     }
     Ok((kind, blob))
@@ -398,36 +657,122 @@ pub async fn install(
     install_outcome(&output, exit_status)
 }
 
-/// Generates an Ed25519 key pair; only its public half and an id come back.
+/// Runs `job` off the async runtime (bcrypt-pbkdf, Argon2 and RSA generation take a while).
+async fn blocking<T: Send + 'static>(
+    what: &str,
+    job: impl FnOnce() -> Result<T, KeygenError> + Send + 'static,
+) -> Result<T, KeygenError> {
+    tokio::task::spawn_blocking(job)
+        .await
+        .map_err(|err| invalid(format!("{what} failed: {err}")))?
+}
+
+/// Generates a key pair (Ed25519 unless `key_type` says otherwise); only its public half
+/// and an id come back.
 #[tauri::command]
 pub async fn keygen_generate(
+    key_type: Option<KeyType>,
     passphrase: Option<String>,
     comment: Option<String>,
 ) -> Result<GeneratedKey, KeygenError> {
-    // Encrypting runs bcrypt-pbkdf, which takes a while: keep it off the async runtime.
-    tokio::task::spawn_blocking(move || {
+    blocking("key generation", move || {
         generate(
             &STORE,
+            key_type.unwrap_or_default(),
             passphrase.as_deref(),
             comment.as_deref().unwrap_or(""),
         )
     })
     .await
-    .map_err(|err| invalid(format!("key generation failed: {err}")))?
 }
 
-/// Saves key `id` as `path` (0600) and `path.pub` (0644); see [`save`].
+/// Loads the private key file at `path` (OpenSSH or PuTTY `.ppk`); see [`load`].
+#[tauri::command]
+pub async fn keygen_load(
+    path: String,
+    passphrase: Option<String>,
+) -> Result<GeneratedKey, KeygenError> {
+    let passphrase = passphrase.map(Zeroizing::new);
+    blocking("loading the key", move || {
+        load(
+            &STORE,
+            Path::new(&path),
+            passphrase.as_deref().map(String::as_str),
+        )
+    })
+    .await
+}
+
+/// Sets the comment and passphrase (empty or missing removes it) of key `id`; see [`update`].
+#[tauri::command]
+pub async fn keygen_update(
+    id: u32,
+    comment: Option<String>,
+    passphrase: Option<String>,
+) -> Result<GeneratedKey, KeygenError> {
+    let passphrase = passphrase.map(Zeroizing::new);
+    blocking("updating the key", move || {
+        update(
+            &STORE,
+            id,
+            comment.as_deref().unwrap_or(""),
+            passphrase.as_deref().map(String::as_str),
+        )
+    })
+    .await
+}
+
+/// Saves key `id` as `path` (0600) and `path.pub` (0644); see [`save`]. The dialog now uses
+/// [`keygen_save_public`] and [`keygen_save_private`].
 #[tauri::command]
 pub async fn keygen_save(
     id: u32,
     path: String,
     overwrite: Option<bool>,
 ) -> Result<(), KeygenError> {
-    tokio::task::spawn_blocking(move || {
+    blocking("saving", move || {
         save(&STORE, id, Path::new(&path), overwrite.unwrap_or(false))
     })
     .await
-    .map_err(|err| invalid(format!("saving failed: {err}")))?
+}
+
+/// Saves the public key of key `id` as `path` (0644); see [`save_public`].
+#[tauri::command]
+pub async fn keygen_save_public(
+    id: u32,
+    path: String,
+    overwrite: Option<bool>,
+) -> Result<(), KeygenError> {
+    blocking("saving", move || {
+        save_public(&STORE, id, Path::new(&path), overwrite.unwrap_or(false))
+    })
+    .await
+}
+
+/// Saves the OpenSSH private key of key `id` as `path` (0600); see [`save_private`].
+#[tauri::command]
+pub async fn keygen_save_private(
+    id: u32,
+    path: String,
+    overwrite: Option<bool>,
+) -> Result<(), KeygenError> {
+    blocking("saving", move || {
+        save_private(&STORE, id, Path::new(&path), overwrite.unwrap_or(false))
+    })
+    .await
+}
+
+/// Saves key `id` as a PuTTY `.ppk` v3 file (0600); see [`export_ppk`].
+#[tauri::command]
+pub async fn keygen_export_ppk(
+    id: u32,
+    path: String,
+    overwrite: Option<bool>,
+) -> Result<(), KeygenError> {
+    blocking("saving", move || {
+        export_ppk(&STORE, id, Path::new(&path), overwrite.unwrap_or(false))
+    })
+    .await
 }
 
 /// Adds key `id` to `~/.ssh/authorized_keys` on `target`; see [`install`].
@@ -460,7 +805,7 @@ mod tests {
     #[test]
     fn generates_an_ed25519_key_whose_halves_parse_back() {
         let store = KeyStore::default();
-        let key = generate(&store, None, " me@laptop ").unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, " me@laptop ").unwrap();
         assert!(
             key.public_key.starts_with("ssh-ed25519 AAAA"),
             "{}",
@@ -479,7 +824,9 @@ mod tests {
         assert_eq!(private.public_key().key_data(), public.key_data());
         // Every generation is a new key.
         assert_ne!(
-            generate(&store, None, "").unwrap().public_key,
+            generate(&store, KeyType::Ed25519, None, "")
+                .unwrap()
+                .public_key,
             key.public_key
         );
     }
@@ -487,14 +834,14 @@ mod tests {
     #[test]
     fn a_passphrase_encrypts_the_private_key() {
         let store = KeyStore::default();
-        let key = generate(&store, Some("correct horse"), "").unwrap();
+        let key = generate(&store, KeyType::Ed25519, Some("correct horse"), "").unwrap();
         let private = PrivateKey::from_openssh(stored_private(&store, key.id)).unwrap();
         assert!(private.is_encrypted());
         assert!(private.decrypt("wrong").is_err());
         let decrypted = private.decrypt("correct horse").unwrap();
         assert_eq!(decrypted.public_key().to_openssh().unwrap(), key.public_key);
         // An empty passphrase means none.
-        let plain = generate(&store, Some(""), "").unwrap();
+        let plain = generate(&store, KeyType::Ed25519, Some(""), "").unwrap();
         assert!(
             !PrivateKey::from_openssh(stored_private(&store, plain.id))
                 .unwrap()
@@ -508,7 +855,7 @@ mod tests {
         for bad in ["a\nb".to_string(), "x".repeat(MAX_COMMENT + 1)] {
             assert!(
                 matches!(
-                    generate(&store, None, &bad),
+                    generate(&store, KeyType::Ed25519, None, &bad),
                     Err(KeygenError::Invalid { .. })
                 ),
                 "{bad:?}"
@@ -526,7 +873,7 @@ mod tests {
     #[test]
     fn saves_the_private_key_0600_and_the_public_key_0644() {
         let store = KeyStore::default();
-        let key = generate(&store, None, "c").unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, "c").unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("id_test");
         save(&store, key.id, &path, false).unwrap();
@@ -552,7 +899,7 @@ mod tests {
     #[test]
     fn never_overwrites_without_being_asked_to() {
         let store = KeyStore::default();
-        let key = generate(&store, None, "").unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, "").unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("id_test");
         let pub_path = public_path(&path);
@@ -593,7 +940,7 @@ mod tests {
     #[test]
     fn unknown_and_discarded_keys_cannot_be_saved() {
         let store = KeyStore::default();
-        let key = generate(&store, None, "").unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, "").unwrap();
         store.discard(key.id);
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(
@@ -604,18 +951,27 @@ mod tests {
     }
 
     #[test]
-    fn the_install_command_only_accepts_ed25519_public_key_lines() {
+    fn the_install_command_only_accepts_supported_public_key_lines() {
         for bad in [
             "",
-            "ssh-rsa AAAA x",
+            "ssh-dss AAAA x",
+            "ecdsa-sha2-nistp999 AAAA x",
+            "sk-ssh-ed25519@openssh.com AAAA x",
             "ssh-ed25519",
+            "ssh-rsa",
             "ssh-ed25519 AAAA;rm -rf ~",
-            "ssh-ed25519 AAAA$(id)",
+            "ssh-rsa AAAA$(id)",
+            "ecdsa-sha2-nistp256 AAAA`id`",
             "ssh-ed25519 AAAA c\nrm -rf ~",
         ] {
             assert!(install_command(bad).is_err(), "{bad:?}");
         }
-        assert!(install_command("ssh-ed25519 AAAA it's 'quoted' $(id)").is_ok());
+        for kind in KEY_TYPES {
+            assert!(
+                install_command(&format!("{kind} AAAA it's 'quoted' $(id)")).is_ok(),
+                "{kind}"
+            );
+        }
     }
 
     /// Runs the install command for `line` under a local `sh` with `home` as `$HOME`.
@@ -656,9 +1012,20 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_install_command_survives_every_login_shell() {
-        let comments = ["jorge's laptop", r"a\'b\\c", r#"x'"'"'y; touch pwned #"#, "plain", "$(id) `id` %s %n ~ * !!"];
+        let comments = [
+            "jorge's laptop",
+            r"a\'b\\c",
+            r#"x'"'"'y; touch pwned #"#,
+            "plain",
+            "$(id) `id` %s %n ~ * !!",
+        ];
         for shell in ["sh", "dash", "bash", "zsh", "fish"] {
-            if std::process::Command::new(shell).arg("-c").arg("true").output().is_err() {
+            if std::process::Command::new(shell)
+                .arg("-c")
+                .arg("true")
+                .output()
+                .is_err()
+            {
                 eprintln!("{shell} not installed, skipped");
                 continue;
             }
@@ -672,8 +1039,13 @@ mod tests {
                     .output()
                     .unwrap();
                 assert!(output.status.success(), "{shell} {comment:?}: {output:?}");
-                assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), ADDED, "{shell} {comment:?}");
-                let written = std::fs::read_to_string(home.path().join(".ssh/authorized_keys")).unwrap();
+                assert_eq!(
+                    String::from_utf8_lossy(&output.stdout).trim(),
+                    ADDED,
+                    "{shell} {comment:?}"
+                );
+                let written =
+                    std::fs::read_to_string(home.path().join(".ssh/authorized_keys")).unwrap();
                 assert_eq!(written, format!("{line}\n"), "{shell} {comment:?}");
                 assert!(!home.path().join("pwned").exists(), "{shell} {comment:?}");
             }
@@ -727,7 +1099,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ssh = SshManager::new(dir.path().join("known_hosts"));
         let store = KeyStore::default();
-        let key = generate(&store, None, "me").unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, "me").unwrap();
         let target = SshTarget {
             host: "127.0.0.1".into(),
             port: server.addr.port(),
@@ -758,5 +1130,456 @@ mod tests {
                 .starts_with("the key could not be installed (exit status 127)"),
             "{err}"
         );
+    }
+
+    const ALL_TYPES: [(KeyType, &str, u32, &str); 7] = [
+        (KeyType::Ed25519, "ED25519", 256, "ssh-ed25519"),
+        (KeyType::Rsa2048, "RSA 2048", 2048, "ssh-rsa"),
+        (KeyType::Rsa3072, "RSA 3072", 3072, "ssh-rsa"),
+        (KeyType::Rsa4096, "RSA 4096", 4096, "ssh-rsa"),
+        (
+            KeyType::EcdsaP256,
+            "ECDSA P-256",
+            256,
+            "ecdsa-sha2-nistp256",
+        ),
+        (
+            KeyType::EcdsaP384,
+            "ECDSA P-384",
+            384,
+            "ecdsa-sha2-nistp384",
+        ),
+        (
+            KeyType::EcdsaP521,
+            "ECDSA P-521",
+            521,
+            "ecdsa-sha2-nistp521",
+        ),
+    ];
+
+    /// `ssh-keygen` with `args`, or `None` when it is not installed.
+    fn ssh_keygen(args: &[&str]) -> Option<std::process::Output> {
+        std::process::Command::new("ssh-keygen")
+            .args(args)
+            .output()
+            .ok()
+    }
+
+    fn testdata(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/tools/keygen/testdata")
+            .join(name)
+    }
+
+    /// The `type base64` part of a public key line.
+    fn key_part(line: &str) -> String {
+        line.split(' ').take(2).collect::<Vec<_>>().join(" ")
+    }
+
+    #[test]
+    fn the_key_type_names_match_the_frontend() {
+        for (name, kind) in [
+            ("ed25519", KeyType::Ed25519),
+            ("rsa-2048", KeyType::Rsa2048),
+            ("rsa-3072", KeyType::Rsa3072),
+            ("rsa-4096", KeyType::Rsa4096),
+            ("ecdsa-p256", KeyType::EcdsaP256),
+            ("ecdsa-p384", KeyType::EcdsaP384),
+            ("ecdsa-p521", KeyType::EcdsaP521),
+        ] {
+            assert_eq!(
+                serde_json::from_str::<KeyType>(&format!("\"{name}\"")).unwrap(),
+                kind
+            );
+        }
+        assert!(serde_json::from_str::<KeyType>("\"dsa\"").is_err());
+        assert_eq!(KeyType::default(), KeyType::Ed25519);
+    }
+
+    /// Every type and size makes a key `ssh-keygen` reads back (private key with its
+    /// passphrase, and the type and bits of the public key).
+    #[cfg(unix)]
+    #[test]
+    fn every_type_and_size_generates_a_key_ssh_keygen_accepts() {
+        if ssh_keygen(&["-?"]).is_none() {
+            eprintln!("ssh-keygen not installed, skipped");
+            return;
+        }
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        for (kind, label, bits, prefix) in ALL_TYPES {
+            let key = generate(&store, kind, Some("pass word"), "me@host").unwrap();
+            assert_eq!(key.key_type, label);
+            assert_eq!(key.comment, "me@host");
+            assert!(key.encrypted);
+            assert!(
+                key.public_key.starts_with(&format!("{prefix} AAAA")),
+                "{}",
+                key.public_key
+            );
+            let private = dir.path().join(format!("id_{bits}_{prefix}"));
+            let public = public_path(&private);
+            save_private(&store, key.id, &private, false).unwrap();
+            save_public(&store, key.id, &public, false).unwrap();
+            let derived =
+                ssh_keygen(&["-y", "-P", "pass word", "-f", private.to_str().unwrap()]).unwrap();
+            assert!(derived.status.success(), "{label}: {derived:?}");
+            assert_eq!(
+                key_part(String::from_utf8_lossy(&derived.stdout).trim()),
+                key_part(&key.public_key),
+                "{label}"
+            );
+            let listed = ssh_keygen(&["-l", "-f", public.to_str().unwrap()]).unwrap();
+            let listed = String::from_utf8_lossy(&listed.stdout).trim().to_string();
+            let ssh_type = label.split(' ').next().unwrap();
+            assert_eq!(
+                listed,
+                format!("{bits} {} me@host ({ssh_type})", key.fingerprint),
+                "{label}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn loads_openssh_keys_asking_for_the_passphrase_of_encrypted_ones() {
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        let plain = generate(&store, KeyType::Ed25519, None, "plain").unwrap();
+        let plain_path = dir.path().join("plain");
+        save_private(&store, plain.id, &plain_path, false).unwrap();
+        let loaded = load(&store, &plain_path, None).unwrap();
+        assert_ne!(loaded.id, plain.id);
+        assert_eq!(
+            (loaded.public_key.as_str(), loaded.fingerprint.as_str()),
+            (plain.public_key.as_str(), plain.fingerprint.as_str())
+        );
+        assert_eq!(loaded.comment, "plain");
+        assert!(!loaded.encrypted);
+        // A typed passphrase does not encrypt an unencrypted file.
+        assert!(!load(&store, &plain_path, Some("typed")).unwrap().encrypted);
+
+        let secret = generate(&store, KeyType::EcdsaP256, Some("right"), "secret").unwrap();
+        let secret_path = dir.path().join("secret");
+        save_private(&store, secret.id, &secret_path, false).unwrap();
+        assert_eq!(
+            load(&store, &secret_path, None),
+            Err(KeygenError::PassphraseRequired)
+        );
+        assert_eq!(
+            load(&store, &secret_path, Some("")),
+            Err(KeygenError::PassphraseRequired)
+        );
+        assert_eq!(
+            load(&store, &secret_path, Some("wrong")),
+            Err(KeygenError::WrongPassphrase)
+        );
+        let loaded = load(&store, &secret_path, Some("right")).unwrap();
+        assert_eq!(loaded.public_key, secret.public_key);
+        assert_eq!(loaded.key_type, "ECDSA P-256");
+        assert!(loaded.encrypted);
+        // Saved again, it keeps its passphrase.
+        let again = dir.path().join("again");
+        save_private(&store, loaded.id, &again, false).unwrap();
+        assert_eq!(
+            load(&store, &again, Some("wrong")),
+            Err(KeygenError::WrongPassphrase)
+        );
+        assert_eq!(
+            load(&store, &again, Some("right")).unwrap().public_key,
+            secret.public_key
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn loads_keys_made_by_ssh_keygen() {
+        if ssh_keygen(&["-?"]).is_none() {
+            eprintln!("ssh-keygen not installed, skipped");
+            return;
+        }
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        for (args, label) in [
+            (["-t", "rsa", "-b", "2048"], "RSA 2048"),
+            (["-t", "ecdsa", "-b", "384"], "ECDSA P-384"),
+            (["-t", "ed25519", "-a", "16"], "ED25519"),
+        ] {
+            let path = dir.path().join(label.replace(' ', "_"));
+            let made = ssh_keygen(
+                &[
+                    &args[..],
+                    &[
+                        "-q",
+                        "-N",
+                        "pw",
+                        "-C",
+                        "made by ssh-keygen",
+                        "-f",
+                        path.to_str().unwrap(),
+                    ],
+                ]
+                .concat(),
+            )
+            .unwrap();
+            assert!(made.status.success(), "{made:?}");
+            let public = std::fs::read_to_string(public_path(&path)).unwrap();
+            assert_eq!(
+                load(&store, &path, Some("bad")),
+                Err(KeygenError::WrongPassphrase),
+                "{label}"
+            );
+            let loaded = load(&store, &path, Some("pw")).unwrap();
+            assert_eq!(loaded.public_key, public.trim(), "{label}");
+            assert_eq!(loaded.key_type, label);
+            assert_eq!(loaded.comment, "made by ssh-keygen");
+        }
+    }
+
+    #[test]
+    fn rejects_files_that_are_not_private_keys() {
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        let key = generate(&store, KeyType::Ed25519, None, "").unwrap();
+        let public = dir.path().join("k.pub");
+        save_public(&store, key.id, &public, false).unwrap();
+        let binary = dir.path().join("bin");
+        std::fs::write(&binary, [0xff, 0xfe, 0x00]).unwrap();
+        let huge = dir.path().join("huge");
+        std::fs::write(&huge, "a".repeat(MAX_KEY_FILE as usize + 1)).unwrap();
+        for path in [&public, &binary, &huge] {
+            assert!(
+                matches!(load(&store, path, None), Err(KeygenError::Invalid { .. })),
+                "{path:?}"
+            );
+        }
+        assert!(matches!(
+            load(&store, &dir.path().join("missing"), None),
+            Err(KeygenError::Io { .. })
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn changes_the_comment_and_passphrase_of_a_loaded_key() {
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        let original = generate(&store, KeyType::Rsa2048, Some("old pw"), "old").unwrap();
+        let path = dir.path().join("id_rsa");
+        save_private(&store, original.id, &path, false).unwrap();
+        let loaded = load(&store, &path, Some("old pw")).unwrap();
+
+        let updated = update(&store, loaded.id, " new comment ", Some("new pw")).unwrap();
+        assert_eq!(updated.id, loaded.id);
+        assert_eq!(updated.comment, "new comment");
+        assert!(updated.encrypted);
+        assert_eq!(
+            key_part(&updated.public_key),
+            key_part(&original.public_key)
+        );
+        assert!(updated.public_key.ends_with(" new comment"));
+        assert_eq!(updated.fingerprint, original.fingerprint);
+        save_private(&store, loaded.id, &path, true).unwrap();
+        assert_eq!(
+            load(&store, &path, Some("old pw")),
+            Err(KeygenError::WrongPassphrase)
+        );
+        let reloaded = load(&store, &path, Some("new pw")).unwrap();
+        assert_eq!(reloaded.comment, "new comment");
+        if let Some(derived) = ssh_keygen(&["-y", "-P", "new pw", "-f", path.to_str().unwrap()]) {
+            assert!(derived.status.success(), "{derived:?}");
+        }
+
+        // An empty passphrase removes it.
+        let cleared = update(&store, reloaded.id, "new comment", Some("")).unwrap();
+        assert!(!cleared.encrypted);
+        save_private(&store, reloaded.id, &path, true).unwrap();
+        assert!(!load(&store, &path, None).unwrap().encrypted);
+
+        assert!(matches!(
+            update(&store, reloaded.id, "a\nb", None),
+            Err(KeygenError::Invalid { .. })
+        ));
+        store.discard(reloaded.id);
+        assert_eq!(
+            update(&store, reloaded.id, "x", None),
+            Err(KeygenError::UnknownKey)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn saves_the_public_and_the_private_key_separately() {
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        let key = generate(&store, KeyType::EcdsaP256, None, "c").unwrap();
+        let public = dir.path().join("only.pub");
+        save_public(&store, key.id, &public, false).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&public).unwrap(),
+            format!("{}\n", key.public_key)
+        );
+        assert_eq!(mode(&public), 0o644);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+
+        let private = dir.path().join("only");
+        save_private(&store, key.id, &private, false).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&private).unwrap(),
+            stored_private(&store, key.id)
+        );
+        assert_eq!(mode(&private), 0o600);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
+
+        // Never replaced unless asked; a replaced world-readable private file ends up 0600.
+        for (path, save) in [
+            (
+                &public,
+                save_public as fn(&KeyStore, u32, &Path, bool) -> Result<(), KeygenError>,
+            ),
+            (&private, save_private),
+        ] {
+            std::fs::write(path, "old").unwrap();
+            assert_eq!(
+                save(&store, key.id, path, false),
+                Err(KeygenError::Exists {
+                    path: path.display().to_string()
+                })
+            );
+            assert_eq!(std::fs::read_to_string(path).unwrap(), "old");
+        }
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&private, std::fs::Permissions::from_mode(0o644)).unwrap();
+        }
+        save_private(&store, key.id, &private, true).unwrap();
+        save_public(&store, key.id, &public, true).unwrap();
+        assert_eq!(mode(&private), 0o600);
+        assert_eq!(
+            std::fs::read_to_string(&public).unwrap(),
+            format!("{}\n", key.public_key)
+        );
+        store.discard(key.id);
+        assert_eq!(
+            save_public(&store, key.id, &dir.path().join("x"), false),
+            Err(KeygenError::UnknownKey)
+        );
+        assert_eq!(
+            save_private(&store, key.id, &dir.path().join("y"), false),
+            Err(KeygenError::UnknownKey)
+        );
+        assert_eq!(
+            export_ppk(&store, key.id, &dir.path().join("z"), false),
+            Err(KeygenError::UnknownKey)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn exports_putty_keys_that_load_back_with_their_passphrase() {
+        let store = KeyStore::default();
+        let dir = tempfile::tempdir().unwrap();
+        for (kind, passphrase) in [
+            (KeyType::Ed25519, Some("pw")),
+            (KeyType::Rsa2048, None),
+            (KeyType::EcdsaP521, Some("pw")),
+        ] {
+            let key = generate(&store, kind, passphrase, "putty me").unwrap();
+            let path = dir.path().join(format!("{kind:?}.ppk"));
+            export_ppk(&store, key.id, &path, false).unwrap();
+            assert_eq!(mode(&path), 0o600);
+            let text = std::fs::read_to_string(&path).unwrap();
+            assert!(text.starts_with("PuTTY-User-Key-File-3: "), "{text}");
+            assert_eq!(
+                text.contains("Encryption: aes256-cbc\n"),
+                passphrase.is_some()
+            );
+            if passphrase.is_some() {
+                assert_eq!(
+                    load(&store, &path, None),
+                    Err(KeygenError::PassphraseRequired)
+                );
+                assert_eq!(
+                    load(&store, &path, Some("nope")),
+                    Err(KeygenError::WrongPassphrase)
+                );
+            }
+            let loaded = load(&store, &path, passphrase).unwrap();
+            assert_eq!(loaded.public_key, key.public_key);
+            assert_eq!(loaded.comment, "putty me");
+            assert_eq!(loaded.encrypted, passphrase.is_some());
+            assert_eq!(
+                export_ppk(&store, key.id, &path, false),
+                Err(KeygenError::Exists {
+                    path: path.display().to_string()
+                })
+            );
+            // Loaded from the .ppk, it saves as an OpenSSH key ssh-keygen reads.
+            let openssh = dir.path().join(format!("{kind:?}"));
+            save_private(&store, loaded.id, &openssh, false).unwrap();
+            if let Some(derived) = ssh_keygen(&[
+                "-y",
+                "-P",
+                passphrase.unwrap_or(""),
+                "-f",
+                openssh.to_str().unwrap(),
+            ]) {
+                assert_eq!(
+                    key_part(String::from_utf8_lossy(&derived.stdout).trim()),
+                    key_part(&key.public_key)
+                );
+            }
+        }
+    }
+
+    /// PuTTYgen files, version 2 and 3, encrypted ("123") and not.
+    #[test]
+    fn loads_puttygen_files_of_both_versions() {
+        let store = KeyStore::default();
+        for (name, passphrase, openssh) in [
+            ("id_ed25519.ppk", None, "id_ed25519"),
+            ("id_ed25519_enc.ppk", Some("123"), "id_ed25519"),
+            ("id_ecdsa_p256.ppk", None, "id_ecdsa_p256"),
+            ("id_ecdsa_p256_enc.ppk", Some("123"), "id_ecdsa_p256"),
+            ("id_rsa_3072.ppk", None, "id_rsa_3072"),
+            ("id_rsa_3072_enc.ppk", Some("123"), "id_rsa_3072"),
+            ("id_rsa_3072.ppk2", None, "id_rsa_3072"),
+            ("id_rsa_3072_enc.ppk2", Some("123"), "id_rsa_3072"),
+        ] {
+            let path = testdata(name);
+            if passphrase.is_some() {
+                assert_eq!(
+                    load(&store, &path, None),
+                    Err(KeygenError::PassphraseRequired),
+                    "{name}"
+                );
+                assert_eq!(
+                    load(&store, &path, Some("1234")),
+                    Err(KeygenError::WrongPassphrase),
+                    "{name}"
+                );
+            }
+            let loaded = load(&store, &path, passphrase).unwrap();
+            let expected = load(&store, &testdata(openssh), None).unwrap();
+            assert_eq!(loaded.public_key, expected.public_key, "{name}");
+            assert_eq!(loaded.comment, "user@example.com");
+            assert_eq!(loaded.encrypted, passphrase.is_some(), "{name}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_install_command_appends_rsa_and_ecdsa_keys() {
+        let store = KeyStore::default();
+        for kind in [KeyType::Rsa2048, KeyType::EcdsaP384] {
+            let home = tempfile::tempdir().unwrap();
+            let key = generate(&store, kind, None, "it's me").unwrap();
+            assert_eq!(run_locally(&key.public_key, home.path()).trim(), ADDED);
+            assert_eq!(
+                std::fs::read_to_string(home.path().join(".ssh/authorized_keys")).unwrap(),
+                format!("{}\n", key.public_key)
+            );
+            assert_eq!(run_locally(&key.public_key, home.path()).trim(), PRESENT);
+        }
     }
 }

@@ -1,5 +1,5 @@
-import { save } from "@tauri-apps/plugin-dialog";
-import { Copy, KeyRound, Save, Upload } from "lucide-react";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { Check, Copy, FolderOpen, KeyRound, Save, Upload } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { chainTarget, collectLogins, hopLabel, patchJump, type PasswordAnswer } from "../../sessions/jumpHosts";
 import { resolveChain, type SavedSession } from "../../sessions/library";
@@ -15,8 +15,12 @@ import {
   generateKey,
   installKey,
   isKeygenError,
-  saveKey,
+  loadKey,
+  saveKeyFile,
+  updateKey,
   type GeneratedKey,
+  type KeyType,
+  type SaveKind,
 } from "./keygenBackend";
 import "./KeyGenDialog.css";
 
@@ -25,6 +29,40 @@ interface KeyGenDialogProps {
   sessions: SavedSession[];
   onClose: () => void;
 }
+
+type Family = "ed25519" | "rsa" | "ecdsa";
+
+const SIZES: Record<Exclude<Family, "ed25519">, string[]> = {
+  rsa: ["2048", "3072", "4096"],
+  ecdsa: ["256", "384", "521"],
+};
+
+function keyTypeOf(family: Family, rsaBits: string, ecdsaBits: string): KeyType {
+  if (family === "rsa") return `rsa-${rsaBits}` as KeyType;
+  if (family === "ecdsa") return `ecdsa-p${ecdsaBits}` as KeyType;
+  return "ed25519";
+}
+
+/** `id_ed25519`, `id_rsa` or `id_ecdsa`, from the public key line. */
+function defaultName(publicKey: string): string {
+  if (publicKey.startsWith("ssh-rsa ")) return "id_rsa";
+  if (publicKey.startsWith("ecdsa-")) return "id_ecdsa";
+  return "id_ed25519";
+}
+
+const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
+
+const SAVE_TITLES: Record<SaveKind, string> = {
+  public: "Save the public key",
+  private: "Save the private key",
+  ppk: "Save as a PuTTY key",
+};
+
+const SAVED: Record<SaveKind, string> = {
+  public: "the public key",
+  private: "the private key",
+  ppk: "the PuTTY key",
+};
 
 /** An install waiting for the user to trust a host key. */
 interface PendingTrust {
@@ -40,9 +78,11 @@ interface PendingTrust {
 }
 
 /**
- * Tools > SSH key generator: generates an Ed25519 key in the backend, shows and copies
- * its public key, saves the pair to files and installs the public key on a saved
- * session (like ssh-copy-id). The private key only ever exists in the backend and the file.
+ * Tools > SSH key generator: generates an Ed25519, RSA or ECDSA key in the backend or loads
+ * a private key file (OpenSSH or PuTTY .ppk), shows and copies its public key, changes its
+ * comment and passphrase, saves the public key, the private key or a .ppk file, and
+ * installs the public key on a saved session (like ssh-copy-id). The private key only ever
+ * exists in the backend and the files.
  */
 export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
   const [passphrase, setPassphrase] = useState("");
@@ -52,7 +92,17 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [overwritePath, setOverwritePath] = useState<string | null>(null);
+  const [family, setFamily] = useState<Family>("ed25519");
+  const [rsaBits, setRsaBits] = useState("3072");
+  const [ecdsaBits, setEcdsaBits] = useState("256");
+  /** The comment and passphrase the backend key has. */
+  const [applied, setApplied] = useState({ comment: "", passphrase: "" });
+  /** The file a loaded key came from (default save location). */
+  const [loadedPath, setLoadedPath] = useState<string | null>(null);
+  /** A key file waiting for its passphrase. */
+  const [unlocking, setUnlocking] = useState<string | null>(null);
+  const [unlockPassphrase, setUnlockPassphrase] = useState("");
+  const [overwrite, setOverwrite] = useState<{ kind: SaveKind; path: string } | null>(null);
   const [sessionId, setSessionId] = useState(sessions[0]?.id ?? "");
   const [asking, setAsking] = useState<{ label: string; resolve: (a: PasswordAnswer | null) => void } | null>(null);
   const [trust, setTrust] = useState<PendingTrust | null>(null);
@@ -68,22 +118,87 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     onClose();
   };
 
+  /** Shows `next` instead of the current key, forgetting the old one in the backend. */
+  const adopt = (next: GeneratedKey, nextPassphrase: string) => {
+    if (keyId.current !== null && keyId.current !== next.id) void discardKey(keyId.current).catch(() => {});
+    keyId.current = next.id;
+    setKey(next);
+    setApplied({ comment: next.comment, passphrase: nextPassphrase });
+    setOverwrite(null);
+  };
+
   const generate = async (e: FormEvent) => {
     e.preventDefault();
     if (passphrase !== confirm) return report(null, "The passphrases do not match.");
     setBusy(true);
     try {
-      const generated = await generateKey(passphrase || null, comment.trim());
-      if (keyId.current !== null) void discardKey(keyId.current).catch(() => {});
-      keyId.current = generated.id;
-      setKey(generated);
-      setOverwritePath(null);
+      const generated = await generateKey(keyTypeOf(family, rsaBits, ecdsaBits), passphrase || null, comment.trim());
+      adopt(generated, passphrase);
+      setLoadedPath(null);
       report(passphrase ? "Key generated (protected by its passphrase)." : "Key generated (no passphrase).");
     } catch (err) {
       report(null, describeKeygenError(err));
     } finally {
       setBusy(false);
     }
+  };
+
+  const loadFrom = async (path: string, unlock: string | null) => {
+    setBusy(true);
+    try {
+      const loaded = await loadKey(path, unlock);
+      const kept = loaded.encrypted ? (unlock ?? "") : "";
+      adopt(loaded, kept);
+      setLoadedPath(path);
+      setUnlocking(null);
+      setUnlockPassphrase("");
+      setComment(loaded.comment);
+      setPassphrase(kept);
+      setConfirm(kept);
+      report(`Loaded ${path} (${loaded.encrypted ? "protected by its passphrase" : "no passphrase"}).`);
+    } catch (err) {
+      if (isKeygenError(err) && (err.kind === "passphraseRequired" || err.kind === "wrongPassphrase")) {
+        setUnlocking(path);
+        report(null, err.kind === "wrongPassphrase" ? describeKeygenError(err) : null);
+      } else {
+        report(null, describeKeygenError(err));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickKeyFile = async () => {
+    const path = await open({ title: "Load a private key", multiple: false, directory: false });
+    if (typeof path === "string") await loadFrom(path, null);
+  };
+
+  const dirty = key !== null && (comment.trim() !== applied.comment || passphrase !== applied.passphrase);
+
+  /** Sends a changed comment or passphrase to the backend; the key to use, or null. */
+  const applyChanges = async (): Promise<GeneratedKey | null> => {
+    if (!key) return null;
+    if (!dirty) return key;
+    if (passphrase !== confirm) {
+      report(null, "The passphrases do not match.");
+      return null;
+    }
+    try {
+      const updated = await updateKey(key.id, comment.trim(), passphrase || null);
+      adopt(updated, passphrase);
+      return updated;
+    } catch (err) {
+      report(null, describeKeygenError(err));
+      return null;
+    }
+  };
+
+  const apply = async () => {
+    const updated = await applyChanges();
+    if (updated)
+      report(
+        `Key updated (${updated.encrypted ? "protected by its passphrase" : "no passphrase"}). Save it again to keep the change.`,
+      );
   };
 
   const copy = async () => {
@@ -96,31 +211,43 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     }
   };
 
-  const write = async (path: string, overwrite: boolean) => {
-    if (!key) return;
-    setOverwritePath(null);
+  const write = async (target: GeneratedKey, kind: SaveKind, path: string, replace: boolean) => {
+    setOverwrite(null);
+    setBusy(true);
     try {
-      await saveKey(key.id, path, overwrite);
-      report(`Saved the private key to ${path} and the public key to ${path}.pub.`);
+      await saveKeyFile(kind, target.id, path, replace);
+      report(`Saved ${SAVED[kind]} to ${path}.`);
     } catch (err) {
       if (isKeygenError(err) && err.kind === "exists") {
-        setOverwritePath(path);
+        setOverwrite({ kind, path });
         report(null, `${err.path} already exists. Overwrite it?`);
       } else {
         report(null, describeKeygenError(err));
       }
+    } finally {
+      setBusy(false);
     }
   };
 
-  const saveAs = async () => {
-    const path = await save({ title: "Save the private key", defaultPath: "id_ed25519" });
-    if (path) await write(path, false);
+  const defaultPath = (target: GeneratedKey, kind: SaveKind) => {
+    const base = loadedPath ? loadedPath.replace(/\.ppk$/i, "") : defaultName(target.publicKey);
+    if (kind === "public") return `${base}.pub`;
+    if (kind === "ppk") return `${base}.ppk`;
+    return loadedPath && !/\.ppk$/i.test(loadedPath) ? loadedPath : base;
+  };
+
+  const saveAs = async (kind: SaveKind) => {
+    const target = await applyChanges();
+    if (!target) return;
+    const path = await save({ title: SAVE_TITLES[kind], defaultPath: defaultPath(target, kind) });
+    if (path) await write(target, kind, path, false);
   };
 
   const askPassword = (label: string) =>
     new Promise<PasswordAnswer | null>((resolve) => setAsking({ label, resolve }));
 
   const runInstall = async (session: SavedSession, target: SshTarget, trusted: string | null) => {
+    const key = await applyChanges();
     if (!key) return;
     setBusy(true);
     report(`Installing the key on ${session.name}…`);
@@ -176,7 +303,35 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
       <div className="overlay" onKeyDown={(e) => e.key === "Escape" && close()}>
         <form className="dialog keygen" role="dialog" onSubmit={generate} aria-labelledby="keygen-title" noValidate>
           <h2 id="keygen-title">SSH key generator</h2>
-          <p className="muted">Generates an Ed25519 key pair. The private key is only written to the file you choose.</p>
+          <p className="muted">
+            Generates a key pair or loads a private key (OpenSSH or PuTTY .ppk). The private key is only written to the
+            files you choose.
+          </p>
+          <div className="form-row">
+            <label className="field field--grow">
+              Type
+              <select value={family} onChange={(e) => setFamily(e.target.value as Family)}>
+                <option value="ed25519">Ed25519</option>
+                <option value="rsa">RSA</option>
+                <option value="ecdsa">ECDSA</option>
+              </select>
+            </label>
+            {family !== "ed25519" && (
+              <label className="field field--grow">
+                Size
+                <select
+                  value={family === "rsa" ? rsaBits : ecdsaBits}
+                  onChange={(e) => (family === "rsa" ? setRsaBits : setEcdsaBits)(e.target.value)}
+                >
+                  {SIZES[family].map((bits) => (
+                    <option key={bits} value={bits}>
+                      {bits} bits
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
           <div className="form-row">
             <label className="field field--grow">
               Passphrase
@@ -212,7 +367,43 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
               <KeyRound size={14} aria-hidden />
               {key ? "Generate again" : "Generate"}
             </button>
+            <button type="button" className="btn btn--icon" onClick={pickKeyFile} disabled={busy}>
+              <FolderOpen size={14} aria-hidden />
+              Load…
+            </button>
           </div>
+
+          {unlocking && (
+            <div className="form-row keygen__install">
+              <label className="field field--grow">
+                Passphrase of {baseName(unlocking)}
+                <input
+                  type="password"
+                  autoFocus
+                  autoComplete="current-password"
+                  value={unlockPassphrase}
+                  onChange={(e) => setUnlockPassphrase(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void loadFrom(unlocking, unlockPassphrase);
+                    }
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => loadFrom(unlocking, unlockPassphrase)}
+                disabled={busy}
+              >
+                Unlock
+              </button>
+              <button type="button" className="btn" onClick={() => (setUnlocking(null), setUnlockPassphrase(""), report(null))}>
+                Cancel
+              </button>
+            </div>
+          )}
 
           {key && (
             <>
@@ -221,28 +412,47 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
                 <textarea className="keygen__public" readOnly rows={3} value={key.publicKey} spellCheck={false} />
               </label>
               <p className="muted">
-                Fingerprint: <code className="keygen__fingerprint">{key.fingerprint}</code>
+                <span className="keygen__type">{key.keyType}</span> Fingerprint:{" "}
+                <code className="keygen__fingerprint">{key.fingerprint}</code>
               </p>
               <div className="keygen__row">
                 <button type="button" className="btn btn--icon" onClick={copy}>
                   <Copy size={14} aria-hidden />
                   Copy
                 </button>
-                <button type="button" className="btn btn--icon" onClick={saveAs} disabled={busy}>
+                <button type="button" className="btn btn--icon" onClick={() => saveAs("public")} disabled={busy}>
                   <Save size={14} aria-hidden />
-                  Save…
+                  Save public key…
                 </button>
-                {overwritePath && (
-                  <>
-                    <button type="button" className="btn keygen__danger" onClick={() => write(overwritePath, true)}>
-                      Overwrite
-                    </button>
-                    <button type="button" className="btn" onClick={() => (setOverwritePath(null), report(null))}>
-                      Keep the files
-                    </button>
-                  </>
+                <button type="button" className="btn btn--icon" onClick={() => saveAs("private")} disabled={busy}>
+                  <Save size={14} aria-hidden />
+                  Save private key…
+                </button>
+                <button type="button" className="btn btn--icon" onClick={() => saveAs("ppk")} disabled={busy}>
+                  <Save size={14} aria-hidden />
+                  Save as PuTTY key (.ppk)…
+                </button>
+                {dirty && (
+                  <button type="button" className="btn btn--icon" onClick={apply} disabled={busy}>
+                    <Check size={14} aria-hidden />
+                    Apply changes
+                  </button>
                 )}
               </div>
+              {overwrite && (
+                <div className="keygen__row">
+                  <button
+                    type="button"
+                    className="btn keygen__danger"
+                    onClick={() => key && write(key, overwrite.kind, overwrite.path, true)}
+                  >
+                    Overwrite
+                  </button>
+                  <button type="button" className="btn" onClick={() => (setOverwrite(null), report(null))}>
+                    Keep the file
+                  </button>
+                </div>
+              )}
               {sessions.length > 0 && (
                 <div className="form-row keygen__install">
                   <label className="field field--grow">

@@ -65,3 +65,8 @@ This license covers the iTerm-Color-Schemes repository collection of themes.
 
 The copyright/license for each individual theme belongs to the author of that theme.
 ```
+
+## ssh-key test vectors
+
+`src-tauri/src/tools/keygen/testdata/` holds OpenSSH and PuTTYgen key files from the test examples of the [ssh-key](https://github.com/RustCrypto/SSH) crate (MIT OR Apache-2.0), used only by the tests to check PuTTY `.ppk` compatibility. They are not part of the application.
+

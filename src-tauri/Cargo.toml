@@ -35,6 +35,9 @@ tauri-plugin-clipboard-manager = "2"
 # OS random source for SSH key generation (Tools > SSH key generator).
 rand = { version = "0.10.3", default-features = false, features = ["sys_rng"] }
 zeroize = "1.8"
+# PuTTY .ppk v3 export (Argon2id + HMAC-SHA-256); same versions ssh-key already uses.
+argon2 = { version = "=0.6.0", default-features = false, features = ["alloc"] }
+hmac = "=0.13.0"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
