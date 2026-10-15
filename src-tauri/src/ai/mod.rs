@@ -131,6 +131,23 @@ pub struct AssistRequest {
     pub cwd: Option<String>,
     #[serde(default)]
     pub history: Vec<String>,
+    /// Earlier turns of this chat, oldest first; replayed as user/assistant messages
+    /// (at most the last `text::MAX_TURNS`, `text::MAX_CONVERSATION` characters in all).
+    #[serde(default)]
+    pub conversation: Vec<Turn>,
+}
+
+/// One earlier question of a chat and the answer it got.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Turn {
+    pub question: String,
+    /// Terminal selection sent with that question, if any.
+    #[serde(default)]
+    pub selection: Option<String>,
+    pub answer: String,
+    #[serde(default)]
+    pub command: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -345,9 +362,12 @@ impl AiClient {
             .call(
                 secrets,
                 config,
-                Task::Complete,
-                text::COMPLETE_SYSTEM,
-                &user,
+                providers::Prompt {
+                    task: Task::Complete,
+                    system: text::COMPLETE_SYSTEM,
+                    turns: &[],
+                    user: &user,
+                },
             )
             .await?
         {
@@ -368,10 +388,14 @@ impl AiClient {
             return Err(AiError::config("Describe what you want to do."));
         }
         let user = text::assist_prompt(request);
-        match self
-            .call(secrets, config, Task::Assist, text::ASSIST_SYSTEM, &user)
-            .await?
-        {
+        let turns = text::conversation(&request.conversation);
+        let prompt = providers::Prompt {
+            task: Task::Assist,
+            system: text::ASSIST_SYSTEM,
+            turns: &turns,
+            user: &user,
+        };
+        match self.call(secrets, config, prompt).await? {
             providers::Reply::Text(reply) => text::parse_assist(&reply)
                 .map(|(answer, command)| AssistResponse { answer, command })
                 .ok_or_else(|| AiError::bad_response(config.provider)),
@@ -390,11 +414,10 @@ impl AiClient {
         &self,
         secrets: &SharedSecrets,
         config: &AiConfig,
-        task: Task,
-        system: &str,
-        user: &str,
+        prompt: providers::Prompt<'_>,
     ) -> Result<providers::Reply, AiError> {
         let provider = config.provider;
+        let task = prompt.task;
         let key = load_key(secrets, provider).await?;
         if provider.requires_key() && key.is_none() {
             return Err(AiError::new(
@@ -418,13 +441,7 @@ impl AiClient {
             }
             _ => opencode::GoFormat::Chat,
         };
-        let call = providers::build(
-            &self.endpoints,
-            config,
-            key.as_ref(),
-            providers::Prompt { task, system, user },
-            format,
-        )?;
+        let call = providers::build(&self.endpoints, config, key.as_ref(), prompt, format)?;
         let timeout = match task {
             Task::Complete => self.complete_timeout,
             Task::Assist => self.assist_timeout,

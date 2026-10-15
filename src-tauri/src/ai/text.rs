@@ -4,7 +4,7 @@
 //! control characters, so typing them into a terminal can never press Enter or send an
 //! escape sequence; assistant answers keep only their line breaks and tabs.
 
-use super::{AssistRequest, CompleteRequest};
+use super::{AssistRequest, CompleteRequest, Turn};
 
 pub const COMPLETE_SYSTEM: &str = "You complete shell commands while the user types them in a terminal. \
 Reply with only the complete command line, starting with exactly the text already typed, on a single line. \
@@ -33,6 +33,18 @@ pub const MAX_COMMAND: usize = 2000;
 /// Longest assistant answer shown; a longer one is cut and ends with `ANSWER_CUT_NOTE`.
 pub const MAX_ANSWER: usize = 8000;
 pub const ANSWER_CUT_NOTE: &str = "\n… (answer shortened)";
+
+/// Earlier chat turns replayed with a question at most (the oldest go first).
+pub const MAX_TURNS: usize = 10;
+/// Characters of replayed turns at most, questions and answers together (the oldest go first).
+pub const MAX_CONVERSATION: usize = 16_000;
+
+/// One earlier turn as it is replayed: the user's message and the assistant's reply.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Exchange {
+    pub user: String,
+    pub assistant: String,
+}
 
 /// Cuts `s` to at most `max` characters.
 fn cap(s: &str, max: usize) -> &str {
@@ -285,8 +297,68 @@ pub fn parse_assist(reply: &str) -> Option<(String, Option<String>)> {
 /// An answer for display: CRLF/CR become LF; newlines and tabs stay, every other control,
 /// format or separator character goes; at most `MAX_ANSWER` characters plus a note.
 fn clean_answer(s: &str) -> String {
-    let unified = s.replace("\r\n", "\n");
-    let kept: String = unified
+    let kept = clean_text(s);
+    let kept = kept.as_str();
+    if kept.chars().count() > MAX_ANSWER {
+        format!("{}{ANSWER_CUT_NOTE}", cap(kept, MAX_ANSWER).trim_end())
+    } else {
+        kept.to_string()
+    }
+}
+
+/// Earlier turns as user/assistant messages, oldest first: control characters stripped
+/// (newlines and tabs kept), the assistant's reply in the JSON format it was asked for, at
+/// most `MAX_TURNS` turns and `MAX_CONVERSATION` characters, dropping the oldest first.
+pub fn conversation(turns: &[Turn]) -> Vec<Exchange> {
+    let recent = &turns[turns.len().saturating_sub(MAX_TURNS)..];
+    let mut out: Vec<Exchange> = recent.iter().filter_map(replay).collect();
+    let size = |e: &Exchange| e.user.chars().count() + e.assistant.chars().count();
+    let mut total: usize = out.iter().map(size).sum();
+    let mut drop = 0;
+    while total > MAX_CONVERSATION && drop < out.len() {
+        total -= size(&out[drop]);
+        drop += 1;
+    }
+    out.drain(..drop);
+    out
+}
+
+/// One turn as messages; `None` for an empty question.
+fn replay(turn: &Turn) -> Option<Exchange> {
+    let question = clean_text(&turn.question);
+    let question = cap(&question, MAX_PROMPT);
+    if question.is_empty() {
+        return None;
+    }
+    let mut user = String::new();
+    if let Some(selection) = turn
+        .selection
+        .as_deref()
+        .map(clean_text)
+        .filter(|s| !s.is_empty())
+    {
+        user.push_str(&format!(
+            "Selected terminal text:\n{}\n",
+            cap(&selection, MAX_SELECTION)
+        ));
+    }
+    user.push_str(&format!("Request: {question}"));
+    let command = turn
+        .command
+        .as_deref()
+        .map(single_line)
+        .filter(|c| !c.is_empty() && c.chars().count() <= MAX_COMMAND);
+    let assistant = serde_json::json!({"answer": clean_answer(&turn.answer), "command": command});
+    Some(Exchange {
+        user,
+        assistant: assistant.to_string(),
+    })
+}
+
+/// Text replayed to a provider: newlines and tabs kept, other controls, format and separator
+/// characters removed, trimmed.
+fn clean_text(s: &str) -> String {
+    s.replace("\r\n", "\n")
         .chars()
         .filter_map(|c| match c {
             '\n' | '\t' => Some(c),
@@ -294,13 +366,9 @@ fn clean_answer(s: &str) -> String {
             c if is_unsafe(c) => None,
             c => Some(c),
         })
-        .collect();
-    let kept = kept.trim();
-    if kept.chars().count() > MAX_ANSWER {
-        format!("{}{ANSWER_CUT_NOTE}", cap(kept, MAX_ANSWER).trim_end())
-    } else {
-        kept.to_string()
-    }
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 /// The provider's own error message (`error.message`), with the key masked and shortened.
@@ -566,5 +634,94 @@ mod tests {
         assert_eq!(parse_assist(&over), some("x", None));
         let only = format!("{{\"answer\": \"\", \"command\": \"{at_cap}b\"}}");
         assert_eq!(parse_assist(&only), None);
+    }
+
+    fn turn(question: &str, answer: &str, command: Option<&str>) -> Turn {
+        Turn {
+            question: question.into(),
+            selection: None,
+            answer: answer.into(),
+            command: command.map(Into::into),
+        }
+    }
+
+    #[test]
+    fn turns_are_replayed_as_the_question_and_the_json_answer() {
+        let mut first = turn(
+            "what is using space?",
+            "Sizes, smallest first.",
+            Some("du -sh * | sort -h"),
+        );
+        first.selection = Some("df: 99% full".into());
+        let got = conversation(&[first, turn("and in /var?", "Same there.", None)]);
+        assert_eq!(got.len(), 2);
+        assert_eq!(
+            got[0].user,
+            "Selected terminal text:\ndf: 99% full\nRequest: what is using space?"
+        );
+        let answer: serde_json::Value = serde_json::from_str(&got[0].assistant).unwrap();
+        assert_eq!(
+            answer,
+            serde_json::json!({"answer": "Sizes, smallest first.", "command": "du -sh * | sort -h"})
+        );
+        assert_eq!(got[1].user, "Request: and in /var?");
+        let answer: serde_json::Value = serde_json::from_str(&got[1].assistant).unwrap();
+        assert_eq!(
+            answer,
+            serde_json::json!({"answer": "Same there.", "command": null})
+        );
+    }
+
+    #[test]
+    fn replayed_turns_lose_control_characters_but_keep_line_breaks() {
+        let got = conversation(&[turn(
+            "fix\u{1b}[31m this\nplease\u{202E}",
+            "Step 1\n\tStep 2\u{7}\u{2028}",
+            Some("ls\r\nrm -i a"),
+        )]);
+        assert_eq!(got[0].user, "Request: fix[31m this\nplease");
+        let answer: serde_json::Value = serde_json::from_str(&got[0].assistant).unwrap();
+        assert_eq!(answer["answer"], "Step 1\n\tStep 2");
+        assert_eq!(answer["command"], "ls && rm -i a");
+    }
+
+    #[test]
+    fn only_the_last_ten_turns_are_replayed() {
+        let turns: Vec<Turn> = (1..=12)
+            .map(|i| turn(&format!("q{i}"), &format!("a{i}"), None))
+            .collect();
+        let got = conversation(&turns);
+        assert_eq!(got.len(), MAX_TURNS);
+        assert_eq!(got[0].user, "Request: q3");
+        assert_eq!(got[9].user, "Request: q12");
+    }
+
+    #[test]
+    fn the_oldest_turns_go_until_the_conversation_fits_16000_characters() {
+        let long = "x".repeat(3_000);
+        let turns: Vec<Turn> = (1..=6)
+            .map(|i| turn(&format!("q{i}"), &long, None))
+            .collect();
+        let got = conversation(&turns);
+        let total: usize = got
+            .iter()
+            .map(|e| e.user.chars().count() + e.assistant.chars().count())
+            .sum();
+        assert!(total <= MAX_CONVERSATION, "{total}");
+        assert_eq!(got.len(), 5);
+        assert_eq!(got[0].user, "Request: q2");
+        assert_eq!(got[4].user, "Request: q6");
+        // A single turn over the budget is not replayed at all.
+        let huge = turn("q", &"y".repeat(MAX_ANSWER), Some(&"z".repeat(MAX_COMMAND)));
+        let mut big = huge.clone();
+        big.question = "w".repeat(MAX_PROMPT);
+        big.selection = Some("s".repeat(MAX_SELECTION));
+        assert!(conversation(&[big]).is_empty());
+        assert_eq!(conversation(&[huge]).len(), 1);
+    }
+
+    #[test]
+    fn empty_questions_are_not_replayed() {
+        assert!(conversation(&[turn("  ", "a", None)]).is_empty());
     }
 }

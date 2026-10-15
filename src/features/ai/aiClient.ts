@@ -43,6 +43,14 @@ export interface AiCompleteRequest {
   history: string[];
 }
 
+/** One earlier question of a chat and its answer, replayed as context (the backend keeps the last 10, 16k chars). */
+export interface AiTurn {
+  question: string;
+  selection: string | null;
+  answer: string;
+  command: string | null;
+}
+
 export interface AiAssistRequest {
   prompt: string;
   /** Terminal selection the user chose to include. */
@@ -51,6 +59,8 @@ export interface AiAssistRequest {
   shell?: string | null;
   cwd?: string | null;
   history: string[];
+  /** Earlier turns of the chat, oldest first. */
+  conversation?: AiTurn[];
 }
 
 /** The assistant's plain-text answer (line breaks kept) and, when one fits, one single-line command; nothing is ever executed. */

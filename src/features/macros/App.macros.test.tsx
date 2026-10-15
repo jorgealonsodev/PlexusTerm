@@ -127,6 +127,15 @@ describe("App macros (S16)", () => {
     expect(sent[1]).toEqual(["whoami\r"]);
   });
 
+  it("never plays a macro into an AI chat pane (S9)", async () => {
+    await renderApp();
+    key(" ", { ctrlKey: true, shiftKey: true });
+    expect(screen.getByRole("region", { name: "AI chat" })).toBeTruthy();
+    key("2", { ctrlKey: true, altKey: true });
+    expect(screen.getByText("No terminal to play the macro in.")).toBeTruthy();
+    expect(sent).toEqual({});
+  });
+
   it("shows progress, stops on Escape, and reports a waitFor timeout in the pane (S16.3)", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Play Slow" }));

@@ -42,11 +42,11 @@ import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
-import { initialTabs, tabsReducer } from "./features/tabs/tabs";
+import { chatAction, initialTabs, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
-import { AssistantPanel, type AssistContext } from "./features/ai/AssistantPanel";
+import { ChatPane } from "./features/ai/ChatPane";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
-import { aiConfigOf, aiHint, newAiSessionId } from "./features/ai/aiContext";
+import { aiConfigOf, aiHint, newAiSessionId, truncateSelection } from "./features/ai/aiContext";
 import { createAiLimiter } from "./features/ai/aiLimiter";
 import { matchesShortcut } from "./features/settings/shortcutCapture";
 import { hostKeyOf } from "./features/history/history";
@@ -103,8 +103,6 @@ type Modal =
   | { kind: "editMacro"; macro: Macro; isNew: boolean }
   /** A recording just stopped: name it or discard it (S16.2). */
   | { kind: "nameMacro"; steps: Step[] }
-  /** The on-demand AI assistant over the focused pane (S3); paneId null without a terminal. */
-  | { kind: "assistant"; paneId: string | null; context: AssistContext }
   | null;
 
 /** Short status of a pane's last failed AI suggestion (S2), with the full message as tooltip. */
@@ -280,8 +278,9 @@ function AppContent() {
   }, [state.tabs]);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
-  // SFTP and the followed folder belong to the focused pane of the active tab (S11.5).
-  const activePane = activeTab?.focusedPane ?? null;
+  // SFTP and the followed folder belong to the focused pane of the active tab (S11.5); an AI
+  // chat pane stands for its terminal (S9).
+  const activePane = activeTab ? (activeTab.chats[activeTab.focusedPane]?.terminalPaneId ?? activeTab.focusedPane) : null;
   const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
   const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
@@ -289,8 +288,9 @@ function AppContent() {
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
   );
 
+  // Terminal panes only: AI chat panes never take part in multi-execution (S9).
   const allPanes: PaneInfo[] = state.tabs.flatMap((t) =>
-    paneIds(t.layout).map((id) => ({
+    paneIds(t.layout).filter((id) => !t.chats[id]).map((id) => ({
       id,
       sessionId: paneMeta[id]?.sessionId ?? null,
       excluded: paneMeta[id]?.excluded ?? false,
@@ -473,25 +473,47 @@ function AppContent() {
     }
   };
 
-  /** Opens the assistant over the focused pane of the active tab, spinning the X (S3, S5). */
+  /**
+   * The assistant shortcut and the X (S5, S9): opens an AI chat pane below the focused terminal
+   * of the active tab (or focuses the one it has), spinning the X; from a chat pane it goes
+   * back to the chat's terminal.
+   */
   const openAssistant = () => {
-    const paneId = activeTab?.focusedPane ?? null;
-    const hostKey = activeTab ? hostKeyOf(activeTab.target) : null;
+    if (!activeTab) return setNotice("Open a terminal to chat with the AI.");
+    const next = chatAction(activeTab);
+    if (next.kind === "full") {
+      return setNotice(`This tab already has ${MAX_PANES} panes; close one to open the AI chat.`);
+    }
+    if (next.kind === "terminal") {
+      dispatch({ type: "focusPane", key: activeTab.key, paneId: next.paneId });
+      assistTargets.get(next.paneId)?.focus();
+      return;
+    }
+    const selection =
+      next.kind === "open" ? truncateSelection(assistTargets.get(next.terminalPaneId)?.selection() ?? "") : "";
     void commandHistory.ready();
-    const { commandHistory: historyOn, aiHistoryContext } = settings;
-    setModal({
-      kind: "assistant",
-      paneId,
-      context: {
-        os: platform,
-        cwd: (paneId && paneMeta[paneId]?.cwd) || null,
-        history: () => (historyOn && hostKey ? commandHistory.recent(hostKey, aiHistoryContext) : []),
-        selection: (paneId && assistTargets.get(paneId)?.selection()) || "",
-        sessionId: newAiSessionId(),
-      },
-    });
+    dispatch({ type: "openChat", key: activeTab.key, selection });
     if (!prefersReducedMotion()) setSpin((n) => n + 1);
   };
+
+  /** What a chat pane knows about its terminal: OS, folder and the host's recent commands, never its output. */
+  const chatContextOf = (tab: Tab, terminalPaneId: string) => {
+    const hostKey = hostKeyOf(tab.target);
+    const { commandHistory: historyOn, aiHistoryContext } = settings;
+    return {
+      os: platform,
+      cwd: paneMeta[terminalPaneId]?.cwd ?? null,
+      history: () => (historyOn ? commandHistory.recent(hostKey, aiHistoryContext) : []),
+    };
+  };
+
+  /** Types an AI command into the chat's terminal, never run (no Enter), and focuses it. */
+  const insertFromChat = (tab: Tab, link: ChatLink, command: string) => {
+    writers.write([link.terminalPaneId], command);
+    dispatch({ type: "focusPane", key: tab.key, paneId: link.terminalPaneId });
+    assistTargets.get(link.terminalPaneId)?.focus();
+  };
+
   // Another dialog keeps its place: the shortcut does not replace it.
   const assistantKeys = useRef({ openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null });
   assistantKeys.current = { openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null };
@@ -749,6 +771,25 @@ function AppContent() {
                     onFocusPane={(paneId) => dispatch({ type: "focusPane", key: tab.key, paneId })}
                     onResize={(splitId, ratio) => dispatch({ type: "resizeSplit", key: tab.key, splitId, ratio })}
                     renderPane={(paneId) => {
+                      const link = tab.chats[paneId];
+                      if (link) {
+                        return (
+                          <div className="pane-stack">
+                            <div className="pane-stack__terminal">
+                              <ChatPane
+                                settings={settings}
+                                context={chatContextOf(tab, link.terminalPaneId)}
+                                selection={link.selection}
+                                focused={active && paneId === tab.focusedPane}
+                                onInsert={(command) => insertFromChat(tab, link, command)}
+                                onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                                onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
+                              />
+                              <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />
+                            </div>
+                          </div>
+                        );
+                      }
                       const excluded = paneMeta[paneId]?.excluded ?? false;
                       return (
                         <div className="pane-stack">
@@ -942,27 +983,6 @@ function AppContent() {
           onSave={(name) => {
             macros.dispatch({ type: "save", macro: { id: crypto.randomUUID(), name, steps: modal.steps } });
             setModal(null);
-          }}
-        />
-      )}
-      {modal?.kind === "assistant" && (
-        <AssistantPanel
-          settings={settings}
-          context={modal.context}
-          canInsert={modal.paneId !== null}
-          onClose={() => {
-            const paneId = modal.paneId;
-            setModal(null);
-            if (paneId) assistTargets.get(paneId)?.focus();
-          }}
-          onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
-          onInsert={(command) => {
-            const paneId = modal.paneId;
-            setModal(null);
-            if (!paneId) return;
-            // Typed into the pane, never run: no Enter is sent.
-            writers.write([paneId], command);
-            assistTargets.get(paneId)?.focus();
           }}
         />
       )}

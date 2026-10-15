@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SessionTarget } from "../sessions/types";
-import { paneIds } from "../panes/paneLayout";
-import { initialTabs, tabsReducer, type TabsState } from "./tabs";
+import { MAX_PANES, paneIds } from "../panes/paneLayout";
+import { chatAction, initialTabs, tabsReducer, type TabsState } from "./tabs";
 
 const open = (state: TabsState, target: SessionTarget = { type: "local" }) =>
   tabsReducer(state, { type: "open", target });
@@ -162,5 +162,61 @@ describe("tabsReducer panes", () => {
     const next = tabsReducer(open(open(initialTabs)), { type: "closeAll" });
     expect(next.tabs).toEqual([]);
     expect(next.activeKey).toBeNull();
+  });
+});
+
+describe("AI chat panes (S9)", () => {
+  const tab = (state: TabsState) => state.tabs[0];
+  const openChat = (state: TabsState, selection = "") =>
+    tabsReducer(state, { type: "openChat", key: tab(state).key, selection });
+
+  it("splits the focused terminal down with a chat pane linked to it, focused", () => {
+    const state = openChat(open(initialTabs), "err");
+    const layout = tab(state).layout;
+    expect(layout).toMatchObject({ kind: "split", direction: "column", a: { id: "pane-1" }, b: { id: "pane-2" } });
+    expect(tab(state).chats).toEqual({ "pane-2": { terminalPaneId: "pane-1", selection: "err" } });
+    expect(tab(state).focusedPane).toBe("pane-2");
+  });
+
+  it("focuses the existing chat of a terminal instead of opening a second one", () => {
+    let state = openChat(open(initialTabs));
+    state = tabsReducer(state, { type: "focusPane", key: tab(state).key, paneId: "pane-1" });
+    expect(chatAction(tab(state))).toEqual({ kind: "focus", paneId: "pane-2" });
+    const again = openChat(state);
+    expect(paneIds(tab(again).layout)).toEqual(["pane-1", "pane-2"]);
+    expect(tab(again).focusedPane).toBe("pane-2");
+  });
+
+  it("from a chat pane, goes back to its terminal", () => {
+    const state = openChat(open(initialTabs));
+    expect(chatAction(tab(state))).toEqual({ kind: "terminal", paneId: "pane-1" });
+    expect(tab(openChat(state)).focusedPane).toBe("pane-1");
+  });
+
+  it("does nothing when the tab is full", () => {
+    let state = open(initialTabs);
+    for (let i = 1; i < MAX_PANES; i++) state = tabsReducer(state, { type: "split", key: tab(state).key, direction: "row" });
+    expect(chatAction(tab(state))).toEqual({ kind: "full" });
+    expect(openChat(state)).toBe(state);
+  });
+
+  it("closing a terminal also closes its chat; closing the chat focuses its terminal", () => {
+    let state = tabsReducer(open(initialTabs), { type: "split", key: "tab-1", direction: "row" }); // pane-2
+    state = tabsReducer(state, { type: "focusPane", key: "tab-1", paneId: "pane-1" });
+    state = openChat(state); // pane-3 under pane-1
+    expect(paneIds(tab(state).layout)).toEqual(["pane-1", "pane-3", "pane-2"]);
+    const closedChat = tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-3" });
+    expect(paneIds(tab(closedChat).layout)).toEqual(["pane-1", "pane-2"]);
+    expect(tab(closedChat).chats).toEqual({});
+    expect(tab(closedChat).focusedPane).toBe("pane-1");
+    const closedTerminal = tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-1" });
+    expect(paneIds(tab(closedTerminal).layout)).toEqual(["pane-2"]);
+    expect(tab(closedTerminal).chats).toEqual({});
+    expect(tab(closedTerminal).focusedPane).toBe("pane-2");
+  });
+
+  it("closing the only terminal of a tab with its chat closes the tab", () => {
+    const state = openChat(open(initialTabs));
+    expect(tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-1" }).tabs).toEqual([]);
   });
 });

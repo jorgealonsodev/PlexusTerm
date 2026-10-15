@@ -12,6 +12,7 @@ const tab = (key: string, title: string) => ({
   target: { type: "local" as const },
   layout: leaf(`${key}-p1`),
   focusedPane: `${key}-p1`,
+  chats: {},
 });
 
 describe("TabBar", () => {
