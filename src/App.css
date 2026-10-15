@@ -1191,12 +1191,20 @@ textarea::placeholder {
   min-height: 0;
 }
 
-/* Shown in the top-right corner of a split pane while the pointer is over it. */
+/* The top-right corner of a split pane: its × shows only while the pointer is in it. */
+.pane__corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  width: 56px;
+  height: 40px;
+}
+
 .pane__close {
   position: absolute;
   top: 6px;
   right: 14px;
-  z-index: 3;
   display: grid;
   place-items: center;
   width: 22px;
@@ -1211,7 +1219,7 @@ textarea::placeholder {
   transition: opacity 120ms ease-out;
 }
 
-.pane-stack__terminal:hover .pane__close,
+.pane__corner:hover .pane__close,
 .pane__close:focus-visible {
   opacity: 1;
 }
@@ -1226,4 +1234,3 @@ textarea::placeholder {
     transition: none;
   }
 }
-
