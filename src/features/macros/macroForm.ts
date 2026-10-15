@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import { DEFAULT_TIMEOUT_SEC, MAX_TIMEOUT_SEC, MAX_WAIT_MS, type Macro, type Step, type StepKind } from "./macros";
 
 /** One step as edited: every field kept, so switching the kind back loses nothing. */
@@ -56,20 +57,20 @@ export type FormResult = { ok: true; macro: Macro } | { ok: false; error: string
 
 export function parseMacroForm(form: MacroForm, id: string): FormResult {
   const name = form.name.trim();
-  if (!name) return { ok: false, error: "Enter a name." };
+  if (!name) return { ok: false, error: t("macros.form.nameRequired") };
   const steps: Step[] = [];
   for (const [i, row] of form.rows.entries()) {
-    const at = `Step ${i + 1}`;
+    const n = i + 1;
     if (row.kind === "send") steps.push({ kind: "send", text: row.text });
     else if (row.kind === "wait") {
       const ms = wholeIn(row.ms, 0, MAX_WAIT_MS);
-      if (ms === null) return { ok: false, error: `${at}: the wait must be a whole number of milliseconds from 0 to ${MAX_WAIT_MS}.` };
+      if (ms === null) return { ok: false, error: t("macros.form.invalidWait", { n, max: MAX_WAIT_MS }) };
       steps.push({ kind: "wait", ms });
     } else {
-      if (row.text === "") return { ok: false, error: `${at}: enter the text to wait for.` };
+      if (row.text === "") return { ok: false, error: t("macros.form.waitForTextRequired", { n }) };
       const timeoutSec = wholeIn(row.timeoutSec, 1, MAX_TIMEOUT_SEC);
       if (timeoutSec === null) {
-        return { ok: false, error: `${at}: the timeout must be a whole number of seconds from 1 to ${MAX_TIMEOUT_SEC}.` };
+        return { ok: false, error: t("macros.form.invalidTimeout", { n, max: MAX_TIMEOUT_SEC }) };
       }
       steps.push({ kind: "waitFor", text: row.text, timeoutSec });
     }

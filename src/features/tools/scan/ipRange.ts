@@ -1,3 +1,5 @@
+import { t } from "../../../i18n/i18n";
+
 /** An IPv4 range a.b.c.start-end, one field per part (the network scanner's input). */
 export interface IpRange {
   a: string;
@@ -15,10 +17,10 @@ const OCTET = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
 export function rangeTarget(range: IpRange): { ok: true; target: string } | { ok: false; error: string } {
   const parts = [range.a, range.b, range.c, range.start, range.end].map((p) => p.trim());
   if (!parts.every((p) => OCTET.test(p))) {
-    return { ok: false, error: "Each part of the address must be a number from 0 to 255" };
+    return { ok: false, error: t("tools.scan.invalidOctet") };
   }
   const [a, b, c, start, end] = parts;
-  if (Number(start) > Number(end)) return { ok: false, error: "The range start must not be greater than its end" };
+  if (Number(start) > Number(end)) return { ok: false, error: t("tools.scan.invalidRange") };
   const base = `${a}.${b}.${c}.${start}`;
   return { ok: true, target: start === end ? base : `${base}-${end}` };
 }

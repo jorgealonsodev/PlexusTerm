@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import type { Tunnel, TunnelType } from "./tunnels";
 
 export interface TunnelForm {
@@ -24,17 +25,17 @@ function parsePort(text: string): number | null {
 
 /** Validates the tunnel editor; `sessionIds` are the saved sessions a tunnel may use. */
 export function parseTunnelForm(form: TunnelForm, id: string, sessionIds: string[]): TunnelFormResult {
-  if (!sessionIds.includes(form.sessionId)) return fail("Choose a saved SSH session");
+  if (!sessionIds.includes(form.sessionId)) return fail(t("tunnels.form.chooseSession"));
   const listenPort = parsePort(form.listenPort);
-  if (listenPort === null) return fail("Listen port must be a number between 1 and 65535");
+  if (listenPort === null) return fail(t("tunnels.form.invalidListenPort"));
 
   let destHost = "";
   let destPort = 0;
   if (form.type !== "dynamic") {
     destHost = form.destHost.trim();
-    if (!destHost) return fail("Destination host is required");
+    if (!destHost) return fail(t("tunnels.form.destHostRequired"));
     const port = parsePort(form.destPort);
-    if (port === null) return fail("Destination port must be a number between 1 and 65535");
+    if (port === null) return fail(t("tunnels.form.invalidDestPort"));
     destPort = port;
   }
 
@@ -54,14 +55,14 @@ export function parseTunnelForm(form: TunnelForm, id: string, sessionIds: string
   };
 }
 
-export function formFromTunnel(t: Tunnel): TunnelForm {
+export function formFromTunnel(tunnel: Tunnel): TunnelForm {
   return {
-    name: t.name,
-    type: t.type,
-    sessionId: t.sessionId,
-    listenHost: t.listenHost,
-    listenPort: String(t.listenPort),
-    destHost: t.destHost,
-    destPort: t.destPort ? String(t.destPort) : "",
+    name: tunnel.name,
+    type: tunnel.type,
+    sessionId: tunnel.sessionId,
+    listenHost: tunnel.listenHost,
+    listenPort: String(tunnel.listenPort),
+    destHost: tunnel.destHost,
+    destPort: tunnel.destPort ? String(tunnel.destPort) : "",
   };
 }

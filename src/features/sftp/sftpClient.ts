@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../../i18n/i18n";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
 
 /** Mirrors the Rust `sftp::Entry`. */
@@ -61,6 +62,6 @@ export const sftp = {
 /** Text for an `sftp_*` rejection: `{ kind: "sftp", message }` or any `SshError`. */
 export function describeSftpError(err: unknown): string {
   const parsed = toSshError(err) as { kind: string; message?: string };
-  if (parsed.kind === "sftp") return parsed.message ?? "SFTP operation failed.";
+  if (parsed.kind === "sftp") return parsed.message ?? t("sftp.error.failed");
   return describeSshError(toSshError(err));
 }

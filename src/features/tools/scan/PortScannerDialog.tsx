@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { compareHosts, portScan } from "./scanBackend";
 import { progressText, useScan } from "./useScan";
+import { useT } from "../../../i18n/i18n";
 import { DEFAULT_PORT_CHOICE, DEFAULT_PORTS, portsFor, type PortMode } from "./portChoice";
 import "./scan.css";
 
@@ -8,6 +9,7 @@ type OpenPort = { host: string; port: number; service: string | null };
 
 /** Tools > Port scanner: TCP connect scan of a host or IPv4 range, open ports listed as found. */
 export function PortScannerDialog({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [targets, setTargets] = useState("");
   const [choice, setChoice] = useState(DEFAULT_PORT_CHOICE);
   const [inputError, setInputError] = useState<string | null>(null);
@@ -30,37 +32,37 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
   const mode = (next: PortMode) => setChoice({ ...choice, mode: next });
 
   const rows = [...open].sort((a, b) => compareHosts(a.host, b.host) || a.port - b.port);
-  const found = `${open.length} open port${open.length === 1 ? "" : "s"}`;
+  const found = t("tools.portScan.openPorts", { count: open.length });
 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <form className="dialog scan-dialog" role="dialog" onSubmit={submit} aria-labelledby="port-scan-title" noValidate>
-        <h2 id="port-scan-title">Port scanner</h2>
+        <h2 id="port-scan-title">{t("tools.portScan.title")}</h2>
         <label className="field">
-          Hosts
+          {t("tools.portScan.hosts")}
           <input
             autoFocus
             spellCheck={false}
-            placeholder="192.168.1.10, 192.168.1.10-20, 192.168.1.0/24 or a host name"
+            placeholder={t("tools.portScan.hostsPlaceholder")}
             value={targets}
             disabled={running}
             onChange={(e) => setTargets(e.target.value)}
           />
         </label>
         <fieldset className="port-choice" disabled={running}>
-          <legend>Ports</legend>
+          <legend>{t("tools.portScan.ports")}</legend>
           <label className="check">
             <input type="radio" name="port-mode" checked={choice.mode === "known"} onChange={() => mode("known")} />
-            Known ports
+            {t("tools.portScan.knownPorts")}
           </label>
           <div className="port-choice__row">
             <label className="check">
               <input type="radio" name="port-mode" checked={choice.mode === "range"} onChange={() => mode("range")} />
-              Port range
+              {t("tools.portScan.portRange")}
             </label>
             <input
               className="port-choice__number"
-              aria-label="First port"
+              aria-label={t("tools.portScan.firstPort")}
               inputMode="numeric"
               maxLength={5}
               disabled={choice.mode !== "range"}
@@ -70,7 +72,7 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
             <span className="ip-range__sep">→</span>
             <input
               className="port-choice__number"
-              aria-label="Last port"
+              aria-label={t("tools.portScan.lastPort")}
               inputMode="numeric"
               maxLength={5}
               disabled={choice.mode !== "range"}
@@ -81,20 +83,22 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
           <div className="port-choice__row">
             <label className="check">
               <input type="radio" name="port-mode" checked={choice.mode === "custom"} onChange={() => mode("custom")} />
-              Custom list
+              {t("tools.portScan.customList")}
             </label>
             <input
               className="port-choice__list"
-              aria-label="Custom ports"
+              aria-label={t("tools.portScan.customPorts")}
               spellCheck={false}
-              placeholder="Empty: known ports"
+              placeholder={t("tools.portScan.customPlaceholder")}
               disabled={choice.mode !== "custom"}
               value={choice.list}
               onChange={(e) => setChoice({ ...choice, list: e.target.value })}
             />
           </div>
         </fieldset>
-        <p className="muted" title={DEFAULT_PORTS}>Known ports: FTP, SSH, Telnet, SMTP, DNS, HTTP, POP3, IMAP, HTTPS, SMB, MySQL, RDP, PostgreSQL, VNC, 8080. TCP connect scan, no root needed. Only scan hosts you are allowed to.</p>
+        <p className="muted" title={DEFAULT_PORTS}>
+          {t("tools.portScan.hint")}
+        </p>
         {(inputError ?? scan.error) && (
           <p className="form-error" role="alert">
             {inputError ?? scan.error}
@@ -105,10 +109,10 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
           <table className="scan-table">
             <thead>
               <tr>
-                <th scope="col">Host</th>
-                <th scope="col">Port</th>
-                <th scope="col">State</th>
-                <th scope="col">Service</th>
+                <th scope="col">{t("tools.scan.host")}</th>
+                <th scope="col">{t("common.port")}</th>
+                <th scope="col">{t("tools.portScan.state")}</th>
+                <th scope="col">{t("tools.scan.service")}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,14 +120,14 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
                 <tr key={`${row.host}:${row.port}`}>
                   <td>{row.host}</td>
                   <td>{row.port}</td>
-                  <td className="scan-table__open">open</td>
+                  <td className="scan-table__open">{t("tools.portScan.open")}</td>
                   <td>{row.service ?? ""}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={4} className="muted scan-table__empty">
-                    {running ? "No open ports yet." : "No results."}
+                    {running ? t("tools.portScan.noPortsYet") : t("tools.scan.noResults")}
                   </td>
                 </tr>
               )}
@@ -132,10 +136,10 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
           <button type="submit" className="btn btn--primary">
-            {running ? "Stop" : "Start"}
+            {running ? t("common.stop") : t("common.start")}
           </button>
         </div>
       </form>

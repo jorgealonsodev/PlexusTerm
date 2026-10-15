@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../i18n/i18n";
 import { stopScan, type ScanEvent, type ScanStarter } from "./scanBackend";
 
 export type ScanPhase = "idle" | "running" | "done" | "stopped";
@@ -52,8 +53,8 @@ export function useScan(onResult: (event: ScanEvent) => void) {
 }
 
 export function progressText(phase: ScanPhase, { done, total }: { done: number; total: number }, found: string) {
-  if (phase === "running") return total ? `Scanning: ${done} / ${total} probes` : "Starting…";
-  if (phase === "done") return `Done: ${done} probes, ${found}.`;
-  if (phase === "stopped") return `Stopped after ${done} / ${total} probes, ${found}.`;
+  if (phase === "running") return total ? t("tools.scan.scanning", { done, total }) : t("tools.scan.starting");
+  if (phase === "done") return t("tools.scan.done", { done, found });
+  if (phase === "stopped") return t("tools.scan.stopped", { done, total, found });
   return "";
 }

@@ -6,6 +6,7 @@ import { savedPasswordRejected, shouldAskAgain, storageFor } from "../sessions/p
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
 import type { SshAuth } from "../sessions/types";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
+import { t } from "../../i18n/i18n";
 import { toSshError, type SshError } from "../ssh/sshErrors";
 import type { Tunnel, TunnelStatus } from "./tunnels";
 
@@ -64,7 +65,7 @@ export function useTunnelLauncher(
 
   /** Whether `tunnel` is still saved as it was when the start began. */
   const stillWanted = (tunnel: Tunnel) => {
-    const current = tunnelsRef.current.find((t) => t.id === tunnel.id);
+    const current = tunnelsRef.current.find((saved) => saved.id === tunnel.id);
     return current !== undefined && sameForward(current, tunnel);
   };
 
@@ -78,7 +79,7 @@ export function useTunnelLauncher(
       const all = sessionsRef.current;
       const session = all.find((s) => s.id === tunnel.sessionId);
       if (!session || !isSshSession(session)) {
-        reportError(tunnel.id, "Its saved session no longer exists; edit the tunnel to choose another one.");
+        reportError(tunnel.id, t("tunnels.launcher.sessionGone"));
         return;
       }
       const chain = resolveChain({ sessions: all }, session);
@@ -132,7 +133,7 @@ export function useTunnelLauncher(
           // A rejection without a `kind` (IPC or argument errors) never reached the
           // tunnel manager, so nothing else will show it.
           if (!isRecordedByBackend(raw)) {
-            reportError(tunnel.id, `Could not start the tunnel: ${String(raw)}`);
+            reportError(tunnel.id, t("tunnels.launcher.startFailed", { error: String(raw) }));
             return;
           }
           const err = toSshError(raw);

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../../../i18n/i18n";
 import type { SshTarget } from "../../sessions/types";
 
 /** Key types and sizes the backend generates (Rust `KeyType`). */
@@ -37,13 +38,13 @@ export function describeKeygenError(err: unknown): string {
   if (!isKeygenError(err)) return String(err);
   switch (err.kind) {
     case "exists":
-      return `${err.path} already exists.`;
+      return t("tools.keygen.errorExists", { path: err.path });
     case "unknownKey":
-      return "The key is no longer available; generate or load it again.";
+      return t("tools.keygen.errorUnknownKey");
     case "passphraseRequired":
-      return "The key is protected by a passphrase.";
+      return t("tools.keygen.errorPassphraseRequired");
     case "wrongPassphrase":
-      return "Wrong passphrase.";
+      return t("tools.keygen.errorWrongPassphrase");
     case "invalid":
     case "io":
       return err.message;

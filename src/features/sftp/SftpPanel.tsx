@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
+import { useT } from "../../i18n/i18n";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
 import { formatDate, formatSize } from "./format";
@@ -31,6 +32,7 @@ const validName = (name: string) => name !== "" && name !== "." && name !== ".."
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
 export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor }: SftpPanelProps) {
+  const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
   const [path, setPath] = useState<string | null>(null);
@@ -103,17 +105,17 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const clashes = paths.map(basename).filter((name) => existing.has(name));
     if (
       clashes.length &&
-      !(await dialogs.confirm({ message: `Replace ${clashes.join(", ")} in ${dir}?`, confirmLabel: "Replace", danger: true }))
+      !(await dialogs.confirm({ message: t("sftp.dialog.replaceQuestion", { names: clashes.join(", "), dir }), confirmLabel: t("sftp.dialog.replace"), danger: true }))
     ) {
       return;
     }
-    const count = paths.length === 1 ? basename(paths[0]) : `${paths.length} files`;
+    const what = paths.length === 1 ? basename(paths[0]) : t("sftp.status.fileCount", { count: paths.length });
     await act(
-      `Uploading ${count}…`,
+      t("sftp.status.uploading", { what }),
       async () => {
         for (const local of paths) await sftp.upload(sessionId, local, dir);
       },
-      `Uploaded ${count}.`,
+      t("sftp.status.uploaded", { what }),
     );
     if (current.current.path === dir) await navigate(dir);
   };
@@ -122,9 +124,13 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const download = async (entry: SftpEntry) => {
     try {
-      const local = await save({ title: `Download ${entry.name}`, defaultPath: entry.name });
+      const local = await save({ title: t("sftp.dialog.downloadTitle", { name: entry.name }), defaultPath: entry.name });
       if (!local) return;
-      await act(`Downloading ${entry.name}…`, () => sftp.download(sessionId, entry.path, local), `Downloaded ${entry.name}.`);
+      await act(
+        t("sftp.status.downloading", { name: entry.name }),
+        () => sftp.download(sessionId, entry.path, local),
+        t("sftp.status.downloaded", { name: entry.name }),
+      );
     } catch (err) {
       setError(describeSftpError(err));
     }
@@ -142,7 +148,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const pickUploads = async () => {
     try {
-      const picked = await open({ title: "Upload files", multiple: true, directory: false });
+      const picked = await open({ title: t("sftp.dialog.uploadTitle"), multiple: true, directory: false });
       if (picked) await uploadPaths(Array.isArray(picked) ? picked : [picked]);
     } catch (err) {
       setError(describeSftpError(err));
@@ -151,18 +157,18 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const newFolder = async () => {
     const dir = current.current.path;
-    const name = (await dialogs.prompt({ message: "New folder name", confirmLabel: "Create" }))?.trim();
+    const name = (await dialogs.prompt({ message: t("sftp.dialog.newFolderName"), confirmLabel: t("sftp.dialog.create") }))?.trim();
     if (dir === null || !name) return;
-    if (!validName(name)) return setError(`"${name}" is not a valid folder name.`);
-    if (await act(`Creating ${name}…`, () => sftp.mkdir(sessionId, joinPath(dir, name)))) await navigate(dir);
+    if (!validName(name)) return setError(t("sftp.error.invalidFolderName", { name }));
+    if (await act(t("sftp.status.creating", { name }), () => sftp.mkdir(sessionId, joinPath(dir, name)))) await navigate(dir);
   };
 
   const newFile = async () => {
     const dir = current.current.path;
-    const name = (await dialogs.prompt({ message: "New file name", confirmLabel: "Create" }))?.trim();
+    const name = (await dialogs.prompt({ message: t("sftp.dialog.newFileName"), confirmLabel: t("sftp.dialog.create") }))?.trim();
     if (dir === null || !name) return;
-    if (!validName(name)) return setError(`"${name}" is not a valid file name.`);
-    if (await act(`Creating ${name}…`, () => sftp.createFile(sessionId, joinPath(dir, name)))) await navigate(dir);
+    if (!validName(name)) return setError(t("sftp.error.invalidFileName", { name }));
+    if (await act(t("sftp.status.creating", { name }), () => sftp.createFile(sessionId, joinPath(dir, name)))) await navigate(dir);
   };
 
   const selectedEntry = entries.find((e) => e.path === selected) ?? null;
@@ -171,12 +177,16 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const dir = current.current.path;
     if (!entry || dir === null) return;
     const name = (
-      await dialogs.prompt({ message: `Rename "${entry.name}" to`, defaultValue: entry.name, confirmLabel: "Rename" })
+      await dialogs.prompt({
+        message: t("sftp.dialog.renameTo", { name: entry.name }),
+        defaultValue: entry.name,
+        confirmLabel: t("common.rename"),
+      })
     )?.trim();
     if (!name || name === entry.name) return;
-    if (!validName(name)) return setError(`"${name}" is not a valid name.`);
+    if (!validName(name)) return setError(t("sftp.error.invalidName", { name }));
     const target = joinPath(dir, name);
-    if (await act(`Renaming ${entry.name}…`, () => sftp.rename(sessionId, entry.path, target))) {
+    if (await act(t("sftp.status.renaming", { name: entry.name }), () => sftp.rename(sessionId, entry.path, target))) {
       await navigate(dir);
     }
   };
@@ -186,31 +196,35 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     if (!entry || dir === null) return;
     const isDir = entry.kind === "dir";
     const question = isDir
-      ? `Delete folder "${entry.name}"? Only empty folders can be deleted.`
-      : `Delete "${entry.name}"?`;
-    if (!(await dialogs.confirm({ message: question, confirmLabel: "Delete", danger: true }))) return;
-    if (await act(`Deleting ${entry.name}…`, () => sftp.remove(sessionId, entry.path, isDir))) {
+      ? t("sftp.dialog.deleteFolder", { name: entry.name })
+      : t("sftp.dialog.deleteFile", { name: entry.name });
+    if (!(await dialogs.confirm({ message: question, confirmLabel: t("common.delete"), danger: true }))) return;
+    if (await act(t("sftp.status.deleting", { name: entry.name }), () => sftp.remove(sessionId, entry.path, isDir))) {
       await navigate(dir);
     }
   };
 
   const pathToTerminal = (entry: SftpEntry) => {
     const text = terminalPath(entry.path);
-    if (text === null) return setError("This name contains control characters and cannot be typed into the terminal safely.");
+    if (text === null) return setError(t("sftp.error.unsafePath"));
     onPathToTerminal?.(text);
   };
 
   const copyPath = (entry: SftpEntry) =>
-    void act("Copying the path…", () => writeText(entry.path), `Copied ${entry.path}.`);
+    void act(t("sftp.status.copyingPath"), () => writeText(entry.path), t("sftp.status.copied", { path: entry.path }));
 
   /** Opens a temporary copy of a file; saving it later offers to upload it back. */
   const editWith = (entry: SftpEntry, openWith: OpenWith) =>
-    void act(`Opening ${entry.name}…`, () => sftp.edit(sessionId, entry.path, openWith), `Opened ${entry.name}.`);
+    void act(
+      t("sftp.status.opening", { name: entry.name }),
+      () => sftp.edit(sessionId, entry.path, openWith),
+      t("sftp.status.opened", { name: entry.name }),
+    );
 
   const openWithProgram = async (entry: SftpEntry) => {
     try {
       const program = await open({
-        title: `Open ${entry.name} with`,
+        title: t("sftp.dialog.openWithTitle", { name: entry.name }),
         multiple: false,
         directory: false,
         defaultPath: programsDir(platform),
@@ -223,9 +237,9 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const compareWith = async (entry: SftpEntry) => {
     try {
-      const local = await open({ title: `Compare ${entry.name} with`, multiple: false, directory: false });
+      const local = await open({ title: t("sftp.dialog.compareWithTitle", { name: entry.name }), multiple: false, directory: false });
       if (typeof local !== "string") return;
-      await act(`Comparing ${entry.name}…`, () => sftp.compare(sessionId, entry.path, local));
+      await act(t("sftp.status.comparing", { name: entry.name }), () => sftp.compare(sessionId, entry.path, local));
     } catch (err) {
       setError(describeSftpError(err));
     }
@@ -241,28 +255,28 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const fileItems: ContextMenuItem[] = isFile
       ? [
           {
-            label: "Open with default text editor",
+            label: t("sftp.menu.openTextEditor"),
             onSelect: () => editWith(entry, textEditor ? { kind: "textEditor", command: textEditor } : { kind: "textEditor" }),
           },
-          { label: "Open with default program", onSelect: () => editWith(entry, { kind: "default" }) },
-          { label: "Open with…", onSelect: () => void openWithProgram(entry) },
-          { label: "Compare file with…", onSelect: () => void compareWith(entry) },
+          { label: t("sftp.menu.openDefaultProgram"), onSelect: () => editWith(entry, { kind: "default" }) },
+          { label: t("sftp.menu.openWith"), onSelect: () => void openWithProgram(entry) },
+          { label: t("sftp.menu.compareWith"), onSelect: () => void compareWith(entry) },
         ]
       : [];
     return [
       // A folder opens in the browser; a file opens in its default program (saves upload back).
-      { label: "Open", onSelect: () => (isFile ? editWith(entry, { kind: "default" }) : void openEntry(entry)) },
+      { label: t("common.open"), onSelect: () => (isFile ? editWith(entry, { kind: "default" }) : void openEntry(entry)) },
       ...fileItems,
-      { label: "Download…", onSelect: () => void download(entry), disabled: !isFile },
+      { label: t("sftp.menu.download"), onSelect: () => void download(entry), disabled: !isFile },
       { separator: true },
-      { label: "Rename…", onSelect: () => void renameEntry(entry) },
-      { label: "Delete", onSelect: () => void deleteEntry(entry), danger: true },
+      { label: t("sftp.menu.rename"), onSelect: () => void renameEntry(entry) },
+      { label: t("common.delete"), onSelect: () => void deleteEntry(entry), danger: true },
       { separator: true },
-      { label: "Copy file path", onSelect: () => copyPath(entry) },
-      { label: "Copy file path to terminal", onSelect: () => pathToTerminal(entry), disabled: !onPathToTerminal },
+      { label: t("sftp.menu.copyPath"), onSelect: () => copyPath(entry) },
+      { label: t("sftp.menu.copyPathToTerminal"), onSelect: () => pathToTerminal(entry), disabled: !onPathToTerminal },
       { separator: true },
-      { label: "Properties", onSelect: () => setDialog({ kind: "properties", entry }) },
-      { label: "Permissions…", onSelect: () => setDialog({ kind: "permissions", entry }) },
+      { label: t("sftp.menu.properties"), onSelect: () => setDialog({ kind: "properties", entry }) },
+      { label: t("sftp.menu.permissions"), onSelect: () => setDialog({ kind: "permissions", entry }) },
     ];
   };
 
@@ -321,21 +335,21 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         <button
           type="button"
           className="btn btn--small"
-          title="Up"
+          title={t("sftp.panel.up")}
           disabled={busy || path === "/"}
           onClick={() => path && void navigate(parentPath(path))}
         >
           ↑
         </button>
-        <button type="button" className="btn btn--small" title="Home folder" onClick={() => void goHome()}>
+        <button type="button" className="btn btn--small" title={t("sftp.panel.homeFolder")} onClick={() => void goHome()}>
           ⌂
         </button>
-        <button type="button" className="btn btn--small" title="Refresh" disabled={busy} onClick={refresh}>
+        <button type="button" className="btn btn--small" title={t("common.refresh")} disabled={busy} onClick={refresh}>
           ⟳
         </button>
         <input
           className="sidebar__search sftp__path"
-          aria-label="Remote path"
+          aria-label={t("sftp.panel.remotePath")}
           spellCheck={false}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -343,31 +357,31 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
       </form>
       <div className="sftp__toolbar">
         <button className="btn btn--small" disabled={busy} onClick={() => void pickUploads()}>
-          Upload
+          {t("sftp.panel.upload")}
         </button>
         <button className="btn btn--small" disabled={busy} onClick={() => void newFolder()}>
-          New folder
+          {t("sftp.panel.newFolder")}
         </button>
         <button className="btn btn--small" disabled={busy} onClick={() => void newFile()}>
-          New file
+          {t("sftp.panel.newFile")}
         </button>
         <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)}>
-          Rename
+          {t("common.rename")}
         </button>
         <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)}>
-          Delete
+          {t("common.delete")}
         </button>
         <button
           className="btn btn--small"
           disabled={!selectedEntry || selectedEntry.kind === "dir"}
           onClick={() => selectedEntry && void download(selectedEntry)}
         >
-          Download
+          {t("sftp.panel.download")}
         </button>
       </div>
       <label className="sftp__follow">
         <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-        Follow terminal folder
+        {t("sftp.panel.follow")}
       </label>
       {error && (
         <p className="sidebar__note form-error" role="alert">
@@ -375,7 +389,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         </p>
       )}
       {status && <p className="sidebar__note">{status}</p>}
-      {path !== null && entries.length === 0 && !error && <p className="sidebar__note">This folder is empty.</p>}
+      {path !== null && entries.length === 0 && !error && <p className="sidebar__note">{t("sftp.panel.empty")}</p>}
       <ul className="sftp__list">
         {entries.map((entry) => (
           <li
@@ -406,10 +420,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           </li>
         ))}
       </ul>
-      <p className="sidebar__hint">
-        Double-click a folder to open it or a file to download it. Right-click an entry for more options; middle-click
-        it to type its path in the terminal. Drop files here to upload them.
-      </p>
+      <p className="sidebar__hint">{t("sftp.panel.hint")}</p>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
       {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
       {dialog?.kind === "permissions" && (

@@ -1,3 +1,5 @@
+import { t } from "../../i18n/i18n";
+
 /**
  * Macros (S16): named lists of steps played into the focused terminal pane.
  * Send and waitFor texts are stored with escapes (see `parseEscapes`), so the file stays readable.
@@ -126,7 +128,7 @@ export function macrosReducer(list: MacroList, action: MacroAction): MacroList {
       const index = list.macros.findIndex((m) => m.id === action.id);
       if (index === -1) return list;
       const original = list.macros[index];
-      const copy = pick({ id: action.newId, name: `${original.name} (copy)`, steps: original.steps });
+      const copy = pick({ id: action.newId, name: t("macros.copyName", { name: original.name }), steps: original.steps });
       return { ...list, macros: [...list.macros.slice(0, index + 1), copy, ...list.macros.slice(index + 1)] };
     }
   }
@@ -190,17 +192,17 @@ export function parseMacros(json: string | null): ParseResult {
   try {
     data = JSON.parse(json);
   } catch (err) {
-    return { ok: false, error: `macros file is not valid JSON: ${String(err)}` };
+    return { ok: false, error: t("macros.file.invalidJson", { error: String(err) }) };
   }
   const list = data as Partial<MacroList>;
-  if (list?.version !== 1) return { ok: false, error: "unsupported macros file version" };
+  if (list?.version !== 1) return { ok: false, error: t("macros.file.unsupportedVersion") };
   if (!Array.isArray(list.macros) || !list.macros.every(isMacro)) {
-    return { ok: false, error: "macros file has invalid macros" };
+    return { ok: false, error: t("macros.file.invalidMacros") };
   }
   const used = new Set<number>();
   for (const m of list.macros) {
     if (m.hotkey === undefined) continue;
-    if (used.has(m.hotkey)) return { ok: false, error: `macros file has two macros on ${hotkeyLabel(m.hotkey)}` };
+    if (used.has(m.hotkey)) return { ok: false, error: t("macros.file.duplicateHotkey", { hotkey: hotkeyLabel(m.hotkey) }) };
     used.add(m.hotkey);
   }
   return { ok: true, list: { version: 1, macros: list.macros.map(pick) } };

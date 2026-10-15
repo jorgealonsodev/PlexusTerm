@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, type FormEvent } from "react";
+import { useT } from "../../i18n/i18n";
 import { emptyWolForm, parseWolForm } from "./wolForm";
 
 /** Tools > Wake On LAN: sends the magic packet that powers on a machine of the local network. */
 export function WakeOnLanDialog({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [form, setForm] = useState(emptyWolForm);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function WakeOnLanDialog({ onClose }: { onClose: () => void }) {
     setSending(true);
     try {
       await invoke("wol_send", { mac: result.mac, broadcast: result.broadcast, port: result.port });
-      setSent(`Magic packet sent to ${result.mac}.`);
+      setSent(t("tools.wol.sent", { mac: result.mac }));
     } catch (err) {
       setError(String(err));
     } finally {
@@ -31,7 +33,7 @@ export function WakeOnLanDialog({ onClose }: { onClose: () => void }) {
       <form className="dialog" role="dialog" onSubmit={submit} aria-labelledby="wol-title" noValidate>
         <h2 id="wol-title">Wake On LAN</h2>
         <label className="field">
-          MAC address
+          {t("tools.wol.macAddress")}
           <input
             autoFocus
             spellCheck={false}
@@ -41,7 +43,7 @@ export function WakeOnLanDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
         <label className="field">
-          Broadcast address
+          {t("tools.wol.broadcastAddress")}
           <input
             spellCheck={false}
             placeholder="255.255.255.255"
@@ -50,18 +52,18 @@ export function WakeOnLanDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
         <label className="field field--port">
-          Port
+          {t("common.port")}
           <input placeholder="9" value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
         </label>
-        <p className="muted">The machine must have Wake On LAN enabled and be on this network (or reachable through the broadcast address).</p>
+        <p className="muted">{t("tools.wol.hint")}</p>
         {error && <p className="form-error" role="alert">{error}</p>}
         {sent && <p role="status">{sent}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
           <button type="submit" className="btn btn--primary" disabled={sending}>
-            Wake
+            {t("tools.wol.wake")}
           </button>
         </div>
       </form>

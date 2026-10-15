@@ -1,10 +1,14 @@
+import type { AppKey } from "../../i18n/catalogs";
+import { t } from "../../i18n/i18n";
+
 /** Kinds of SSH port forwarding: `-L`, `-R` and `-D`. */
 export type TunnelType = "local" | "remote" | "dynamic";
 
-export const tunnelTypes: { value: TunnelType; label: string }[] = [
-  { value: "local", label: "Local (-L)" },
-  { value: "remote", label: "Remote (-R)" },
-  { value: "dynamic", label: "Dynamic SOCKS5 (-D)" },
+/** `label` is a catalogue key, resolved with `t()` when shown. */
+export const tunnelTypes: { value: TunnelType; label: AppKey }[] = [
+  { value: "local", label: "tunnels.types.local" },
+  { value: "remote", label: "tunnels.types.remote" },
+  { value: "dynamic", label: "tunnels.types.dynamic" },
 ];
 
 /** A saved tunnel; it never contains secrets. Dynamic tunnels have no destination ("" and 0). */
@@ -85,12 +89,12 @@ export function parseTunnels(json: string | null): ParseResult {
   try {
     data = JSON.parse(json);
   } catch (err) {
-    return { ok: false, error: `tunnels file is not valid JSON: ${String(err)}` };
+    return { ok: false, error: t("tunnels.file.invalidJson", { error: String(err) }) };
   }
   const list = data as Partial<TunnelList>;
-  if (list?.version !== 1) return { ok: false, error: "unsupported tunnels file version" };
+  if (list?.version !== 1) return { ok: false, error: t("tunnels.file.unsupportedVersion") };
   if (!Array.isArray(list.tunnels) || !list.tunnels.every(isTunnel)) {
-    return { ok: false, error: "tunnels file has invalid tunnels" };
+    return { ok: false, error: t("tunnels.file.invalidTunnels") };
   }
   return { ok: true, list: { version: 1, tunnels: list.tunnels.map(pick) } };
 }

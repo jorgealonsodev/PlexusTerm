@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import { stripAnsi } from "../terminal/output";
 import { parseEscapes, type Macro } from "./macros";
 
@@ -75,7 +76,13 @@ export function playMacro(macro: Macro, io: MacroIo, options: PlayOptions = {}):
         if (!found) {
           return {
             status: "failed",
-            message: `Macro "${macro.name}" stopped at step ${i + 1} of ${total}: "${step.text}" did not appear within ${step.timeoutSec} s.`,
+            message: t("macros.player.timedOut", {
+              name: macro.name,
+              step: i + 1,
+              total,
+              text: step.text,
+              seconds: step.timeoutSec,
+            }),
           };
         }
       }
