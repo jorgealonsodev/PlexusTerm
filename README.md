@@ -11,7 +11,10 @@ pnpm install
 pnpm tauri dev                     # run the app
 pnpm test                          # frontend tests (Vitest)
 cargo test --manifest-path src-tauri/Cargo.toml   # backend tests
+scripts/openssh-interop.sh         # SSH/SFTP against a real OpenSSH server (needs Docker)
 ```
+
+`scripts/openssh-interop.sh` starts a disposable Alpine container with `sshd` and `sftp-server` bound to `127.0.0.1`, runs the ignored interoperability tests (host-key trust flow, key login, shell, resize, SFTP round trip) and removes the container.
 
 ## SSH sessions
 
