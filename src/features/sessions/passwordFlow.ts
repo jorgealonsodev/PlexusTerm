@@ -4,7 +4,7 @@ import type { PasswordStorage, SshAuth, SshTarget } from "./types";
 
 /** Label of the keyring item, as shown by keyring managers (e.g. Seahorse). */
 export function secretLabel(target: { username: string; host: string; port: number }): string {
-  return `OxyTerm: ${target.username}@${target.host}:${target.port}`;
+  return `PlexusTerm: ${target.username}@${target.host}:${target.port}`;
 }
 
 /** Target that connects with the password saved in the keyring; the frontend never sees it. */

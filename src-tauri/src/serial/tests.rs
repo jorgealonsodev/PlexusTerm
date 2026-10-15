@@ -145,7 +145,7 @@ fn assert_invalid(req: SerialRequest, needle: &str) {
 #[test]
 fn rejects_invalid_settings_before_opening() {
     // The path does not exist: validation must fail first, without touching it.
-    let missing = "/nonexistent/oxyterm-serial";
+    let missing = "/nonexistent/plexusterm-serial";
     assert_invalid(
         SerialRequest {
             data_bits: 9,
@@ -175,7 +175,7 @@ fn missing_device_is_not_found() {
     let mgr = SerialManager::default();
     let (s, _rx) = sink();
     let err = mgr
-        .open(request("/dev/oxyterm-test-missing-serial"), s)
+        .open(request("/dev/plexusterm-test-missing-serial"), s)
         .expect_err("open should fail");
     assert!(matches!(err, SerialError::NotFound(_)), "got {err:?}");
     assert!(err.to_string().contains("not found"), "message was {err}");

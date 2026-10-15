@@ -187,7 +187,7 @@ describe("collectLogins", () => {
     expect(logins).toEqual<HopLogin[]>([
       {
         auth: { method: "password", password: "pw" },
-        storage: { action: "remember", sessionId: "bastion", label: "OxyTerm: u@bastion.example.com:22" },
+        storage: { action: "remember", sessionId: "bastion", label: "PlexusTerm: u@bastion.example.com:22" },
       },
       { auth: { method: "storedPassword", sessionId: "saved" } },
       { auth: { method: "key", path: "~/.ssh/id" } },

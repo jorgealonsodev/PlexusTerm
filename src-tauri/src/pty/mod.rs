@@ -224,8 +224,8 @@ mod tests {
     fn extra_environment_reaches_the_process() {
         let mgr = PtyManager::default();
         let (s, rx) = sink();
-        let mut request = req("/bin/sh", &["-c", "echo \"value=$OXY_TEST_VAR\""]);
-        request.env = ChildEnv::new([("OXY_TEST_VAR".into(), "abc123".into())]);
+        let mut request = req("/bin/sh", &["-c", "echo \"value=$PLEXUS_TEST_VAR\""]);
+        request.env = ChildEnv::new([("PLEXUS_TEST_VAR".into(), "abc123".into())]);
         mgr.spawn(request, s).unwrap();
         let (out, _) = wait_for(&rx, "value=abc123");
         assert!(out.contains("value=abc123"), "output was {out:?}");
