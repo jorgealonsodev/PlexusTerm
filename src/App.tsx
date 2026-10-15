@@ -49,6 +49,7 @@ import { useTunnels } from "./features/tunnels/useTunnels";
 import wordmarkUrl from "./assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "./assets/plexusterm-wordmark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
+import { useCompactToolbar } from "./features/toolbar/compact";
 import {
   ChevronDown,
   Circle,
@@ -149,8 +150,8 @@ function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => vo
 
   return (
     <div className="menu" ref={ref}>
-      <button className="btn btn--icon" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        More
+      <button className="btn btn--icon" aria-haspopup="menu" aria-expanded={open} title="More" onClick={() => setOpen((o) => !o)}>
+        <span className="btn__label">More</span>
         <ChevronDown size={14} />
       </button>
       {open && (
@@ -427,55 +428,58 @@ function AppContent() {
     return () => window.removeEventListener("keydown", onKey);
   }, [openLocal, activeTab, updateSettingsWith]);
 
+  const toolbarRef = useRef<HTMLElement>(null);
+  const compactToolbar = useCompactToolbar(toolbarRef);
+
   const split = (direction: "row" | "column") => {
     if (activeTab) dispatch({ type: "split", key: activeTab.key, direction });
   };
 
   return (
     <div className="app">
-      <header className="toolbar">
+      <header className={`toolbar${compactToolbar ? " toolbar--compact" : ""}`} ref={toolbarRef}>
         <img className="brand" src={scheme.dark ? wordmarkUrl : wordmarkLightUrl} alt="PlexusTerm" />
-        <button className="btn btn--icon" onClick={openLocal}>
+        <button className="btn btn--icon" title="Terminal (Ctrl+Shift+T)" onClick={openLocal}>
           <SquareTerminal size={16} />
-          Terminal
+          <span className="btn__label">Terminal</span>
         </button>
-        <button className="btn btn--icon" onClick={() => setModal({ kind: "quickConnect" })}>
+        <button className="btn btn--icon" title="SSH (Ctrl+Shift+S)" onClick={() => setModal({ kind: "quickConnect" })}>
           <KeyRound size={16} />
-          SSH
+          <span className="btn__label">SSH</span>
         </button>
-        <button className="btn btn--icon" onClick={() => setModal({ kind: "serial" })}>
+        <button className="btn btn--icon" title="Serial" onClick={() => setModal({ kind: "serial" })}>
           <Usb size={16} />
-          Serial
+          <span className="btn__label">Serial</span>
         </button>
         <MoreMenu
           onTelnet={() => setModal({ kind: "telnet" })}
           onMosh={() => setModal({ kind: "mosh" })}
         />
-        <button className="btn btn--icon" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
+        <button className="btn btn--icon" disabled={!canSplit} title="Split right (Ctrl+Shift+D)" onClick={() => split("row")}>
           <Columns2 size={16} />
-          Split right
+          <span className="btn__label">Split right</span>
         </button>
-        <button className="btn btn--icon" disabled={!canSplit} title="Ctrl+Shift+E" onClick={() => split("column")}>
+        <button className="btn btn--icon" disabled={!canSplit} title="Split down (Ctrl+Shift+E)" onClick={() => split("column")}>
           <Rows2 size={16} />
-          Split down
+          <span className="btn__label">Split down</span>
         </button>
         <button
           className={`btn btn--icon${multiExec ? " btn--pressed" : ""}`}
           aria-pressed={multiExec}
-          title="Ctrl+Shift+M"
+          title="Multi-exec (Ctrl+Shift+M)"
           onClick={() => setMultiExec((on) => !on)}
         >
           <Radio size={16} />
-          Multi-exec
+          <span className="btn__label">Multi-exec</span>
         </button>
         <button
           className={`btn btn--icon${recording ? " btn--pressed btn--recording" : ""}`}
           aria-pressed={recording}
-          title="Ctrl+Shift+R"
+          title="Record macro (Ctrl+Shift+R)"
           onClick={toggleRecording}
         >
           <Circle size={16} />
-          Record macro
+          <span className="btn__label">Record macro</span>
         </button>
         <button
           className="btn btn--icon toolbar__settings"
