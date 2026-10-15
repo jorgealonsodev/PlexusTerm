@@ -28,6 +28,7 @@ interface StubProps {
 /** What the fake terminals were sent (by terminal number), their selection, and the latest aiSuggest. */
 const pane = vi.hoisted(() => ({
   written: [] as [number, string][],
+  refuseRun: false,
   selection: "",
   focus: vi.fn(),
   mounts: 0,
@@ -57,6 +58,7 @@ vi.mock("../terminal/TerminalView", () => ({
         selection: () => pane.selection,
         focus: pane.focus,
         insert: (text) => pane.written.push([id, text]),
+        run: (text) => (pane.refuseRun ? false : (pane.written.push([id, `${text}\r`]), true)),
       });
       return () => {
         a?.();
@@ -127,6 +129,7 @@ const mockReducedMotion = (reduce: boolean) => {
 
 beforeEach(() => {
   pane.written = [];
+  pane.refuseRun = false;
   pane.selection = "";
   pane.mounts = 0;
   pane.next = 1;
@@ -345,6 +348,22 @@ describe("AI chat pane (S3, S5, S9)", () => {
     await settle();
     expect(id(calls("ai_assist")[2])).not.toBe(id(first));
     expect((calls("ai_assist")[2].request as { conversation: unknown[] }).conversation).toEqual([]);
+  });
+
+  it("Run sends the command with Enter to the linked terminal only, or says why it could not", async () => {
+    answers.ai_assist = () => ({ answer: "Uptime.", command: "uptime" });
+    await renderApp();
+    press("D");
+    pressShortcut();
+    await ask("how long has it been up");
+    fireEvent.click(within(chat()).getByRole("button", { name: "Run" }));
+    expect(pane.written).toEqual([[2, "uptime\r"]]);
+    expect(focusedTerminal()).toBe(1);
+    pressShortcut();
+    pane.refuseRun = true;
+    fireEvent.click(within(chat()).getByRole("button", { name: "Run" }));
+    expect(pane.written).toHaveLength(1);
+    expect(screen.getByText(/password prompt or a full-screen program/)).toBeTruthy();
   });
 
   it("shows a general answer with no command box, Insert or Copy when no command fits (S8)", async () => {

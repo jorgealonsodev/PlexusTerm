@@ -509,10 +509,20 @@ function AppContent() {
     };
   };
 
-  /** Types an AI command into the chat's terminal, never run (no Enter), and focuses it. */
+  /** Types an AI command into the chat's terminal, without Enter, and focuses it. */
   const insertFromChat = (tab: Tab, link: ChatLink, command: string) => {
     // Typed like the user's own keys (so Enter records it in the history), only into this terminal.
     assistTargets.get(link.terminalPaneId)?.insert(command);
+    dispatch({ type: "focusPane", key: tab.key, paneId: link.terminalPaneId });
+    assistTargets.get(link.terminalPaneId)?.focus();
+  };
+
+  /** Runs an AI command in the chat's terminal (Run): sent with Enter, then the terminal gets the focus. */
+  const runFromChat = (tab: Tab, link: ChatLink, command: string) => {
+    if (!assistTargets.get(link.terminalPaneId)?.run(command)) {
+      setNotice("The command was not run: the terminal is at a password prompt or a full-screen program.");
+      return;
+    }
     dispatch({ type: "focusPane", key: tab.key, paneId: link.terminalPaneId });
     assistTargets.get(link.terminalPaneId)?.focus();
   };
@@ -800,6 +810,7 @@ function AppContent() {
                                 selection={link.selection}
                                 focused={active && paneId === tab.focusedPane}
                                 onInsert={(command) => insertFromChat(tab, link, command)}
+                                onRun={(command) => runFromChat(tab, link, command)}
                                 onSelectModel={(aiProvider, aiModel) => terminalSettings.update({ aiProvider, aiModel })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
                               />
