@@ -606,6 +606,27 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual(["uptime"]);
     });
 
+    it("records a command inserted from the AI chat once it is sent with Enter, never broadcasting it", async () => {
+      const history = historyWith();
+      const onInput = vi.fn();
+      let assist: { insert: (text: string) => void } | null = null;
+      await renderView({
+        history,
+        onInput,
+        registerAssistTarget: (target) => {
+          assist = target;
+          return () => {};
+        },
+      });
+      act(() => void (term().line = "$ "));
+      act(() => assist!.insert("du -sh * | sort -h"));
+      expect(backend.write).toHaveBeenLastCalledWith(7, "du -sh * | sort -h");
+      expect(onInput).not.toHaveBeenCalled();
+      expect(history.recent("local", 5)).toEqual([]);
+      act(() => term().type("\r"));
+      expect(history.recent("local", 5)).toEqual(["du -sh * | sort -h"]);
+    });
+
     it("never records nor suggests at a password prompt", async () => {
       const history = historyWith("hunter2-is-not-a-command");
       const { container } = await renderView({ history });

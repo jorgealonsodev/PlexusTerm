@@ -79,6 +79,11 @@ export interface AssistTarget {
   selection: () => string;
   /** Gives the keyboard back to the terminal. */
   focus: () => void;
+  /**
+   * Types `text` into this pane as if the user had typed it (tracked, so it is recorded once sent
+   * with Enter), but never broadcast to other panes or recorded into a macro.
+   */
+  insert: (text: string) => void;
 }
 
 export interface AiSuggestContext {
@@ -512,6 +517,10 @@ export function TerminalView({
     const unregisterAssistTarget = callbacks.current.registerAssistTarget?.({
       selection: () => (term.hasSelection() ? term.getSelection() : ""),
       focus: () => term.focus(),
+      insert: (text) => {
+        write(text);
+        track(text);
+      },
     });
 
     const subs = [
