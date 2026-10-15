@@ -64,6 +64,14 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S14.5 A session cannot be its own jump host and chains cannot contain cycles or repeated sessions; a deleted or non-SSH jump session makes the session invalid with a clear error. Deleting a session that others use as a jump host asks for confirmation and removes it from those chains.
   - S14.6 Errors say which hop failed (e.g. "via bastion (jump host 1): authentication failed"). Closing the tab closes every hop connection.
 
+- S15 (decided by the parent under "haz lo que te creas mas optimo"): everyday terminal comfort, matching MobaXterm's terminal menu.
+  - S15.1 Find in terminal: Ctrl+Shift+F opens a small search bar over the focused pane (next/previous, match case, regex, Escape closes), using the xterm search addon.
+  - S15.2 Font size: Ctrl+= / Ctrl+- / Ctrl+0 change the focused tab's font size (8-32 px, default 14) and refit; the size is remembered per app (not per session) in the app config directory.
+  - S15.3 Copy/paste: selecting text copies it automatically (MobaXterm default, toggleable in settings), right click pastes; Ctrl+Shift+C / Ctrl+Shift+V always work. Pasting more than one line asks for confirmation (preview of the first lines, line count; "don't ask again" remembered), so a stray multi-line paste never runs commands unexpectedly.
+  - S15.4 Context menu on right click when the setting "right click pastes" is off: Copy, Paste, Select all, Clear scrollback, Find, Save output to file.
+  - S15.5 Save output: the visible scrollback of the focused pane can be saved to a text file (save dialog), and per-tab session logging can be toggled on to append everything received to a file chosen once (ANSI escapes stripped).
+  - S15.6 A Settings dialog (toolbar gear) holds: font size, copy on select, right click pastes, confirm multi-line paste; stored in settings.json with the atomic 0600 storage.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -87,6 +95,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T9b — S13.2-S13.4 — delegated (context backstop) — Native review warnings for T9 (review-1daafe9e0d9a5ac8): bind the stored secret to its endpoint in Rust (R1-stored-secret-not-bound-to-target) and forget it when host/port/username change (R1-saved-password-follows-host-edit); keyring set updates in place again instead of delete-then-set (R4/R3 non-atomic); keyring storage after login bounded by a timeout (R4-keyring-write-blocks-connect); storage failures surfaced to the user (R4/R3 silent failure). Done: keyring value {"v":1,"endpoint","password"} checked against the real connection target before use (mismatch/legacy → secretMissing, 0 password attempts at the server); endpoint edits forget the secret; set updates in place again; post-login storage bounded by 10 s; storage failures shown in the terminal (yellow line) and in the tunnel status; stderr logging removed. RED→GREEN (8 Rust + 2 Vitest before the fix). cargo 107 (+4 ignored), vitest 203, OpenSSH interop 3/3. Parent read the binding code (endpoint computed from the request target).
 
 - [x] T10 — S14 (S14.1-S14.6) — delegated (writer trigger: long-session context backstop) — SSH jump hosts. Writer: chain via direct-tcpip + connect_stream per hop, per-hop fingerprint/auth/storage, {kind:"hop",hop,name,error} wrapper, nested jumps expanded ProxyJump-style with cycle/limit checks; cargo 124 (+5 ignored), vitest 236, OpenSSH interop 4/4 (new 1-jump test). Verifier: 0 blockers, S14.1-S14.6 PASS; probes proved fingerprints never cross hops and jump passwords never reach the target. Parent fix A1: the edit dialog now validates the whole chain (indirect cycles) with resolveChain (RED→GREEN). Left: A2 (hop handles dropped rather than disconnected on late errors), A3 (keyring checkbox lost after a second failed jump retry).
+
+- [ ] T11 — S15 (S15.1-S15.6) — delegated (writer trigger: long-session context backstop) — Terminal comfort (find, font size, copy/paste, context menu, save/log output, settings).
 
 ## Log
 
@@ -119,3 +129,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L27 (2026-10-15): "haz lo que te creas mas optimo" — next unit T10 (jump hosts), common in corporate networks.
 - L28 (2026-10-15): T10 committed (bafed39). Native assess of e043c37..bafed39: medium, review_due=false (under_budget); independent verifier already ran. Next candidates: own visual identity (icon/logo; still the Tauri default) and packaging (.deb/AppImage).
 - L29 (2026-10-15): "haz lo que te creas mas optimo" — own visual identity: three concepts drawn and compared at 256/32/16 px; chose an "N" drawn as a route between two nodes (distinct from generic prompt icons and from MobaXterm). Icons regenerated with `tauri icon` (mobile sets removed), favicon, toolbar mark. librsvg2-bin installed for rendering.
+- L30 (2026-10-15): "haz lo que te creas mas optimo" — while the release build runs, specified T11 (terminal comfort) as the next unit.
