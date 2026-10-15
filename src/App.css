@@ -436,10 +436,23 @@ textarea::placeholder {
   flex: 1;
 }
 
-/* A text field followed by buttons on one row (e.g. Settings > Text editor). */
-.field__picker input {
+/* A text field followed by buttons on one row (e.g. Settings > Text editor, AI model). */
+.field__picker input,
+.field__picker select {
   flex: 1;
   min-width: 0;
+  width: 0;
+  text-overflow: ellipsis;
+}
+
+.field__picker .btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* A full-width label over a short number input. */
+.field--number input {
+  width: 80px;
 }
 
 .field--port {

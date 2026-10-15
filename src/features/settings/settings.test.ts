@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, parseSettings, serializeSettings, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
+  it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
+    const json = JSON.stringify({ aiProvider: "opencode-go", aiModel: "opencode-go/glm-5.3-flash" });
+    expect(parseSettings(json).aiModel).toBe("glm-5.3-flash");
+    // Other providers keep slashes (e.g. OpenRouter ids).
+    expect(parseSettings(JSON.stringify({ aiProvider: "openai-compatible", aiModel: "meta/llama-4" })).aiModel).toBe("meta/llama-4");
+  });
+
   it("returns the defaults when there is no settings file", () => {
     expect(parseSettings(null)).toEqual({
       fontSize: 14,
