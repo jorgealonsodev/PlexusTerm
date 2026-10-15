@@ -1,4 +1,5 @@
 import { otherKeysWarning } from "./sshErrors";
+import { useT } from "../../i18n/i18n";
 
 interface HostKeyPromptProps {
   host: string;
@@ -11,14 +12,17 @@ interface HostKeyPromptProps {
 }
 
 export function HostKeyPrompt({ host, fingerprint, otherKnownKeys, via, onTrust, onCancel }: HostKeyPromptProps) {
+  const t = useT();
+  // The host is shown in bold inside the translated sentence.
+  const [before, after = ""] = t("sessions.hostKey.authenticity", { via: via ? ` (${via})` : "" }).split("{host}");
   return (
     <div className="overlay" role="alertdialog" aria-labelledby="hostkey-title">
       <div className="dialog">
-        <h2 id="hostkey-title">{via ? "Unknown jump host" : "Unknown host"}</h2>
+        <h2 id="hostkey-title">{via ? t("sessions.hostKey.unknownJumpHost") : t("sessions.hostKey.unknownHost")}</h2>
         <p>
-          The authenticity of <strong>{host}</strong>
-          {via && ` (${via})`} can't be established. Check that this
-          fingerprint matches the server before trusting it:
+          {before}
+          <strong>{host}</strong>
+          {after}
         </p>
         <code className="fingerprint">{fingerprint}</code>
         {otherKnownKeys.length > 0 && (
@@ -26,13 +30,13 @@ export function HostKeyPrompt({ host, fingerprint, otherKnownKeys, via, onTrust,
             {otherKeysWarning(otherKnownKeys)}
           </p>
         )}
-        <p className="muted">Trusting it adds the key to ~/.ssh/known_hosts.</p>
+        <p className="muted">{t("sessions.hostKey.knownHostsNote")}</p>
         <div className="dialog__actions">
           <button className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn btn--primary" onClick={onTrust} autoFocus>
-            Trust and connect
+            {t("sessions.hostKey.trust")}
           </button>
         </div>
       </div>

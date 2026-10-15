@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { SavedSession } from "../sessions/library";
 import { MoshFields } from "./MoshFields";
 import type { MoshForm } from "./mosh";
+import { useT } from "../../i18n/i18n";
 
 interface MoshDialogProps {
   /** Saved SSH sessions Mosh can log in with. */
@@ -12,6 +13,7 @@ interface MoshDialogProps {
 }
 
 export function MoshDialog({ sessions, onConnect, onCancel }: MoshDialogProps) {
+  const t = useT();
   const [form, setForm] = useState<MoshForm>({ sshSessionId: sessions[0]?.id ?? "", serverCommand: "" });
 
   const submit = (e: FormEvent) => {
@@ -23,14 +25,14 @@ export function MoshDialog({ sessions, onConnect, onCancel }: MoshDialogProps) {
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="mosh-title">
-        <h2 id="mosh-title">Mosh session</h2>
+        <h2 id="mosh-title">{t("sessions.mosh.title")}</h2>
         <MoshFields form={form} onChange={setForm} sessions={sessions} />
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary" disabled={!form.sshSessionId}>
-            Connect
+            {t("common.connect")}
           </button>
         </div>
       </form>

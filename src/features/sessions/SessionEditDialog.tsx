@@ -8,6 +8,7 @@ import { JumpHostsField } from "./JumpHostsField";
 import { isSshSession, type LibrarySession, type SavedSession } from "./library";
 import { secretDelete, secretExists } from "./secrets";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
+import { t, useT } from "../../i18n/i18n";
 
 interface SessionEditDialogProps {
   /** Existing session to edit, or a draft (new id, preset folder) to create. */
@@ -20,12 +21,13 @@ interface SessionEditDialogProps {
   onCancel: () => void;
 }
 
-const NAME_PLACEHOLDERS: Record<SessionForm["kind"], string> = {
-  ssh: "user@host",
-  serial: "Device path",
-  telnet: "Host",
-  mosh: "SSH session (mosh)",
-};
+const namePlaceholder = (kind: SessionForm["kind"]): string =>
+  ({
+    ssh: "user@host",
+    serial: t("sessions.edit.devicePath"),
+    telnet: t("common.host"),
+    mosh: t("sessions.edit.moshNamePlaceholder"),
+  })[kind];
 
 export function SessionEditDialog({
   session,
@@ -35,6 +37,7 @@ export function SessionEditDialog({
   onSave,
   onCancel,
 }: SessionEditDialogProps) {
+  const t = useT();
   const [form, setForm] = useState<SessionForm>(() => formFromSession(session));
   const [error, setError] = useState<string | null>(null);
   const set = fieldSetter(setForm);
@@ -57,11 +60,13 @@ export function SessionEditDialog({
     secretDelete(session.id)
       .then(() => {
         setHasSecret(false);
-        setSecretNote("Saved password forgotten.");
+        setSecretNote(t("sessions.edit.passwordForgotten"));
       })
       .catch((err: unknown) => {
         const message = (err as { message?: unknown } | null)?.message;
-        setSecretNote(`Could not forget the saved password: ${typeof message === "string" ? message : String(err)}`);
+        setSecretNote(
+          t("sessions.edit.forgetFailed", { error: typeof message === "string" ? message : String(err) }),
+        );
       });
   };
 
@@ -75,29 +80,29 @@ export function SessionEditDialog({
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="se-title">
-        <h2 id="se-title">{isNew ? "New session" : "Edit session"}</h2>
+        <h2 id="se-title">{isNew ? t("sessions.edit.newTitle") : t("sessions.edit.editTitle")}</h2>
         <label className="field">
-          Session type
+          {t("sessions.edit.type")}
           <select value={form.kind} onChange={set("kind")}>
             <option value="ssh">SSH</option>
-            <option value="serial">Serial</option>
+            <option value="serial">{t("sessions.edit.serial")}</option>
             <option value="telnet">Telnet</option>
             {offerMosh && <option value="mosh">Mosh</option>}
           </select>
         </label>
         <div className="form-row">
           <label className="field field--grow">
-            Name
+            {t("common.name")}
             <input
               autoFocus
               value={form.name}
               onChange={set("name")}
-              placeholder={NAME_PLACEHOLDERS[form.kind]}
+              placeholder={namePlaceholder(form.kind)}
             />
           </label>
           <label className="field field--grow">
-            Folder
-            <input value={form.folder} onChange={set("folder")} list="session-folders" placeholder="Root" />
+            {t("sessions.edit.folder")}
+            <input value={form.folder} onChange={set("folder")} list="session-folders" placeholder={t("sessions.edit.folderPlaceholder")} />
             <datalist id="session-folders">
               {folders.map((f) => (
                 <option key={f} value={f} />
@@ -123,12 +128,12 @@ export function SessionEditDialog({
             <SshFields form={form} set={set} withSecrets={false} />
             {form.method === "password" && (
               <p className="muted">
-                The password is asked when you connect; the prompt can save it in the system keyring.
+                {t("sessions.edit.passwordNote")}
               </p>
             )}
             {hasSecret && (
               <button type="button" className="btn" onClick={forgetSecret}>
-                Forget saved password
+                {t("sessions.edit.forgetPassword")}
               </button>
             )}
             {secretNote && <p className="muted" role="status">{secretNote}</p>}
@@ -142,10 +147,10 @@ export function SessionEditDialog({
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Save
+            {t("common.save")}
           </button>
         </div>
       </form>

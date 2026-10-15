@@ -1,4 +1,5 @@
 import type { TelnetForm } from "./telnetForm";
+import { useT } from "../../i18n/i18n";
 
 interface TelnetFieldsProps {
   form: TelnetForm;
@@ -7,24 +8,25 @@ interface TelnetFieldsProps {
 }
 
 export function TelnetFields({ form, onChange, autoFocusHost = false }: TelnetFieldsProps) {
+  const t = useT();
   return (
     <>
       <div className="form-row">
         <label className="field field--grow">
-          Host
+          {t("common.host")}
           <input
             autoFocus={autoFocusHost}
             value={form.host}
             onChange={(e) => onChange({ ...form, host: e.target.value })}
-            placeholder="host or address"
+            placeholder={t("sessions.telnet.hostPlaceholder")}
           />
         </label>
         <label className="field field--port">
-          Port
+          {t("common.port")}
           <input value={form.port} onChange={(e) => onChange({ ...form, port: e.target.value })} placeholder="23" />
         </label>
       </div>
-      <p className="muted">Telnet is not encrypted: everything typed, passwords included, travels in clear text.</p>
+      <p className="muted">{t("sessions.telnet.unencrypted")}</p>
     </>
   );
 }

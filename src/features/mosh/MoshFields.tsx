@@ -1,5 +1,6 @@
 import type { SavedSession } from "../sessions/library";
 import { DEFAULT_SERVER_COMMAND, type MoshForm } from "./mosh";
+import { useT } from "../../i18n/i18n";
 
 interface MoshFieldsProps {
   form: MoshForm;
@@ -9,17 +10,18 @@ interface MoshFieldsProps {
 }
 
 export function MoshFields({ form, onChange, sessions }: MoshFieldsProps) {
+  const t = useT();
   if (sessions.length === 0) {
-    return <p className="muted">Mosh logs in with a saved SSH session: save one first.</p>;
+    return <p className="muted">{t("sessions.mosh.needsSsh")}</p>;
   }
   const missing = form.sshSessionId !== "" && !sessions.some((s) => s.id === form.sshSessionId);
   return (
     <>
       <label className="field">
-        SSH session
+        {t("sessions.mosh.sshSession")}
         <select value={form.sshSessionId} onChange={(e) => onChange({ ...form, sshSessionId: e.target.value })}>
-          {form.sshSessionId === "" && <option value="">Choose a saved SSH session</option>}
-          {missing && <option value={form.sshSessionId}>(deleted session)</option>}
+          {form.sshSessionId === "" && <option value="">{t("sessions.mosh.choose")}</option>}
+          {missing && <option value={form.sshSessionId}>{t("sessions.jumps.deleted")}</option>}
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
               {`${s.name} — ${s.username}@${s.host}`}
@@ -28,16 +30,14 @@ export function MoshFields({ form, onChange, sessions }: MoshFieldsProps) {
         </select>
       </label>
       <label className="field">
-        Server command
+        {t("sessions.mosh.serverCommand")}
         <input
           value={form.serverCommand}
           onChange={(e) => onChange({ ...form, serverCommand: e.target.value })}
           placeholder={DEFAULT_SERVER_COMMAND}
         />
       </label>
-      <p className="muted">
-        Needs mosh on both machines and UDP ports 60000-61000 open to the server.
-      </p>
+      <p className="muted">{t("sessions.mosh.requirements")}</p>
     </>
   );
 }

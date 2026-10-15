@@ -1,1 +1,46 @@
-export const terminal = {};
+/** Terminal panes: find bar, paste confirmation, context menu and the lines the terminal writes itself. */
+export const terminal = {
+  find: {
+    label: "Find in terminal",
+    placeholder: "Find",
+    noMatches: "No matches",
+    matchCase: "Match case",
+    regexTitle: "Regular expression",
+    regex: "Regex",
+    previous: "Previous match",
+    next: "Next match",
+    close: "Close find",
+  },
+  paste: {
+    title: { other: "Paste {count} lines?" },
+    warning: "Every line may run as a command.",
+    dontAsk: "Don't ask again",
+    paste: "Paste",
+  },
+  menu: {
+    paste: "Paste",
+    selectAll: "Select all",
+    clear: "Clear scrollback",
+    find: "Find…",
+    save: "Save output to file…",
+    stopLogging: "Stop logging",
+    log: "Log to file…",
+  },
+  view: {
+    textFiles: "Text",
+    connecting: "Connecting to {target}...",
+    connectingVia: "Connecting to {target} via {jumps}...",
+    startingMosh: "Starting mosh-server on {target} over SSH...",
+    startingMoshVia: "Starting mosh-server on {target} via {jumps} over SSH...",
+    opening: "Opening {target}...",
+    telnetUnencrypted: "Telnet is not encrypted.",
+    serialEnded: "Session ended. Close this tab or open the port again.",
+    moshExited: "mosh-client exited. Close this tab or open the session again.",
+    moshExitedCode: "mosh-client exited with code {code}. Close this tab or open the session again.",
+    clipboardError: "Could not read the clipboard.",
+    saveError: "Could not save the output: {error}",
+    loggingStopped: "Logging stopped: {error}",
+    hostKeyCancelled: "Connection cancelled: host key not trusted.",
+    cancelled: "Connection cancelled.",
+  },
+};

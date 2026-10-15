@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import { toTarget, type SavedSession } from "./library";
 import { storageFor } from "./passwordFlow";
 import type { JumpTarget, PasswordStorage, SshAuth, SshTarget } from "./types";
@@ -21,7 +22,7 @@ export interface PasswordAnswer {
 export function hopLabel(hops: SavedSession[], index: number): string {
   const hop = hops[index];
   const jumps = hops.length - 1;
-  return index < jumps ? `${hop.name} — jump host ${index + 1} of ${jumps}` : `${hop.username}@${hop.host}`;
+  return index < jumps ? t("sessions.jumps.label", { name: hop.name, index: index + 1, total: jumps }) : `${hop.username}@${hop.host}`;
 }
 
 /**

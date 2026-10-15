@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import type { SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
 
 /** Saved auth never contains secrets: passwords are asked at connect time. */
@@ -179,15 +180,15 @@ export function resolveChain(library: Pick<SessionLibrary, "sessions">, session:
   const jumps: SavedSession[] = [];
   const visit = (current: SavedSession, path: string[]): string | null => {
     for (const id of current.jumpIds ?? []) {
-      if (id === current.id) return `"${current.name}" cannot be its own jump host.`;
-      if (path.includes(id)) return `The jump hosts of "${session.name}" form a cycle.`;
+      if (id === current.id) return t("sessions.chain.ownJump", { name: current.name });
+      if (path.includes(id)) return t("sessions.chain.cycle", { name: session.name });
       const jump = library.sessions.find((s) => s.id === id);
-      if (!jump) return `A jump host of "${current.name}" no longer exists; edit the session to choose another one.`;
-      if (!isSshSession(jump)) return `Jump host "${jump.name}" of "${current.name}" is not an SSH session.`;
+      if (!jump) return t("sessions.chain.missing", { name: current.name });
+      if (!isSshSession(jump)) return t("sessions.chain.notSsh", { jump: jump.name, name: current.name });
       const error = visit(jump, [...path, id]);
       if (error) return error;
       if (jumps.some((s) => s.id === id)) {
-        return `"${jump.name}" appears more than once in the jump hosts of "${session.name}".`;
+        return t("sessions.chain.repeated", { jump: jump.name, name: session.name });
       }
       jumps.push(jump);
     }
@@ -195,7 +196,7 @@ export function resolveChain(library: Pick<SessionLibrary, "sessions">, session:
   };
   const error = visit(session, [session.id]);
   if (error) return { ok: false, error };
-  if (jumps.length > MAX_JUMPS) return { ok: false, error: `"${session.name}" goes through more than ${MAX_JUMPS} jump hosts.` };
+  if (jumps.length > MAX_JUMPS) return { ok: false, error: t("sessions.chain.tooMany", { name: session.name, max: MAX_JUMPS }) };
   return { ok: true, jumps };
 }
 
@@ -313,15 +314,15 @@ export function parseLibrary(json: string | null): ParseResult {
   try {
     data = JSON.parse(json);
   } catch (err) {
-    return { ok: false, error: `sessions file is not valid JSON: ${String(err)}` };
+    return { ok: false, error: t("sessions.library.invalidJson", { error: String(err) }) };
   }
   const lib = data as Partial<SessionLibrary>;
-  if (lib?.version !== 1) return { ok: false, error: "unsupported sessions file version" };
+  if (lib?.version !== 1) return { ok: false, error: t("sessions.library.unsupportedVersion") };
   if (!Array.isArray(lib.folders) || !lib.folders.every(isString)) {
-    return { ok: false, error: "sessions file has invalid folders" };
+    return { ok: false, error: t("sessions.library.invalidFolders") };
   }
   if (!Array.isArray(lib.sessions) || !lib.sessions.every(isLibrarySession)) {
-    return { ok: false, error: "sessions file has invalid sessions" };
+    return { ok: false, error: t("sessions.library.invalidSessions") };
   }
   const sessions = lib.sessions.map(sanitizeSession);
   return { ok: true, library: { version: 1, folders: lib.folders, sessions } };

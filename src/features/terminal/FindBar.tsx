@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useT } from "../../i18n/i18n";
 
 export interface FindOptions {
   caseSensitive: boolean;
@@ -15,6 +16,7 @@ interface FindBarProps {
 
 /** Search bar shown over the focused pane (S15.1). */
 export function FindBar({ onFind, onClose }: FindBarProps) {
+  const t = useT();
   const [text, setText] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [regex, setRegex] = useState(false);
@@ -29,8 +31,8 @@ export function FindBar({ onFind, onClose }: FindBarProps) {
     <div className="find-bar" role="search">
       <input
         autoFocus
-        aria-label="Find in terminal"
-        placeholder="Find"
+        aria-label={t("terminal.find.label")}
+        placeholder={t("terminal.find.placeholder")}
         value={text}
         spellCheck={false}
         onChange={(e) => {
@@ -47,22 +49,22 @@ export function FindBar({ onFind, onClose }: FindBarProps) {
           }
         }}
       />
-      {notFound && <span className="find-bar__status">No matches</span>}
-      <label className="find-bar__option" title="Match case">
+      {notFound && <span className="find-bar__status">{t("terminal.find.noMatches")}</span>}
+      <label className="find-bar__option" title={t("terminal.find.matchCase")}>
         <input type="checkbox" checked={caseSensitive} onChange={(e) => setCaseSensitive(e.target.checked)} />
-        Match case
+        {t("terminal.find.matchCase")}
       </label>
-      <label className="find-bar__option" title="Regular expression">
+      <label className="find-bar__option" title={t("terminal.find.regexTitle")}>
         <input type="checkbox" checked={regex} onChange={(e) => setRegex(e.target.checked)} />
-        Regex
+        {t("terminal.find.regex")}
       </label>
-      <button type="button" className="find-bar__btn" aria-label="Previous match" onClick={() => find("previous")}>
+      <button type="button" className="find-bar__btn" aria-label={t("terminal.find.previous")} onClick={() => find("previous")}>
         ↑
       </button>
-      <button type="button" className="find-bar__btn" aria-label="Next match" onClick={() => find("next")}>
+      <button type="button" className="find-bar__btn" aria-label={t("terminal.find.next")} onClick={() => find("next")}>
         ↓
       </button>
-      <button type="button" className="find-bar__btn" aria-label="Close find" onClick={onClose}>
+      <button type="button" className="find-bar__btn" aria-label={t("terminal.find.close")} onClick={onClose}>
         ×
       </button>
     </div>

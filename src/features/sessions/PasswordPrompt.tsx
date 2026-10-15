@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useSecretAvailable } from "./secrets";
+import { useT } from "../../i18n/i18n";
 
 interface PasswordPromptProps {
   label: string;
@@ -12,6 +13,7 @@ interface PasswordPromptProps {
 }
 
 export function PasswordPrompt({ label, remember, onSubmit, onCancel }: PasswordPromptProps) {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [save, setSave] = useState(remember?.initial ?? false);
   const available = useSecretAvailable(remember !== undefined);
@@ -24,9 +26,9 @@ export function PasswordPrompt({ label, remember, onSubmit, onCancel }: Password
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="pw-title">
-        <h2 id="pw-title">Password for {label}</h2>
+        <h2 id="pw-title">{t("sessions.password.title", { label })}</h2>
         <label className="field">
-          Password
+          {t("common.password")}
           <input
             type="password"
             autoFocus
@@ -44,19 +46,19 @@ export function PasswordPrompt({ label, remember, onSubmit, onCancel }: Password
                 disabled={available !== true}
                 onChange={(e) => setSave(e.target.checked)}
               />
-              Save password in the system keyring
+              {t("sessions.password.save")}
             </label>
             {available === false && (
-              <p className="muted">No system keyring (Secret Service) is available, so the password cannot be saved.</p>
+              <p className="muted">{t("sessions.password.noKeyring")}</p>
             )}
           </>
         )}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Connect
+            {t("common.connect")}
           </button>
         </div>
       </form>

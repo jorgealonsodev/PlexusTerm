@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import type { SshAuth, SshTarget } from "../sessions/types";
 
 export interface QuickConnectForm {
@@ -43,10 +44,10 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
     portText = portText || port;
   }
 
-  if (!host) return fail("Host is required");
-  if (!username) return fail("Username is required");
+  if (!host) return fail(t("sessions.form.hostRequired"));
+  if (!username) return fail(t("sessions.form.usernameRequired"));
   const port = portText ? parsePort(portText) : 22;
-  if (port === null) return fail("Port must be a number between 1 and 65535");
+  if (port === null) return fail(t("sessions.form.portRange"));
 
   let auth: SshAuth;
   switch (form.method) {
@@ -54,7 +55,7 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
       auth = { method: "password", password: form.password };
       break;
     case "key":
-      if (!form.keyPath.trim()) return fail("Private key path is required");
+      if (!form.keyPath.trim()) return fail(t("sessions.form.keyPathRequired"));
       auth = { method: "key", path: form.keyPath.trim() };
       if (form.passphrase) auth.passphrase = form.passphrase;
       break;

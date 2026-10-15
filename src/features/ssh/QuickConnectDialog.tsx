@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { SshTarget } from "../sessions/types";
 import { parseQuickConnect, type QuickConnectForm } from "./quickConnect";
 import { fieldSetter, SshFields } from "./SshFields";
+import { useT } from "../../i18n/i18n";
 
 interface QuickConnectDialogProps {
   onConnect: (target: SshTarget) => void;
@@ -19,6 +20,7 @@ const emptyForm: QuickConnectForm = {
 };
 
 export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogProps) {
+  const t = useT();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,15 +34,15 @@ export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogPr
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="qc-title">
-        <h2 id="qc-title">SSH session</h2>
+        <h2 id="qc-title">{t("sessions.ssh.title")}</h2>
         <SshFields form={form} set={fieldSetter(setForm)} withSecrets autoFocusHost />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Connect
+            {t("common.connect")}
           </button>
         </div>
       </form>

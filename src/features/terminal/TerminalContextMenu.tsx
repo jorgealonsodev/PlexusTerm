@@ -1,4 +1,5 @@
 import { ContextMenu } from "../menu/ContextMenu";
+import { useT } from "../../i18n/i18n";
 
 export type MenuAction = "copy" | "paste" | "selectAll" | "clear" | "find" | "save" | "log";
 
@@ -14,14 +15,15 @@ interface TerminalContextMenuProps {
 
 /** Right-click menu of a terminal pane (S15.4). */
 export function TerminalContextMenu({ x, y, logging, onAction, onClose }: TerminalContextMenuProps) {
+  const t = useT();
   const items: [MenuAction, string][] = [
-    ["copy", "Copy"],
-    ["paste", "Paste"],
-    ["selectAll", "Select all"],
-    ["clear", "Clear scrollback"],
-    ["find", "Find…"],
-    ["save", "Save output to file…"],
-    ["log", logging ? "Stop logging" : "Log to file…"],
+    ["copy", t("common.copy")],
+    ["paste", t("terminal.menu.paste")],
+    ["selectAll", t("terminal.menu.selectAll")],
+    ["clear", t("terminal.menu.clear")],
+    ["find", t("terminal.menu.find")],
+    ["save", t("terminal.menu.save")],
+    ["log", logging ? t("terminal.menu.stopLogging") : t("terminal.menu.log")],
   ];
   // keepFocus: the terminal keeps its selection (and focus) for Copy.
   return (
