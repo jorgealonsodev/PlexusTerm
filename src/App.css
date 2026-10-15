@@ -384,3 +384,148 @@ body,
   color: var(--text);
   background: var(--border);
 }
+
+.sidebar--wide {
+  width: 340px;
+}
+
+.sidebar__tabs {
+  display: flex;
+  gap: 2px;
+  margin: -8px -8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar__tab {
+  flex: 1;
+  padding: 7px 8px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.sidebar__tab:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.sidebar__tab--active {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.sidebar__tab:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.sidebar__panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.btn:disabled:hover {
+  border-color: var(--border);
+}
+
+.sftp {
+  border-radius: 6px;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+}
+
+.sftp--drop {
+  outline-color: var(--accent);
+}
+
+.sftp__pathbar,
+.sftp__toolbar {
+  display: flex;
+  gap: 4px;
+}
+
+.sftp__toolbar {
+  flex-wrap: wrap;
+}
+
+.sftp__path {
+  flex: 1;
+  min-width: 0;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 12px;
+}
+
+.sftp__follow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.sftp__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sftp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: default;
+  user-select: none;
+}
+
+.sftp-row:hover,
+.sftp-row:focus {
+  outline: none;
+  background: var(--surface-2);
+}
+
+.sftp-row--selected,
+.sftp-row--selected:hover {
+  background: var(--border);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.sftp-row__icon {
+  width: 16px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.sftp-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-row__size,
+.sftp-row__date {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.sftp-row__size {
+  width: 56px;
+}
+
+.sftp-row__date {
+  width: 92px;
+}

@@ -6,6 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import { targetTitle, type SessionTarget } from "../sessions/types";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
+import { parseOsc7 } from "../sftp/osc7";
 import { backendFor } from "./backend";
 import { terminalTheme } from "./theme";
 
@@ -14,6 +15,10 @@ interface TerminalViewProps {
   active: boolean;
   onTitle: (title: string) => void;
   onExit: (code: number | null) => void;
+  /** Working directory reported by the shell through OSC 7. */
+  onCwd?: (path: string) => void;
+  /** Backend session id once connected, null when the session ends. */
+  onSession?: (id: number | null) => void;
 }
 
 interface PendingHost {
@@ -25,15 +30,15 @@ interface PendingHost {
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
 
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
-export function TerminalView({ target, active, onTitle, onExit }: TerminalViewProps) {
+export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession }: TerminalViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit });
-  callbacks.current = { onTitle, onExit };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession });
+  callbacks.current = { onTitle, onExit, onCwd, onSession };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -66,11 +71,17 @@ export function TerminalView({ target, active, onTitle, onExit }: TerminalViewPr
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           if (msg.event === "output") term.write(msg.data);
-          else callbacks.current.onExit(msg.data);
+          else {
+            callbacks.current.onSession?.(null);
+            callbacks.current.onExit(msg.data);
+          }
         })
         .then((id) => {
           if (disposed) void backend.close(id);
-          else sessionId = id;
+          else {
+            sessionId = id;
+            callbacks.current.onSession?.(id);
+          }
         })
         .catch((raw) => {
           if (disposed) return;
@@ -86,6 +97,11 @@ export function TerminalView({ target, active, onTitle, onExit }: TerminalViewPr
       term.onData((data) => sessionId !== null && void backend.write(sessionId, data)),
       term.onResize(({ cols, rows }) => sessionId !== null && void backend.resize(sessionId, cols, rows)),
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
+      term.parser.registerOscHandler(7, (data) => {
+        const path = parseOsc7(data);
+        if (path) callbacks.current.onCwd?.(path);
+        return true;
+      }),
     ];
 
     const observer = new ResizeObserver(() => {

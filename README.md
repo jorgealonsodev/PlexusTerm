@@ -36,6 +36,23 @@ Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atom
 Passwords and key passphrases are never saved: password sessions ask for it on every connection.
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 
+## SFTP browser
+
+The sidebar has two tabs, **Sessions** and **SFTP**. SFTP browses the remote files of the active SSH tab over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+
+- Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
+- Double-click a folder to open it, or a file to download it (a save dialog asks where).
+- **Upload** picks one or more local files; dropping files from the desktop onto the panel uploads them too. Both go into the current folder.
+- **New folder**, **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
+
+With **Follow terminal folder** on (the default), the browser follows the shell's working directory. This needs the remote shell to report it with an OSC 7 sequence; for bash, add this to the remote `~/.bashrc`:
+
+```bash
+PROMPT_COMMAND='printf "\033]7;file://%s%s\007" "$HOSTNAME" "$PWD"'
+```
+
+Paths containing special characters may need percent-encoding; many distributions' `vte.sh` already emit OSC 7 that way.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |

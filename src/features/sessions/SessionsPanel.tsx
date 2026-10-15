@@ -76,9 +76,9 @@ export function SessionsPanel(props: SessionsPanelProps) {
   };
 
   return (
-    <aside className="sidebar">
+    <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>Sessions</span>
+        <span>Saved sessions</span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={() => props.onNewSession("")}>New</button>
@@ -104,6 +104,6 @@ export function SessionsPanel(props: SessionsPanelProps) {
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
       <p className="sidebar__hint">Double-click a session to connect.</p>
-    </aside>
+    </div>
   );
 }
