@@ -69,15 +69,16 @@ describe("App panes", () => {
 
   it("offers a close button on each pane only while the tab is split, closing that pane", () => {
     render(<App />);
-    expect(screen.queryAllByRole("button", { name: "Close pane" })).toHaveLength(0);
+    expect(document.querySelectorAll(".pane__corner")).toHaveLength(0);
     press("D");
-    const close = screen.getAllByRole("button", { name: "Close pane" });
-    expect(close).toHaveLength(2);
+    const corners = document.querySelectorAll(".pane__corner");
+    expect(corners).toHaveLength(2);
     // The first pane is not the focused one: its own button closes it, not the focused pane.
-    fireEvent.click(close[0]);
+    fireEvent.mouseEnter(corners[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Close pane" }));
     expect(terminals()).toHaveLength(1);
     expect(screen.getByRole("button", { name: "exit 2" })).toBeTruthy();
-    expect(screen.queryAllByRole("button", { name: "Close pane" })).toHaveLength(0);
+    expect(document.querySelectorAll(".pane__corner")).toHaveLength(0);
   });
 
   it("closes only the focused pane, and the tab with its last pane", () => {

@@ -1191,7 +1191,7 @@ textarea::placeholder {
   min-height: 0;
 }
 
-/* The top-right corner of a split pane: its × shows only while the pointer is in it. */
+/* The top-right corner of a split pane; PaneCloseButton shows its × while the pointer is in it. */
 .pane__corner {
   position: absolute;
   top: 0;
@@ -1215,22 +1215,9 @@ textarea::placeholder {
   border: 1px solid var(--border);
   border-radius: 5px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 120ms ease-out;
-}
-
-.pane__corner:hover .pane__close,
-.pane__close:focus-visible {
-  opacity: 1;
 }
 
 .pane__close:hover {
   color: var(--text);
   border-color: var(--danger);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pane__close {
-    transition: none;
-  }
 }
