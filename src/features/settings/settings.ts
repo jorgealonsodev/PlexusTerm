@@ -102,7 +102,9 @@ export const isAiProvider = (value: unknown): value is AiProvider =>
 
 /** A trimmed model name of at most 200 characters, or the provider's default model. */
 export function cleanAiModel(value: unknown, provider: AiProvider): string {
-  const model = typeof value === "string" ? value.trim() : null;
+  let model = typeof value === "string" ? value.trim() : null;
+  // OpenCode's own config names Go models "opencode-go/<id>"; the API wants just the id.
+  if (model !== null && provider === "opencode-go") model = model.replace(/^opencode-go\//i, "");
   return model !== null && model.length <= MAX_AI_MODEL_LENGTH ? model : DEFAULT_AI_MODELS[provider];
 }
 

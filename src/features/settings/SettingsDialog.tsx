@@ -586,7 +586,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
               </label>
             )}
             <ApiKeyField provider={aiProvider} />
-            <label className="field field--port">
+            <label className="field field--number">
               History commands sent as context
               <input
                 type="number"
