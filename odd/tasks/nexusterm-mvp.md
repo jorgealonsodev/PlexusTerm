@@ -105,7 +105,7 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 
 - [x] T11 — S15 (S15.1-S15.6) — delegated (writer trigger: long-session context backstop) — Terminal comfort (find, font size, copy/paste, context menu, save/log output, settings). Writer: find bar (addon-search), global font size, copy on select (mouseup), right-click paste / Ctrl+right-click menu, multi-line paste confirmation, save output + per-pane logging (ANSI stripped), settings.json (atomic 0600); vitest 294, cargo 127. Parent Xvfb smoke found a real bug: WebKitGTK denies navigator.clipboard.readText ("Could not read the clipboard.") → switched to tauri-plugin-clipboard-manager with only allow-read-text/allow-write-text (test RED with navigator.clipboard denied → GREEN). After the fix: right-click paste, multi-line confirmation, copy on select, Ctrl+= and find all verified in the app.
 
-- [ ] T12 — S16 (S16.1-S16.5) — delegated (writer trigger: long-session context backstop) — Macros.
+- [x] T12 — S16 (S16.1-S16.5) — delegated (writer trigger: long-session context backstop) — Macros. Writer: escapes/parse/reducer/recorder/player (fake timers) RED→GREEN, Macros tab + editor + recording banner, Ctrl+Alt+1..9 (AltGr characters still reach the shell), Escape stops a running macro; vitest 341, cargo 127. Parent Xvfb smoke: Ctrl+Shift+R shows the red warning banner, stop asks for a name, macros.json saved 0600 in escaped form, Macros tab play re-sends the command. Not exercised in the GUI: hotkeys and waitFor (covered by unit tests).
 
 ## Log
 

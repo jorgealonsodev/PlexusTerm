@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
+import { MacroEditDialog } from "./features/macros/MacroEditDialog";
+import { MacrosPanel } from "./features/macros/MacrosPanel";
+import { hotkeyLabel, recordedSteps, recorderReduce, type Macro, type Step } from "./features/macros/macros";
+import { createTargetRegistry, playMacro, type MacroRun, type MacroTarget } from "./features/macros/player";
+import { useMacros } from "./features/macros/useMacros";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneGrid } from "./features/panes/PaneGrid";
@@ -49,7 +55,17 @@ type Modal =
   | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | { kind: "settings" }
+  | { kind: "editMacro"; macro: Macro; isNew: boolean }
+  /** A recording just stopped: name it or discard it (S16.2). */
+  | { kind: "nameMacro"; steps: Step[] }
   | null;
+
+/** The macro playing now and its progress (S16.3). */
+interface RunningMacro {
+  name: string;
+  step: number;
+  total: number;
+}
 
 /** What a terminal pane reported about its backend session, plus its multi-execution exclusion. */
 interface PaneMeta {
@@ -109,6 +125,14 @@ export default function App() {
   const [writers] = useState(createWriterRegistry);
   /** Non-blocking message, e.g. a saved password the keyring refused to delete. */
   const [notice, setNotice] = useState<string | null>(null);
+  const macros = useMacros();
+  const [macroTargets] = useState(() => createTargetRegistry<MacroTarget>());
+  // Refs too: keystrokes can arrive before the next render.
+  const [recording, setRecording] = useState(false);
+  const recordingRef = useRef(false);
+  const recorded = useRef<string[]>([]);
+  const [running, setRunning] = useState<RunningMacro | null>(null);
+  const runRef = useRef<MacroRun | null>(null);
 
   const updatePane = useCallback((paneId: string, patch: Partial<PaneMeta>) => {
     setPaneMeta((prev) => {
@@ -155,6 +179,78 @@ export default function App() {
     if (!multiExec || !activeTab || activeTab.focusedPane !== paneId) return;
     writers.write(broadcastTargets(allPanes, paneId), data);
   };
+
+  /** Records what is typed in the focused pane of the active tab while recording (S16.2). */
+  const record = (paneId: string, data: string) => {
+    if (recordingRef.current && activeTab?.focusedPane === paneId) recorded.current = recorderReduce(recorded.current, data);
+  };
+
+  const toggleRecording = () => {
+    if (!recordingRef.current) {
+      if (macros.status.state !== "ready") return setNotice("Macros cannot be saved: the macros file could not be read.");
+      recorded.current = [];
+      recordingRef.current = true;
+      setRecording(true);
+      return;
+    }
+    recordingRef.current = false;
+    setRecording(false);
+    const steps = recordedSteps(recorded.current);
+    recorded.current = [];
+    if (steps.length === 0) setNotice("Nothing was recorded.");
+    else setModal({ kind: "nameMacro", steps });
+  };
+
+  /** Plays a macro into the focused pane of the active tab, through its normal input path (S16.3). */
+  const startMacro = (macro: Macro) => {
+    if (runRef.current) return setNotice("A macro is already running.");
+    const paneId = activeTab?.focusedPane;
+    const target = paneId ? macroTargets.get(paneId) : undefined;
+    if (!target) return setNotice("No terminal to play the macro in.");
+    setRunning({ name: macro.name, step: 0, total: macro.steps.length });
+    let current: MacroRun | null = null;
+    const run = playMacro(macro, target, {
+      onProgress: (step, total) => {
+        // The first step starts before playMacro returns.
+        if (current === null || runRef.current === current) setRunning({ name: macro.name, step, total });
+      },
+    });
+    current = run;
+    runRef.current = run;
+    void run.done.then((result) => {
+      if (runRef.current === run) {
+        runRef.current = null;
+        setRunning(null);
+      }
+      if (result.status === "failed") target.notice(result.message);
+    });
+  };
+
+  const stopMacro = () => runRef.current?.stop();
+
+  const playHotkey = (hotkey: number) => {
+    const macro = macros.list.macros.find((m) => m.hotkey === hotkey);
+    if (macro) startMacro(macro);
+    else setNotice(`No macro uses ${hotkeyLabel(hotkey)}.`);
+  };
+
+  // Reached from the window key listener without re-subscribing it on every render.
+  const macroKeys = useRef({ toggleRecording, playHotkey });
+  macroKeys.current = { toggleRecording, playHotkey };
+
+  // Escape stops a running macro; captured before the terminal sees it.
+  const isRunning = running !== null;
+  useEffect(() => {
+    if (!isRunning) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      runRef.current?.stop();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [isRunning]);
 
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
@@ -215,6 +311,10 @@ export default function App() {
           return setMultiExec((on) => !on);
         case "fontSize":
           return updateSettingsWith((s) => ({ fontSize: stepFontSize(s.fontSize, shortcut.step) }));
+        case "recordMacro":
+          return macroKeys.current.toggleRecording();
+        case "playMacro":
+          return macroKeys.current.playHotkey(shortcut.hotkey);
         // Handled by the focused terminal itself.
         case "find":
         case "copy":
@@ -266,6 +366,14 @@ export default function App() {
           Multi-exec
         </button>
         <button
+          className={`btn${recording ? " btn--pressed btn--recording" : ""}`}
+          aria-pressed={recording}
+          title="Ctrl+Shift+R"
+          onClick={toggleRecording}
+        >
+          Record macro
+        </button>
+        <button
           className="btn toolbar__settings"
           aria-label="Settings"
           title="Settings"
@@ -281,6 +389,10 @@ export default function App() {
             Dismiss
           </button>
         </div>
+      )}
+      {recording && <RecordingIndicator onStop={toggleRecording} />}
+      {running && running.total > 0 && (
+        <MacroProgress name={running.name} step={running.step} total={running.total} onStop={stopMacro} />
       )}
       {multiExec && (
         <MultiExecBanner count={multiExecGroup(allPanes).length} onTurnOff={() => setMultiExec(false)} />
@@ -323,6 +435,23 @@ export default function App() {
               }}
               onStartAll={() => void launcher.startAll(tunnels.list.tunnels)}
               onStopAll={() => void launcher.stopAll(tunnels.list.tunnels)}
+            />
+          }
+          macros={
+            <MacrosPanel
+              list={macros.list}
+              status={macros.status}
+              saveError={macros.saveError}
+              canPlay={activeTab !== null && running === null}
+              onPlay={startMacro}
+              onNew={() =>
+                setModal({ kind: "editMacro", macro: { id: crypto.randomUUID(), name: "", steps: [] }, isNew: true })
+              }
+              onEdit={(macro) => setModal({ kind: "editMacro", macro, isNew: false })}
+              onDuplicate={(macro) => macros.dispatch({ type: "duplicate", id: macro.id, newId: crypto.randomUUID() })}
+              onDelete={(macro) => {
+                if (window.confirm(`Delete macro "${macro.name}"?`)) macros.dispatch({ type: "delete", id: macro.id });
+              }}
             />
           }
           sessions={
@@ -381,8 +510,12 @@ export default function App() {
                               // A new SSH connection brings its file browser to the front.
                               if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
                             }}
-                            onInput={(data) => broadcast(paneId, data)}
+                            onInput={(data) => {
+                              broadcast(paneId, data);
+                              record(paneId, data);
+                            }}
                             registerWriter={(write) => writers.register(paneId, write)}
+                            registerMacroTarget={(target) => macroTargets.register(paneId, target)}
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
@@ -482,6 +615,28 @@ export default function App() {
           onCancel={() => setModal(null)}
           onSave={(next) => {
             terminalSettings.update(next);
+            setModal(null);
+          }}
+        />
+      )}
+      {modal?.kind === "editMacro" && (
+        <MacroEditDialog
+          macro={modal.macro}
+          isNew={modal.isNew}
+          macros={macros.list.macros}
+          onCancel={() => setModal(null)}
+          onSave={(macro) => {
+            macros.dispatch({ type: "save", macro });
+            setModal(null);
+          }}
+        />
+      )}
+      {modal?.kind === "nameMacro" && (
+        <NameMacroDialog
+          stepCount={modal.steps.length}
+          onDiscard={() => setModal(null)}
+          onSave={(name) => {
+            macros.dispatch({ type: "save", macro: { id: crypto.randomUUID(), name, steps: modal.steps } });
             setModal(null);
           }}
         />
