@@ -65,6 +65,12 @@ body,
   cursor: pointer;
 }
 
+/* Radios and checkboxes follow the colour scheme. */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
 /* Example texts must not look like typed values. */
 input::placeholder,
 textarea::placeholder {
