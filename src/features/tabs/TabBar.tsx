@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
 import type { Tab } from "./tabs";
 
@@ -29,25 +30,26 @@ function hostOf(tab: Tab): string | null {
 
 export function TabBar(props: TabBarProps) {
   const { tabs, activeKey, logging, onActivate, onClose, onNew } = props;
+  const t = useT();
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const menuIndex = menu ? tabs.findIndex((t) => t.key === menu.key) : -1;
   const menuItems = (key: string) => {
     const host = hostOf(tabs.find((t) => t.key === key)!);
     return [
-      props.onCopyHost && host && { label: `Copy host address (${host})`, onSelect: () => props.onCopyHost!(host) },
-      props.onDuplicate && { label: "Duplicate tab", onSelect: () => props.onDuplicate!(key) },
-      { label: "Close tab", onSelect: () => onClose(key) },
+      props.onCopyHost && host && { label: t("app.tabs.copyHost", { host }), onSelect: () => props.onCopyHost!(host) },
+      props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
+      { label: t("app.tabs.close"), onSelect: () => onClose(key) },
       props.onCloseOthers && {
-        label: "Close other tabs",
+        label: t("app.tabs.closeOthers"),
         onSelect: () => props.onCloseOthers!(key),
         disabled: tabs.length < 2,
       },
       props.onCloseRight && {
-        label: "Close tabs to the right",
+        label: t("app.tabs.closeRight"),
         onSelect: () => props.onCloseRight!(key),
         disabled: menuIndex === tabs.length - 1,
       },
-      props.onCloseAll && { label: "Close all tabs", onSelect: props.onCloseAll },
+      props.onCloseAll && { label: t("app.tabs.closeAll"), onSelect: props.onCloseAll },
     ].filter((item) => !!item);
   };
   return (
@@ -69,14 +71,14 @@ export function TabBar(props: TabBarProps) {
           }}
         >
           {logging?.has(tab.key) && (
-            <span className="tab__log" role="img" aria-label="Logging to file" title="Logging to file">
+            <span className="tab__log" role="img" aria-label={t("app.tabs.logging")} title={t("app.tabs.logging")}>
               ●
             </span>
           )}
           <span className="tab__title">{tab.title}</span>
           <button
             className="tab__close"
-            aria-label={`Close ${tab.title}`}
+            aria-label={t("app.tabs.closeNamed", { title: tab.title })}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onClose(tab.key)}
           >
@@ -84,7 +86,7 @@ export function TabBar(props: TabBarProps) {
           </button>
         </div>
       ))}
-      <button className="tabbar__new" aria-label="New local terminal" onClick={onNew}>
+      <button className="tabbar__new" aria-label={t("app.tabs.newLocal")} onClick={onNew}>
         +
       </button>
       {menu && menuIndex !== -1 && (

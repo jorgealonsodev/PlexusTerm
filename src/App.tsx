@@ -160,16 +160,17 @@ const draftTunnel = (): Tunnel => ({
 /** Toolbar menu for the less common session types (S17.3). */
 function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => void }) {
   // Mosh has no Windows client (S18.2).
+  const t = useT();
   const offerMosh = usePlatform() !== "windows";
   const items = [{ label: "Telnet…", onSelect: onTelnet }];
   if (offerMosh) items.push({ label: "Mosh…", onSelect: onMosh });
   return (
     <DropdownMenu
-      title="More"
+      title={t("app.toolbar.more")}
       items={items}
       button={
         <>
-          <span className="btn__label">More</span>
+          <span className="btn__label">{t("app.toolbar.more")}</span>
           <ChevronDown size={14} />
         </>
       }
@@ -186,16 +187,17 @@ function ToolsMenu(props: {
   onWakeOnLan: () => void;
   onToggleMonitor: () => void;
 }) {
+  const t = useT();
   return (
     <DropdownMenu
-      title="Tools"
+      title={t("app.toolbar.tools")}
       items={[
-        { label: "SSH key generator…", icon: <KeySquare size={15} />, onSelect: props.onKeyGen },
-        { label: "Port scanner…", icon: <ScanSearch size={15} />, onSelect: props.onPortScan },
-        { label: "Network scanner…", icon: <Network size={15} />, onSelect: props.onNetworkScan },
-        { label: "Wake On LAN…", icon: <Power size={15} />, onSelect: props.onWakeOnLan },
+        { label: t("app.tools.keyGenerator"), icon: <KeySquare size={15} />, onSelect: props.onKeyGen },
+        { label: t("app.tools.portScanner"), icon: <ScanSearch size={15} />, onSelect: props.onPortScan },
+        { label: t("app.tools.networkScanner"), icon: <Network size={15} />, onSelect: props.onNetworkScan },
+        { label: t("app.tools.wakeOnLan"), icon: <Power size={15} />, onSelect: props.onWakeOnLan },
         {
-          label: props.monitorOn ? "Hide remote monitor" : "Show remote monitor",
+          label: props.monitorOn ? t("app.tools.hideMonitor") : t("app.tools.showMonitor"),
           icon: <Activity size={15} />,
           onSelect: props.onToggleMonitor,
         },
@@ -203,7 +205,7 @@ function ToolsMenu(props: {
       button={
         <>
           <Wrench size={16} />
-          <span className="btn__label">Tools</span>
+          <span className="btn__label">{t("app.toolbar.tools")}</span>
         </>
       }
     />
@@ -224,7 +226,7 @@ function AppContent() {
   // The interface language (S3): the chosen one, or the system's, English when unsupported.
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
-  useT();
+  const t = useT();
   const sessions = useSessionLibrary();
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
@@ -317,7 +319,7 @@ function AppContent() {
 
   const toggleRecording = () => {
     if (!recordingRef.current) {
-      if (macros.status.state !== "ready") return setNotice("Macros cannot be saved: the macros file could not be read.");
+      if (macros.status.state !== "ready") return setNotice(t("app.notice.macrosUnreadable"));
       recorded.current = [];
       recordingRef.current = true;
       setRecording(true);
@@ -327,16 +329,16 @@ function AppContent() {
     setRecording(false);
     const steps = recordedSteps(recorded.current);
     recorded.current = [];
-    if (steps.length === 0) setNotice("Nothing was recorded.");
+    if (steps.length === 0) setNotice(t("app.notice.nothingRecorded"));
     else setModal({ kind: "nameMacro", steps });
   };
 
   /** Plays a macro into the focused pane of the active tab, through its normal input path (S16.3). */
   const startMacro = (macro: Macro) => {
-    if (runRef.current) return setNotice("A macro is already running.");
+    if (runRef.current) return setNotice(t("app.notice.macroRunning"));
     const paneId = activeTab?.focusedPane;
     const target = paneId ? macroTargets.get(paneId) : undefined;
-    if (!target) return setNotice("No terminal to play the macro in.");
+    if (!target) return setNotice(t("app.notice.noMacroTarget"));
     setRunning({ name: macro.name, step: 0, total: macro.steps.length });
     let current: MacroRun | null = null;
     const run = playMacro(macro, target, {
@@ -361,7 +363,7 @@ function AppContent() {
   const playHotkey = (hotkey: number) => {
     const macro = macros.list.macros.find((m) => m.hotkey === hotkey);
     if (macro) startMacro(macro);
-    else setNotice(`No macro uses ${hotkeyLabel(hotkey)}.`);
+    else setNotice(t("app.notice.noMacroForHotkey", { hotkey: hotkeyLabel(hotkey) }));
   };
 
   // Reached from the window key listener without re-subscribing it on every render.
@@ -408,8 +410,8 @@ function AppContent() {
     if (!ssh || !isSshSession(ssh)) {
       return setNotice(
         name
-          ? `The SSH session of "${name}" no longer exists; edit it to choose another one.`
-          : "That SSH session no longer exists.",
+          ? t("app.notice.moshSessionGone", { name })
+          : t("app.notice.sshSessionGone"),
       );
     }
     const login = await sshLoginFor(ssh);
@@ -435,15 +437,15 @@ function AppContent() {
     const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
     const users = jumpUsers(sessions.library, ids).map((s) => `"${s.name}"`);
     const note = users.length
-      ? `\n\nUsed as a jump host by ${users.join(", ")}; it will be removed from their jump hosts.`
+      ? `\n\n${t("app.confirm.jumpHostNote", { users: users.join(", ") })}`
       : "";
-    if (await dialogs.confirm({ message: question + note, confirmLabel: "Delete", danger: true })) deleteSessions(action);
+    if (await dialogs.confirm({ message: question + note, confirmLabel: t("common.delete"), danger: true })) deleteSessions(action);
   };
 
   const newFolder = async (parent: string) => {
     const name = await dialogs.prompt({
-      message: parent ? `New folder inside "${parent}"` : "New folder",
-      confirmLabel: "Create",
+      message: parent ? t("app.confirm.newFolderInside", { parent }) : t("app.confirm.newFolder"),
+      confirmLabel: t("app.confirm.create"),
     });
     if (name?.trim()) sessions.dispatch({ type: "addFolder", path: parent ? `${parent}/${name}` : name });
   };
@@ -486,10 +488,10 @@ function AppContent() {
    * back to the chat's terminal.
    */
   const openAssistant = () => {
-    if (!activeTab) return setNotice("Open a terminal to chat with the AI.");
+    if (!activeTab) return setNotice(t("app.notice.noTerminalForAi"));
     const next = chatAction(activeTab);
     if (next.kind === "full") {
-      return setNotice(`This tab already has ${MAX_PANES} panes; close one to open the AI chat.`);
+      return setNotice(t("app.notice.tabFull", { max: MAX_PANES }));
     }
     if (next.kind === "terminal") {
       dispatch({ type: "focusPane", key: activeTab.key, paneId: next.paneId });
@@ -545,7 +547,7 @@ function AppContent() {
   /** Runs an AI command in the chat's terminal (Run): sent with Enter, then the terminal gets the focus. */
   const runFromChat = (tab: Tab, link: ChatLink, command: string) => {
     if (!assistTargets.get(link.terminalPaneId)?.run(command)) {
-      setNotice("The command was not run: the terminal is at a password prompt or a full-screen program.");
+      setNotice(t("app.notice.commandNotRun"));
       return;
     }
     dispatch({ type: "focusPane", key: tab.key, paneId: link.terminalPaneId });
@@ -611,8 +613,8 @@ function AppContent() {
         <button
           type="button"
           className="brand-button"
-          aria-label="AI assistant"
-          title={`AI assistant (${settings.assistantShortcut})`}
+          aria-label={t("app.toolbar.aiAssistant")}
+          title={t("app.toolbar.aiAssistantTitle", { shortcut: settings.assistantShortcut })}
           onClick={toggleAssistantFromLogo}
         >
           <img
@@ -626,23 +628,25 @@ function AppContent() {
         <button
           type="button"
           className="btn btn--icon toolbar__sidebar"
-          aria-label={settings.sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
-          title={`${settings.sidebarCollapsed ? "Show" : "Hide"} sidebar (Ctrl+Shift+B)`}
+          aria-label={settings.sidebarCollapsed ? t("app.toolbar.showSidebar") : t("app.toolbar.hideSidebar")}
+          title={t(settings.sidebarCollapsed ? "app.toolbar.showSidebarTitle" : "app.toolbar.hideSidebarTitle", {
+            shortcut: "Ctrl+Shift+B",
+          })}
           onClick={() => updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))}
         >
           {settings.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
-        <button className="btn btn--icon" title="Terminal (Ctrl+Shift+T)" onClick={openLocal}>
+        <button className="btn btn--icon" title={t("app.toolbar.terminalTitle", { shortcut: "Ctrl+Shift+T" })} onClick={openLocal}>
           <SquareTerminal size={16} />
-          <span className="btn__label">Terminal</span>
+          <span className="btn__label">{t("app.toolbar.terminal")}</span>
         </button>
         <button className="btn btn--icon" title="SSH (Ctrl+Shift+S)" onClick={() => setModal({ kind: "quickConnect" })}>
           <KeyRound size={16} />
           <span className="btn__label">SSH</span>
         </button>
-        <button className="btn btn--icon" title="Serial" onClick={() => setModal({ kind: "serial" })}>
+        <button className="btn btn--icon" title={t("app.toolbar.serial")} onClick={() => setModal({ kind: "serial" })}>
           <Usb size={16} />
-          <span className="btn__label">Serial</span>
+          <span className="btn__label">{t("app.toolbar.serial")}</span>
         </button>
         <MoreMenu
           onTelnet={() => setModal({ kind: "telnet" })}
@@ -656,36 +660,36 @@ function AppContent() {
           onWakeOnLan={() => setModal({ kind: "wakeOnLan" })}
           onToggleMonitor={() => terminalSettings.update({ remoteMonitor: !terminalSettings.settings.remoteMonitor })}
         />
-        <button className="btn btn--icon" disabled={!canSplit} title="Split right (Ctrl+Shift+D)" onClick={() => split("row")}>
+        <button className="btn btn--icon" disabled={!canSplit} title={t("app.toolbar.splitRightTitle", { shortcut: "Ctrl+Shift+D" })} onClick={() => split("row")}>
           <Columns2 size={16} />
-          <span className="btn__label">Split right</span>
+          <span className="btn__label">{t("app.toolbar.splitRight")}</span>
         </button>
-        <button className="btn btn--icon" disabled={!canSplit} title="Split down (Ctrl+Shift+E)" onClick={() => split("column")}>
+        <button className="btn btn--icon" disabled={!canSplit} title={t("app.toolbar.splitDownTitle", { shortcut: "Ctrl+Shift+E" })} onClick={() => split("column")}>
           <Rows2 size={16} />
-          <span className="btn__label">Split down</span>
+          <span className="btn__label">{t("app.toolbar.splitDown")}</span>
         </button>
         <button
           className={`btn btn--icon${multiExec ? " btn--pressed" : ""}`}
           aria-pressed={multiExec}
-          title="Multi-exec (Ctrl+Shift+M)"
+          title={t("app.toolbar.multiExecTitle", { shortcut: "Ctrl+Shift+M" })}
           onClick={() => setMultiExec((on) => !on)}
         >
           <Radio size={16} />
-          <span className="btn__label">Multi-exec</span>
+          <span className="btn__label">{t("app.toolbar.multiExec")}</span>
         </button>
         <button
           className={`btn btn--icon${recording ? " btn--pressed btn--recording" : ""}`}
           aria-pressed={recording}
-          title="Record macro (Ctrl+Shift+R)"
+          title={t("app.toolbar.recordMacroTitle", { shortcut: "Ctrl+Shift+R" })}
           onClick={toggleRecording}
         >
           <Circle size={16} />
-          <span className="btn__label">Record macro</span>
+          <span className="btn__label">{t("app.toolbar.recordMacro")}</span>
         </button>
         <button
           className="btn btn--icon toolbar__settings"
-          aria-label="Settings"
-          title="Settings"
+          aria-label={t("app.toolbar.settings")}
+          title={t("app.toolbar.settings")}
           onClick={() => setModal({ kind: "settings" })}
         >
           <SettingsIcon size={16} />
@@ -696,7 +700,7 @@ function AppContent() {
         <div className="notice" role="status">
           <span>{notice}</span>
           <button className="btn" onClick={() => setNotice(null)}>
-            Dismiss
+            {t("app.notice.dismiss")}
           </button>
         </div>
       )}
@@ -743,7 +747,7 @@ function AppContent() {
                 onNew={() => setModal({ kind: "editTunnel", tunnel: draftTunnel(), isNew: true })}
                 onEdit={(tunnel) => setModal({ kind: "editTunnel", tunnel, isNew: false })}
                 onDelete={async (tunnel) => {
-                  if (await dialogs.confirm({ message: `Delete tunnel "${tunnel.name}"?`, confirmLabel: "Delete", danger: true })) {
+                  if (await dialogs.confirm({ message: t("app.confirm.deleteTunnel", { name: tunnel.name }), confirmLabel: t("common.delete"), danger: true })) {
                     void launcher.stop(tunnel.id);
                     tunnels.dispatch({ type: "delete", id: tunnel.id });
                   }
@@ -765,7 +769,7 @@ function AppContent() {
                 onEdit={(macro) => setModal({ kind: "editMacro", macro, isNew: false })}
                 onDuplicate={(macro) => macros.dispatch({ type: "duplicate", id: macro.id, newId: crypto.randomUUID() })}
                 onDelete={async (macro) => {
-                  if (await dialogs.confirm({ message: `Delete macro "${macro.name}"?`, confirmLabel: "Delete", danger: true })) {
+                  if (await dialogs.confirm({ message: t("app.confirm.deleteMacro", { name: macro.name }), confirmLabel: t("common.delete"), danger: true })) {
                     macros.dispatch({ type: "delete", id: macro.id });
                   }
                 }}
@@ -780,7 +784,7 @@ function AppContent() {
                 onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
                 onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
                 onDelete={(session) =>
-                  void confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
+                  void confirmDelete(t("app.confirm.deleteSession", { name: session.name }), { type: "deleteSession", id: session.id })
                 }
                 onNewFolder={(parent) => void newFolder(parent)}
                 onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
@@ -788,7 +792,7 @@ function AppContent() {
                   sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
                 }
                 onDeleteFolder={(path) =>
-                  void confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
+                  void confirmDelete(t("app.confirm.deleteFolder", { path }), { type: "deleteFolder", path })
                 }
               />
             }
@@ -810,7 +814,7 @@ function AppContent() {
             onCloseRight={(key) => dispatch({ type: "closeRight", key })}
             onCloseAll={() => dispatch({ type: "closeAll" })}
             onCopyHost={(host) =>
-              void writeText(host).catch(() => setNotice("Could not copy to the clipboard."))
+              void writeText(host).catch(() => setNotice(t("app.notice.copyFailed")))
             }
           />
           <main className="workspace">
@@ -886,8 +890,8 @@ function AppContent() {
                             <button
                               className={`pane__exclude${excluded ? " pane__exclude--on" : ""}`}
                               aria-pressed={excluded}
-                              aria-label="Exclude from multi-execution"
-                              title={excluded ? "Excluded from multi-execution" : "Exclude from multi-execution"}
+                              aria-label={t("app.pane.excludeFromMultiExec")}
+                              title={excluded ? t("app.pane.excludedFromMultiExec") : t("app.pane.excludeFromMultiExec")}
                               // Keep the keyboard focus where it is.
                               onMouseDown={(e) => {
                                 e.preventDefault();
@@ -895,7 +899,7 @@ function AppContent() {
                               }}
                               onClick={() => updatePane(paneId, { excluded: !excluded })}
                             >
-                              {excluded ? "excluded" : "exclude"}
+                              {excluded ? t("app.pane.excluded") : t("app.pane.exclude")}
                             </button>
                           )}
                           </div>
@@ -911,13 +915,13 @@ function AppContent() {
             })}
             {state.tabs.length === 0 && (
               <div className="empty">
-                <p>No open sessions.</p>
+                <p>{t("app.empty.noSessions")}</p>
                 <div className="empty__actions">
                   <button className="btn" onClick={openLocal}>
-                    Start local terminal
+                    {t("app.empty.startLocal")}
                   </button>
                   <button className="btn" onClick={() => setModal({ kind: "quickConnect" })}>
-                    New SSH session
+                    {t("app.empty.newSsh")}
                   </button>
                 </div>
               </div>
