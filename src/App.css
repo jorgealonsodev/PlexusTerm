@@ -1462,9 +1462,9 @@ textarea::placeholder {
   flex: none;
   align-items: center;
   gap: 8px;
-  min-height: 36px;
+  min-height: 31px;
   /* Room for the pane's corner ×, which sits over the top-right corner. */
-  padding: 6px 60px 6px 10px;
+  padding: 5px 60px 5px 10px;
   border-bottom: 1px solid var(--border);
 }
 
