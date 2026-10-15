@@ -1,0 +1,102 @@
+import type { settings as en } from "../en/settings";
+import type { Messages } from "../types";
+
+export const settings: Messages<typeof en> = {
+  language: {
+    label: "Idioma",
+    system: "Sistema",
+  },
+  dialog: {
+    title: "Ajustes",
+    sections: "Secciones de ajustes",
+  },
+  sections: {
+    appearance: "Apariencia",
+    terminal: "Terminal",
+    ssh: "SSH",
+    files: "Archivos",
+    ai: "IA",
+    about: "Acerca de",
+  },
+  appearance: {
+    colourScheme: "Esquema de colores",
+    dark: "Oscuro",
+    light: "Claro",
+    preview: "Vista previa de {name}",
+    fontFamily: "Fuente",
+    fontSize: "Tamaño de fuente",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0 cambian el tamaño de fuente. Los temas de prompt que dibujan iconos (Powerlevel10k, agnoster, Starship) necesitan una Nerd Font como fuente.",
+    hideSidebar: "Ocultar por completo la barra lateral al plegarla",
+    sidebarHelp:
+      "Ctrl+Shift+B o el botón de la barra de herramientas pliega la barra lateral a los iconos de sus pestañas, o la oculta por completo con esta opción.",
+  },
+  terminal: {
+    copyOnSelect: "Copiar al seleccionar",
+    rightClickPastes: "El clic derecho pega",
+    confirmMultilinePaste: "Confirmar al pegar varias líneas",
+    rightClickHelp: "Cuando el clic derecho pega, Ctrl+clic derecho abre el menú del terminal.",
+  },
+  ssh: {
+    remoteMonitor: "Barra de monitor remoto (pestañas SSH)",
+    remoteMonitorHelp:
+      "Una barra bajo cada panel SSH con la CPU, la memoria, el disco, la red y los usuarios del servidor, leídos por la misma conexión. También en Herramientas.",
+  },
+  files: {
+    textEditor: "Editor de texto",
+    systemDefault: "Predeterminado del sistema",
+    useSystemDefault: "Usar el predeterminado del sistema",
+    chooseEditor: "Elige un editor de texto",
+    textEditorHelp:
+      "El editor de texto abre archivos desde el explorador SFTP: un programa o un comando como {command}; déjalo vacío para usar el predeterminado del sistema.",
+  },
+  ai: {
+    inlineSuggestions: "Sugerencias en línea",
+    inlineSuggestionsHelp:
+      "Una sugerencia en gris del resto del comando mientras escribes. Flecha derecha o End la acepta; Ctrl+Flecha derecha acepta una palabra.",
+    commandHistory: "Historial de comandos",
+    clearHistory: "Borrar historial",
+    historyCleared: "Historial borrado.",
+    historyClearFailed: "No se pudo borrar el historial: {error}",
+    historyHelp:
+      "Los comandos que ejecutas se guardan en este equipo, por host, para volver a sugerirlos. Nunca se registran las líneas que empiezan con un espacio, las contraseñas ni los programas a pantalla completa.",
+    aiSuggestions: "Sugerencias de IA",
+    aiSuggestionsHelp:
+      "Cuando el historial no tiene nada, se pregunta al proveedor de IA. Solo se envían la línea escrita, la carpeta actual y los últimos comandos del historial, nunca la salida del terminal.",
+    provider: "Proveedor",
+    openCodeGoNote:
+      "OpenCode Go está pensado para agentes de programación y supervisa el tráfico; las sugerencias de IA en línea envían muchas peticiones cortas.",
+    baseUrl: "URL base",
+    model: "Modelo",
+    historyContext: "Comandos del historial enviados como contexto",
+    chooseModel: "Elige un modelo",
+    modelOption: "{name} ({id})",
+    modelOptionUnsupported: "{name} ({id}): aún no compatible",
+    refreshModels: "Actualizar modelos",
+    loadingModels: "Cargando los modelos…",
+    modelsError: "{error} Escribe un id de modelo de {url}.",
+    apiKey: "Clave de API",
+    keyChecking: "Comprobando el llavero…",
+    keySaved: "Hay una clave guardada",
+    keyNone: "No hay ninguna clave guardada",
+    keyUnavailable: "Llavero no disponible",
+    keyReplacePlaceholder: "Escribe una clave nueva para reemplazarla",
+    keyPastePlaceholder: "Pega la clave",
+    saveKey: "Guardar clave",
+    removeKey: "Quitar clave",
+    saveKeyFailed: "No se pudo guardar la clave: {error}",
+    removeKeyFailed: "No se pudo quitar la clave: {error}",
+    assistantShortcut: "Atajo del asistente",
+    shortcutInvalid: "Usa Ctrl, Alt o Meta con una tecla.",
+    shortcutTaken: "PlexusTerm ya usa {shortcut}.",
+    shortcutCapturing: "Pulsa la nueva combinación de teclas, o Esc para conservarla.",
+    shortcutIdle: "Haz clic en el campo para cambiarlo.",
+  },
+  about: {
+    version: "Versión {version}",
+    description:
+      "Un gestor de terminales y sesiones remotas para Linux y Windows: shells locales, SSH, SFTP, túneles, serie, Telnet y Mosh en una sola ventana.",
+    credits: "Esquemas de colores de iTerm2-Color-Schemes (MIT) y sus autores; consulta los {notices}.",
+    notices: "avisos de terceros",
+  },
+};

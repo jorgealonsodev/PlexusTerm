@@ -1,0 +1,52 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "Buscar en el terminal",
+    placeholder: "Buscar",
+    noMatches: "Sin coincidencias",
+    matchCase: "Coincidir mayúsculas y minúsculas",
+    regexTitle: "Expresión regular",
+    regex: "Regex",
+    previous: "Coincidencia anterior",
+    next: "Coincidencia siguiente",
+    close: "Cerrar búsqueda",
+  },
+  paste: {
+    title: {
+      one: "¿Pegar {count} línea?",
+      many: "¿Pegar {count} líneas?",
+      other: "¿Pegar {count} líneas?",
+    },
+    warning: "Cada línea puede ejecutarse como un comando.",
+    dontAsk: "No volver a preguntar",
+    paste: "Pegar",
+  },
+  menu: {
+    paste: "Pegar",
+    selectAll: "Seleccionar todo",
+    clear: "Borrar historial de desplazamiento",
+    find: "Buscar…",
+    save: "Guardar salida en archivo…",
+    stopLogging: "Detener registro",
+    log: "Registrar en archivo…",
+  },
+  view: {
+    textFiles: "Texto",
+    connecting: "Conectando con {target}...",
+    connectingVia: "Conectando con {target} a través de {jumps}...",
+    startingMosh: "Iniciando mosh-server en {target} mediante SSH...",
+    startingMoshVia: "Iniciando mosh-server en {target} a través de {jumps} mediante SSH...",
+    opening: "Abriendo {target}...",
+    telnetUnencrypted: "Telnet no está cifrado.",
+    serialEnded: "Sesión finalizada. Cierra esta pestaña o vuelve a abrir el puerto.",
+    moshExited: "mosh-client terminó. Cierra esta pestaña o vuelve a abrir la sesión.",
+    moshExitedCode: "mosh-client terminó con el código {code}. Cierra esta pestaña o vuelve a abrir la sesión.",
+    clipboardError: "No se pudo leer el portapapeles.",
+    saveError: "No se pudo guardar la salida: {error}",
+    loggingStopped: "Registro detenido: {error}",
+    hostKeyCancelled: "Conexión cancelada: no se confió en la clave del host.",
+    cancelled: "Conexión cancelada.",
+  },
+};
