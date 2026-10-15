@@ -3,14 +3,16 @@ mod sftp;
 mod ssh;
 mod storage;
 mod terminal;
+mod tunnels;
 
 use pty::{PtyError, PtyManager, SpawnRequest};
 use sftp::SftpError;
-use ssh::{ConnectRequest, SshError, SshManager};
+use ssh::{ConnectRequest, SshError, SshManager, SshTarget};
 use storage::StorageError;
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use terminal::TerminalSink;
+use tunnels::{StatusUpdate, TunnelDefinition, TunnelError, TunnelManager};
 
 /// Events streamed to the frontend for one terminal session.
 #[derive(Clone, serde::Serialize)]
@@ -140,23 +142,59 @@ async fn sftp_rename(
 }
 
 const SESSIONS_FILE: &str = "sessions.json";
+const TUNNELS_FILE: &str = "tunnels.json";
 
-fn sessions_path(app: &AppHandle) -> Result<std::path::PathBuf, StorageError> {
+fn config_path(app: &AppHandle, file: &str) -> Result<std::path::PathBuf, StorageError> {
     let dir = app
         .path()
         .app_config_dir()
         .map_err(|err| StorageError::Io(err.to_string()))?;
-    Ok(dir.join(SESSIONS_FILE))
+    Ok(dir.join(file))
 }
 
 #[tauri::command]
 fn sessions_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&sessions_path(&app)?)
+    storage::load(&config_path(&app, SESSIONS_FILE)?)
 }
 
 #[tauri::command]
 fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
-    storage::save(&sessions_path(&app)?, &contents)
+    storage::save(&config_path(&app, SESSIONS_FILE)?, &contents)
+}
+
+#[tauri::command]
+fn tunnels_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    storage::load(&config_path(&app, TUNNELS_FILE)?)
+}
+
+#[tauri::command]
+fn tunnels_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, TUNNELS_FILE)?, &contents)
+}
+
+/// Event carrying every tunnel status change.
+const TUNNEL_STATUS_EVENT: &str = "tunnel-status";
+
+/// `target` is the tunnel's saved session, with the password filled in when it uses one.
+#[tauri::command]
+async fn tunnel_start(
+    tunnel: TunnelDefinition,
+    target: SshTarget,
+    trusted_fingerprint: Option<String>,
+    tunnels: State<'_, TunnelManager>,
+) -> Result<(), TunnelError> {
+    tunnels.start(tunnel, target, trusted_fingerprint).await
+}
+
+#[tauri::command]
+async fn tunnel_stop(id: String, tunnels: State<'_, TunnelManager>) -> Result<(), ()> {
+    tunnels.stop(&id).await;
+    Ok(())
+}
+
+#[tauri::command]
+fn tunnel_statuses(tunnels: State<'_, TunnelManager>) -> Vec<StatusUpdate> {
+    tunnels.statuses()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -166,6 +204,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(PtyManager::default())
         .manage(SshManager::for_current_user())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            app.manage(TunnelManager::for_current_user(move |update| {
+                let _ = handle.emit(TUNNEL_STATUS_EVENT, update);
+            }));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             pty_spawn,
             pty_write,
@@ -183,7 +228,12 @@ pub fn run() {
             sftp_remove,
             sftp_rename,
             sessions_load,
-            sessions_save
+            sessions_save,
+            tunnels_load,
+            tunnels_save,
+            tunnel_start,
+            tunnel_stop,
+            tunnel_statuses
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

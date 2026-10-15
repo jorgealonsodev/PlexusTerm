@@ -529,3 +529,39 @@ body,
 .sftp-row__date {
   width: 92px;
 }
+
+.tunnel {
+  padding-bottom: 4px;
+}
+
+.tunnel__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.tunnel__dot--starting {
+  background: #e5c07b;
+}
+
+.tunnel__dot--running {
+  background: #7fd88f;
+}
+
+.tunnel__dot--error {
+  background: #ef6b73;
+}
+
+.tunnel__detail {
+  padding: 0 6px 0 20px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.tunnel__detail.form-error {
+  color: #ef6b73;
+}

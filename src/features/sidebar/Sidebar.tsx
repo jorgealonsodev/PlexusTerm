@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type SidebarView = "sessions" | "sftp";
+export type SidebarView = "sessions" | "sftp" | "tunnels";
 
 interface SidebarProps {
   view: SidebarView;
@@ -9,11 +9,12 @@ interface SidebarProps {
   sftpAvailable: boolean;
   sessions: ReactNode;
   sftp: ReactNode;
+  tunnels: ReactNode;
 }
 
-/** Left sidebar with the "Sessions" and "SFTP" tabs; SFTP falls back to Sessions when unavailable. */
-export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp }: SidebarProps) {
-  const shown: SidebarView = view === "sftp" && sftpAvailable ? "sftp" : "sessions";
+/** Left sidebar with the "Sessions", "SFTP" and "Tunnels" tabs; SFTP falls back to Sessions when unavailable. */
+export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tunnels }: SidebarProps) {
+  const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
   const tab = (id: SidebarView, label: string, disabled = false) => (
     <button
       role="tab"
@@ -26,13 +27,15 @@ export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp }: S
       {label}
     </button>
   );
+  const panels: Record<SidebarView, ReactNode> = { sessions, sftp, tunnels };
   return (
-    <aside className={`sidebar${shown === "sftp" ? " sidebar--wide" : ""}`}>
+    <aside className={`sidebar${shown === "sessions" ? "" : " sidebar--wide"}`}>
       <div className="sidebar__tabs" role="tablist">
         {tab("sessions", "Sessions")}
         {tab("sftp", "SFTP", !sftpAvailable)}
+        {tab("tunnels", "Tunnels")}
       </div>
-      {shown === "sessions" ? sessions : sftp}
+      {panels[shown]}
     </aside>
   );
 }
