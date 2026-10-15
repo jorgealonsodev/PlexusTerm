@@ -31,7 +31,6 @@ interface ChatPaneProps {
   focused: boolean;
   /** Types a command into the linked terminal without Enter. */
   onInsert: (command: string) => void;
-  onClose: () => void;
   onOpenSettings: () => void;
 }
 
@@ -83,7 +82,7 @@ function CommandBox({ command, onInsert }: { command: string; onInsert: (command
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. Nothing is ever run.
  */
-export function ChatPane({ settings, context, selection, focused, onInsert, onClose, onOpenSettings }: ChatPaneProps) {
+export function ChatPane({ settings, context, selection, focused, onInsert, onOpenSettings }: ChatPaneProps) {
   const [sessionId] = useState(newAiSessionId);
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
@@ -185,15 +184,6 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onCl
           {PROVIDER_NAMES[provider]}
           {model && ` · ${model}`}
         </span>
-        <button
-          type="button"
-          className="chat__close"
-          aria-label="Close AI chat"
-          title="Close AI chat (Ctrl+Shift+W)"
-          onClick={onClose}
-        >
-          <X size={14} />
-        </button>
       </header>
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (

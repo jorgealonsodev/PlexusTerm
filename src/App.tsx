@@ -782,7 +782,6 @@ function AppContent() {
                                 selection={link.selection}
                                 focused={active && paneId === tab.focusedPane}
                                 onInsert={(command) => insertFromChat(tab, link, command)}
-                                onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
                               />
                               <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />

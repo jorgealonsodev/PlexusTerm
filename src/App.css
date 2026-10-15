@@ -1448,7 +1448,6 @@ textarea::placeholder {
   text-overflow: ellipsis;
 }
 
-.chat__close,
 .chat__chip-remove {
   display: inline-flex;
   align-items: center;
@@ -1461,7 +1460,6 @@ textarea::placeholder {
   cursor: pointer;
 }
 
-.chat__close:hover,
 .chat__chip-remove:hover {
   color: var(--text);
   background: var(--surface-2);
