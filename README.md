@@ -23,6 +23,14 @@ scripts/openssh-interop.sh         # SSH/SFTP against a real OpenSSH server (nee
 
 `scripts/openssh-interop.sh` starts a disposable Alpine container with `sshd` and `sftp-server` bound to `127.0.0.1`, runs the ignored interoperability tests (host-key trust flow, key login, shell, resize, SFTP round trip, local tunnel) and removes the container.
 
+## Packaging
+
+```bash
+pnpm tauri build    # produces .deb and AppImage under src-tauri/target/release/bundle/
+```
+
+Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`. The `.deb` depends only on `libwebkit2gtk-4.1-0` and `libgtk-3-0`; the AppImage bundles everything.
+
 ## SSH sessions
 
 Open **SSH** (or Ctrl+Shift+S) and enter a host; the field also accepts `user@host:port`.
