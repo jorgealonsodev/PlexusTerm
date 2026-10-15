@@ -75,6 +75,18 @@ Password sessions ask for the password when you connect. For saved sessions (ter
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
 - Key passphrases are never saved.
 
+### Jump hosts
+
+A saved SSH session can reach its server through up to 3 jump hosts (bastions), like `ssh -J`. In the session's edit dialog, **Jump hosts** lists other saved SSH sessions in the order they are crossed: add them from the list, move them up or down, or remove them. Quick-connect sessions have no jump hosts.
+
+- NexusTerm logs into the first jump host, opens a forwarded connection from it to the next host's address and port, logs into that one, and so on until the session's own server. Each host is reached from the previous one, so its address must make sense there (e.g. a private IP behind the bastion).
+- Every host is checked against `~/.ssh/known_hosts` with its own address and port; an unknown jump host shows the trust prompt naming it ("bastion — jump host 1 of 2").
+- Every host logs in with its own saved session's method (key, agent or password). Passwords saved in the keyring are used for each host; the others are asked one by one before connecting ("Password for bastion — jump host 1 of 2"), each prompt with its own **Save password in the system keyring** checkbox.
+- If a jump host has its own jump hosts, they are crossed first. A session cannot be its own jump host, and chains with cycles, repeated sessions, more than 3 hosts in total, or deleted or non-SSH jump sessions are refused with an error.
+- Errors name the host that failed, e.g. `via bastion (jump host 1): authentication failed`.
+- The SFTP browser of the tab uses the same connection, and SSH tunnels whose session has jump hosts go through them too. Closing the tab (or stopping the tunnel) closes every connection of the chain.
+- Deleting a session that other sessions use as a jump host asks for confirmation and removes it from their jump hosts.
+
 ### Import from another app
 
 **Import** in the Sessions panel reads a `sessions.ini` file (UTF-8, or the Windows-1252 code page another app usually writes) and shows a preview before anything is saved:

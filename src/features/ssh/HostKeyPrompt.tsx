@@ -4,17 +4,20 @@ interface HostKeyPromptProps {
   host: string;
   fingerprint: string;
   otherKnownKeys: string[];
+  /** Set when the host is a jump host, e.g. "bastion — jump host 1 of 2". */
+  via?: string;
   onTrust: () => void;
   onCancel: () => void;
 }
 
-export function HostKeyPrompt({ host, fingerprint, otherKnownKeys, onTrust, onCancel }: HostKeyPromptProps) {
+export function HostKeyPrompt({ host, fingerprint, otherKnownKeys, via, onTrust, onCancel }: HostKeyPromptProps) {
   return (
     <div className="overlay" role="alertdialog" aria-labelledby="hostkey-title">
       <div className="dialog">
-        <h2 id="hostkey-title">Unknown host</h2>
+        <h2 id="hostkey-title">{via ? "Unknown jump host" : "Unknown host"}</h2>
         <p>
-          The authenticity of <strong>{host}</strong> can't be established. Check that this
+          The authenticity of <strong>{host}</strong>
+          {via && ` (${via})`} can't be established. Check that this
           fingerprint matches the server before trusting it:
         </p>
         <code className="fingerprint">{fingerprint}</code>

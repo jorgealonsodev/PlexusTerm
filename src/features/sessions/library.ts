@@ -17,7 +17,12 @@ export interface SavedSession {
   port: number;
   username: string;
   auth: SavedAuth;
+  /** Saved SSH sessions to go through first, outermost first (S14); absent when none. */
+  jumpIds?: string[];
 }
+
+/** Most jump hosts a connection may go through. */
+export const MAX_JUMPS = 3;
 
 /** A saved serial console; no secrets are involved. */
 export interface SavedSerialSession extends SerialSettings {
@@ -93,7 +98,72 @@ function sanitizeSession(s: LibrarySession): LibrarySession {
     const { path, baud, dataBits, parity, stopBits, flow } = s;
     return { kind: "serial", ...base, path, baud, dataBits, parity, stopBits, flow };
   }
-  return { kind: "ssh", ...base, host: s.host, port: s.port, username: s.username, auth: sanitizeAuth(s.auth) };
+  const ssh: SavedSession = {
+    kind: "ssh",
+    ...base,
+    host: s.host,
+    port: s.port,
+    username: s.username,
+    auth: sanitizeAuth(s.auth),
+  };
+  return s.jumpIds?.length ? { ...ssh, jumpIds: [...s.jumpIds] } : ssh;
+}
+
+/** Drops `ids` from every chain of jump hosts (they are being deleted). */
+function withoutJumps(sessions: LibrarySession[], ids: Set<string>): LibrarySession[] {
+  return sessions.map((s) =>
+    isSshSession(s) && s.jumpIds?.some((id) => ids.has(id))
+      ? sanitizeSession({ ...s, jumpIds: s.jumpIds.filter((id) => !ids.has(id)) })
+      : s,
+  );
+}
+
+/** Removes the sessions `remove` matches, and removes them from every chain of jump hosts. */
+function removeSessions(sessions: LibrarySession[], remove: (s: LibrarySession) => boolean): LibrarySession[] {
+  const ids = new Set(sessions.filter(remove).map((s) => s.id));
+  return withoutJumps(
+    sessions.filter((s) => !ids.has(s.id)),
+    ids,
+  );
+}
+
+/** Saved SSH sessions, other than those in `ids`, that go through one of `ids` as a jump host. */
+export function jumpUsers(library: SessionLibrary, ids: string[]): SavedSession[] {
+  const deleted = new Set(ids);
+  return library.sessions
+    .filter(isSshSession)
+    .filter((s) => !deleted.has(s.id) && s.jumpIds?.some((id) => deleted.has(id)));
+}
+
+export type ChainResult = { ok: true; jumps: SavedSession[] } | { ok: false; error: string };
+
+/**
+ * The saved SSH sessions `session` goes through, outermost first. A jump host's own
+ * jump hosts come before it (like OpenSSH's ProxyJump). Missing or non-SSH jump
+ * sessions, cycles, repeats and more than {@link MAX_JUMPS} hops are errors.
+ */
+export function resolveChain(library: Pick<SessionLibrary, "sessions">, session: SavedSession): ChainResult {
+  const jumps: SavedSession[] = [];
+  const visit = (current: SavedSession, path: string[]): string | null => {
+    for (const id of current.jumpIds ?? []) {
+      if (id === current.id) return `"${current.name}" cannot be its own jump host.`;
+      if (path.includes(id)) return `The jump hosts of "${session.name}" form a cycle.`;
+      const jump = library.sessions.find((s) => s.id === id);
+      if (!jump) return `A jump host of "${current.name}" no longer exists; edit the session to choose another one.`;
+      if (!isSshSession(jump)) return `Jump host "${jump.name}" of "${current.name}" is not an SSH session.`;
+      const error = visit(jump, [...path, id]);
+      if (error) return error;
+      if (jumps.some((s) => s.id === id)) {
+        return `"${jump.name}" appears more than once in the jump hosts of "${session.name}".`;
+      }
+      jumps.push(jump);
+    }
+    return null;
+  };
+  const error = visit(session, [session.id]);
+  if (error) return { ok: false, error };
+  if (jumps.length > MAX_JUMPS) return { ok: false, error: `"${session.name}" goes through more than ${MAX_JUMPS} jump hosts.` };
+  return { ok: true, jumps };
 }
 
 export function libraryReducer(lib: SessionLibrary, action: LibraryAction): SessionLibrary {
@@ -115,7 +185,7 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
         lib,
       );
     case "deleteSession":
-      return { ...lib, sessions: lib.sessions.filter((s) => s.id !== action.id) };
+      return { ...lib, sessions: removeSessions(lib.sessions, (s) => s.id === action.id) };
     case "addFolder": {
       const path = normalizeFolder(action.path);
       return path ? { ...lib, folders: addFolders(lib.folders, path) } : lib;
@@ -126,7 +196,7 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
       return {
         ...lib,
         folders: lib.folders.filter((f) => !isInside(f, path)),
-        sessions: lib.sessions.filter((s) => !isInside(s.folder, path)),
+        sessions: removeSessions(lib.sessions, (s) => isInside(s.folder, path)),
       };
     }
   }
@@ -171,7 +241,8 @@ function isLibrarySession(v: unknown): v is LibrarySession {
     isString(s.host) &&
     isString(s.username) &&
     Number.isInteger(s.port) &&
-    isSavedAuth(s.auth)
+    isSavedAuth(s.auth) &&
+    (s.jumpIds === undefined || (Array.isArray(s.jumpIds) && s.jumpIds.every(isString)))
   );
 }
 

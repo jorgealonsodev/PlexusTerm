@@ -252,4 +252,84 @@ describe("useTunnelLauncher", () => {
     await act(() => launcher().start(db));
     expect(reportError).not.toHaveBeenCalled();
   });
+
+  describe("through jump hosts", () => {
+    const gw: SavedSession = { ...passwordSession, id: "g1", name: "gw", host: "10.0.0.9", username: "j" };
+    const target: SavedSession = { ...agentSession, jumpIds: ["g1"] };
+    const gwJump = { name: "gw", host: "10.0.0.9", port: 22, username: "j" };
+    const jumpsOf = (i: number) => (startArgs(i).target as { jumps?: unknown[] }).jumps;
+
+    it("asks for each jump host password, naming the hop, and starts the tunnel through it", async () => {
+      fakeBackend({ secret_exists: () => false });
+      const { launcher } = setup([gw, target], [db]);
+      let started!: Promise<void>;
+      act(() => {
+        started = launcher().start(db);
+      });
+      await screen.findByText("Password for gw — jump host 1 of 1");
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "jpw" } });
+      fireEvent.click(screen.getByText("Connect"));
+      await act(() => started);
+      expect(startCalls()).toHaveLength(1);
+      expect(startArgs(0).target.auth).toEqual({ method: "agent" });
+      expect(jumpsOf(0)).toEqual([{ ...gwJump, auth: { method: "password", password: "jpw" } }]);
+    });
+
+    it("asks to trust an unknown jump host and retries with that hop's fingerprint", async () => {
+      let attempts = 0;
+      fakeBackend({
+        secret_exists: () => true,
+        tunnel_start: () => {
+          attempts += 1;
+          if (attempts === 1) throw { kind: "hop", hop: 1, name: "gw", error: { ...unknownHost, host: "10.0.0.9" } };
+        },
+      });
+      const { launcher } = setup([gw, target], [db]);
+      let started!: Promise<void>;
+      act(() => {
+        started = launcher().start(db);
+      });
+      await screen.findByText("Unknown jump host");
+      fireEvent.click(screen.getByText("Trust and connect"));
+      await act(() => started);
+      expect(startCalls()).toHaveLength(2);
+      expect((startCalls()[1][1] as { trustedFingerprint: unknown }).trustedFingerprint).toBeNull();
+      expect(jumpsOf(1)).toEqual([
+        { ...gwJump, auth: { method: "storedPassword", sessionId: "g1" }, trustedFingerprint: "SHA256:abc" },
+      ]);
+    });
+
+    it("asks again for a jump host whose saved password was rejected", async () => {
+      let attempts = 0;
+      fakeBackend({
+        secret_exists: () => true,
+        tunnel_start: () => {
+          attempts += 1;
+          if (attempts === 1) throw { kind: "hop", hop: 1, name: "gw", error: { kind: "authFailed" } };
+        },
+      });
+      const { launcher } = setup([gw, target], [db]);
+      let started!: Promise<void>;
+      act(() => {
+        started = launcher().start(db);
+      });
+      fireEvent.change(await screen.findByLabelText("Password"), { target: { value: "new" } });
+      expect(screen.getByText("Password for gw — jump host 1 of 1")).toBeTruthy();
+      fireEvent.click(screen.getByText("Connect"));
+      await act(() => started);
+      expect(startCalls()).toHaveLength(2);
+      expect(jumpsOf(1)).toMatchObject([{ ...gwJump, auth: { method: "password", password: "new" } }]);
+      expect(startArgs(1).target.auth).toEqual({ method: "agent" });
+    });
+
+    it("reports a broken chain without starting", async () => {
+      const { launcher, reportError } = setup([{ ...target, jumpIds: ["gone"] }], [db]);
+      await act(() => launcher().start(db));
+      expect(reportError).toHaveBeenCalledWith(
+        "t1",
+        'A jump host of "bastion" no longer exists; edit the session to choose another one.',
+      );
+      expect(startCalls()).toHaveLength(0);
+    });
+  });
 });

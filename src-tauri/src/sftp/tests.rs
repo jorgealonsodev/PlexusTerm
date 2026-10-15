@@ -39,6 +39,7 @@ async fn connect(root: &Path) -> (SshManager, u32, tempfile::TempDir) {
         cols: 80,
         rows: 24,
         trusted_fingerprint: None,
+        jumps: vec![],
     };
     let id = mgr.connect(request, NullSink).await.unwrap();
     (mgr, id, dir)

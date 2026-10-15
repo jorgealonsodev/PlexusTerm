@@ -5,7 +5,9 @@ export type SshError =
   | { kind: "authFailed" }
   | { kind: "secretMissing" }
   | { kind: "unknownSession"; id: number }
-  | { kind: "connection"; message: string };
+  | { kind: "connection"; message: string }
+  /** A jump host failed: `hop` is its 1-based position, `error` what went wrong there. */
+  | { kind: "hop"; hop: number; name: string; error: SshError };
 
 /** Normalizes whatever `invoke` rejected with into an `SshError`. */
 export function toSshError(err: unknown): SshError {
@@ -45,5 +47,7 @@ export function describeSshError(err: SshError): string {
       return `Session ${err.id} is no longer open.`;
     case "connection":
       return err.message;
+    case "hop":
+      return `via ${err.name} (jump host ${err.hop}): ${describeSshError(err.error)}`;
   }
 }

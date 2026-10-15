@@ -1,6 +1,15 @@
 import { defaultSerialForm, formFromSettings, parseSerialForm, type SerialForm } from "../serial/serialSettings";
 import { parseQuickConnect, type QuickConnectForm } from "../ssh/quickConnect";
-import { isSerialSession, normalizeFolder, type LibrarySession, type SavedAuth } from "./library";
+import {
+  isSerialSession,
+  MAX_JUMPS,
+  normalizeFolder,
+  resolveChain,
+  type LibrarySession,
+  type SavedAuth,
+  type SavedSession,
+  type SessionLibrary,
+} from "./library";
 
 export type SessionKind = "ssh" | "serial";
 
@@ -9,12 +18,19 @@ export interface SessionForm extends QuickConnectForm {
   name: string;
   folder: string;
   serial: SerialForm;
+  /** SSH only: ids of the saved sessions to go through, outermost first. */
+  jumpIds?: string[];
 }
 
 export type SessionFormResult = { ok: true; session: LibrarySession } | { ok: false; error: string };
 
 /** Validates the edit form; secrets (password, passphrase) are never kept. */
-export function parseSessionForm(form: SessionForm, id: string): SessionFormResult {
+/** `library`, when given, lets the whole jump chain be checked (cycles through other sessions). */
+export function parseSessionForm(
+  form: SessionForm,
+  id: string,
+  library?: Pick<SessionLibrary, "sessions">,
+): SessionFormResult {
   const folder = normalizeFolder(form.folder);
   if (form.kind === "serial") {
     const parsed = parseSerialForm(form.serial);
@@ -28,6 +44,10 @@ export function parseSessionForm(form: SessionForm, id: string): SessionFormResu
 
   const parsed = parseQuickConnect(form);
   if (!parsed.ok) return parsed;
+  const jumpIds = form.jumpIds ?? [];
+  if (jumpIds.length > MAX_JUMPS) return { ok: false, error: `At most ${MAX_JUMPS} jump hosts are allowed` };
+  if (new Set(jumpIds).size !== jumpIds.length) return { ok: false, error: "A jump host is listed twice" };
+  if (jumpIds.includes(id)) return { ok: false, error: "A session cannot be its own jump host" };
   const { host, port, username, auth } = parsed.target;
 
   const saved: SavedAuth =
@@ -35,19 +55,24 @@ export function parseSessionForm(form: SessionForm, id: string): SessionFormResu
       ? { method: "key", path: auth.path }
       : { method: auth.method === "agent" ? "agent" : "password" };
 
-  return {
-    ok: true,
-    session: {
-      kind: "ssh",
-      id,
-      name: form.name.trim() || `${username}@${host}`,
-      folder,
-      host,
-      port,
-      username,
-      auth: saved,
-    },
+  const session: SavedSession = {
+    kind: "ssh",
+    id,
+    name: form.name.trim() || `${username}@${host}`,
+    folder,
+    host,
+    port,
+    username,
+    auth: saved,
+    ...(jumpIds.length ? { jumpIds: [...jumpIds] } : {}),
   };
+  if (library && jumpIds.length) {
+    // Check the chain as it will be once saved, so loops through other sessions are caught now.
+    const sessions = [...library.sessions.filter((s) => s.id !== id), session];
+    const chain = resolveChain({ sessions }, session);
+    if (!chain.ok) return { ok: false, error: chain.error };
+  }
+  return { ok: true, session };
 }
 
 const emptySsh: QuickConnectForm = {
@@ -76,5 +101,6 @@ export function formFromSession(session: LibrarySession): SessionForm {
     keyPath: session.auth.method === "key" ? session.auth.path : "~/.ssh/id_ed25519",
     passphrase: "",
     serial: defaultSerialForm,
+    jumpIds: session.jumpIds ?? [],
   };
 }

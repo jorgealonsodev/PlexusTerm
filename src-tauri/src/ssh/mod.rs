@@ -6,6 +6,11 @@
 //! - an unknown host is rejected with its fingerprint, and the caller may
 //!   retry with `trusted_fingerprint` set to that exact value to accept and
 //!   record it.
+//!
+//! A connection may go through up to [`MAX_JUMPS`] jump hosts (like `ssh -J`):
+//! each hop is reached through a `direct-tcpip` channel of the previous one and
+//! applies the same known_hosts policy and its own authentication. Errors of a
+//! jump host are wrapped in [`SshError::Hop`], which names it.
 
 #[cfg(test)]
 mod interop_tests;
@@ -48,6 +53,34 @@ pub struct ConnectRequest {
     pub rows: u16,
     /// Fingerprint (`SHA256:...`) the user accepted for an unknown host.
     pub trusted_fingerprint: Option<String>,
+    /// Jump hosts to go through, outermost first (see [`JumpHost`]).
+    #[serde(default)]
+    pub jumps: Vec<JumpHost>,
+}
+
+/// Most jump hosts a connection may go through.
+pub const MAX_JUMPS: usize = 3;
+
+/// A jump host on the way to the target, with everything that hop needs.
+///
+/// Wire shape (camelCase): `{ name, host, port, username, auth,
+/// trustedFingerprint?, storage? }`. `trustedFingerprint` and `storage` work
+/// like the target's own `trustedFingerprint` and the `storage` argument, for
+/// this hop only.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JumpHost {
+    /// Name shown in errors, e.g. the saved session name.
+    pub name: String,
+    pub host: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
+    pub username: String,
+    pub auth: SshAuth,
+    #[serde(default)]
+    pub trusted_fingerprint: Option<String>,
+    #[serde(default)]
+    pub storage: Option<PasswordStorage>,
 }
 
 fn default_port() -> u16 {
@@ -132,6 +165,14 @@ pub enum SshError {
     UnknownSession { id: u32 },
     #[error("{message}")]
     Connection { message: String },
+    /// A jump host failed: `hop` is its 1-based position and `error` what went wrong there.
+    /// Serialized as `{ kind: "hop", hop, name, error: { kind: ..., ... } }`.
+    #[error("via {name} (jump host {hop}): {error}")]
+    Hop {
+        hop: usize,
+        name: String,
+        error: Box<SshError>,
+    },
 }
 
 fn connection(err: impl std::fmt::Display) -> SshError {
@@ -273,9 +314,13 @@ pub struct SshTarget {
     pub port: u16,
     pub username: String,
     pub auth: SshAuth,
+    /// Jump hosts to go through, outermost first.
+    #[serde(default)]
+    pub jumps: Vec<JumpHost>,
 }
 
 /// How [`connect_authenticated`] reaches the server and the saved passwords.
+#[derive(Clone, Copy)]
 pub(crate) struct ConnectContext<'a> {
     pub known_hosts: &'a Path,
     pub agent_socket: Option<&'a Path>,
@@ -320,15 +365,109 @@ impl SavedPassword {
     }
 }
 
-/// Connects, applies the known_hosts policy and authenticates, then applies
-/// `storage` to the saved password. Nothing is stored or deleted on failure.
+/// An authenticated connection and the jump host connections it goes through.
+pub(crate) struct Chain {
+    pub connection: Connection,
+    /// Outermost first; they must stay open as long as `connection`.
+    pub jumps: Vec<Connection>,
+    /// User-facing keyring problems after the logins (see [`apply_storage`]).
+    pub warnings: Vec<String>,
+}
+
+/// Ends jump host connections, innermost first.
+pub(crate) async fn disconnect_jumps(jumps: &[Connection]) {
+    for jump in jumps.iter().rev() {
+        let _ = jump
+            .disconnect(russh::Disconnect::ByApplication, "", "en")
+            .await;
+    }
+}
+
+/// One SSH server to log into, either directly or through the previous hop.
+struct Hop {
+    host: String,
+    port: u16,
+    username: String,
+    auth: SshAuth,
+    trusted_fingerprint: Option<String>,
+    storage: Option<PasswordStorage>,
+}
+
+/// Connects to `target` through its jump hosts (if any), applying the known_hosts
+/// policy and authenticating at every hop, then applies `storage` to the target's
+/// saved password (each jump host carries its own). Nothing is stored or deleted
+/// for a hop whose login failed.
 ///
-/// Also returns a user-facing warning when the keyring could not be updated;
-/// that never fails the login.
+/// A jump host failure is returned as [`SshError::Hop`] and closes the hops already
+/// opened. Keyring problems never fail the login: they are returned as warnings.
 pub(crate) async fn connect_authenticated(
     target: SshTarget,
     trusted_fingerprint: Option<String>,
     storage: Option<PasswordStorage>,
+    ctx: ConnectContext<'_>,
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
+) -> Result<Chain, SshError> {
+    if target.jumps.len() > MAX_JUMPS {
+        return Err(SshError::Connection {
+            message: format!("at most {MAX_JUMPS} jump hosts are supported"),
+        });
+    }
+    let mut jumps: Vec<Connection> = Vec::with_capacity(target.jumps.len());
+    let mut warnings = Vec::new();
+    for (index, jump) in target.jumps.into_iter().enumerate() {
+        let (hop, name) = (index + 1, jump.name);
+        let next = Hop {
+            host: jump.host,
+            port: jump.port,
+            username: jump.username,
+            auth: jump.auth,
+            trusted_fingerprint: jump.trusted_fingerprint,
+            storage: jump.storage,
+        };
+        match connect_hop(next, jumps.last(), ctx, None).await {
+            Ok((connection, warning)) => {
+                jumps.push(connection);
+                warnings.extend(warning.map(|w| format!("via {name} (jump host {hop}): {w}")));
+            }
+            Err(err) => {
+                disconnect_jumps(&jumps).await;
+                return Err(SshError::Hop {
+                    hop,
+                    name,
+                    error: Box::new(err),
+                });
+            }
+        }
+    }
+    let last = Hop {
+        host: target.host,
+        port: target.port,
+        username: target.username,
+        auth: target.auth,
+        trusted_fingerprint,
+        storage,
+    };
+    match connect_hop(last, jumps.last(), ctx, forwarded).await {
+        Ok((connection, warning)) => {
+            warnings.extend(warning);
+            Ok(Chain {
+                connection,
+                jumps,
+                warnings,
+            })
+        }
+        Err(err) => {
+            disconnect_jumps(&jumps).await;
+            Err(err)
+        }
+    }
+}
+
+/// Connects to one hop (over a `direct-tcpip` channel of `via` when given), applies
+/// the known_hosts policy, authenticates and then applies the hop's `storage`.
+async fn connect_hop(
+    hop: Hop,
+    via: Option<&Connection>,
     ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
 ) -> Result<(Connection, Option<String>), SshError> {
@@ -340,10 +479,10 @@ pub(crate) async fn connect_authenticated(
     } = ctx;
     let rejection = Arc::new(Mutex::new(None));
     let handler = ClientHandler {
-        host: target.host.clone(),
-        port: target.port,
+        host: hop.host.clone(),
+        port: hop.port,
         known_hosts: known_hosts.to_path_buf(),
-        trusted_fingerprint,
+        trusted_fingerprint: hop.trusted_fingerprint,
         rejection: rejection.clone(),
         forwarded,
     };
@@ -351,42 +490,60 @@ pub(crate) async fn connect_authenticated(
         keepalive_interval: Some(Duration::from_secs(30)),
         ..Default::default()
     });
+    let label = host_label(&hop.host, hop.port);
 
-    let connecting = client::connect(config, (target.host.as_str(), target.port), handler);
-    let mut handle = match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
-        Err(_) => {
-            return Err(SshError::Connection {
-                message: format!(
-                    "connection to {} timed out",
-                    host_label(&target.host, target.port)
-                ),
-            });
-        }
-        Ok(Err(err)) => {
-            return Err(rejection
+    let connecting = async {
+        let connected = match via {
+            None => client::connect(config, (hop.host.as_str(), hop.port), handler).await,
+            Some(jump) => {
+                let channel = jump
+                    .channel_open_direct_tcpip(hop.host.clone(), hop.port.into(), "127.0.0.1", 0)
+                    .await
+                    .map_err(|err| SshError::Connection {
+                        message: format!("the jump host cannot reach {label}: {err}"),
+                    })?;
+                client::connect_stream(config, channel.into_stream(), handler).await
+            }
+        };
+        connected.map_err(|err| {
+            rejection
                 .lock()
                 .unwrap()
                 .take()
-                .unwrap_or_else(|| connection(err)));
+                .unwrap_or_else(|| connection(err))
+        })
+    };
+    let mut handle = match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
+        Err(_) => {
+            return Err(SshError::Connection {
+                message: format!("connection to {label} timed out"),
+            });
         }
-        Ok(Ok(handle)) => handle,
+        Ok(result) => result?,
     };
 
-    let typed_password = match &target.auth {
+    let typed_password = match &hop.auth {
         SshAuth::Password { password } => Some(password.clone()),
         _ => None,
     };
-    let endpoint = endpoint(&target.username, &target.host, target.port);
+    let endpoint = endpoint(&hop.username, &hop.host, hop.port);
     authenticate(
         &mut handle,
-        &target.username,
-        target.auth,
+        &hop.username,
+        hop.auth,
         agent_socket,
         secrets,
         &endpoint,
     )
     .await?;
-    let warning = apply_storage(secrets, storage, typed_password, endpoint, storage_timeout).await;
+    let warning = apply_storage(
+        secrets,
+        hop.storage,
+        typed_password,
+        endpoint,
+        storage_timeout,
+    )
+    .await;
     Ok((handle, warning))
 }
 
@@ -605,6 +762,7 @@ impl SshManager {
             port: req.port,
             username: req.username,
             auth: req.auth,
+            jumps: req.jumps,
         };
         let ctx = ConnectContext {
             known_hosts: &self.known_hosts,
@@ -612,8 +770,12 @@ impl SshManager {
             secrets: &self.secrets,
             storage_timeout: self.storage_timeout,
         };
-        let (handle, warning) =
-            connect_authenticated(target, req.trusted_fingerprint, storage, ctx, None).await?;
+        let Chain {
+            connection: handle,
+            jumps,
+            warnings,
+        } = connect_authenticated(target, req.trusted_fingerprint, storage, ctx, None).await?;
+        let jumps = Arc::new(jumps);
 
         let channel = handle.channel_open_session().await.map_err(connection)?;
         channel
@@ -630,7 +792,7 @@ impl SshManager {
             .map_err(connection)?;
         channel.request_shell(false).await.map_err(connection)?;
         // Shown before any remote output, which only the reader task below forwards.
-        if let Some(warning) = warning {
+        for warning in warnings {
             sink.data(format!("\r\n\x1b[33m{warning}\x1b[0m\r\n"));
         }
 
@@ -649,7 +811,7 @@ impl SshManager {
 
         // Writes run in their own task: a large paste can wait for the remote
         // window while the reader keeps draining output (otherwise both stall).
-        let writer_handle = handle.clone();
+        let (writer_handle, writer_jumps) = (handle.clone(), jumps.clone());
         tokio::spawn(async move {
             while let Some(command) = commands.recv().await {
                 match command {
@@ -670,6 +832,7 @@ impl SshManager {
             let _ = writer_handle
                 .disconnect(russh::Disconnect::ByApplication, "", "en")
                 .await;
+            disconnect_jumps(&writer_jumps).await;
         });
 
         tokio::spawn(async move {
@@ -691,6 +854,7 @@ impl SshManager {
             let _ = handle
                 .disconnect(russh::Disconnect::ByApplication, "", "en")
                 .await;
+            disconnect_jumps(&jumps).await;
             sink.exit(exit_code);
         });
 
@@ -816,6 +980,7 @@ mod tests {
             cols: 80,
             rows: 24,
             trusted_fingerprint: None,
+            jumps: vec![],
         }
     }
 
@@ -1542,5 +1707,370 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SshError::Connection { .. }), "got {err:?}");
+    }
+
+    // --- Jump hosts (S14) ---
+
+    /// known_hosts trusting every server in `servers`.
+    fn trust_all(dir: &tempfile::TempDir, servers: &[&test_server::TestServer]) -> PathBuf {
+        let path = dir.path().join("known_hosts");
+        for server in servers {
+            russh::keys::known_hosts::learn_known_hosts_path(
+                "127.0.0.1",
+                server.addr.port(),
+                &server.host_key,
+                &path,
+            )
+            .unwrap();
+        }
+        path
+    }
+
+    fn jump(name: &str, server: &test_server::TestServer, auth: SshAuth) -> JumpHost {
+        JumpHost {
+            name: name.into(),
+            host: "127.0.0.1".into(),
+            port: server.addr.port(),
+            username: "tester".into(),
+            auth,
+            trusted_fingerprint: None,
+            storage: None,
+        }
+    }
+
+    /// Polls until `server` has `expected` open connections (5 s at most).
+    async fn wait_connections(server: &test_server::TestServer, expected: usize) -> usize {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+        while server.open_connections() != expected && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        server.open_connections()
+    }
+
+    #[tokio::test]
+    async fn one_jump_host_reaches_the_final_shell() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+        let (s, mut rx) = sink();
+
+        let id = mgr.connect(req, s).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        mgr.write(id, b"ping").unwrap();
+        assert!(wait_for(&mut rx, "ping").await.0.contains("ping"));
+        assert_eq!(bastion.password_attempts(), 1);
+        assert_eq!(target.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn two_jump_hosts_reach_the_final_shell() {
+        let first = test_server::start(2, None).await;
+        let second = test_server::start(3, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&first, &second, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![
+            jump("first", &first, password(PASSWORD)),
+            jump("second", &second, password(PASSWORD)),
+        ];
+        let (s, mut rx) = sink();
+
+        let id = mgr.connect(req, s).await.unwrap();
+        wait_for(&mut rx, "welcome").await;
+        mgr.write(id, b"through two hops").unwrap();
+        let (out, _) = wait_for(&mut rx, "through two hops").await;
+        assert!(out.contains("through two hops"), "output was {out:?}");
+        assert_eq!(second.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn an_unknown_jump_host_names_the_hop_and_trusting_it_connects() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+
+        let (s, _rx) = sink();
+        let err = mgr.connect(req.clone(), s).await.unwrap_err();
+        let json = serde_json::to_value(&err).unwrap();
+        assert_eq!(json["kind"], "hop", "{json}");
+        assert_eq!(json["hop"], 1);
+        assert_eq!(json["name"], "bastion");
+        assert_eq!(json["error"]["kind"], "unknownHost");
+        assert_eq!(
+            json["error"]["host"],
+            format!("[127.0.0.1]:{}", bastion.addr.port())
+        );
+        assert_eq!(json["error"]["fingerprint"], fingerprint(&bastion.host_key));
+        assert_eq!(target.password_attempts(), 0);
+
+        req.jumps[0].trusted_fingerprint = Some(fingerprint(&bastion.host_key));
+        let (s, mut rx) = sink();
+        mgr.connect(req, s).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    #[tokio::test]
+    async fn an_unknown_target_behind_a_jump_host_is_not_wrapped() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+
+        let (s, _rx) = sink();
+        let err = mgr.connect(req.clone(), s).await.unwrap_err();
+        assert!(matches!(err, SshError::UnknownHost { .. }), "got {err:?}");
+        req.trusted_fingerprint = Some(fingerprint(&target.host_key));
+        let (s, mut rx) = sink();
+        mgr.connect(req, s).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    #[tokio::test]
+    async fn a_wrong_jump_password_names_the_hop_and_never_reaches_the_target() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password("nope"))];
+        let (s, _rx) = sink();
+
+        let err = mgr.connect(req, s).await.unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "via bastion (jump host 1): authentication failed"
+        );
+        assert_eq!(
+            serde_json::to_value(&err).unwrap(),
+            serde_json::json!({"kind": "hop", "hop": 1, "name": "bastion", "error": {"kind": "authFailed"}})
+        );
+        assert_eq!(target.password_attempts(), 0);
+        assert_eq!(wait_connections(&bastion, 0).await, 0);
+        assert_eq!(wait_connections(&target, 0).await, 0);
+    }
+
+    #[tokio::test]
+    async fn a_failing_second_jump_names_its_position_and_closes_the_first() {
+        let first = test_server::start(2, None).await;
+        let second = test_server::start(3, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&first, &second, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![
+            jump("first", &first, password(PASSWORD)),
+            jump("second", &second, password("nope")),
+        ];
+        let (s, _rx) = sink();
+
+        let err = mgr.connect(req, s).await.unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "via second (jump host 2): authentication failed"
+        );
+        assert_eq!(wait_connections(&first, 0).await, 0);
+    }
+
+    #[tokio::test]
+    async fn stored_jump_passwords_are_bound_to_the_jump_endpoint() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr =
+            SshManager::new(trust_all(&dir, &[&bastion, &target])).with_secrets(store.clone());
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, stored("j1"))];
+
+        // Saved for the target's endpoint, not the jump host's: never sent to the jump host.
+        store
+            .set("j1", "label", &secret_for(target.addr.port(), PASSWORD))
+            .unwrap();
+        let (s, _rx) = sink();
+        let err = mgr.connect(req.clone(), s).await.unwrap_err();
+        assert!(
+            matches!(&err, SshError::Hop { hop: 1, error, .. } if matches!(**error, SshError::SecretMissing)),
+            "got {err:?}"
+        );
+        assert_eq!(bastion.password_attempts(), 0);
+
+        store
+            .set("j1", "label", &secret_for(bastion.addr.port(), PASSWORD))
+            .unwrap();
+        let (s, mut rx) = sink();
+        mgr.connect(req, s).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(bastion.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn remember_on_a_jump_host_saves_its_password_for_its_endpoint() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr =
+            SshManager::new(trust_all(&dir, &[&bastion, &target])).with_secrets(store.clone());
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        let mut bastion_hop = jump("bastion", &bastion, password(PASSWORD));
+        bastion_hop.storage = remember("j1");
+        req.jumps = vec![bastion_hop];
+        let (s, _rx) = sink();
+
+        mgr.connect(req, s).await.unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_str(&store.get("j1").unwrap().unwrap()).unwrap();
+        let expected: serde_json::Value =
+            serde_json::from_str(&secret_for(bastion.addr.port(), PASSWORD)).unwrap();
+        assert_eq!(saved, expected);
+        assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn closing_a_chained_session_closes_every_hop() {
+        let first = test_server::start(2, None).await;
+        let second = test_server::start(3, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&first, &second, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![
+            jump("first", &first, password(PASSWORD)),
+            jump("second", &second, password(PASSWORD)),
+        ];
+        let (s, mut rx) = sink();
+        let id = mgr.connect(req, s).await.unwrap();
+        wait_for(&mut rx, "welcome").await;
+        assert_eq!(first.open_connections(), 1);
+        assert_eq!(second.open_connections(), 1);
+
+        mgr.close(id).unwrap();
+        let (_, exit) = wait_for(&mut rx, "").await;
+        assert!(exit.is_some(), "session did not end after close");
+        assert_eq!(wait_connections(&target, 0).await, 0, "target still open");
+        assert_eq!(wait_connections(&second, 0).await, 0, "jump 2 still open");
+        assert_eq!(wait_connections(&first, 0).await, 0, "jump 1 still open");
+    }
+
+    #[tokio::test]
+    async fn a_remote_exit_behind_jump_hosts_closes_every_hop() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+        let (s, mut rx) = sink();
+        let id = mgr.connect(req, s).await.unwrap();
+        wait_for(&mut rx, "welcome").await;
+
+        mgr.write(id, b"exit").unwrap();
+        let (_, exit) = wait_for(&mut rx, "").await;
+        assert_eq!(exit, Some(Some(7)));
+        assert_eq!(wait_connections(&bastion, 0).await, 0, "jump still open");
+    }
+
+    #[tokio::test]
+    async fn sftp_works_over_a_chained_session() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("hello.txt"), b"hi").unwrap();
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start_with_sftp(root.path()).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+        let (s, _rx) = sink();
+        let id = mgr.connect(req, s).await.unwrap();
+
+        let sftp = tokio::time::timeout(Duration::from_secs(10), mgr.sftp(id))
+            .await
+            .expect("opening SFTP timed out")
+            .unwrap();
+        let names: Vec<String> = crate::sftp::list(&sftp, "/")
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|entry| entry.name)
+            .collect();
+        assert_eq!(names, vec!["hello.txt".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn more_than_three_jump_hosts_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = test_server::start(1, None).await;
+        let mgr = SshManager::new(trust_all(&dir, &[&target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("j", &target, password(PASSWORD)); MAX_JUMPS + 1];
+        let (s, _rx) = sink();
+
+        let err = mgr.connect(req, s).await.unwrap_err();
+        assert!(matches!(err, SshError::Connection { .. }), "got {err:?}");
+        assert_eq!(target.open_connections(), 0);
+    }
+
+    #[test]
+    fn jump_hosts_deserialize_from_camel_case() {
+        let req: ConnectRequest = serde_json::from_value(serde_json::json!({
+            "host": "target", "username": "u", "auth": {"method": "agent"},
+            "cols": 80, "rows": 24, "trustedFingerprint": null,
+            "jumps": [{
+                "name": "bastion", "host": "b", "port": 2222, "username": "j",
+                "auth": {"method": "storedPassword", "sessionId": "j1"},
+                "trustedFingerprint": "SHA256:x",
+                "storage": {"action": "forget", "sessionId": "j1"}
+            }, {
+                "name": "inner", "host": "c", "username": "k", "auth": {"method": "agent"}
+            }]
+        }))
+        .unwrap();
+        assert_eq!(req.jumps.len(), 2);
+        assert_eq!(req.jumps[0].port, 2222);
+        assert_eq!(
+            req.jumps[0].trusted_fingerprint.as_deref(),
+            Some("SHA256:x")
+        );
+        assert!(matches!(
+            req.jumps[0].storage,
+            Some(PasswordStorage::Forget { .. })
+        ));
+        assert_eq!(req.jumps[1].port, 22);
+        assert!(req.jumps[1].trusted_fingerprint.is_none());
+
+        // Older frontends send no `jumps`.
+        let target: SshTarget = serde_json::from_value(serde_json::json!({
+            "host": "h", "username": "u", "auth": {"method": "agent"}
+        }))
+        .unwrap();
+        assert!(target.jumps.is_empty());
+    }
+
+    #[test]
+    fn debug_of_jump_hosts_never_contains_their_passwords() {
+        let mut req = request(22, password("hunter2"));
+        req.jumps = vec![JumpHost {
+            name: "b".into(),
+            host: "b".into(),
+            port: 22,
+            username: "u".into(),
+            auth: password("jumpsecret"),
+            trusted_fingerprint: None,
+            storage: remember("j1"),
+        }];
+        let dbg = format!("{req:?}");
+        assert!(
+            !dbg.contains("jumpsecret") && !dbg.contains("hunter2"),
+            "{dbg}"
+        );
     }
 }

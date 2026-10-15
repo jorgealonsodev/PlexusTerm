@@ -18,6 +18,25 @@ export interface SshTarget {
   auth: SshAuth;
   /** Applied after a successful login with a typed password. */
   storage?: PasswordStorage;
+  /** Jump hosts to go through, outermost first (S14). */
+  jumps?: JumpTarget[];
+}
+
+/**
+ * One jump host on the way to an SSH target, sent to the backend as is
+ * (`jumps` of the Rust `SshTarget`/`ConnectRequest`).
+ */
+export interface JumpTarget {
+  /** Saved session name, shown in errors and prompts. */
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  auth: SshAuth;
+  /** Fingerprint the user accepted for this hop when it was unknown. */
+  trustedFingerprint?: string;
+  /** Applied to this hop's saved password after its login succeeded. */
+  storage?: PasswordStorage;
 }
 
 export type SerialParity = "none" | "odd" | "even";

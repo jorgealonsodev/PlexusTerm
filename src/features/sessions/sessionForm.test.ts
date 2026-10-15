@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSerialForm } from "../serial/serialSettings";
+import type { SavedSession } from "./library";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
 const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
@@ -90,5 +91,53 @@ describe("formFromSession", () => {
     const parsed = parseSessionForm(form({ method: "key", keyPath: "/k", port: "2222" }), "id-9");
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parseSessionForm(formFromSession(parsed.session), "id-9")).toEqual(parsed);
+  });
+});
+
+describe("parseSessionForm (jump hosts)", () => {
+  it("keeps the ordered jump hosts of an SSH session", () => {
+    const result = parseSessionForm(form({ jumpIds: ["b", "a"] }), "id-1");
+    expect(result).toMatchObject({ ok: true, session: { jumpIds: ["b", "a"] } });
+    if (result.ok) expect(parseSessionForm(formFromSession(result.session), "id-1")).toEqual(result);
+  });
+
+  it("leaves jumpIds out when there are none", () => {
+    const result = parseSessionForm(form({ jumpIds: [] }), "id-1");
+    expect(result.ok && result.session).not.toHaveProperty("jumpIds");
+  });
+
+  it("rejects a chain that loops back through another session's jump hosts", () => {
+    const other: SavedSession = {
+      kind: "ssh",
+      id: "b",
+      name: "bastion",
+      folder: "",
+      host: "bastion",
+      port: 22,
+      username: "u",
+      auth: { method: "agent" },
+      jumpIds: ["x"],
+    };
+    expect(parseSessionForm(form({ jumpIds: ["b"] }), "x", { sessions: [other] })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("cycle"),
+    });
+    const plain: SavedSession = { ...other, jumpIds: undefined };
+    expect(parseSessionForm(form({ jumpIds: ["b"] }), "x", { sessions: [plain] })).toMatchObject({ ok: true });
+  });
+
+  it("rejects more than 3, repeated or self jump hosts", () => {
+    expect(parseSessionForm(form({ jumpIds: ["a", "b", "c", "d"] }), "x")).toEqual({
+      ok: false,
+      error: "At most 3 jump hosts are allowed",
+    });
+    expect(parseSessionForm(form({ jumpIds: ["a", "a"] }), "x")).toEqual({
+      ok: false,
+      error: "A jump host is listed twice",
+    });
+    expect(parseSessionForm(form({ jumpIds: ["x"] }), "x")).toEqual({
+      ok: false,
+      error: "A session cannot be its own jump host",
+    });
   });
 });

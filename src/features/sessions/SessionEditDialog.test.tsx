@@ -63,3 +63,67 @@ describe("SessionEditDialog saved password", () => {
     expect(mockedInvoke).not.toHaveBeenCalled();
   });
 });
+
+describe("SessionEditDialog jump hosts", () => {
+  const gw = (id: string, name: string): SavedSession => ({ ...web, id, name, auth: { method: "agent" } });
+  const candidates = [web, gw("a", "alpha"), gw("b", "beta"), gw("c", "gamma"), gw("d", "delta")];
+
+  function renderWithJumps(session: SavedSession) {
+    const onSave = vi.fn();
+    render(
+      <SessionEditDialog
+        session={session}
+        isNew={false}
+        folders={[]}
+        jumpCandidates={candidates}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+    return onSave;
+  }
+
+  const add = (name: string) => {
+    fireEvent.change(screen.getByLabelText("Add jump host"), {
+      target: { value: candidates.find((c) => c.name === name)!.id },
+    });
+    fireEvent.click(screen.getByText("Add"));
+  };
+
+  it("adds, reorders and removes jump hosts, and saves them in order", async () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderWithJumps(web);
+    // The session itself is not offered.
+    const options = Array.from(screen.getByLabelText<HTMLSelectElement>("Add jump host").options).map((o) => o.text);
+    expect(options).not.toContain("web");
+    add("alpha");
+    add("beta");
+    add("gamma");
+    fireEvent.click(screen.getByLabelText("Move gamma up"));
+    fireEvent.click(screen.getByLabelText("Remove alpha"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ jumpIds: ["c", "b"] }));
+  });
+
+  it("offers at most 3 jump hosts", async () => {
+    mockedInvoke.mockResolvedValue(false);
+    renderWithJumps({ ...web, jumpIds: ["a", "b", "c"] });
+    expect(screen.getByLabelText<HTMLSelectElement>("Add jump host").disabled).toBe(true);
+    expect(screen.getByText("Add").hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByLabelText("Move alpha down"));
+    expect(screen.getAllByRole("listitem").map((li) => li.querySelector(".jump-hosts__name")?.textContent)).toEqual([
+      "beta",
+      "alpha",
+      "gamma",
+    ]);
+  });
+
+  it("shows jump hosts that no longer exist so they can be removed", async () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderWithJumps({ ...web, jumpIds: ["gone", "a"] });
+    expect(screen.getByText("(deleted session)")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Remove (deleted session)"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ jumpIds: ["a"] }));
+  });
+});

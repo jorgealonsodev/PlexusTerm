@@ -3,11 +3,12 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { patchJump } from "../sessions/jumpHosts";
 import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
-import { targetTitle, type PasswordStorage, type SessionTarget, type SshAuth } from "../sessions/types";
+import { targetTitle, type JumpTarget, type PasswordStorage, type SessionTarget, type SshAuth } from "../sessions/types";
 import { describeSerialError } from "../serial/serialSettings";
-import { describeSshError, toSshError } from "../ssh/sshErrors";
+import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
 import { shortcutFor } from "../panes/shortcuts";
@@ -36,7 +37,22 @@ interface PendingHost {
   host: string;
   fingerprint: string;
   otherKnownKeys: string[];
+  /** Set when the host is a jump host. */
+  jump?: { index: number; label: string };
 }
+
+/** Which login the password prompt is for: the target, or jump host `index`. */
+type PasswordFor = { jump: null } | { jump: { index: number; label: string } };
+
+/** "bastion — jump host 1 of 2" */
+const jumpLabel = (jumps: JumpTarget[], index: number) =>
+  `${jumps[index].name} — jump host ${index + 1} of ${jumps.length}`;
+
+/** The saved session whose keyring password a login uses, if any. */
+const savedLoginOf = (where: { host: string; port: number; username: string; auth: SshAuth }) =>
+  where.auth.method === "storedPassword"
+    ? { id: where.auth.sessionId, username: where.username, host: where.host, port: where.port }
+    : null;
 
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
 
@@ -63,13 +79,17 @@ export function TerminalView({
   const termRef = useRef<Terminal | null>(null);
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
-  const [askPassword, setAskPassword] = useState(false);
+  const [askPassword, setAskPassword] = useState<PasswordFor | null>(null);
   const typedLogin = useRef<TypedLogin | null>(null);
-  /** The saved session whose keyring password this tab connects with, if any. */
+  /** Jump hosts, updated when one of them is trusted or gets a typed password. */
+  const jumpsRef = useRef<JumpTarget[]>(target.type === "ssh" ? (target.jumps ?? []) : []);
+  /** The saved session whose keyring password the prompted login replaces, if any. */
   const savedLogin =
-    target.type === "ssh" && target.auth.method === "storedPassword"
-      ? { id: target.auth.sessionId, username: target.username, host: target.host, port: target.port }
-      : null;
+    askPassword?.jump != null
+      ? savedLoginOf(jumpsRef.current[askPassword.jump.index])
+      : target.type === "ssh"
+        ? savedLoginOf(target)
+        : null;
   // Keep callbacks current without re-creating the terminal.
   const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter });
   callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter };
@@ -111,11 +131,27 @@ export function TerminalView({
       callbacks.current.onSession?.(null);
     };
 
+    /** Handles a failure of jump host `err.hop`: trust prompt, password prompt or message. */
+    const jumpFailed = (err: Extract<SshError, { kind: "hop" }>) => {
+      const index = err.hop - 1;
+      const jump = jumpsRef.current[index];
+      if (!jump) return term.write(red(describeSshError(err)));
+      const label = jumpLabel(jumpsRef.current, index);
+      if (err.error.kind === "unknownHost") setPendingHost({ ...err.error, jump: { index, label } });
+      else {
+        term.write(red(describeSshError(err)));
+        if (shouldAskAgain(jump.auth, err.error)) setAskPassword({ jump: { index, label } });
+      }
+    };
+
     const start = (trustedFingerprint?: string) => {
-      if (target.type === "ssh") term.write(`Connecting to ${targetTitle(target)}...\r\n`);
+      if (target.type === "ssh") {
+        const via = jumpsRef.current.length ? ` via ${jumpsRef.current.map((j) => j.name).join(", ")}` : "";
+        term.write(`Connecting to ${targetTitle(target)}${via}...\r\n`);
+      }
       if (target.type === "serial") term.write(`Opening ${targetTitle(target)}...\r\n`);
       backend
-        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, ...typedLogin.current }, (msg) => {
+        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           if (msg.event === "output") term.write(msg.data);
@@ -139,10 +175,11 @@ export function TerminalView({
             return;
           }
           const err = toSshError(raw);
+          if (err.kind === "hop") return jumpFailed(err);
           const auth = typedLogin.current?.auth ?? (target.type === "ssh" ? target.auth : null);
           if (auth && shouldAskAgain(auth, err)) {
             term.write(red(describeSshError(err)));
-            setAskPassword(true);
+            setAskPassword({ jump: null });
           } else if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));
         });
@@ -205,9 +242,14 @@ export function TerminalView({
           host={pendingHost.host}
           fingerprint={pendingHost.fingerprint}
           otherKnownKeys={pendingHost.otherKnownKeys}
+          via={pendingHost.jump?.label}
           onTrust={() => {
             setPendingHost(null);
-            startRef.current(pendingHost.fingerprint);
+            const jump = pendingHost.jump;
+            if (jump) {
+              jumpsRef.current = patchJump(jumpsRef.current, jump.index, { trustedFingerprint: pendingHost.fingerprint });
+              startRef.current();
+            } else startRef.current(pendingHost.fingerprint);
             termRef.current?.focus();
           }}
           onCancel={() => {
@@ -219,19 +261,18 @@ export function TerminalView({
       )}
       {askPassword && savedLogin && (
         <PasswordPrompt
-          label={targetTitle(target)}
+          label={askPassword.jump?.label ?? targetTitle(target)}
           remember={{ initial: true }}
           onSubmit={(password, remember) => {
-            setAskPassword(false);
-            typedLogin.current = {
-              auth: { method: "password", password },
-              storage: storageFor(savedLogin, remember, true),
-            };
+            setAskPassword(null);
+            const login = { auth: { method: "password" as const, password }, storage: storageFor(savedLogin, remember, true) };
+            if (askPassword.jump) jumpsRef.current = patchJump(jumpsRef.current, askPassword.jump.index, login);
+            else typedLogin.current = login;
             startRef.current();
             termRef.current?.focus();
           }}
           onCancel={() => {
-            setAskPassword(false);
+            setAskPassword(null);
             termRef.current?.write(red("Connection cancelled."));
             termRef.current?.focus();
           }}

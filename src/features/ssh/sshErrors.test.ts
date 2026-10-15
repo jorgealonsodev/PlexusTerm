@@ -45,3 +45,11 @@ describe("describeSshError", () => {
     );
   });
 });
+
+describe("jump host errors", () => {
+  it("name the hop that failed", () => {
+    expect(describeSshError({ kind: "hop", hop: 1, name: "bastion", error: { kind: "authFailed" } })).toBe(
+      "via bastion (jump host 1): Authentication failed.",
+    );
+  });
+});
