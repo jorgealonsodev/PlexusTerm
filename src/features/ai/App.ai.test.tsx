@@ -173,7 +173,7 @@ describe("AI assistant (S3, S5)", () => {
     await settle();
     expect(calls("ai_assist")).toEqual([
       {
-        config: { provider: "openai-compatible", model: "llama3.2", baseUrl: "http://localhost:11434/v1" },
+        config: { provider: "openai-compatible", model: "llama3.2", baseUrl: "http://localhost:11434/v1", sessionId: expect.any(String) },
         request: { prompt: "what uses the most space here", os: "linux", cwd: "/srv/app", history: ["make", "make test"], selection: null },
       },
     ]);
@@ -185,6 +185,30 @@ describe("AI assistant (S3, S5)", () => {
     expect(pane.written).toEqual(["du -sh * | sort -h"]);
     expect(assistant()).toBeNull();
     expect(pane.focus).toHaveBeenCalled();
+  });
+
+  it("starts a new AI session for every assistant opening", async () => {
+    answers.ai_assist = () => ({ command: "ls", explanation: "" });
+    await renderApp();
+    const askOnce = async () => {
+      pressShortcut();
+      const input = screen.getByPlaceholderText("Describe what you want…");
+      fireEvent.change(input, { target: { value: "list" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      await settle();
+      fireEvent.change(input, { target: { value: "list again" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      await settle();
+      fireEvent.keyDown(input, { key: "Escape" });
+    };
+    await askOnce();
+    await askOnce();
+    const ids = calls("ai_assist").map((args) => (args.config as { sessionId: string }).sessionId);
+    expect(ids).toHaveLength(4);
+    for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
+    expect(ids[0]).toBe(ids[1]);
+    expect(ids[2]).toBe(ids[3]);
+    expect(ids[0]).not.toBe(ids[2]);
   });
 
   it("sends no history when command history is off, and Shift+Enter does not ask", async () => {
@@ -204,29 +228,50 @@ describe("AI assistant (S3, S5)", () => {
     expect((calls("ai_assist")[0].request as { history: string[] }).history).toEqual([]);
   });
 
-  it("includes the selected text only when ticked, showing it first", async () => {
+  it("starts with the selected text ticked and shown, sends it with Ask, and not once unticked", async () => {
     answers.ai_assist = () => ({ command: "sudo chown me file", explanation: "" });
     await renderApp();
-    pressShortcut();
-    expect((screen.getByLabelText("Include selected text") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.keyDown(screen.getByPlaceholderText("Describe what you want…"), { key: "Escape" });
     pane.selection = "error: permission denied";
     pressShortcut();
     const box = screen.getByLabelText("Include selected text") as HTMLInputElement;
     expect(box.disabled).toBe(false);
-    expect(box.checked).toBe(false);
+    expect(box.checked).toBe(true);
+    expect(screen.getByLabelText("Selected text to send").textContent).toBe("error: permission denied");
     const input = screen.getByPlaceholderText("Describe what you want…");
     fireEvent.change(input, { target: { value: "fix this" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await settle();
     fireEvent.click(box);
-    expect(screen.getByText("error: permission denied")).toBeTruthy();
+    expect(box.checked).toBe(false);
+    expect(screen.queryByLabelText("Selected text to send")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await settle();
     expect(calls("ai_assist").map((c) => (c.request as { selection: string | null }).selection)).toEqual([
-      null,
       "error: permission denied",
+      null,
     ]);
+  });
+
+  it("ticks the selected text also when opened from the X button", async () => {
+    await renderApp();
+    pane.selection = "make: *** [all] Error 2";
+    fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
+    expect((screen.getByLabelText("Include selected text") as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByLabelText("Selected text to send").textContent).toBe("make: *** [all] Error 2");
+  });
+
+  it("leaves Include selected text unticked and disabled without a selection", async () => {
+    answers.ai_assist = () => ({ command: "ls", explanation: "" });
+    await renderApp();
+    pressShortcut();
+    const box = screen.getByLabelText("Include selected text") as HTMLInputElement;
+    expect(box.disabled).toBe(true);
+    expect(box.checked).toBe(false);
+    expect(screen.queryByLabelText("Selected text to send")).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("Describe what you want…"), { target: { value: "list" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await settle();
+    expect((calls("ai_assist")[0].request as { selection: string | null }).selection).toBeNull();
   });
 
   it("says when no key is saved and opens Settings from there", async () => {
@@ -276,10 +321,30 @@ describe("AI suggestions (S2)", () => {
     expect(full).toBe("git commit -m wip");
     expect(calls("ai_complete")).toEqual([
       {
-        config: { provider: "gemini", model: "gemini-3.5-flash-lite" },
+        config: { provider: "gemini", model: "gemini-3.5-flash-lite", sessionId: expect.any(String) },
         request: { line: "git comm", os: "linux", cwd: "/srv/app", history: ["git add .", "git status"] },
       },
     ]);
+  });
+
+  it("keeps one AI session per pane for its inline suggestions", async () => {
+    withSettings({ aiSuggestions: true, aiProvider: "opencode-go", aiModel: "kimi-k3" });
+    answers.ai_complete = () => ({ completion: "" });
+    await renderApp();
+    vi.useFakeTimers();
+    await act(async () => {
+      await pane.aiSuggest!(context);
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    await act(async () => {
+      const next = pane.aiSuggest!({ ...context, line: "git commi" });
+      await vi.advanceTimersByTimeAsync(1000);
+      await next;
+    });
+    const configs = calls("ai_complete").map((args) => args.config as { provider: string; model: string; sessionId: string });
+    expect(configs).toHaveLength(2);
+    expect(configs[0]).toEqual({ provider: "opencode-go", model: "kimi-k3", sessionId: expect.stringMatching(/^[A-Za-z0-9._-]{1,128}$/) });
+    expect(configs[1].sessionId).toBe(configs[0].sessionId);
   });
 
   it("gives null for an empty completion", async () => {

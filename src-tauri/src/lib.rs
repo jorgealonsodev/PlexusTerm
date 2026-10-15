@@ -483,6 +483,7 @@ pub fn run() {
             ai::ai_key_delete,
             ai::ai_complete,
             ai::ai_assist,
+            ai::ai_opencode_models,
             tools::keygen::keygen_generate,
             tools::keygen::keygen_save,
             tools::keygen::keygen_install,

@@ -2,15 +2,16 @@ import { DEFAULT_THEME_ID, isThemeId } from "../terminal/themes";
 import { appShortcutConflict, isValidShortcut } from "./shortcutCapture";
 
 /** AI providers (S2, S4). */
-export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible"] as const;
+export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
-/** The model a provider starts with; OpenAI and compatible endpoints leave it to the user. */
+/** The model a provider starts with; OpenAI, compatible endpoints and OpenCode Go leave it to the user. */
 export const DEFAULT_AI_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-opus-5-5",
   gemini: "gemini-3.5-flash-lite",
   openai: "",
   "openai-compatible": "",
+  "opencode-go": "",
 };
 
 /** Terminal settings shared by every tab, stored in settings.json (S15.6). */

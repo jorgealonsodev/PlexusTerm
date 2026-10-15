@@ -5,11 +5,15 @@ import { isAiError, type AiConfig } from "./aiClient";
 export const MAX_SELECTION_LENGTH = 2000;
 
 /** The provider settings of a request; the base URL only matters to an OpenAI-compatible endpoint. */
-export function aiConfigOf(settings: TerminalSettings): AiConfig {
+export function aiConfigOf(settings: TerminalSettings, sessionId?: string): AiConfig {
   const config: AiConfig = { provider: settings.aiProvider, model: settings.aiModel };
   if (settings.aiProvider === "openai-compatible") config.baseUrl = settings.aiBaseUrl;
+  if (sessionId) config.sessionId = sessionId;
   return config;
 }
+
+/** A new conversation ID (a UUID: letters, digits and '-', as OpenCode's session header expects). */
+export const newAiSessionId = () => crypto.randomUUID();
 
 /** Local OpenAI-compatible servers (Ollama, LM Studio) work without a key. */
 export const needsApiKey = (provider: AiProvider) => provider !== "openai-compatible";

@@ -229,8 +229,8 @@ The **AI** section of Settings holds:
 - **Inline suggestions** (on by default): the grey suggestions above.
 - **Command history** (on by default): records commands and suggests from them. **Clear history** empties `history.json` at once.
 - **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider (see [AI suggestions](#ai-suggestions)).
-- **Provider**: Anthropic, Gemini, OpenAI or OpenAI-compatible; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
-- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model). Changing the provider while the model is still a provider default switches it to the new provider's default.
+- **Provider**: Anthropic, Gemini, OpenAI, OpenAI-compatible or OpenCode Go; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
+- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model; OpenCode Go: pick one from the list, see [OpenCode Go](#opencode-go)). Changing the provider while the model is still a provider default switches it to the new provider's default.
 - **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once.
 - **History commands sent as context** (0-20, default 5).
 - **Assistant shortcut** (default Ctrl+Shift+Space): click the field and press the new combination; Escape keeps the current one. It needs Ctrl, Alt or Meta, and combinations PlexusTerm already uses are refused.
@@ -251,17 +251,29 @@ With **AI suggestions** on, when the history has no suggestion for the typed lin
 | Anthropic (default) | `claude-opus-5-5` | Messages API. With the Claude Opus 5.5 models, PlexusTerm lets Anthropic retry on a recommended model when the chosen one cannot answer (server-side fallback). A faster, cheaper model can be typed in **Model**. |
 | Gemini | `gemini-3.5-flash-lite` | Google Gemini API. |
 | OpenAI | none: type your model | OpenAI API. |
-| OpenAI-compatible | none: type your model | Any endpoint with the OpenAI API at **Base URL**: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`), OpenRouter (`https://openrouter.ai/api/v1`). A key is optional; local servers usually need none. |
+| OpenAI-compatible | none: type your model | Any endpoint with the OpenAI API at **Base URL**: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`), OpenRouter (`https://openrouter.ai/api/v1`). A key is optional; local servers usually need none. When the base URL is on `opencode.ai`, the OpenCode session header is sent too. |
+| OpenCode Go | none: pick a model from the list | Only the API key is needed: the model list and each model's API come from OpenCode (see below). |
 
-API keys are stored only in the system keyring (one per provider), never in `settings.json`; Settings shows only whether a key is saved. Requests go from the PlexusTerm backend straight to the provider over HTTPS (or to the base URL you set). OpenCode is not supported yet.
+API keys are stored only in the system keyring (one per provider), never in `settings.json`; Settings shows only whether a key is saved. Requests go from the PlexusTerm backend straight to the provider over HTTPS (or to the base URL you set), identified as `PlexusTerm/<version>`. Redirects are not followed, so a key is never sent on to another host; a redirect shows up as an error asking you to check the base URL.
+
+### OpenCode Go
+
+Choose **OpenCode Go** as the provider and save your OpenCode API key; nothing else is needed.
+
+- **Model** becomes a list of the OpenCode Go models with their names. PlexusTerm reads it from OpenCode's public list (`https://opencode.ai/inference/go/v1/models`) and learns which API each model uses from [models.dev](https://models.dev). The list is kept for 24 hours in `opencode-go-models.json` in the app config directory; **Refresh models** fetches it again.
+- Models served with the chat completions, Anthropic messages or OpenAI responses APIs work. Models on Google's API are shown as **not supported yet** and cannot be picked.
+- If models.dev cannot be reached, every model is treated as chat completions and a note says so; if nothing can be fetched, the list saved earlier is shown, or you can type a model id.
+- Every request carries a session ID (`x-opencode-session`), as OpenCode asks: one per terminal pane for inline suggestions and a new one each time the assistant opens.
+- OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short requests. Settings shows this note when OpenCode Go is selected.
 
 ### AI assistant
 
 The assistant answers a request in plain words with a command for the focused terminal. Open it with **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or by clicking the PlexusTerm X at the left of the toolbar. The X turns once each time the assistant opens (not when the system asks for reduced motion).
 
 - Describe what you want and press **Enter** or **Ask** (**Shift+Enter** starts a new line). **Cancel** drops a slow answer.
-- The answer is one command and a short explanation. **Insert** types the command into the focused pane without Enter, so nothing runs until you press Enter yourself; **Copy** puts it on the clipboard. Inserted commands are not recorded in the command history.
-- **Include selected text** (available when the pane has a selection) also sends the selected text, shown in the panel before you ask; at most 2000 characters are sent. It is never sent unless ticked.
+- The answer is one command and a short explanation. **Insert** types the command into the focused pane without Enter, so nothing runs until you press Enter yourself; **Copy** puts it on the clipboard. Inserted commands are not recorded in the command history. Commands always come back on one line, without control characters or invisible formatting characters (such as zero-width spaces or right-to-left overrides); an answer whose command is longer than 2000 characters is refused.
+- **Include selected text** (available when the pane has a selection) also sends the selected text, shown in the panel before you ask; at most 2000 characters are sent. When text is selected as you open the assistant (with the shortcut or the X), it starts ticked, so the selection goes with your question; untick it to leave it out. It is never sent unless ticked.
+- Each opening of the assistant is a new conversation (a new session ID for OpenCode).
 - Besides your request, the assistant sends the operating system, the current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
 - When no key is saved for the provider, the panel says so and **Open AI settings** opens Settings, where the key is saved in the **AI** section.
 

@@ -9,6 +9,7 @@ const PROVIDER_NAMES: Record<TerminalSettings["aiProvider"], string> = {
   gemini: "Gemini",
   openai: "OpenAI",
   "openai-compatible": "the OpenAI-compatible endpoint",
+  "opencode-go": "OpenCode Go",
 };
 
 /** What the assistant knows about the pane it was opened over. Terminal output is never part of it. */
@@ -19,6 +20,8 @@ export interface AssistContext {
   history: () => string[];
   /** The pane's selection when the assistant opened, "" for none. */
   selection: string;
+  /** This conversation's ID: new on every opening, kept for every question asked in it. */
+  sessionId: string;
 }
 
 interface AssistantPanelProps {
@@ -42,7 +45,8 @@ type Phase =
 export function AssistantPanel({ settings, context, canInsert, onInsert, onClose, onOpenSettings }: AssistantPanelProps) {
   const [prompt, setPrompt] = useState("");
   const selection = truncateSelection(context.selection);
-  const [includeSelection, setIncludeSelection] = useState(false);
+  /** A selection made before opening is offered ticked (and shown) so it is sent unless unticked. */
+  const [includeSelection, setIncludeSelection] = useState(selection !== "");
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   /** True once the keyring says no key is saved for the provider. */
   const [keyMissing, setKeyMissing] = useState(false);
@@ -69,7 +73,7 @@ export function AssistantPanel({ settings, context, canInsert, onInsert, onClose
     const mine = ++seq.current;
     setPhase({ kind: "loading" });
     setCopied(false);
-    aiAssist(aiConfigOf(settings), {
+    aiAssist(aiConfigOf(settings, context.sessionId), {
       prompt: prompt.trim(),
       os: context.os,
       cwd: context.cwd,
