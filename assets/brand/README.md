@@ -18,7 +18,7 @@ Regenerate:
 # Wordmarks (Manrope variable font, OFL, not vendored)
 fonttools varLib.instancer 'Manrope[wght].ttf' wght=800 -o Manrope-800.ttf
 python3 scripts/brand-wordmark.py Manrope-800.ttf assets/brand
-cp assets/brand/plexusterm-wordmark.svg src/assets/
+cp assets/brand/plexusterm-mark.svg assets/brand/plexusterm-mark-light.svg src/assets/   # toolbar logo (dark and light themes)
 
 # Platform icons
 rsvg-convert -w 1024 -h 1024 assets/brand/plexusterm-icon.svg -o assets/brand/plexusterm-icon-1024.png
