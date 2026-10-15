@@ -107,6 +107,14 @@ describe("isSecretPrompt (other languages)", () => {
       "كلمة المرور: ",
       "[sudo] jorge के लिए पासवर्ड: ",
       "[sudo] пароль для jorge: ",
+      "Escriba nueva frase de paso: ",
+      "Frase de paso:",
+      "Entrez la phrase secrète : ",
+      "パスフレーズを入力してください: ",
+      "密碼：",
+      "Código de verificação: ",
+      "Bestätigungscode: ",
+      "Code de vérification : ",
     ];
     for (const prompt of prompts) expect(isSecretPrompt(prompt), prompt).toBe(true);
   });

@@ -83,21 +83,30 @@ export function promptBefore(lineToCursor: string, typed: string): string {
   return typed && lineToCursor.endsWith(typed) ? lineToCursor.slice(0, -typed.length) : lineToCursor;
 }
 
-/** "Password: ", "[sudo] password for u: ", "Enter passphrase for key …: ", "PIN:", "Verification code:", "OTP:", "Enter token:" */
-/** Words that announce a secret: English first, then the interface languages (and Russian), as sudo and ssh print them. */
+/**
+ * Words that announce a secret ("Password: ", "[sudo] password for u: ", "Enter passphrase for key …: ",
+ * "PIN:", "Verification code:", "OTP:"): English first, then the other interface languages and Russian,
+ * as sudo, ssh, PAM, cryptsetup and gpg print them.
+ */
 const SECRET_WORDS = [
   "pass(?:word|phrase|code)",
   "\\bpin\\b",
   "\\b(?:otp|2fa|mfa|token|one[- ]time|(?:verification|authenticator|security|auth) code)\\b",
   "contrase(?:ñ|n)a",
-  "c(?:ó|o)digo de verificaci(?:ó|o)n",
+  "frase de paso",
+  "c(?:ó|o)digo de verifica(?:ci(?:ó|o)n|(?:ç|c)(?:ã|a)o)",
   "passwort",
   "kennwort",
+  "best(?:ä|a)tigungscode",
   "mot de passe",
+  "phrase secr(?:è|e)te",
+  "code de v(?:é|e)rification",
   "senha",
   "パスワード",
+  "パスフレーズ",
   "暗証番号",
   "密码",
+  "密碼",
   "口令",
   "암호",
   "비밀번호",
