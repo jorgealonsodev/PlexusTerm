@@ -1,0 +1,40 @@
+.keygen {
+  width: min(560px, 100%);
+}
+
+.keygen__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keygen__public {
+  padding: 6px 8px;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+
+.keygen__public:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.keygen__fingerprint {
+  overflow-wrap: anywhere;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+}
+
+.keygen__install {
+  align-items: flex-end;
+}
+
+.keygen__danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
