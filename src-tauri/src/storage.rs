@@ -1,10 +1,10 @@
 //! Small JSON documents stored in the app config directory.
 //!
-//! Writes are atomic (temp file + rename) and private to the user (0600), so a
-//! crash never leaves a half-written file and other users cannot read it.
+//! Writes are atomic (temp file + rename) and private to the user (0600 on Unix, the
+//! profile ACLs on Windows), so a crash never leaves a half-written file and other users
+//! cannot read it.
 
 use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -34,6 +34,9 @@ pub fn load(path: &Path) -> Result<Option<String>, StorageError> {
     }
 }
 
+/// Serializes writes made by this process (see `save`).
+static WRITE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Validates `contents` as JSON and atomically replaces the file.
 pub fn save(path: &Path, contents: &str) -> Result<(), StorageError> {
     serde_json::from_str::<serde_json::Value>(contents)
@@ -47,17 +50,12 @@ pub fn save(path: &Path, contents: &str) -> Result<(), StorageError> {
     tmp_name.push(format!(".tmp-{}-{seq}", std::process::id()));
     let tmp = path.with_file_name(tmp_name);
 
-    let result = (|| {
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(&tmp)?;
-        file.write_all(contents.as_bytes())?;
-        file.sync_all()?;
-        std::fs::rename(&tmp, path)
-    })();
+    // One writer at a time: Windows refuses concurrent renames onto the same file.
+    let _guard = WRITE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let result = crate::platform::write_private(&tmp, contents.as_bytes())
+        .and_then(|()| crate::platform::replace_file(&tmp, path));
     if let Err(err) = result {
         let _ = std::fs::remove_file(&tmp);
         return Err(io(path, err));
@@ -122,7 +120,6 @@ pub fn append_text(path: &Path, contents: &str, max_bytes: u64) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn read_bounded_returns_the_bytes_of_small_files() {
@@ -234,8 +231,10 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn saved_file_is_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("sessions.json");
         save(&path, "{}").unwrap();

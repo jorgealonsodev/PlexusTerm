@@ -2,17 +2,19 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
+use crate::platform;
 use crate::terminal::{TerminalSink, Utf8Stream};
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnRequest {
-    /// Program to run; defaults to `$SHELL` or `/bin/bash`.
+    /// Program to run; defaults to the user's shell (see [`platform::default_shell`]).
     pub program: Option<String>,
     #[serde(default)]
     pub args: Vec<String>,
@@ -35,7 +37,7 @@ impl ChildEnv {
         Self(vars.into_iter().collect())
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -94,13 +96,10 @@ impl PtyManager {
             .openpty(size(req.cols, req.rows))
             .map_err(io_err)?;
 
-        let program = req
-            .program
-            .or_else(|| std::env::var("SHELL").ok())
-            .unwrap_or_else(|| "/bin/bash".into());
+        let program = req.program.unwrap_or_else(platform::default_shell);
         let mut cmd = CommandBuilder::new(program);
         cmd.args(&req.args);
-        if let Some(dir) = req.cwd.or_else(|| std::env::var("HOME").ok()) {
+        if let Some(dir) = req.cwd.map(PathBuf::from).or_else(platform::home_dir) {
             cmd.cwd(dir);
         }
         cmd.env("TERM", "xterm-256color");
@@ -182,7 +181,8 @@ impl PtyManager {
     }
 }
 
-#[cfg(test)]
+// The tests run /bin/sh and other Unix programs.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use std::sync::mpsc::{Receiver, Sender, channel};

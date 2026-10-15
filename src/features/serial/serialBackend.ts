@@ -2,7 +2,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import type { SerialTarget } from "../sessions/types";
 import type { TerminalBackend, TerminalEvent } from "../terminal/backend";
 
-/** Serial devices detected on this machine (e.g. /dev/ttyUSB0); listing never opens them. */
+/** Serial devices detected on this machine (e.g. /dev/ttyUSB0 or COM3); listing never opens them. */
 export function listSerialPorts(): Promise<string[]> {
   return invoke<string[]>("serial_list_ports");
 }

@@ -70,6 +70,8 @@ async fn the_sftp_session_is_opened_once_and_reused() {
     assert!(Arc::ptr_eq(&first, &second));
 }
 
+// Creates a symlink, which needs privileges on Windows.
+#[cfg(unix)]
 #[tokio::test]
 async fn list_puts_directories_first_then_names_case_insensitively() {
     let root = tempfile::tempdir().unwrap();

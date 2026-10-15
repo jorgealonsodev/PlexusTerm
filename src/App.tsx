@@ -7,6 +7,7 @@ import { createTargetRegistry, playMacro, type MacroRun, type MacroTarget } from
 import { useMacros } from "./features/macros/useMacros";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MoshDialog } from "./features/mosh/MoshDialog";
+import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
@@ -108,6 +109,8 @@ const draftTunnel = (): Tunnel => ({
 /** Toolbar menu for the less common session types (S17.3). */
 function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => void }) {
   const [open, setOpen] = useState(false);
+  // Mosh has no Windows client (S18.2).
+  const offerMosh = usePlatform() !== "windows";
   const ref = useRef<HTMLDivElement>(null);
 
   // Any click outside the menu, or Escape, closes it.
@@ -140,16 +143,18 @@ function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => vo
           <button role="menuitem" className="menu__item" onClick={choose(onTelnet)}>
             Telnet…
           </button>
-          <button role="menuitem" className="menu__item" onClick={choose(onMosh)}>
-            Mosh…
-          </button>
+          {offerMosh && (
+            <button role="menuitem" className="menu__item" onClick={choose(onMosh)}>
+              Mosh…
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export default function App() {
+function AppContent() {
   // Start with one local terminal open.
   const [state, dispatch] = useReducer(tabsReducer, initialTabs, (s) =>
     tabsReducer(s, { type: "open", target: LOCAL }),
@@ -753,5 +758,14 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+/** The app, with the platform (asked from the backend once) available to every component. */
+export default function App() {
+  return (
+    <PlatformProvider>
+      <AppContent />
+    </PlatformProvider>
   );
 }

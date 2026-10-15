@@ -24,7 +24,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use russh::client::ChannelOpenHandle;
-use russh::keys::agent::client::AgentClient;
 use russh::keys::{
     HashAlg, PrivateKeyWithHashAlg, PublicKey, PublicKeyOrCertificate, known_hosts, load_secret_key,
 };
@@ -32,6 +31,7 @@ use russh::{Channel, ChannelMsg, ChannelOpenFailure, client};
 use russh_sftp::client::SftpSession;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
+use crate::platform;
 use crate::secrets::{self, NoStore, SharedSecrets};
 use crate::sftp::SftpError;
 use crate::terminal::{TerminalSink, Utf8Stream};
@@ -294,14 +294,6 @@ impl client::Handler for ClientHandler {
             }
         }
         Ok(())
-    }
-}
-
-/// Expands a leading `~/` to `$HOME`, as users type key paths like `~/.ssh/id_ed25519`.
-fn expand_home(path: &str) -> PathBuf {
-    match (path.strip_prefix("~/"), std::env::var_os("HOME")) {
-        (Some(rest), Some(home)) => PathBuf::from(home).join(rest),
-        _ => PathBuf::from(path),
     }
 }
 
@@ -622,11 +614,9 @@ async fn authenticate(
                 .success()
         }
         SshAuth::Key { path, passphrase } => {
-            let key =
-                load_secret_key(expand_home(&path), passphrase.as_deref()).map_err(|err| {
-                    SshError::Connection {
-                        message: format!("cannot load private key {path}: {err}"),
-                    }
+            let key = load_secret_key(platform::expand_home(&path), passphrase.as_deref())
+                .map_err(|err| SshError::Connection {
+                    message: format!("cannot load private key {path}: {err}"),
                 })?;
             let hash = handle
                 .best_supported_rsa_hash()
@@ -640,12 +630,10 @@ async fn authenticate(
                 .success()
         }
         SshAuth::Agent => {
-            let agent = match agent_socket {
-                Some(socket) => AgentClient::connect_uds(socket).await,
-                None => AgentClient::connect_env().await,
-            };
-            let mut agent = agent.map_err(|err| SshError::Connection {
-                message: format!("SSH agent unavailable: {err}"),
+            let mut agent = platform::connect_agent(agent_socket).await.map_err(|err| {
+                SshError::Connection {
+                    message: format!("SSH agent unavailable: {err}"),
+                }
             })?;
             let identities = agent.request_identities().await.map_err(connection)?;
             let hash = handle
@@ -725,7 +713,7 @@ impl SshManager {
         self
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     fn with_agent_socket(mut self, socket: PathBuf) -> Self {
         self.agent_socket = Some(socket);
         self
@@ -744,10 +732,7 @@ impl SshManager {
 
     /// Uses the current user's `~/.ssh/known_hosts`, like OpenSSH.
     pub fn for_current_user() -> Self {
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default();
-        Self::new(home.join(".ssh").join("known_hosts"))
+        Self::new(platform::known_hosts_path())
     }
 
     /// Connects without touching saved passwords (tests; the app uses `connect_with`).
@@ -1007,17 +992,6 @@ mod tests {
         SshManager::new(path)
     }
 
-    #[test]
-    fn expands_home_in_key_paths() {
-        let home = std::env::var("HOME").unwrap();
-        assert_eq!(
-            expand_home("~/.ssh/id"),
-            PathBuf::from(home).join(".ssh/id")
-        );
-        assert_eq!(expand_home("/abs/id"), PathBuf::from("/abs/id"));
-        assert_eq!(expand_home("rel~/id"), PathBuf::from("rel~/id"));
-    }
-
     #[tokio::test]
     async fn password_login_opens_an_interactive_shell() {
         let server = test_server::start(1, None).await;
@@ -1182,6 +1156,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(unix)]
     async fn agent_login_uses_the_agent_identities() {
         if std::process::Command::new("ssh-agent")
             .arg("-h")

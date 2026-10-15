@@ -100,6 +100,18 @@ fn error_message(err: SshError) -> String {
 }
 
 #[test]
+fn a_missing_client_is_explained_per_platform() {
+    assert_eq!(
+        client_missing(Os::Unix),
+        "mosh-client not found — install mosh"
+    );
+    assert_eq!(
+        client_missing(Os::Windows),
+        "Mosh is not available on Windows"
+    );
+}
+
+#[test]
 fn parses_the_mosh_connect_line() {
     let connect = parse_connect(MOSH_CONNECT_REPLY).unwrap();
     assert_eq!(connect.port, 60001);

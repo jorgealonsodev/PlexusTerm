@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import type { LibrarySession, SavedSession } from "./library";
+import { PlatformContext } from "../platform/usePlatform";
 import { SessionEditDialog } from "./SessionEditDialog";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -148,6 +149,22 @@ describe("SessionEditDialog Telnet and Mosh (S17.3)", () => {
     renderKinds(web, true);
     const options = Array.from(screen.getByLabelText<HTMLSelectElement>("Session type").options).map((o) => o.text);
     expect(options).toEqual(["SSH", "Serial", "Telnet", "Mosh"]);
+  });
+
+  it("does not offer Mosh on Windows, except to keep an existing Mosh session (S18.3)", () => {
+    const kinds = () =>
+      Array.from(screen.getByLabelText<HTMLSelectElement>("Session type").options).map((o) => o.text);
+    const renderOn = (session: LibrarySession, isNew: boolean) =>
+      render(
+        <PlatformContext.Provider value="windows">
+          <SessionEditDialog session={session} isNew={isNew} folders={[]} jumpCandidates={[web]} onSave={vi.fn()} onCancel={() => {}} />
+        </PlatformContext.Provider>,
+      );
+    renderOn(web, true);
+    expect(kinds()).toEqual(["SSH", "Serial", "Telnet"]);
+    cleanup();
+    renderOn({ kind: "mosh", id: "m", name: "m", folder: "", sshSessionId: "s1" }, false);
+    expect(kinds()).toEqual(["SSH", "Serial", "Telnet", "Mosh"]);
   });
 
   it("saves a Telnet session", () => {

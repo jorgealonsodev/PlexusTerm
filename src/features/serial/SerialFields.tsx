@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { usePlatform } from "../platform/usePlatform";
 import { listSerialPorts } from "./serialBackend";
 import { COMMON_BAUD_RATES, CUSTOM_BAUD, type SerialForm } from "./serialSettings";
 
@@ -12,6 +13,7 @@ interface SerialFieldsProps {
 export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProps) {
   const [ports, setPorts] = useState<string[] | null>(null);
   const [portsError, setPortsError] = useState<string | null>(null);
+  const platform = usePlatform();
   const set =
     (field: keyof SerialForm) =>
     (e: { target: { value: string } }) =>
@@ -58,7 +60,7 @@ export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProp
       </div>
       <label className="field">
         Serial port
-        <input autoFocus={autoFocusPath} value={form.path} onChange={set("path")} placeholder="/dev/ttyUSB0" />
+        <input autoFocus={autoFocusPath} value={form.path} onChange={set("path")} placeholder={platform === "windows" ? "COM3" : "/dev/ttyUSB0"} />
       </label>
       <div className="form-row">
         <label className="field field--grow">

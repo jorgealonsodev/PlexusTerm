@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { MoshFields } from "../mosh/MoshFields";
+import { usePlatform } from "../platform/usePlatform";
 import { SerialFields } from "../serial/SerialFields";
 import { TelnetFields } from "../telnet/TelnetFields";
 import { fieldSetter, SshFields } from "../ssh/SshFields";
@@ -39,6 +40,8 @@ export function SessionEditDialog({
   const set = fieldSetter(setForm);
   const [hasSecret, setHasSecret] = useState(false);
   const [secretNote, setSecretNote] = useState<string | null>(null);
+  // Mosh has no Windows client; an existing Mosh session keeps its type so it stays editable.
+  const offerMosh = usePlatform() !== "windows" || formFromSession(session).kind === "mosh";
 
   // Only existing SSH sessions can have a password saved in the keyring.
   useEffect(() => {
@@ -79,7 +82,7 @@ export function SessionEditDialog({
             <option value="ssh">SSH</option>
             <option value="serial">Serial</option>
             <option value="telnet">Telnet</option>
-            <option value="mosh">Mosh</option>
+            {offerMosh && <option value="mosh">Mosh</option>}
           </select>
         </label>
         <div className="form-row">

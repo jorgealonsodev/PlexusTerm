@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use russh::ChannelMsg;
 
+use crate::platform::{self, Os};
 use crate::pty::{ChildEnv, PtyManager, SpawnRequest};
 use crate::ssh::{
     Chain, ConnectRequest, Connection, PasswordStorage, SshError, SshManager, SshTarget,
@@ -31,6 +32,7 @@ const MAX_SERVER_OUTPUT: usize = 64 * 1024;
 const CLIENT_PROGRAM: &str = "mosh-client";
 
 const CLIENT_MISSING: &str = "mosh-client not found — install mosh";
+const WINDOWS_CLIENT_MISSING: &str = "Mosh is not available on Windows";
 const SERVER_MISSING: &str = "mosh-server not found on the server — install mosh there";
 
 /// A saved or typed SSH login plus the command that starts the Mosh server.
@@ -93,16 +95,12 @@ fn failure(message: impl Into<String>) -> SshError {
     }
 }
 
-/// Finds an executable `name` in the directories of `path` (like a shell's PATH lookup).
-fn find_program(name: &str, path: &std::ffi::OsStr) -> Option<PathBuf> {
-    use std::os::unix::fs::PermissionsExt;
-    std::env::split_paths(path)
-        .map(|dir| dir.join(name))
-        .find(|candidate| {
-            candidate
-                .metadata()
-                .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-        })
+/// The error for a missing `mosh-client`: Windows has no packaged Mosh, so say so plainly.
+fn client_missing(os: Os) -> &'static str {
+    match os {
+        Os::Unix => CLIENT_MISSING,
+        Os::Windows => WINDOWS_CLIENT_MISSING,
+    }
 }
 
 /// Explains why the server command ended without a `MOSH CONNECT` line.
@@ -197,13 +195,13 @@ impl Default for MoshLauncher {
 }
 
 impl MoshLauncher {
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     fn with_search_path(mut self, path: &std::path::Path) -> Self {
         self.search_path = Some(path.as_os_str().to_owned());
         self
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, unix))]
     fn with_server_timeout(mut self, timeout: Duration) -> Self {
         self.server_timeout = timeout;
         self
@@ -215,7 +213,8 @@ impl MoshLauncher {
             .clone()
             .or_else(|| std::env::var_os("PATH"))
             .unwrap_or_default();
-        find_program(CLIENT_PROGRAM, &path).ok_or_else(|| failure(CLIENT_MISSING))
+        platform::find_program(&platform::program_name(CLIENT_PROGRAM), &path)
+            .ok_or_else(|| failure(client_missing(platform::CURRENT)))
     }
 
     /// Logs in over SSH (applying `storage` like an SSH tab), starts the server, closes
@@ -290,5 +289,6 @@ impl MoshLauncher {
     }
 }
 
-#[cfg(test)]
+// The tests fake `mosh-client` with a shell script.
+#[cfg(all(test, unix))]
 mod tests;
