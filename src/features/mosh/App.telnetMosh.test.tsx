@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
 import App from "../../App";
 import type { SessionTarget } from "../sessions/types";
 
@@ -62,6 +63,24 @@ describe("App Telnet and Mosh (S17.3)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await vi.waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(2));
     expect(lastTarget()).toEqual({ type: "mosh", ssh: webLogin });
+  });
+
+  it("hides Mosh from the More menu on Windows (S18.3)", async () => {
+    const original = vi.mocked(invoke).getMockImplementation();
+    vi.mocked(invoke).mockImplementation(async (command: string) =>
+      command === "platform" ? "windows" : command === "sessions_load" ? JSON.stringify(library) : null,
+    );
+    try {
+      render(<App />);
+      await screen.findByText("web");
+      await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith("platform"));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      fireEvent.click(screen.getByRole("button", { name: "More ▾" }));
+      expect(screen.getByRole("menuitem", { name: "Telnet…" })).toBeTruthy();
+      expect(screen.queryByRole("menuitem", { name: "Mosh…" })).toBeNull();
+    } finally {
+      vi.mocked(invoke).mockImplementation(original!);
+    }
   });
 
   it("opens saved Telnet and Mosh sessions", async () => {

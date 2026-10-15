@@ -1,7 +1,7 @@
 //! Serial console sessions (USB adapters, on-board UARTs), independent of Tauri so they can be
 //! tested directly against a pseudo-terminal pair.
 
-mod ports;
+pub(crate) mod ports;
 
 use std::collections::HashMap;
 use std::io::{ErrorKind as IoKind, Read, Write};
@@ -10,11 +10,15 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
-use serialport::{DataBits, FlowControl, Parity, StopBits, TTYPort};
+use serialport::{DataBits, FlowControl, Parity, StopBits};
 
+use crate::platform::{self, SerialPort};
 use crate::terminal::{TerminalSink, Utf8Stream};
 
-pub use ports::list_ports;
+/// Lists the serial devices present on this machine (`/dev/ttyUSB0`, `COM3`, ...).
+pub fn list_ports() -> Vec<String> {
+    platform::serial_ports()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -148,7 +152,7 @@ fn settings(req: &SerialRequest) -> Result<(DataBits, Parity, StopBits, FlowCont
 const READ_TIMEOUT: Duration = Duration::from_millis(100);
 
 struct Session {
-    port: TTYPort,
+    port: SerialPort,
     stop: Arc<AtomicBool>,
 }
 
@@ -161,15 +165,14 @@ pub struct SerialManager {
 impl SerialManager {
     pub fn open(&self, req: SerialRequest, sink: impl TerminalSink) -> Result<u32, SerialError> {
         let (data_bits, parity, stop_bits, flow) = settings(&req)?;
-        let port = serialport::new(&req.path, req.baud)
+        let builder = serialport::new(&req.path, req.baud)
             .data_bits(data_bits)
             .parity(parity)
             .stop_bits(stop_bits)
             .flow_control(flow)
-            .timeout(READ_TIMEOUT)
-            .open_native()
-            .map_err(|err| open_error(&req.path, err))?;
-        let mut reader = port.try_clone_native().map_err(io_err)?;
+            .timeout(READ_TIMEOUT);
+        let port = platform::open_serial(builder).map_err(|err| open_error(&req.path, err))?;
+        let mut reader = platform::clone_serial(&port).map_err(io_err)?;
 
         let stop = Arc::new(AtomicBool::new(false));
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
@@ -238,5 +241,6 @@ impl SerialManager {
     }
 }
 
-#[cfg(test)]
+// The tests drive a Unix pseudo-terminal pair.
+#[cfg(all(test, unix))]
 mod tests;

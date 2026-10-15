@@ -7,14 +7,16 @@ use std::path::Path;
 /// Device name prefixes offered as serial consoles.
 const PREFIXES: [&str; 3] = ["ttyUSB", "ttyACM", "ttyS"];
 
-/// Lists the serial devices present on this machine (e.g. `/dev/ttyUSB0`).
-pub fn list_ports() -> Vec<String> {
+/// Lists the serial devices present on this Linux machine (e.g. `/dev/ttyUSB0`).
+#[cfg_attr(windows, allow(dead_code))]
+pub fn sysfs_ports() -> Vec<String> {
     list_ports_in(Path::new("/sys/class/tty"), Path::new("/dev"))
 }
 
 /// Lists `<dev>/<name>` for every `<sys_tty>/<name>` that is a serial device backed by hardware:
 /// it has a `device` link, its node exists in `dev`, and it is not an unpopulated UART
 /// (`type` attribute `0`, which the kernel reports for the placeholder ttyS ports).
+#[cfg_attr(windows, allow(dead_code))]
 pub fn list_ports_in(sys_tty: &Path, dev: &Path) -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(sys_tty) else {
         return Vec::new();

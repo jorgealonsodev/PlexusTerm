@@ -44,7 +44,7 @@ export type SerialFlow = "none" | "software" | "hardware";
 
 /** Line settings of a serial console (e.g. 115200 8N1). */
 export interface SerialSettings {
-  /** Device node, e.g. /dev/ttyUSB0. */
+  /** Device node or port name, e.g. /dev/ttyUSB0 or COM3. */
   path: string;
   baud: number;
   dataBits: 5 | 6 | 7 | 8;

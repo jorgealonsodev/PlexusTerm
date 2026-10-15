@@ -213,10 +213,7 @@ impl TunnelManager {
 
     /// Uses the current user's `~/.ssh/known_hosts`, like SSH sessions.
     pub fn for_current_user(notify: impl Fn(StatusUpdate) + Send + Sync + 'static) -> Self {
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default();
-        Self::new(home.join(".ssh").join("known_hosts"), notify)
+        Self::new(crate::platform::known_hosts_path(), notify)
     }
 
     /// Opens the tunnel's SSH connection and starts forwarding, without

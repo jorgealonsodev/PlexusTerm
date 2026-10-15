@@ -28,7 +28,7 @@ use russh::{Channel, ChannelId, Pty};
 use russh_sftp::protocol::{
     Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode,
 };
-use std::os::unix::fs::FileExt;
+use std::io::{Read, Seek, SeekFrom, Write};
 use tokio::net::{TcpListener, TcpStream};
 
 pub const PASSWORD: &str = "secret";
@@ -47,7 +47,9 @@ pub struct TestServer {
     pub password_attempts: Arc<AtomicUsize>,
     /// Client connections currently open.
     open_connections: Arc<AtomicUsize>,
-    /// Commands received in exec requests, over every connection.
+    /// Commands received in exec requests, over every connection (read by the Unix-only
+    /// Mosh tests).
+    #[cfg_attr(not(unix), allow(dead_code))]
     exec_commands: Arc<Mutex<Vec<String>>>,
 }
 
@@ -60,6 +62,7 @@ impl TestServer {
         self.open_connections.load(Ordering::SeqCst)
     }
 
+    #[cfg_attr(not(unix), allow(dead_code))]
     pub fn exec_commands(&self) -> Vec<String> {
         self.exec_commands.lock().unwrap().clone()
     }
@@ -521,11 +524,12 @@ impl russh_sftp::server::Handler for SftpFs {
         offset: u64,
         len: u32,
     ) -> Result<Data, Self::Error> {
-        let Some(OpenHandle::File(file)) = self.handles.get(&handle) else {
+        let Some(OpenHandle::File(file)) = self.handles.get_mut(&handle) else {
             return Err(StatusCode::Failure);
         };
         let mut data = vec![0; len as usize];
-        let read = file.read_at(&mut data, offset).map_err(io_status)?;
+        file.seek(SeekFrom::Start(offset)).map_err(io_status)?;
+        let read = file.read(&mut data).map_err(io_status)?;
         if read == 0 {
             return Err(StatusCode::Eof);
         }
@@ -540,10 +544,11 @@ impl russh_sftp::server::Handler for SftpFs {
         offset: u64,
         data: Vec<u8>,
     ) -> Result<Status, Self::Error> {
-        let Some(OpenHandle::File(file)) = self.handles.get(&handle) else {
+        let Some(OpenHandle::File(file)) = self.handles.get_mut(&handle) else {
             return Err(StatusCode::Failure);
         };
-        file.write_all_at(&data, offset).map_err(io_status)?;
+        file.seek(SeekFrom::Start(offset)).map_err(io_status)?;
+        file.write_all(&data).map_err(io_status)?;
         Ok(ok(id))
     }
 

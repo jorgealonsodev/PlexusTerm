@@ -31,6 +31,26 @@ pnpm tauri build    # produces .deb and AppImage under src-tauri/target/release/
 
 Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`. The `.deb` depends only on `libwebkit2gtk-4.1-0` and `libgtk-3-0`; the AppImage bundles everything.
 
+## Windows
+
+NexusTerm also builds for Windows 10/11. Everything works as on Linux except:
+
+- **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`.
+- **Home directory**: `~` is `%USERPROFILE%`, so host keys go to `%USERPROFILE%\.ssh\known_hosts` and key paths accept both `~/` and `~\`.
+- **SSH agent**: `SSH_AUTH_SOCK` when set, otherwise the Windows OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent` (start the "OpenSSH Authentication Agent" service and add keys with `ssh-add`).
+- **Saved files** (sessions, settings, macros) rely on the permissions of your user profile instead of Unix file modes.
+- **Serial consoles** list the COM ports reported by Windows (`COM3`, ...) and accept a typed port name.
+- **Mosh** is not offered: there is no packaged `mosh-client` for Windows. A Mosh session imported or saved elsewhere reports "Mosh is not available on Windows" unless a `mosh-client.exe` is on `PATH`.
+
+Build on Windows with the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (Microsoft C++ Build Tools, WebView2, Rust stable) plus Node.js 22 and pnpm, then:
+
+```powershell
+pnpm install
+pnpm tauri build --bundles nsis,msi   # installers under src-tauri\target\release\bundle\
+```
+
+Windows support is developed on Linux, where it is only cross-compiled (`cargo check --target x86_64-pc-windows-gnu`); it is built, tested and packaged on a real Windows machine by the CI workflow (`.github/workflows/ci.yml`, Linux and Windows jobs on every push), whose artifacts hold the `.deb`, AppImage, NSIS and MSI installers.
+
 ## SSH sessions
 
 Open **SSH** (or Ctrl+Shift+S) and enter a host; the field also accepts `user@host:port`.

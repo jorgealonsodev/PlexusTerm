@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { PlatformContext } from "../platform/usePlatform";
 import { SerialDialog } from "./SerialDialog";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), Channel: class {} }));
@@ -12,6 +13,22 @@ afterEach(() => {
 });
 
 describe("SerialDialog", () => {
+  it("suggests a device path that fits the platform (S18.3)", async () => {
+    vi.mocked(invoke).mockResolvedValue([]);
+    render(<SerialDialog onConnect={vi.fn()} onCancel={vi.fn()} />);
+    await screen.findByText("No serial ports detected.");
+    expect((screen.getByLabelText("Serial port") as HTMLInputElement).placeholder).toBe("/dev/ttyUSB0");
+    cleanup();
+
+    render(
+      <PlatformContext.Provider value="windows">
+        <SerialDialog onConnect={vi.fn()} onCancel={vi.fn()} />
+      </PlatformContext.Provider>,
+    );
+    await screen.findByText("No serial ports detected.");
+    expect((screen.getByLabelText("Serial port") as HTMLInputElement).placeholder).toBe("COM3");
+  });
+
   it("lists detected ports and connects with 115200 8N1 by default", async () => {
     vi.mocked(invoke).mockResolvedValue(["/dev/ttyACM0", "/dev/ttyUSB0"]);
     const onConnect = vi.fn();

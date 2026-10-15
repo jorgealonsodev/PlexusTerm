@@ -1,4 +1,5 @@
 mod mosh;
+mod platform;
 mod pty;
 mod secrets;
 mod serial;
@@ -68,6 +69,12 @@ fn pty_close(id: u32, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
 #[tauri::command]
 fn serial_list_ports() -> Vec<String> {
     serial::list_ports()
+}
+
+/// `"linux"`, `"windows"` or `"macos"`, so the frontend can adapt platform-specific texts.
+#[tauri::command]
+fn platform() -> &'static str {
+    platform::name()
 }
 
 #[tauri::command]
@@ -393,6 +400,7 @@ pub fn run() {
             pty_resize,
             pty_close,
             serial_list_ports,
+            platform,
             serial_open,
             serial_write,
             serial_close,
