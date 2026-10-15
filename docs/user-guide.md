@@ -184,7 +184,7 @@ The gear button at the right of the toolbar opens **Settings**, shared by every 
 | Monokai | Monokai, Monokai Soda |
 | Others | PlexusTerm, Dracula, Afterglow, Adventure Time, AlienBlood, Andromeda, Argonaut, Blue Matrix, 3024 Night, 3024 Day, JetBrains Darcula, Jellybeans, Red Sands, Retro, Laser |
 
-The palettes come from iTerm2-Color-Schemes (MIT, see `THIRD_PARTY_NOTICES.md`). The colour scheme changes the terminal only; the rest of the window keeps its dark look.
+The palettes come from iTerm2-Color-Schemes (MIT); [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) credits each scheme's author and original project. The colour scheme changes the terminal only; the rest of the window keeps its dark look.
 
 Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `robbyrussell` or `agnoster`) are configured in the shell, on the machine where it runs (`~/.zshrc`, `~/.config/starship.toml`), not in PlexusTerm. Their colours follow the colour scheme. Themes that draw icons or powerline arrows need a [Nerd Font](https://www.nerdfonts.com/) installed on this machine and set as the font family.
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
