@@ -73,6 +73,8 @@ The toolbar **More** menu opens **Telnet…** and **Mosh…** quick-connect dial
 
 ## Saved sessions
 
+Confirmations and questions (deleting sessions, folders, tunnels and macros, naming a new folder, the SFTP actions) open in PlexusTerm's own dialogs: Enter submits a typed name and presses the focused button of a confirmation, Escape cancels, and Cancel has the focus when the action deletes something. Cancelling never performs the action.
+
 The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions in folders (`Prod/DB` style paths).
 Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
 Right-click a session for **Connect**, **Edit…**, **Duplicate** (a copy named "<name> (copy)" next to it; a saved keyring password is not copied) and **Delete**. Right-click a folder for **New session here…**, **New folder here…**, **Connect all** (every session in it and its subfolders, each in its own tab) and **Delete folder**. While the sessions file cannot be read, the menus only offer connecting.
@@ -132,7 +134,7 @@ Right-click an entry for more:
 - **Copy file path** copies the full remote path; **Copy file path to terminal** types it into the focused pane of the active tab, quoted for the shell when needed. Middle-clicking an entry does the same.
 - **Properties** shows the name, path, type, size, modification time, owner, group and permissions (`rwxr-xr-x (0755)`).
 - **Permissions…** changes the mode (`chmod`) with read/write/execute checkboxes for owner, group and others, kept in sync with the octal value.
-- For files: **Open with default text editor**, **Open with default program**, **Open with…** (choose a program) and **Compare file with…** (choose a local file; opens both in Meld, KDiff3, Kompare or Visual Studio Code, the first one installed). The open options download the file to a private temporary folder and watch it: each time the copy is saved, PlexusTerm asks the first time whether to upload it to the same remote path, then uploads it and reports the result. The temporary copies are deleted when the SSH session closes.
+- For files: **Open with default text editor** (the **Text editor** chosen in [Settings](#terminal-settings), or the system's default one), **Open with default program**, **Open with…** (choose a program) and **Compare file with…** (choose a local file; opens both in Meld, KDiff3, Kompare or Visual Studio Code, the first one installed). The open options download the file to a private temporary folder and watch it: each time the copy is saved, PlexusTerm asks the first time whether to upload it to the same remote path, then uploads it and reports the result. The temporary copies are deleted when the SSH session closes.
 
 With **Follow terminal folder** on (the default), the browser follows the shell's working directory. This needs the remote shell to report it with an OSC 7 sequence; for bash, add this to the remote `~/.bashrc`:
 
@@ -202,6 +204,7 @@ Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `ro
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
 - **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it.
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
+- **Text editor** (default: empty, the system default text editor): the program **Open with default text editor** uses in the SFTP browser. **Browse…** picks a program; you can also type a command with arguments, such as `code --wait` or `"/opt/My Editor/editor" -n`. The file is added as the last argument, or in place of `%f` when the command has one. The command runs directly, never through a shell, and a path to an existing program counts as one program even when it contains spaces. **Use system default** empties the field. A value that is not text or is longer than 1024 characters loads as the system default.
 
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
 

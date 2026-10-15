@@ -11,6 +11,7 @@ describe("parseSettings", () => {
       theme: "catppuccin-mocha",
       fontFamily: DEFAULT_FONT_FAMILY,
       remoteMonitor: true,
+      textEditor: "",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -23,7 +24,7 @@ describe("parseSettings", () => {
 
   it("reads saved values", () => {
     const json =
-      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false}';
+      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -32,6 +33,7 @@ describe("parseSettings", () => {
       theme: "nord",
       fontFamily: "Fira Code",
       remoteMonitor: false,
+      textEditor: "code --wait",
     });
   });
 
@@ -66,6 +68,14 @@ describe("parseSettings", () => {
     expect(parseSettings('{"remoteMonitor":false}').remoteMonitor).toBe(false);
   });
 
+  it("uses the system default text editor for an invalid or overlong value and trims it", () => {
+    expect(parseSettings('{"textEditor":7}').textEditor).toBe("");
+    expect(parseSettings('{"textEditor":"   "}').textEditor).toBe("");
+    expect(parseSettings(JSON.stringify({ textEditor: "x".repeat(1025) })).textEditor).toBe("");
+    expect(parseSettings(JSON.stringify({ textEditor: "x".repeat(1024) })).textEditor).toBe("x".repeat(1024));
+    expect(parseSettings('{"textEditor":"  /usr/bin/kate  "}').textEditor).toBe("/usr/bin/kate");
+  });
+
   it("keeps valid values next to invalid ones", () => {
     expect(parseSettings('{"fontSize":20,"copyOnSelect":"no"}')).toEqual({ ...DEFAULT_SETTINGS, fontSize: 20 });
   });
@@ -81,6 +91,7 @@ describe("serializeSettings", () => {
       theme: "gruvbox-dark",
       fontFamily: "Iosevka",
       remoteMonitor: false,
+      textEditor: "/opt/My Editor/editor",
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });

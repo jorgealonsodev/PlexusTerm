@@ -9,7 +9,7 @@ Objective: stop relying on the browser's native `window.confirm`/`window.prompt`
 
 ## Tasks
 
-- [ ] T1 — S1, S2 — delegated (writer trigger: long-session backstop) — In-app dialogs and the editor setting.
+- [x] T1 — S1, S2 — delegated (writer trigger: long-session backstop) — In-app dialogs (DialogProvider/useDialogs; 9 native calls replaced) and the textEditor setting (launched without a shell). Writer: RED→GREEN, Vitest 521, cargo sftp 28, clippy and tsc clean; parent rerun Vitest 521, cargo 263.
 
 ## Log
 

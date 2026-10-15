@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DialogProvider } from "../dialogs/DialogProvider";
 import { SftpPanel } from "./SftpPanel";
 import { sftp, type SftpEntry } from "./sftpClient";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -62,8 +63,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const panel = (props: Partial<Parameters<typeof SftpPanel>[0]> = {}) => (
-  <SftpPanel sessionId={1} cwd={null} follow={true} onFollowChange={() => {}} {...props} />
+  <DialogProvider>
+    <SftpPanel sessionId={1} cwd={null} follow={true} onFollowChange={() => {}} {...props} />
+  </DialogProvider>
 );
+
+/** Answers the in-app dialog asking `question` by pressing `button`. */
+async function answer(question: string, button: string) {
+  const find = () => [
+    ...screen.queryAllByRole("dialog", { name: question }),
+    ...screen.queryAllByRole("alertdialog", { name: question }),
+  ];
+  const dialog = await waitFor(() => {
+    const [found] = find();
+    if (!found) throw new Error(`no dialog "${question}"`);
+    return found;
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+  await waitFor(() => expect(find()).toEqual([]));
+}
+
+/** Types `text` into the in-app prompt labelled `question` and submits it. */
+async function type(question: string, text: string) {
+  const field = await screen.findByRole("textbox", { name: question });
+  fireEvent.change(field, { target: { value: text } });
+  fireEvent.keyDown(field, { key: "Enter" });
+}
 
 describe("SftpPanel", () => {
   it("starts in the home folder and enters a folder on double-click", async () => {
@@ -98,16 +123,42 @@ describe("SftpPanel", () => {
   });
 
   it("deletes the selected folder only after confirmation", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(panel());
     fireEvent.click(await screen.findByText("src"));
+    const question = 'Delete folder "src"? Only empty folders can be deleted.';
     fireEvent.click(screen.getByText("Delete"));
+    const dialog = await screen.findByRole("alertdialog", { name: question });
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Cancel" }));
+    await answer(question, "Cancel");
     expect(mocked.remove).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText("Delete"));
+    await answer(question, "Delete");
     await waitFor(() => expect(mocked.remove).toHaveBeenCalledWith(1, "/home/u/src", true));
-    expect(confirm).toHaveBeenCalledTimes(2);
-    confirm.mockRestore();
+  });
+
+  it("creates a folder with the typed name, and nothing when cancelled", async () => {
+    render(panel());
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await answer("New folder name", "Cancel");
+    expect(mocked.mkdir).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await type("New folder name", " docs ");
+    await waitFor(() => expect(mocked.mkdir).toHaveBeenCalledWith(1, "/home/u/docs"));
+  });
+
+  it("asks before replacing files on upload and uploads only when accepted", async () => {
+    vi.mocked(open).mockResolvedValue(["/local/notes.txt"]);
+    render(panel());
+    await screen.findByText("notes.txt");
+    const question = "Replace notes.txt in /home/u?";
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await answer(question, "Cancel");
+    expect(mocked.upload).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await answer(question, "Replace");
+    await waitFor(() => expect(mocked.upload).toHaveBeenCalledWith(1, "/local/notes.txt", "/home/u"));
   });
 });
 
@@ -166,22 +217,26 @@ describe("SftpPanel entry menu", () => {
   });
 
   it("Delete asks first and removes the entry", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(panel());
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Delete"));
+    await answer('Delete "notes.txt"?', "Delete");
     await waitFor(() => expect(mocked.remove).toHaveBeenCalledWith(1, "/home/u/notes.txt", false));
-    expect(confirm).toHaveBeenCalledWith('Delete "notes.txt"?');
-    confirm.mockRestore();
   });
 
-  it("Rename… renames the clicked entry", async () => {
-    const prompt = vi.spyOn(window, "prompt").mockReturnValue("todo.txt");
+  it("Rename… renames the clicked entry, starting from its name, and nothing when cancelled", async () => {
     render(panel());
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Rename…"));
+    expect(((await screen.findByRole("textbox", { name: 'Rename "notes.txt" to' })) as HTMLInputElement).value).toBe(
+      "notes.txt",
+    );
+    await answer('Rename "notes.txt" to', "Cancel");
+    expect(mocked.rename).not.toHaveBeenCalled();
+    await rightClick("notes.txt");
+    fireEvent.click(menuItem("Rename…"));
+    await type('Rename "notes.txt" to', "todo.txt");
     await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/todo.txt"));
-    prompt.mockRestore();
   });
 
   it("Copy file path puts the absolute path on the clipboard", async () => {
@@ -286,6 +341,15 @@ describe("SftpPanel open and compare", () => {
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Open with default program"));
     await waitFor(() => expect(mocked.edit).toHaveBeenLastCalledWith(1, "/home/u/notes.txt", { kind: "default" }));
+  });
+
+  it("opens a file with the text editor chosen in Settings", async () => {
+    render(panel({ textEditor: "code --wait" }));
+    await rightClick("notes.txt");
+    fireEvent.click(menuItem("Open with default text editor"));
+    await waitFor(() =>
+      expect(mocked.edit).toHaveBeenCalledWith(1, "/home/u/notes.txt", { kind: "textEditor", command: "code --wait" }),
+    );
   });
 
   it("Open with… opens the file with the chosen program", async () => {

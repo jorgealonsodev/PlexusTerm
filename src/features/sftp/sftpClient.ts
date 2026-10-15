@@ -18,7 +18,11 @@ export interface SftpEntry {
 }
 
 /** Mirrors the Rust `sftp::commands::OpenWith`. */
-export type OpenWith = { kind: "default" } | { kind: "textEditor" } | { kind: "program"; path: string };
+export type OpenWith =
+  | { kind: "default" }
+  /** `command`: the text editor chosen in Settings; without it, the system's default one. */
+  | { kind: "textEditor"; command?: string }
+  | { kind: "program"; path: string };
 
 /** Payload of the `sftp-edit-saved` event: a temporary copy opened for editing was saved. */
 export interface EditSaved {

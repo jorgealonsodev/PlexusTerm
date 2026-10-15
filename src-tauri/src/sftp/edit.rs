@@ -320,6 +320,23 @@ pub fn text_editor_command(file: &Path) -> Option<Vec<OsString>> {
     }
 }
 
+/// The command line for the text editor chosen in Settings, or `None` when it is empty.
+///
+/// A `command` naming an existing file is one program, even with spaces in its path (what
+/// Browse… picks). Otherwise it is split like a desktop entry `Exec=` value: words separated
+/// by spaces, `"double quotes"` around words with spaces, and the file in place of `%f`
+/// or appended at the end. The file is always a single argument and no shell is involved.
+pub fn chosen_editor_command(command: &str, file: &Path) -> Option<Vec<OsString>> {
+    let command = command.trim();
+    if command.is_empty() {
+        return None;
+    }
+    if Path::new(command).is_file() {
+        return Some(vec![command.into(), file.as_os_str().to_os_string()]);
+    }
+    Some(desktop_exec_args(command, file))
+}
+
 /// Starts `args[0]` with the rest as arguments, without waiting for it to exit.
 pub fn spawn_detached(args: &[OsString]) -> std::io::Result<()> {
     let (program, rest) = args

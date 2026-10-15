@@ -318,6 +318,25 @@ textarea::placeholder {
   position: absolute;
 }
 
+/* Confirmations and prompts (DialogProvider) sit above every other dialog. */
+.overlay--dialogs {
+  z-index: 20;
+}
+
+.app-dialog__message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .dialog {
   display: flex;
   flex-direction: column;
@@ -368,6 +387,12 @@ textarea::placeholder {
 
 .field--grow {
   flex: 1;
+}
+
+/* A text field followed by buttons on one row (e.g. Settings > Text editor). */
+.field__picker input {
+  flex: 1;
+  min-width: 0;
 }
 
 .field--port {

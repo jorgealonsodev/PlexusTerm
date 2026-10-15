@@ -431,6 +431,57 @@ fn desktop_exec_puts_the_file_in_place_of_its_field_code() {
 }
 
 #[test]
+fn the_chosen_text_editor_gets_the_file_as_its_own_argument() {
+    let file = Path::new("/tmp/x/a b; rm -rf ~.txt");
+    let args = |command: &str| -> Option<Vec<String>> {
+        edit::chosen_editor_command(command, file)
+            .map(|args| args.into_iter().map(|a| a.into_string().unwrap()).collect())
+    };
+    // Empty: the system default editor.
+    assert_eq!(args(""), None);
+    assert_eq!(args("   "), None);
+    assert_eq!(args("kate"), Some(vec!["kate".into(), file.display().to_string()]));
+    assert_eq!(
+        args("  code --wait "),
+        Some(vec!["code".into(), "--wait".into(), file.display().to_string()])
+    );
+    assert_eq!(
+        args("\"/opt/My Editor/edit\" -n %f --end"),
+        Some(vec![
+            "/opt/My Editor/edit".into(),
+            "-n".into(),
+            file.display().to_string(),
+            "--end".into()
+        ])
+    );
+    // Shell syntax is only text: no shell ever runs the command.
+    assert_eq!(
+        args("vim | true"),
+        Some(vec!["vim".into(), "|".into(), "true".into(), file.display().to_string()])
+    );
+}
+
+#[test]
+fn an_existing_program_path_with_spaces_is_one_program() {
+    let dir = tempfile::tempdir().unwrap();
+    let program = dir.path().join("My Editor");
+    std::fs::write(&program, b"").unwrap();
+    let file = Path::new("/tmp/a.txt");
+    let args = edit::chosen_editor_command(program.to_str().unwrap(), file).unwrap();
+    assert_eq!(args, [program.as_os_str(), file.as_os_str()]);
+}
+
+#[test]
+fn open_with_text_editor_takes_an_optional_command() {
+    use super::commands::OpenWith;
+    let plain: OpenWith = serde_json::from_str(r#"{"kind":"textEditor"}"#).unwrap();
+    assert!(matches!(plain, OpenWith::TextEditor { command: None }));
+    let chosen: OpenWith =
+        serde_json::from_str(r#"{"kind":"textEditor","command":"code --wait"}"#).unwrap();
+    assert!(matches!(chosen, OpenWith::TextEditor { command: Some(c) } if c == "code --wait"));
+}
+
+#[test]
 fn desktop_exec_is_read_from_the_desktop_entry_group() {
     let contents =
         "[Desktop Entry]\nName=Ed\nExec=ed --x %f\n\n[Desktop Action new]\nExec=ed --new\n";

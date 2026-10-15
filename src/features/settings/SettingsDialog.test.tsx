@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { open } from "@tauri-apps/plugin-dialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { DEFAULT_SETTINGS } from "./settings";
+
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 
 afterEach(cleanup);
 
@@ -23,6 +26,29 @@ describe("SettingsDialog", () => {
     expect((screen.getByLabelText("Colour scheme") as HTMLSelectElement).value).toBe("catppuccin-mocha");
     expect((screen.getByLabelText("Font family") as HTMLInputElement).value).toBe(DEFAULT_SETTINGS.fontFamily);
     expect((screen.getByLabelText("Remote monitor bar (SSH tabs)") as HTMLInputElement).checked).toBe(true);
+    const editor = screen.getByLabelText("Text editor") as HTMLInputElement;
+    expect(editor.value).toBe("");
+    expect(editor.placeholder).toBe("System default");
+  });
+
+  it("chooses the text editor with Browse…, resets it to the system default and saves it", async () => {
+    vi.mocked(open).mockResolvedValueOnce("/opt/My Editor/editor").mockResolvedValueOnce(null);
+    const { onSave } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
+    await waitFor(() => expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("/opt/My Editor/editor"));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, directory: false }));
+    // Cancelling the file picker keeps the program.
+    fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+    expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("/opt/My Editor/editor");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, textEditor: "/opt/My Editor/editor" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Use system default" }));
+    expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Text editor"), { target: { value: "  code --wait " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, textEditor: "code --wait" });
   });
 
   it("lists dark and light schemes separately and previews the selected one", () => {
@@ -53,6 +79,7 @@ describe("SettingsDialog", () => {
       theme: "solarized-light",
       fontFamily: "Hack Nerd Font",
       remoteMonitor: false,
+      textEditor: "",
     });
   });
 
