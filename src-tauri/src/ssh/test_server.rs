@@ -604,6 +604,8 @@ impl russh_sftp::server::Handler for SftpFs {
         attrs: FileAttributes,
     ) -> Result<Status, Self::Error> {
         let path = self.real_path(&path)?;
+        // Like a real server: a missing path is an error on every platform.
+        std::fs::metadata(&path).map_err(io_status)?;
         #[cfg(unix)]
         if let Some(mode) = attrs.permissions {
             use std::os::unix::fs::PermissionsExt;

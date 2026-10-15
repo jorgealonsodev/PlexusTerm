@@ -342,6 +342,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 - **SSH agent**: `SSH_AUTH_SOCK` when set, otherwise the Windows OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent` (start the "OpenSSH Authentication Agent" service and add keys with `ssh-add`).
 - **Saved files** (sessions, settings, macros) rely on the permissions of your user profile instead of Unix file modes.
 - **Serial consoles** list the COM ports reported by Windows (`COM3`, ...) and accept a typed port name.
+- **Port and network scanners**: Windows retries a refused connection for about two seconds, longer than the one-second probe, so closed ports may be listed as **filtered**. Open ports are found as on Linux.
 - **Mosh** is not offered: there is no packaged `mosh-client` for Windows. A Mosh session imported or saved elsewhere reports "Mosh is not available on Windows" unless a `mosh-client.exe` is on `PATH`.
 
 ## Keyboard shortcuts
