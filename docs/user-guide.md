@@ -219,7 +219,15 @@ Text in send and wait-for steps accepts escapes: `\r` (Enter), `\n`, `\t`, `\e` 
 
 The **Tools** menu in the toolbar holds network and SSH utilities.
 
-**SSH key generator…** creates an Ed25519 key pair, with an optional passphrase (which encrypts the private key) and comment. The dialog shows the public key in OpenSSH format and its `SHA256:` fingerprint, with **Copy**; **Save…** writes the private key (mode `0600`) and `<file>.pub` (`0644`) and asks before replacing existing files. **Install** adds the public key to a saved SSH session's `~/.ssh/authorized_keys`, like `ssh-copy-id`: it logs in like a terminal tab (trust prompt, saved or typed password, jump hosts), creates `~/.ssh` (`0700`) and `authorized_keys` (`0600`) when missing, and adds the key only once. The private key stays in PlexusTerm until it is saved and is discarded when the dialog closes.
+**SSH key generator…** creates or edits SSH keys, like PuTTYgen:
+
+- **Generate** a new key of the chosen **Type** and **Size**: Ed25519 (default), RSA 2048/3072/4096 bits (3072 by default) or ECDSA P-256/P-384/P-521. DSA and SSH-1 keys are not offered: they are insecure and current OpenSSH rejects DSA. Keys come from the operating system's secure random generator, so there is no need to move the mouse.
+- **Load…** opens an existing private key, in OpenSSH format or PuTTY `.ppk` (v2 or v3), asking for its passphrase when it has one. Its comment and passphrase can then be changed (an empty passphrase removes it).
+- The dialog shows the public key in OpenSSH format and its `SHA256:` fingerprint, with **Copy**.
+- **Save public key…** (`0644`), **Save private key…** (`0600`, encrypted with the passphrase when there is one) and **Save as PuTTY key (.ppk)…** (PPK v3, `0600`, for PuTTY or WinSCP) each ask before replacing an existing file.
+- **Install** adds the public key to a saved SSH session's `~/.ssh/authorized_keys`, like `ssh-copy-id`: it logs in like a terminal tab (trust prompt, saved or typed password, jump hosts), creates `~/.ssh` (`0700`) and `authorized_keys` (`0600`) when missing, and adds the key only once, whatever the login shell of that account is.
+
+The private key never reaches the window: it stays in PlexusTerm's backend until it is saved, and is discarded when the dialog closes.
 
 **Port scanner…** checks which TCP ports are open on a host name, an IPv4 address, a range (`192.168.1.10-20`) or a CIDR block (`192.168.1.0/24`, at most 256 hosts), for the chosen ports: **Known ports** (the default: FTP, SSH, Telnet, SMTP, DNS, HTTP, POP3, IMAP, HTTPS, SMB, MySQL, RDP, PostgreSQL, VNC and 8080), a **Port range** given in two fields (`1 → 65535`), or a **Custom list** such as `22,80,8000-8100` (the known ports when left empty). It only opens TCP connections (no root needed): 1 second per port, at most 256 at a time and 65536 per scan. Open ports appear as they are found, with the usual service name; **Stop** (or closing the dialog) cancels the scan.
 

@@ -38,3 +38,9 @@
   color: var(--danger);
   border-color: var(--danger);
 }
+
+.keygen__type {
+  margin-right: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
