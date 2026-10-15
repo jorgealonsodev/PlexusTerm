@@ -84,8 +84,6 @@ The toolbar **More ▾** menu opens **Telnet…** and **Mosh…** quick-connect 
 - `mosh-client not found — install mosh` means mosh is missing on this machine; `mosh-server not found on the server — install mosh there` means it is missing on the server. If `mosh-client` fails, the tab stays open with its message and exit code.
 
 
-Mosh logs in over SSH (jump hosts included), but its UDP traffic goes straight from this machine to the final host, so that host must be reachable directly on UDP 60000-61000.
-
 ## Saved sessions
 
 The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions in folders (`Prod/DB` style paths).
