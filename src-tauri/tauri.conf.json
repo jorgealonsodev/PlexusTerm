@@ -23,13 +23,26 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "appimage"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Utility",
+    "shortDescription": "Terminal and remote-session manager for Linux",
+    "longDescription": "NexusTerm is a terminal and remote-session manager: local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with another app import).",
+    "publisher": "Jorge Alonso",
+    "copyright": "\u00a9 2026 Jorge Alonso",
+    "linux": {
+      "deb": {
+        "section": "net"
+      }
+    }
   }
 }
