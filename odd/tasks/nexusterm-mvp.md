@@ -113,7 +113,7 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 
 - [x] T12 — S16 (S16.1-S16.5) — delegated (writer trigger: long-session context backstop) — Macros. Writer: escapes/parse/reducer/recorder/player (fake timers) RED→GREEN, Macros tab + editor + recording banner, Ctrl+Alt+1..9 (AltGr characters still reach the shell), Escape stops a running macro; vitest 341, cargo 127. Parent Xvfb smoke: Ctrl+Shift+R shows the red warning banner, stop asks for a name, macros.json saved 0600 in escaped form, Macros tab play re-sends the command. Not exercised in the GUI: hotkeys and waitFor (covered by unit tests).
 
-- [ ] T13 — S17 (S17.1-S17.4) — delegated (writer trigger: long-session context backstop) — Telnet and Mosh sessions.
+- [x] T13 — S17 (S17.1-S17.4) — delegated (writer trigger: long-session context backstop) — Telnet and Mosh sessions. Writer: telnet protocol state machine + manager, mosh via SSH exec + local mosh-client with MOSH_KEY in env only (serde(skip) env, redacted Debug), More menu, kinds telnet/mosh, MobaXterm type 98 → telnet; cargo 171, vitest 379. Verifier: 0 blockers (3000-stream telnet fuzz, key never in argv/Debug/errors). Parent: real servers in a Docker container — telnetd (banner, command, NAWS 40x128) and mosh-server 1.4.0 (trust prompt, UDP session, shell works; /proc shows argv without key, MOSH_KEY only in env). Parent fixes: subnegotiation capped at 1 KiB (A1, RED→GREEN), MOSH/CONNECT redaction widened (A3, RED→GREEN); A7 IPv6 not reproducible (test added, passes). Left: A2 malformed IAC in SB, A4 possible detach race (worked in real test), A5 documented, A6 saved-session edge cases. cargo 174/174.
 
 ## Log
 

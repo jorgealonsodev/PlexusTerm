@@ -6,6 +6,7 @@ import { hotkeyLabel, recordedSteps, recorderReduce, type Macro, type Step } fro
 import { createTargetRegistry, playMacro, type MacroRun, type MacroTarget } from "./features/macros/player";
 import { useMacros } from "./features/macros/useMacros";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
+import { MoshDialog } from "./features/mosh/MoshDialog";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
@@ -13,9 +14,11 @@ import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { stepFontSize } from "./features/settings/settings";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
+import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
 import { chainTarget, collectLogins, hopLabel, type PasswordAnswer } from "./features/sessions/jumpHosts";
 import {
+  isMoshSession,
   isSshSession,
   jumpUsers,
   resolveChain,
@@ -31,7 +34,7 @@ import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
 import { Sidebar, type SidebarView } from "./features/sidebar/Sidebar";
-import type { SessionTarget } from "./features/sessions/types";
+import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
@@ -50,6 +53,8 @@ const LOCAL: SessionTarget = { type: "local" };
 type Modal =
   | { kind: "quickConnect" }
   | { kind: "serial" }
+  | { kind: "telnet" }
+  | { kind: "mosh" }
   | { kind: "editSession"; session: LibrarySession; isNew: boolean }
   /** Password of one hop of a saved session (jump hosts first, then the target). */
   | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
@@ -99,6 +104,50 @@ const draftTunnel = (): Tunnel => ({
   destHost: "localhost",
   destPort: 80,
 });
+
+/** Toolbar menu for the less common session types (S17.3). */
+function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Any click outside the menu, or Escape, closes it.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const choose = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="menu" ref={ref}>
+      <button className="btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        More ▾
+      </button>
+      {open && (
+        <div className="menu__list" role="menu">
+          <button role="menuitem" className="menu__item" onClick={choose(onTelnet)}>
+            Telnet…
+          </button>
+          <button role="menuitem" className="menu__item" onClick={choose(onMosh)}>
+            Mosh…
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   // Start with one local terminal open.
@@ -256,20 +305,44 @@ export default function App() {
   const openLocal = useCallback(() => open(LOCAL), [open]);
 
   /**
-   * SSH sessions go through their jump hosts (S14). Every password hop uses the password
-   * saved in the keyring when there is one, otherwise it is asked, one hop at a time.
+   * The login of a saved SSH session, through its jump hosts (S14). Every password hop uses
+   * the password saved in the keyring when there is one, otherwise it is asked, one hop at a
+   * time. Null when the chain is invalid (a notice says why) or a prompt is cancelled.
    */
-  const openSaved = async (session: LibrarySession) => {
-    if (!isSshSession(session)) return open(toTarget(session));
+  const sshLoginFor = async (session: SavedSession): Promise<SshTarget | null> => {
     const chain = resolveChain(sessions.library, session);
-    if (!chain.ok) return setNotice(chain.error);
+    if (!chain.ok) {
+      setNotice(chain.error);
+      return null;
+    }
     const hops = [...chain.jumps, session];
     const logins = await collectLogins(hops, {
       secretExists,
       askPassword: (index) =>
         new Promise((resolve) => setModal({ kind: "password", label: hopLabel(hops, index), resolve })),
     });
-    if (logins) open(chainTarget(hops, logins));
+    return logins && chainTarget(hops, logins);
+  };
+
+  /** Mosh starts its server with the login of a saved SSH session (S17.2). */
+  const openMosh = async (sshSessionId: string, serverCommand: string | undefined, name?: string) => {
+    const ssh = sessions.library.sessions.find((s) => s.id === sshSessionId);
+    if (!ssh || !isSshSession(ssh)) {
+      return setNotice(
+        name
+          ? `The SSH session of "${name}" no longer exists; edit it to choose another one.`
+          : "That SSH session no longer exists.",
+      );
+    }
+    const login = await sshLoginFor(ssh);
+    if (login) open({ type: "mosh", ssh: login, ...(serverCommand ? { serverCommand } : {}) });
+  };
+
+  const openSaved = async (session: LibrarySession) => {
+    if (isMoshSession(session)) return openMosh(session.sshSessionId, session.serverCommand, session.name);
+    if (!isSshSession(session)) return open(toTarget(session));
+    const login = await sshLoginFor(session);
+    if (login) open(login);
   };
 
   /** Deletes sessions and the passwords saved for them; a keyring failure only shows a notice. */
@@ -351,6 +424,10 @@ export default function App() {
         <button className="btn" onClick={() => setModal({ kind: "serial" })}>
           Serial
         </button>
+        <MoreMenu
+          onTelnet={() => setModal({ kind: "telnet" })}
+          onMosh={() => setModal({ kind: "mosh" })}
+        />
         <button className="btn" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
           Split right
         </button>
@@ -575,6 +652,25 @@ export default function App() {
           onConnect={(target) => {
             setModal(null);
             open(target);
+          }}
+        />
+      )}
+      {modal?.kind === "telnet" && (
+        <TelnetDialog
+          onCancel={() => setModal(null)}
+          onConnect={(target) => {
+            setModal(null);
+            open(target);
+          }}
+        />
+      )}
+      {modal?.kind === "mosh" && (
+        <MoshDialog
+          sessions={sshSessions}
+          onCancel={() => setModal(null)}
+          onConnect={(sshSessionId, serverCommand) => {
+            setModal(null);
+            void openMosh(sshSessionId, serverCommand);
           }}
         />
       )}

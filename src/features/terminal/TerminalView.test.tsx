@@ -26,6 +26,7 @@ interface FakeTerminal {
   paste: ReturnType<typeof vi.fn>;
   clear: ReturnType<typeof vi.fn>;
   selectAll: ReturnType<typeof vi.fn>;
+  written: string[];
 }
 
 vi.mock("@xterm/xterm", () => ({
@@ -48,7 +49,10 @@ vi.mock("@xterm/xterm", () => ({
       this.keyHandler = handler;
     }
     open() {}
-    write() {}
+    written: string[] = [];
+    write(text: string) {
+      this.written.push(text);
+    }
     focus() {}
     dispose() {}
     hasSelection() {
@@ -79,6 +83,8 @@ vi.mock("@xterm/addon-search", () => ({
 import { invoke } from "@tauri-apps/api/core";
 import { TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
+
+const lastTerm = () => terms[terms.length - 1];
 
 globalThis.ResizeObserver = class {
   observe() {}
@@ -209,6 +215,86 @@ describe("TerminalView", () => {
       await vi.waitFor(() =>
         expect(vi.mocked(invoke)).toHaveBeenCalledWith("append_text_file", { path: "/tmp/session.log", contents: "bold\n" }),
       );
+    });
+  });
+
+  describe("Telnet (S17.1)", () => {
+    const target = { type: "telnet" as const, host: "switch.lan", port: 23 };
+
+    it("warns that Telnet is not encrypted before connecting", async () => {
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={() => {}} />);
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(1));
+      const written = lastTerm().written;
+      expect(written[0]).toBe("\x1b[33mTelnet is not encrypted.\x1b[0m\r\n");
+      expect(written[1]).toBe("Connecting to switch.lan:23...\r\n");
+    });
+
+    it("shows connection errors without asking for a password", async () => {
+      backend.start.mockImplementationOnce(() =>
+        Promise.reject({ kind: "connection", message: "cannot connect to switch.lan:23: refused" }),
+      );
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={() => {}} />);
+      await vi.waitFor(() =>
+        expect(lastTerm().written).toContain("\x1b[31mcannot connect to switch.lan:23: refused\x1b[0m\r\n"),
+      );
+      expect(screen.queryByLabelText("Password")).toBeNull();
+    });
+  });
+
+  describe("Mosh (S17.2)", () => {
+    const target = {
+      type: "mosh" as const,
+      ssh: {
+        type: "ssh" as const,
+        host: "10.0.0.1",
+        port: 22,
+        username: "u",
+        auth: { method: "storedPassword" as const, sessionId: "s1" },
+      },
+    };
+
+    it("says it starts the server over SSH", async () => {
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={() => {}} />);
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(1));
+      expect(lastTerm().written[0]).toBe("Starting mosh-server on u@10.0.0.1 over SSH...\r\n");
+    });
+
+    it("asks for the SSH password when the saved one is rejected, then retries with it", async () => {
+      backend.start.mockImplementationOnce(() => Promise.reject({ kind: "authFailed" }));
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={() => {}} />);
+      const box = await screen.findByLabelText<HTMLInputElement>("Save password in the system keyring");
+      expect(box.checked).toBe(true);
+      await vi.waitFor(() => expect(box.disabled).toBe(false));
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "new" } });
+      fireEvent.click(screen.getByText("Connect"));
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
+      expect(backend.start.mock.calls[1][0]).toMatchObject({
+        auth: { method: "password", password: "new" },
+        storage: { action: "remember", sessionId: "s1", label: "NexusTerm: u@10.0.0.1:22" },
+      });
+    });
+
+    it("keeps the pane open when mosh-client fails, and closes it on a clean exit", async () => {
+      const onExit = vi.fn();
+      let emit: (event: unknown) => void = () => {};
+      backend.start.mockImplementation((_options, onEvent) => {
+        emit = onEvent as (event: unknown) => void;
+        return Promise.resolve(3);
+      });
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={onExit} />);
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(1));
+      await act(async () => emit({ event: "exit", data: 1 }));
+      expect(onExit).not.toHaveBeenCalled();
+      expect(lastTerm().written.slice(-1)[0]).toBe(
+        "\r\n[mosh-client exited with code 1. Close this tab or open the session again.]\r\n",
+      );
+      cleanup();
+      render(<TerminalView target={target} active onTitle={() => {}} onExit={onExit} />);
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
+      await act(async () => emit({ event: "exit", data: 0 }));
+      expect(onExit).toHaveBeenCalledWith(0);
+      backend.start.mockReset();
+      backend.start.mockImplementation(() => new Promise<number>(() => {}));
     });
   });
 

@@ -1,7 +1,12 @@
+import { emptyMoshForm, type MoshForm } from "../mosh/mosh";
+import { emptyTelnetForm, parseTelnetForm, type TelnetForm } from "../telnet/telnetForm";
 import { defaultSerialForm, formFromSettings, parseSerialForm, type SerialForm } from "../serial/serialSettings";
 import { parseQuickConnect, type QuickConnectForm } from "../ssh/quickConnect";
 import {
+  isMoshSession,
   isSerialSession,
+  isSshSession,
+  isTelnetSession,
   MAX_JUMPS,
   normalizeFolder,
   resolveChain,
@@ -11,13 +16,15 @@ import {
   type SessionLibrary,
 } from "./library";
 
-export type SessionKind = "ssh" | "serial";
+export type SessionKind = "ssh" | "serial" | "telnet" | "mosh";
 
 export interface SessionForm extends QuickConnectForm {
   kind: SessionKind;
   name: string;
   folder: string;
   serial: SerialForm;
+  telnet: TelnetForm;
+  mosh: MoshForm;
   /** SSH only: ids of the saved sessions to go through, outermost first. */
   jumpIds?: string[];
 }
@@ -39,6 +46,31 @@ export function parseSessionForm(
     return {
       ok: true,
       session: { kind: "serial", id, name: form.name.trim() || settings.path, folder, ...settings },
+    };
+  }
+  if (form.kind === "telnet") {
+    const parsed = parseTelnetForm(form.telnet);
+    if (!parsed.ok) return parsed;
+    const { host, port } = parsed;
+    return { ok: true, session: { kind: "telnet", id, name: form.name.trim() || host, folder, host, port } };
+  }
+  if (form.kind === "mosh") {
+    const sshSessionId = form.mosh.sshSessionId;
+    const ssh = library?.sessions.find((s) => s.id === sshSessionId);
+    if (!sshSessionId || (library && (!ssh || !isSshSession(ssh)))) {
+      return { ok: false, error: "Choose the saved SSH session Mosh logs in with" };
+    }
+    const serverCommand = form.mosh.serverCommand.trim();
+    return {
+      ok: true,
+      session: {
+        kind: "mosh",
+        id,
+        name: form.name.trim() || (ssh ? `${ssh.name} (mosh)` : "Mosh"),
+        folder,
+        sshSessionId,
+        ...(serverCommand ? { serverCommand } : {}),
+      },
     };
   }
 
@@ -86,9 +118,17 @@ const emptySsh: QuickConnectForm = {
 };
 
 export function formFromSession(session: LibrarySession): SessionForm {
-  const common = { name: session.name, folder: session.folder };
+  const common = { name: session.name, folder: session.folder, telnet: emptyTelnetForm, mosh: emptyMoshForm };
   if (isSerialSession(session)) {
     return { ...emptySsh, ...common, kind: "serial", serial: formFromSettings(session) };
+  }
+  if (isTelnetSession(session)) {
+    const telnet = { host: session.host, port: session.port === 23 ? "" : String(session.port) };
+    return { ...emptySsh, ...common, kind: "telnet", serial: defaultSerialForm, telnet };
+  }
+  if (isMoshSession(session)) {
+    const mosh = { sshSessionId: session.sshSessionId, serverCommand: session.serverCommand ?? "" };
+    return { ...emptySsh, ...common, kind: "mosh", serial: defaultSerialForm, mosh };
   }
   return {
     ...common,

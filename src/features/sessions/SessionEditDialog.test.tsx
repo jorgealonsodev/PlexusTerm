@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import type { SavedSession } from "./library";
+import type { LibrarySession, SavedSession } from "./library";
 import { SessionEditDialog } from "./SessionEditDialog";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -125,5 +125,54 @@ describe("SessionEditDialog jump hosts", () => {
     fireEvent.click(screen.getByLabelText("Remove (deleted session)"));
     fireEvent.click(screen.getByText("Save"));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ jumpIds: ["a"] }));
+  });
+});
+
+describe("SessionEditDialog Telnet and Mosh (S17.3)", () => {
+  function renderKinds(session: LibrarySession, isNew: boolean) {
+    const onSave = vi.fn();
+    render(
+      <SessionEditDialog
+        session={session}
+        isNew={isNew}
+        folders={[]}
+        jumpCandidates={[web]}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+    return onSave;
+  }
+
+  it("offers every session type", () => {
+    renderKinds(web, true);
+    const options = Array.from(screen.getByLabelText<HTMLSelectElement>("Session type").options).map((o) => o.text);
+    expect(options).toEqual(["SSH", "Serial", "Telnet", "Mosh"]);
+  });
+
+  it("saves a Telnet session", () => {
+    const onSave = renderKinds({ ...web, id: "new" }, true);
+    fireEvent.change(screen.getByLabelText("Session type"), { target: { value: "telnet" } });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "switch" } });
+    fireEvent.change(screen.getByLabelText("Host"), { target: { value: "switch.lan" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith({ kind: "telnet", id: "new", name: "switch", folder: "", host: "switch.lan", port: 23 });
+  });
+
+  it("saves a Mosh session over a saved SSH session", () => {
+    const onSave = renderKinds({ ...web, id: "new" }, true);
+    fireEvent.change(screen.getByLabelText("Session type"), { target: { value: "mosh" } });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("SSH session"), { target: { value: "s1" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith({ kind: "mosh", id: "new", name: "web (mosh)", folder: "", sshSessionId: "s1" });
+  });
+
+  it("never queries the keyring for Telnet or Mosh sessions", async () => {
+    renderKinds({ kind: "telnet", id: "t", name: "t", folder: "", host: "h", port: 23 }, false);
+    cleanup();
+    renderKinds({ kind: "mosh", id: "m", name: "m", folder: "", sshSessionId: "s1" }, false);
+    await settle();
+    expect(mockedInvoke).not.toHaveBeenCalled();
   });
 });

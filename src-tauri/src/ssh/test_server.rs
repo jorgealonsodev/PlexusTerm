@@ -10,6 +10,10 @@
 //! Port forwarding works like OpenSSH: `direct-tcpip` channels connect to the
 //! requested target, and `tcpip-forward` listens on the requested address and
 //! opens a `forwarded-tcpip` channel back to the client for every connection.
+//!
+//! Exec requests fake a remote shell running one command (see [`MOSH_CONNECT_REPLY`]):
+//! `mosh-server ...` prints a `MOSH CONNECT` line, `sleep-forever` never answers, `true`
+//! exits quietly, and anything else fails like a missing program (exit status 127).
 
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -29,6 +33,9 @@ use tokio::net::{TcpListener, TcpStream};
 
 pub const PASSWORD: &str = "secret";
 
+/// What the fake `mosh-server` prints, like the real one (port 60001, a 22-character key).
+pub const MOSH_CONNECT_REPLY: &str = "\r\nMOSH CONNECT 60001 AAAAAAAAAAAAAAAAAAAAAA\r\n\r\nmosh-server (mosh 1.4.0) [build mosh 1.4.0]\r\n";
+
 pub fn key_from_seed(seed: u8) -> PrivateKey {
     PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]))
 }
@@ -40,6 +47,8 @@ pub struct TestServer {
     pub password_attempts: Arc<AtomicUsize>,
     /// Client connections currently open.
     open_connections: Arc<AtomicUsize>,
+    /// Commands received in exec requests, over every connection.
+    exec_commands: Arc<Mutex<Vec<String>>>,
 }
 
 impl TestServer {
@@ -49,6 +58,10 @@ impl TestServer {
 
     pub fn open_connections(&self) -> usize {
         self.open_connections.load(Ordering::SeqCst)
+    }
+
+    pub fn exec_commands(&self) -> Vec<String> {
+        self.exec_commands.lock().unwrap().clone()
     }
 }
 
@@ -75,6 +88,7 @@ struct Handler {
     forwards: Arc<Mutex<HashMap<(String, u32), tokio::task::AbortHandle>>>,
     password_attempts: Arc<AtomicUsize>,
     open_connections: Arc<AtomicUsize>,
+    exec_commands: Arc<Mutex<Vec<String>>>,
     _connection: Option<Arc<ConnectionGuard>>,
 }
 
@@ -112,10 +126,12 @@ async fn start_inner(
         forwards: Arc::default(),
         password_attempts: Arc::default(),
         open_connections: Arc::default(),
+        exec_commands: Arc::default(),
         _connection: None,
     };
     let password_attempts = server.password_attempts.clone();
     let open_connections = server.open_connections.clone();
+    let exec_commands = server.exec_commands.clone();
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
     });
@@ -124,6 +140,7 @@ async fn start_inner(
         host_key,
         password_attempts,
         open_connections,
+        exec_commands,
     }
 }
 
@@ -293,6 +310,37 @@ impl russh::server::Handler for Handler {
     ) -> Result<(), Self::Error> {
         session.channel_success(channel)?;
         session.data(channel, b"welcome\r\n".to_vec())
+    }
+
+    async fn exec_request(
+        &mut self,
+        channel: ChannelId,
+        data: &[u8],
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        let command = String::from_utf8_lossy(data).into_owned();
+        self.exec_commands.lock().unwrap().push(command.clone());
+        // Exec channels are not echoed.
+        self.stream_channels.lock().unwrap().insert(channel);
+        self.channels.lock().unwrap().remove(&channel);
+        session.channel_success(channel)?;
+        let program = command.split_whitespace().next().unwrap_or_default();
+        let status = match program {
+            "sleep-forever" => return Ok(()),
+            "mosh-server" => {
+                session.data(channel, MOSH_CONNECT_REPLY.as_bytes().to_vec())?;
+                0
+            }
+            "true" => 0,
+            other => {
+                let message = format!("sh: 1: {other}: not found\n");
+                session.extended_data(channel, 1, message.into_bytes())?;
+                127
+            }
+        };
+        session.exit_status_request(channel, status)?;
+        session.eof(channel)?;
+        session.close(channel)
     }
 
     async fn window_change_request(

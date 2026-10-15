@@ -45,17 +45,25 @@ describe("decodeIni", () => {
 describe("parseMobaXtermIni", () => {
   const parsed = parseMobaXtermIni(SAMPLE);
 
-  it("imports SSH sessions from every Bookmarks section with their SubRep folder", () => {
+  it("imports SSH and Telnet sessions from every Bookmarks section with their SubRep folder", () => {
     expect(parsed.sessions).toEqual([
-      { name: "web", folder: "MobaXterm", host: "web.example.com", port: 2222, username: "deploy" },
-      { name: "bare", folder: "MobaXterm", host: "bare.example.com", port: 22, username: "" },
-      { name: "db1", folder: "MobaXterm/Prod/DB", host: "10.0.0.5", port: 22, username: "admin" },
+      { kind: "ssh", name: "web", folder: "MobaXterm", host: "web.example.com", port: 2222, username: "deploy" },
+      { kind: "ssh", name: "bare", folder: "MobaXterm", host: "bare.example.com", port: 22, username: "" },
+      { kind: "telnet", name: "telnet box", folder: "MobaXterm", host: "tel.example.com", port: 23 },
+      { kind: "ssh", name: "db1", folder: "MobaXterm/Prod/DB", host: "10.0.0.5", port: 22, username: "admin" },
     ]);
   });
 
-  it("counts skipped lines per type and reason", () => {
+  it("defaults the Telnet port to 23 and skips Telnet lines without a host", () => {
+    const text = "[Bookmarks]\nsw=#98#1%sw.lan%%\nbad=#98#1%  %23%\n";
+    expect(parseMobaXtermIni(text)).toEqual({
+      sessions: [{ kind: "telnet", name: "sw", folder: "MobaXterm", host: "sw.lan", port: 23 }],
+      skipped: { invalid: 1 },
+    });
+  });
+
+  it("counts skipped lines per type and reason (Telnet is imported, not skipped)", () => {
     expect(parsed.skipped).toEqual({
-      Telnet: 1,
       "type 91": 1,
       RDP: 1,
       unrecognized: 1,
@@ -76,8 +84,8 @@ describe("parseMobaXtermIni", () => {
   it("accepts LF line endings and rejects out-of-range ports", () => {
     const lf = parseMobaXtermIni("[Bookmarks_3]\nSubRep=A\\\\B\\\na=#109#0%h%70000%u%\nb=#109#0%h2%0%u%\n");
     expect(lf.sessions).toEqual([
-      { name: "a", folder: "MobaXterm/A/B", host: "h", port: 22, username: "u" },
-      { name: "b", folder: "MobaXterm/A/B", host: "h2", port: 22, username: "u" },
+      { kind: "ssh", name: "a", folder: "MobaXterm/A/B", host: "h", port: 22, username: "u" },
+      { kind: "ssh", name: "b", folder: "MobaXterm/A/B", host: "h2", port: 22, username: "u" },
     ]);
   });
 
@@ -114,8 +122,16 @@ describe("planImport", () => {
         auth: { method: "password" },
       },
       {
-        kind: "ssh",
+        kind: "telnet",
         id: "id2",
+        name: "telnet box",
+        folder: "MobaXterm",
+        host: "tel.example.com",
+        port: 23,
+      },
+      {
+        kind: "ssh",
+        id: "id3",
         name: "db1",
         folder: "MobaXterm/Prod/DB",
         host: "10.0.0.5",
@@ -152,6 +168,17 @@ describe("planImport", () => {
     });
     const text = "[Bookmarks]\nweb=#109#0%web.example.com%2222%deploy%\n";
     expect(planImport(withSerial, parseMobaXtermIni(text), () => "x").duplicates).toBe(1);
+  });
+
+  it("skips Telnet duplicates of saved Telnet sessions only", () => {
+    const withTelnet = libraryReducer(emptyLibrary, {
+      type: "saveSession",
+      session: { kind: "telnet", id: "t", name: "sw", folder: "MobaXterm", host: "sw.lan", port: 23 },
+    });
+    const text = "[Bookmarks]\nsw=#98#1%sw.lan%23%\nsw2=#109#0%sw.lan%23%%\n";
+    const plan = planImport(withTelnet, parseMobaXtermIni(text), () => "x");
+    expect(plan.duplicates).toBe(1);
+    expect(plan.toAdd.map((s) => s.kind)).toEqual(["ssh"]);
   });
 
   it("treats a different port or user as a different session", () => {

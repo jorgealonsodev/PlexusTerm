@@ -57,11 +57,43 @@ export interface SerialTarget extends SerialSettings {
   type: "serial";
 }
 
-export type SessionTarget = { type: "local" } | SshTarget | SerialTarget;
+/** A Telnet connection (S17.1); Telnet is not encrypted. */
+export interface TelnetTarget {
+  type: "telnet";
+  host: string;
+  port: number;
+}
+
+/**
+ * A Mosh session (S17.2): `ssh` is the login that starts `mosh-server` (with its jump hosts
+ * and saved-password handling, like an SSH tab); `serverCommand` replaces the default one.
+ */
+export interface MoshTarget {
+  type: "mosh";
+  ssh: SshTarget;
+  serverCommand?: string;
+}
+
+export type SessionTarget = { type: "local" } | SshTarget | SerialTarget | TelnetTarget | MoshTarget;
+
+/** The SSH login of a target: its own for SSH, the one that starts the server for Mosh. */
+export function sshLoginOf(target: SessionTarget): SshTarget | null {
+  if (target.type === "ssh") return target;
+  if (target.type === "mosh") return target.ssh;
+  return null;
+}
 
 export function targetTitle(target: SessionTarget): string {
-  if (target.type === "local") return "Local shell";
-  if (target.type === "serial") return `${target.path} @ ${target.baud}`;
-  const port = target.port === 22 ? "" : `:${target.port}`;
-  return `${target.username}@${target.host}${port}`;
+  switch (target.type) {
+    case "local":
+      return "Local shell";
+    case "serial":
+      return `${target.path} @ ${target.baud}`;
+    case "telnet":
+      return `telnet ${target.host}${target.port === 23 ? "" : `:${target.port}`}`;
+    case "mosh":
+      return `mosh ${target.ssh.username}@${target.ssh.host}`;
+    case "ssh":
+      return `${target.username}@${target.host}${target.port === 22 ? "" : `:${target.port}`}`;
+  }
 }

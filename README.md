@@ -67,13 +67,32 @@ The app shortcuts (Ctrl+Shift+...) work the same in serial tabs and never reach 
 
 Port detection reads `/sys/class/tty` and does not need libudev; it never opens the devices.
 
+## Telnet and Mosh
+
+The toolbar **More ▾** menu opens **Telnet…** and **Mosh…** quick-connect dialogs; both can also be saved as sessions (see [Saved sessions](#saved-sessions)).
+
+**Telnet** uses a built-in client (host, port 23 by default, 15 s connect timeout).
+
+- Telnet is not encrypted: everything typed, passwords included, crosses the network in clear text. The tab starts with a yellow "Telnet is not encrypted." line.
+- Option negotiation: the server may enable ECHO and SUPPRESS-GO-AHEAD; NexusTerm offers TERMINAL-TYPE (`xterm-256color`) and the window size (NAWS, sent again on every resize) and refuses every other option.
+- Enter is sent as CR NUL (a bare carriage return as RFC 854 requires); byte 255 is escaped in what you type and Telnet commands never reach the terminal.
+
+**Mosh** keeps a session alive across roaming, sleep and flaky links. It logs in with a saved SSH session (its key, agent or password, saved keyring password and jump hosts all apply), runs `mosh-server new -s -c 256 -l LANG=en_US.UTF-8` there (override it per session with **Server command**), closes the SSH connection and starts the local `mosh-client` in the tab.
+
+- Requirements: mosh installed on both machines (`sudo apt install mosh`), and UDP ports 60000-61000 on the server reachable from this machine (open them in the server's firewall). Jump hosts are only used for the SSH login: the UDP traffic goes straight to the server's address.
+- The Mosh session key reaches `mosh-client` only through its environment (`MOSH_KEY`): never on its command line, in a log or in the user interface.
+- `mosh-client not found — install mosh` means mosh is missing on this machine; `mosh-server not found on the server — install mosh there` means it is missing on the server. If `mosh-client` fails, the tab stays open with its message and exit code.
+
+
+Mosh logs in over SSH (jump hosts included), but its UDP traffic goes straight from this machine to the final host, so that host must be reachable directly on UDP 60000-61000.
+
 ## Saved sessions
 
-The **Sessions** panel on the left keeps SSH and serial sessions in folders (`Prod/DB` style paths).
+The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions in folders (`Prod/DB` style paths).
 Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
-The edit dialog has a **Session type** selector (SSH or Serial) that shows the matching fields. Serial sessions keep the device path and line settings and open directly, without any password.
+The edit dialog has a **Session type** selector (SSH, Serial, Telnet or Mosh) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command.
 
-Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh` or `serial`), and entries written by earlier versions without it load as SSH sessions.
+Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet` or `mosh`), and entries written by earlier versions without it load as SSH sessions.
 The file never contains passwords or key passphrases (see [Saved passwords](#saved-passwords)).
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 
@@ -106,10 +125,10 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 **Import** in the Sessions panel reads a `MobaXterm.ini` file (UTF-8, or the Windows-1252 code page MobaXterm usually writes) and shows a preview before anything is saved:
 
-- SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, under a **MobaXterm** folder that keeps their MobaXterm folder path.
-- Imported sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
-- Other session types (Telnet, RDP, VNC, Serial, WSL, FTP, ...), SSH entries without a host and unrecognized lines are skipped and counted per type in the preview.
-- Sessions already saved with the same folder, name, host, port and username are skipped as duplicates.
+- SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, and Telnet sessions with their host and port (23 when missing or invalid), under a **MobaXterm** folder that keeps their MobaXterm folder path.
+- Imported SSH sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
+- Other session types (RDP, VNC, Serial, WSL, FTP, ...), entries without a host and unrecognized lines are skipped and counted per type in the preview.
+- Sessions already saved with the same type, folder, name, host, port and username are skipped as duplicates.
 - Passwords are never imported: the `[Passwords]` section and any other section are not read.
 
 ## SFTP browser

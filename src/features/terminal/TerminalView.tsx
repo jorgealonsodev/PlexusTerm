@@ -10,7 +10,14 @@ import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { patchJump } from "../sessions/jumpHosts";
 import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
-import { targetTitle, type JumpTarget, type PasswordStorage, type SessionTarget, type SshAuth } from "../sessions/types";
+import {
+  sshLoginOf,
+  targetTitle,
+  type JumpTarget,
+  type PasswordStorage,
+  type SessionTarget,
+  type SshAuth,
+} from "../sessions/types";
 import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
@@ -137,13 +144,15 @@ export function TerminalView({
   const [askPassword, setAskPassword] = useState<PasswordFor | null>(null);
   const typedLogin = useRef<TypedLogin | null>(null);
   /** Jump hosts, updated when one of them is trusted or gets a typed password. */
-  const jumpsRef = useRef<JumpTarget[]>(target.type === "ssh" ? (target.jumps ?? []) : []);
+  /** The SSH login of an SSH tab, or the one that starts the server of a Mosh tab. */
+  const sshLogin = sshLoginOf(target);
+  const jumpsRef = useRef<JumpTarget[]>(sshLogin?.jumps ?? []);
   /** The saved session whose keyring password the prompted login replaces, if any. */
   const savedLogin =
     askPassword?.jump != null
       ? savedLoginOf(jumpsRef.current[askPassword.jump.index])
-      : target.type === "ssh"
-        ? savedLoginOf(target)
+      : sshLogin
+        ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
   const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget });
@@ -188,14 +197,15 @@ export function TerminalView({
     const backend = backendFor(target);
     let sessionId: number | null = null;
     let disposed = false;
-    /** Set when a serial device went away: the pane stays open so its error remains readable. */
+    /** Set when the session ended but its pane stays open (serial device gone, mosh-client failed). */
     let ended = false;
     /** Macros waiting for output (S16.3). */
     const outputListeners = new Set<(text: string) => void>();
 
-    const endSerial = () => {
+    /** Ends the session but keeps the pane, so what it printed (e.g. an error) stays readable. */
+    const endKeepingPane = (note: string) => {
       ended = true;
-      term.write("\r\n[Session ended. Close this tab or open the port again.]\r\n");
+      term.write(`\r\n[${note}]\r\n`);
       if (sessionId !== null) void backend.close(sessionId).catch(() => {});
       sessionId = null;
       callbacks.current.onSession?.(null);
@@ -215,11 +225,16 @@ export function TerminalView({
     };
 
     const start = (trustedFingerprint?: string) => {
-      if (target.type === "ssh") {
-        const via = jumpsRef.current.length ? ` via ${jumpsRef.current.map((j) => j.name).join(", ")}` : "";
-        term.write(`Connecting to ${targetTitle(target)}${via}...\r\n`);
+      const via = jumpsRef.current.length ? ` via ${jumpsRef.current.map((j) => j.name).join(", ")}` : "";
+      if (target.type === "ssh") term.write(`Connecting to ${targetTitle(target)}${via}...\r\n`);
+      if (target.type === "mosh") {
+        term.write(`Starting mosh-server on ${targetTitle(target.ssh)}${via} over SSH...\r\n`);
       }
       if (target.type === "serial") term.write(`Opening ${targetTitle(target)}...\r\n`);
+      if (target.type === "telnet") {
+        term.write("\x1b[33mTelnet is not encrypted.\x1b[0m\r\n");
+        term.write(`Connecting to ${target.host}:${target.port}...\r\n`);
+      }
       backend
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
@@ -229,8 +244,11 @@ export function TerminalView({
             logRef.current?.write(msg.data);
             outputListeners.forEach((listener) => listener(msg.data));
           }
-          else if (target.type === "serial") endSerial();
-          else {
+          else if (target.type === "serial") endKeepingPane("Session ended. Close this tab or open the port again.");
+          else if (target.type === "mosh" && msg.data !== 0) {
+            const code = msg.data === null ? "" : ` with code ${msg.data}`;
+            endKeepingPane(`mosh-client exited${code}. Close this tab or open the session again.`);
+          } else {
             callbacks.current.onSession?.(null);
             callbacks.current.onExit(msg.data);
           }
@@ -244,13 +262,14 @@ export function TerminalView({
         })
         .catch((raw) => {
           if (disposed) return;
-          if (target.type === "serial") {
+          // Serial and Telnet errors are `{ kind, message }`.
+          if (target.type === "serial" || target.type === "telnet") {
             term.write(red(describeSerialError(raw)));
             return;
           }
           const err = toSshError(raw);
           if (err.kind === "hop") return jumpFailed(err);
-          const auth = typedLogin.current?.auth ?? (target.type === "ssh" ? target.auth : null);
+          const auth = typedLogin.current?.auth ?? sshLoginOf(target)?.auth ?? null;
           if (auth && shouldAskAgain(auth, err)) {
             term.write(red(describeSshError(err)));
             setAskPassword({ jump: null });
@@ -517,7 +536,7 @@ export function TerminalView({
       )}
       {askPassword && savedLogin && (
         <PasswordPrompt
-          label={askPassword.jump?.label ?? targetTitle(target)}
+          label={askPassword.jump?.label ?? targetTitle(sshLogin ?? target)}
           remember={{ initial: true }}
           onSubmit={(password, remember) => {
             setAskPassword(null);

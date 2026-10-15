@@ -1,11 +1,11 @@
-import type { SavedSession } from "./library";
+import type { SavedSession, SavedTelnetSession } from "./library";
 import { skippedLabel, type ImportPlan } from "./mobaxtermImport";
 
 export type ImportResult = { ok: true; plan: ImportPlan } | { ok: false; error: string };
 
 interface MobaXtermImportDialogProps {
   result: ImportResult;
-  onConfirm: (sessions: SavedSession[]) => void;
+  onConfirm: (sessions: (SavedSession | SavedTelnetSession)[]) => void;
   onClose: () => void;
 }
 
@@ -28,7 +28,7 @@ export function MobaXtermImportDialog({ result, onConfirm, onClose }: MobaXtermI
         )}
         {plan && (
           <>
-            <p>{count ? `${plural(count, "SSH session")} to import.` : "No SSH sessions to import."}</p>
+            <p>{count ? `${plural(count, "session")} to import.` : "No sessions to import."}</p>
             {plan.duplicates > 0 && (
               <p className="muted">{plural(plan.duplicates, "duplicate")} already saved will be skipped.</p>
             )}

@@ -19,6 +19,34 @@ pub struct SpawnRequest {
     pub cwd: Option<String>,
     pub cols: u16,
     pub rows: u16,
+    /// Extra environment for the child, set only by Rust (e.g. `MOSH_KEY`): the frontend
+    /// cannot send it.
+    #[serde(skip)]
+    pub env: ChildEnv,
+}
+
+/// Environment variables passed to a child process. `Debug` shows only their names,
+/// so values such as `MOSH_KEY` never reach logs or panic messages.
+#[derive(Clone, Default)]
+pub struct ChildEnv(Vec<(String, String)>);
+
+impl ChildEnv {
+    pub fn new(vars: impl IntoIterator<Item = (String, String)>) -> Self {
+        Self(vars.into_iter().collect())
+    }
+
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl std::fmt::Debug for ChildEnv {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entries(self.0.iter().map(|(name, _)| name))
+            .finish()
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -77,6 +105,9 @@ impl PtyManager {
         }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+        for (name, value) in &req.env.0 {
+            cmd.env(name, value);
+        }
 
         let mut child = pair.slave.spawn_command(cmd).map_err(io_err)?;
         // Drop our copy of the slave so the reader sees EOF when the child exits.
@@ -185,7 +216,32 @@ mod tests {
             cwd: None,
             cols: 80,
             rows: 24,
+            env: ChildEnv::default(),
         }
+    }
+
+    #[test]
+    fn extra_environment_reaches_the_process() {
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        let mut request = req("/bin/sh", &["-c", "echo \"value=$NEXUS_TEST_VAR\""]);
+        request.env = ChildEnv::new([("NEXUS_TEST_VAR".into(), "abc123".into())]);
+        mgr.spawn(request, s).unwrap();
+        let (out, _) = wait_for(&rx, "value=abc123");
+        assert!(out.contains("value=abc123"), "output was {out:?}");
+    }
+
+    #[test]
+    fn extra_environment_is_never_read_from_the_frontend_nor_shown_in_debug() {
+        let request: SpawnRequest =
+            serde_json::from_str(r#"{ "cols": 80, "rows": 24, "env": { "MOSH_KEY": "x" } }"#)
+                .unwrap();
+        assert!(request.env.is_empty());
+        let mut request = req("/bin/true", &[]);
+        request.env = ChildEnv::new([("MOSH_KEY".into(), "s3cr3t-value".into())]);
+        let debug = format!("{request:?}");
+        assert!(debug.contains("MOSH_KEY"), "{debug}");
+        assert!(!debug.contains("s3cr3t-value"), "{debug}");
     }
 
     /// Collects output until `needle` appears or the process exits.

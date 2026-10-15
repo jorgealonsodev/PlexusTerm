@@ -89,7 +89,7 @@ describe("SessionsPanel", () => {
     vi.mocked(open).mockResolvedValue("/home/u/MobaXterm.ini");
     vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(ini)));
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
-    expect(await screen.findByText("1 SSH session to import.")).toBeTruthy();
+    expect(await screen.findByText("1 session to import.")).toBeTruthy();
     fireEvent.click(screen.getByText("Import 1 session"));
     expect(props.onImport).toHaveBeenCalledTimes(1);
     expect(vi.mocked(props.onImport).mock.calls[0][0]).toMatchObject([
@@ -103,7 +103,7 @@ describe("SessionsPanel", () => {
     vi.mocked(open).mockResolvedValue("/home/u/MobaXterm.ini");
     vi.mocked(invoke).mockResolvedValue([]);
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
-    expect(await screen.findByText("No SSH sessions to import.")).toBeTruthy();
+    expect(await screen.findByText("No sessions to import.")).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/MobaXterm.ini" });
   });
 

@@ -7,8 +7,12 @@ import {
   parseLibrary,
   serializeLibrary,
   toTarget,
+  isSshSession,
+  resolveChain,
+  type SavedMoshSession,
   type SavedSerialSession,
   type SavedSession,
+  type SavedTelnetSession,
   type SessionLibrary,
 } from "./library";
 
@@ -37,7 +41,26 @@ const serial = (overrides: Partial<SavedSerialSession> = {}): SavedSerialSession
   ...overrides,
 });
 
-const save = (lib: SessionLibrary, s: SavedSession | SavedSerialSession) =>
+const telnet = (overrides: Partial<SavedTelnetSession> = {}): SavedTelnetSession => ({
+  kind: "telnet",
+  id: "t1",
+  name: "old switch",
+  folder: "Lab",
+  host: "switch.lan",
+  port: 23,
+  ...overrides,
+});
+
+const mosh = (overrides: Partial<SavedMoshSession> = {}): SavedMoshSession => ({
+  kind: "mosh",
+  id: "m1",
+  name: "web (mosh)",
+  folder: "",
+  sshSessionId: "s1",
+  ...overrides,
+});
+
+const save = (lib: SessionLibrary, s: SavedSession | SavedSerialSession | SavedTelnetSession | SavedMoshSession) =>
   libraryReducer(lib, { type: "saveSession", session: s });
 
 describe("normalizeFolder", () => {
@@ -162,6 +185,47 @@ describe("parseLibrary / serializeLibrary", () => {
     }
   });
 
+  it("round-trips Telnet and Mosh sessions and writes their kind", () => {
+    const lib = [session(), telnet({ port: 2323 }), mosh({ serverCommand: "mosh-server new -p 60010" }), mosh({ id: "m2" })].reduce(
+      save,
+      emptyLibrary,
+    );
+    const json = serializeLibrary(lib);
+    expect(JSON.parse(json).sessions.map((s: { kind: string }) => s.kind)).toEqual(["ssh", "telnet", "mosh", "mosh"]);
+    expect(JSON.parse(json).sessions[3]).toEqual({ kind: "mosh", id: "m2", name: "web (mosh)", folder: "", sshSessionId: "s1" });
+    expect(parseLibrary(json)).toEqual({ ok: true, library: lib });
+  });
+
+  it("drops an empty Mosh server command and stray fields", () => {
+    const withStray = { ...mosh({ serverCommand: "  " }), password: "hunter2" } as unknown as SavedMoshSession;
+    const json = serializeLibrary(save(emptyLibrary, withStray));
+    expect(json).not.toContain("hunter2");
+    expect(JSON.parse(json).sessions[0]).not.toHaveProperty("serverCommand");
+  });
+
+  it("rejects Telnet and Mosh sessions with invalid fields", () => {
+    const file = (s: object) => JSON.stringify({ version: 1, folders: [], sessions: [s] });
+    for (const bad of [
+      telnet({ host: 5 as unknown as string }),
+      telnet({ port: 0 }),
+      telnet({ port: 70000 }),
+      telnet({ port: 23.5 }),
+      mosh({ sshSessionId: 1 as unknown as string }),
+      mosh({ serverCommand: 3 as unknown as string }),
+    ]) {
+      expect(parseLibrary(file(bad)), JSON.stringify(bad)).toMatchObject({ ok: false });
+    }
+  });
+
+  it("treats only SSH sessions as SSH (Telnet and Mosh are not jump hosts)", () => {
+    expect([session(), serial(), telnet(), mosh()].map(isSshSession)).toEqual([true, false, false, false]);
+    const lib = [telnet({ id: "t1" }), session({ id: "s2", jumpIds: ["t1"] })].reduce(save, emptyLibrary);
+    expect(resolveChain(lib, session({ id: "s2", jumpIds: ["t1"] }))).toEqual({
+      ok: false,
+      error: 'Jump host "old switch" of "web" is not an SSH session.',
+    });
+  });
+
   it("never serializes passwords", () => {
     const withSecret = { ...session(), auth: { method: "password", password: "hunter2" } } as unknown as SavedSession;
     const json = serializeLibrary(save(emptyLibrary, withSecret));
@@ -212,6 +276,10 @@ describe("toTarget", () => {
       username: "deploy",
       auth: { method: "agent" },
     });
+  });
+
+  it("turns a Telnet session into a Telnet target", () => {
+    expect(toTarget(telnet({ port: 2323 }))).toEqual({ type: "telnet", host: "switch.lan", port: 2323 });
   });
 
   it("turns a serial session into a serial target", () => {

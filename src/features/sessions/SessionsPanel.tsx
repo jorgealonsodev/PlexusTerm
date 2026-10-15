@@ -3,9 +3,10 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
 import {
   buildTree,
+  isMoshSession,
   isSerialSession,
+  isTelnetSession,
   type LibrarySession,
-  type SavedSession,
   type SessionLibrary,
   type TreeNode,
 } from "./library";
@@ -24,7 +25,18 @@ interface SessionsPanelProps {
   onNewFolder: (parent: string) => void;
   onDeleteFolder: (path: string) => void;
   /** Saves the sessions confirmed in the MobaXterm import preview. */
-  onImport: (sessions: SavedSession[]) => void;
+  onImport: (sessions: LibrarySession[]) => void;
+}
+
+/** Tooltip of a session row: where it connects. */
+function sessionTooltip(session: LibrarySession, library: SessionLibrary): string {
+  if (isSerialSession(session)) return `${session.path} @ ${session.baud}`;
+  if (isTelnetSession(session)) return `telnet ${session.host}:${session.port}`;
+  if (isMoshSession(session)) {
+    const ssh = library.sessions.find((s) => s.id === session.sshSessionId);
+    return ssh ? `mosh, logging in with "${ssh.name}"` : "mosh (its SSH session no longer exists)";
+  }
+  return `${session.username}@${session.host}:${session.port}`;
 }
 
 export function SessionsPanel(props: SessionsPanelProps) {
@@ -90,11 +102,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
           className="tree-row"
           style={indent}
           tabIndex={0}
-          title={
-            isSerialSession(session)
-              ? `${session.path} @ ${session.baud}`
-              : `${session.username}@${session.host}:${session.port}`
-          }
+          title={sessionTooltip(session, props.library)}
           onDoubleClick={() => props.onOpen(session)}
           onKeyDown={(e) => e.key === "Enter" && props.onOpen(session)}
         >

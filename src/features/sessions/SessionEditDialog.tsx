@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { MoshFields } from "../mosh/MoshFields";
 import { SerialFields } from "../serial/SerialFields";
+import { TelnetFields } from "../telnet/TelnetFields";
 import { fieldSetter, SshFields } from "../ssh/SshFields";
 import { JumpHostsField } from "./JumpHostsField";
-import type { LibrarySession, SavedSession } from "./library";
+import { isSshSession, type LibrarySession, type SavedSession } from "./library";
 import { secretDelete, secretExists } from "./secrets";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
@@ -11,11 +13,18 @@ interface SessionEditDialogProps {
   session: LibrarySession;
   isNew: boolean;
   folders: string[];
-  /** Saved SSH sessions that can be used as jump hosts. */
+  /** Saved SSH sessions that can be used as jump hosts or as the login of a Mosh session. */
   jumpCandidates?: SavedSession[];
   onSave: (session: LibrarySession) => void;
   onCancel: () => void;
 }
+
+const NAME_PLACEHOLDERS: Record<SessionForm["kind"], string> = {
+  ssh: "user@host",
+  serial: "Device path",
+  telnet: "Host",
+  mosh: "SSH session (mosh)",
+};
 
 export function SessionEditDialog({
   session,
@@ -33,7 +42,7 @@ export function SessionEditDialog({
 
   // Only existing SSH sessions can have a password saved in the keyring.
   useEffect(() => {
-    if (isNew || session.kind === "serial") return;
+    if (isNew || !isSshSession(session)) return;
     let live = true;
     void secretExists(session.id).then((exists) => live && setHasSecret(exists));
     return () => {
@@ -69,6 +78,8 @@ export function SessionEditDialog({
           <select value={form.kind} onChange={set("kind")}>
             <option value="ssh">SSH</option>
             <option value="serial">Serial</option>
+            <option value="telnet">Telnet</option>
+            <option value="mosh">Mosh</option>
           </select>
         </label>
         <div className="form-row">
@@ -78,7 +89,7 @@ export function SessionEditDialog({
               autoFocus
               value={form.name}
               onChange={set("name")}
-              placeholder={form.kind === "serial" ? "Device path" : "user@host"}
+              placeholder={NAME_PLACEHOLDERS[form.kind]}
             />
           </label>
           <label className="field field--grow">
@@ -91,9 +102,20 @@ export function SessionEditDialog({
             </datalist>
           </label>
         </div>
-        {form.kind === "serial" ? (
+        {form.kind === "serial" && (
           <SerialFields form={form.serial} onChange={(serial) => setForm((f) => ({ ...f, serial }))} />
-        ) : (
+        )}
+        {form.kind === "telnet" && (
+          <TelnetFields form={form.telnet} onChange={(telnet) => setForm((f) => ({ ...f, telnet }))} />
+        )}
+        {form.kind === "mosh" && (
+          <MoshFields
+            form={form.mosh}
+            onChange={(mosh) => setForm((f) => ({ ...f, mosh }))}
+            sessions={jumpCandidates.filter((c) => c.id !== session.id)}
+          />
+        )}
+        {form.kind === "ssh" && (
           <>
             <SshFields form={form} set={set} withSecrets={false} />
             {form.method === "password" && (

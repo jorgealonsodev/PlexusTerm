@@ -1,14 +1,24 @@
-import { isSshSession, normalizeFolder, type SavedSession, type SessionLibrary } from "./library";
+import {
+  isSshSession,
+  isTelnetSession,
+  normalizeFolder,
+  type SavedSession,
+  type SavedTelnetSession,
+  type SessionLibrary,
+} from "./library";
 
-/** An SSH bookmark read from MobaXterm.ini; secrets and key paths are never read. */
-export interface ImportedSession {
-  name: string;
-  /** Already placed under the top-level "MobaXterm" folder. */
-  folder: string;
-  host: string;
-  port: number;
-  username: string;
-}
+/** An SSH or Telnet bookmark read from MobaXterm.ini; secrets and key paths are never read. */
+export type ImportedSession =
+  | {
+      kind: "ssh";
+      name: string;
+      /** Already placed under the top-level "MobaXterm" folder. */
+      folder: string;
+      host: string;
+      port: number;
+      username: string;
+    }
+  | { kind: "telnet"; name: string; folder: string; host: string; port: number };
 
 export interface ParsedImport {
   sessions: ImportedSession[];
@@ -17,7 +27,7 @@ export interface ParsedImport {
 }
 
 export interface ImportPlan {
-  toAdd: SavedSession[];
+  toAdd: (SavedSession | SavedTelnetSession)[];
   duplicates: number;
   skipped: Record<string, number>;
 }
@@ -25,9 +35,9 @@ export interface ImportPlan {
 export const IMPORT_ROOT = "MobaXterm";
 
 const SSH_TYPE = 109;
+const TELNET_TYPE = 98;
 
 const TYPE_LABELS: Record<number, string> = {
-  98: "Telnet",
   1: "RDP",
   2: "VNC",
   131: "Serial",
@@ -49,11 +59,11 @@ export function decodeIni(bytes: Uint8Array): string {
   return text.startsWith("﻿") ? text.slice(1) : text;
 }
 
-function parsePort(value: string | undefined): number {
+function parsePort(value: string | undefined, fallback: number): number {
   const trimmed = (value ?? "").trim();
-  if (!/^\d+$/.test(trimmed)) return 22;
+  if (!/^\d+$/.test(trimmed)) return fallback;
   const port = Number(trimmed);
-  return port >= 1 && port <= 65535 ? port : 22;
+  return port >= 1 && port <= 65535 ? port : fallback;
 }
 
 interface Section {
@@ -98,29 +108,45 @@ export function parseMobaXtermIni(text: string): ParsedImport {
         continue;
       }
       const type = Number(match[1]);
-      if (type !== SSH_TYPE) {
+      if (type !== SSH_TYPE && type !== TELNET_TYPE) {
         skip(TYPE_LABELS[type] ?? `type ${type}`);
         continue;
       }
+      // Telnet lines start like SSH ones: host, then port.
       const fields = match[2].split("%");
       const host = (fields[0] ?? "").trim();
       if (!host) {
         skip("invalid");
         continue;
       }
-      sessions.push({ name, folder, host, port: parsePort(fields[1]), username: (fields[2] ?? "").trim() });
+      if (type === TELNET_TYPE) {
+        sessions.push({ kind: "telnet", name, folder, host, port: parsePort(fields[1], 23) });
+      } else {
+        const username = (fields[2] ?? "").trim();
+        sessions.push({ kind: "ssh", name, folder, host, port: parsePort(fields[1], 22), username });
+      }
     }
   }
   return { sessions, skipped };
 }
 
-const identity = (s: { folder: string; name: string; host: string; port: number; username: string }) =>
-  JSON.stringify([normalizeFolder(s.folder), s.name, s.host, s.port, s.username]);
+const identity = (s: SavedSession | SavedTelnetSession | ImportedSession) =>
+  JSON.stringify([
+    s.kind ?? "ssh",
+    normalizeFolder(s.folder),
+    s.name,
+    s.host,
+    s.port,
+    s.kind === "telnet" ? "" : s.username,
+  ]);
 
-/** New sessions use password auth (asked at connect time); exact duplicates are skipped. */
+/** New SSH sessions use password auth (asked at connect time); exact duplicates are skipped. */
 export function planImport(library: SessionLibrary, parsed: ParsedImport, newId: () => string): ImportPlan {
-  const seen = new Set(library.sessions.filter(isSshSession).map(identity));
-  const toAdd: SavedSession[] = [];
+  const comparable = library.sessions.filter(
+    (s): s is SavedSession | SavedTelnetSession => isSshSession(s) || isTelnetSession(s),
+  );
+  const seen = new Set(comparable.map(identity));
+  const toAdd: (SavedSession | SavedTelnetSession)[] = [];
   let duplicates = 0;
   for (const session of parsed.sessions) {
     const key = identity(session);
@@ -129,14 +155,18 @@ export function planImport(library: SessionLibrary, parsed: ParsedImport, newId:
       continue;
     }
     seen.add(key);
-    toAdd.push({ kind: "ssh", id: newId(), ...session, auth: { method: "password" } });
+    toAdd.push(
+      session.kind === "telnet"
+        ? { ...session, id: newId() }
+        : { ...session, id: newId(), auth: { method: "password" } },
+    );
   }
   return { toAdd, duplicates, skipped: parsed.skipped };
 }
 
 /** Readable label for a key of `skipped`. */
 export function skippedLabel(key: string): string {
-  if (key === "invalid") return "SSH without a host";
+  if (key === "invalid") return "Sessions without a host";
   if (key === "unrecognized") return "Unrecognized lines";
   return `${key} sessions`;
 }
