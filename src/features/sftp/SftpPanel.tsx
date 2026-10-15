@@ -157,6 +157,14 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     if (await act(`Creating ${name}…`, () => sftp.mkdir(sessionId, joinPath(dir, name)))) await navigate(dir);
   };
 
+  const newFile = async () => {
+    const dir = current.current.path;
+    const name = (await dialogs.prompt({ message: "New file name", confirmLabel: "Create" }))?.trim();
+    if (dir === null || !name) return;
+    if (!validName(name)) return setError(`"${name}" is not a valid file name.`);
+    if (await act(`Creating ${name}…`, () => sftp.createFile(sessionId, joinPath(dir, name)))) await navigate(dir);
+  };
+
   const selectedEntry = entries.find((e) => e.path === selected) ?? null;
 
   const renameEntry = async (entry: SftpEntry | null) => {
@@ -338,6 +346,9 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         </button>
         <button className="btn btn--small" disabled={busy} onClick={() => void newFolder()}>
           New folder
+        </button>
+        <button className="btn btn--small" disabled={busy} onClick={() => void newFile()}>
+          New file
         </button>
         <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)}>
           Rename

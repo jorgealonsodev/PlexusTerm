@@ -43,6 +43,8 @@ export const sftp = {
   upload: (id: number, local: string, remoteDir: string) =>
     invoke<string>("sftp_upload", { id, local, remoteDir }),
   mkdir: (id: number, path: string) => invoke<void>("sftp_mkdir", { id, path }),
+  /** Creates an empty file; fails if it already exists. */
+  createFile: (id: number, path: string) => invoke<void>("sftp_create_file", { id, path }),
   remove: (id: number, path: string, isDir: boolean) => invoke<void>("sftp_remove", { id, path, isDir }),
   rename: (id: number, from: string, to: string) => invoke<void>("sftp_rename", { id, from, to }),
   chmod: (id: number, path: string, mode: number) => invoke<void>("sftp_chmod", { id, path, mode }),

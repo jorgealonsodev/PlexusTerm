@@ -126,7 +126,7 @@ The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
 - **Upload** picks one or more local files; dropping files from the desktop onto the panel uploads them too. Both go into the current folder.
-- **New folder**, **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
+- **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
 
 Right-click an entry for more:
 
