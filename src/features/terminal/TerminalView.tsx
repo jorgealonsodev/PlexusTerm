@@ -29,6 +29,8 @@ import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
+import { clearLineKeys } from "./clearLine";
+import { usePlatform } from "../platform/usePlatform";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
 import { EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
 import { bufferText, type BufferLine } from "./output";
@@ -233,6 +235,10 @@ export function TerminalView({
   // Keep callbacks current without re-creating the terminal.
   const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget });
   callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget };
+  // The platform arrives from the backend after the first render.
+  const platform = usePlatform();
+  const platformRef = useRef(platform);
+  platformRef.current = platform;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -538,9 +544,9 @@ export function TerminalView({
         // eslint-disable-next-line no-control-regex
         if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(text)) return false;
         if (fullScreen() || atSecretPrompt()) return false;
-        // Ctrl+E Ctrl+U first: whatever was half typed (even after Tab or arrows) is cleared, so
-        // the line sent is exactly the command.
-        write(`\x05\x15${text}\r`);
+        // Clear the line first: whatever was half typed (even after Tab or arrows) is removed,
+        // so the line sent is exactly the command.
+        write(`${clearLineKeys(platformRef.current, target.type)}${text}\r`);
         line = EMPTY_LINE;
         track(`${text}\r`);
         return true;

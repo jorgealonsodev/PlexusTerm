@@ -119,6 +119,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
+import { PlatformContext } from "../platform/usePlatform";
 
 const lastTerm = () => terms[terms.length - 1];
 
@@ -641,6 +642,28 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual(["uptime"]);
       // Only the user's own typing reached onInput (multi-execution, macros).
       expect(onInput).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears the line with Ctrl+End and Ctrl+Home before running a command in a local Windows shell", async () => {
+      const history = historyWith();
+      let assist: { run: (text: string) => boolean } | null = null;
+      backend.start.mockImplementationOnce(() => Promise.resolve(7));
+      render(
+        <PlatformContext.Provider value="windows">
+          <TerminalView
+            target={{ type: "local" }}
+            active
+            onTitle={() => {}}
+            onExit={() => {}}
+            history={history}
+            registerAssistTarget={(target) => ((assist = target), () => {})}
+          />
+        </PlatformContext.Provider>,
+      );
+      await settle();
+      act(() => void assist!.run('Select-String -Path * -Pattern "192.168.2"'));
+      expect(backend.write).toHaveBeenLastCalledWith(7, '\x1b[1;5F\x1b[1;5HSelect-String -Path * -Pattern "192.168.2"\r');
+      expect(history.recent("local", 5)).toEqual(['Select-String -Path * -Pattern "192.168.2"']);
     });
 
     it("refuses to run a command at a password prompt or in a full-screen program", async () => {
