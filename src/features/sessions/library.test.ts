@@ -45,6 +45,13 @@ describe("libraryReducer", () => {
     expect(lib.sessions.map((s) => s.name)).toEqual(["web-1"]);
   });
 
+  it("saves several sessions in one action, like saving them one by one", () => {
+    const batch = [session({ id: "1", folder: "M/A" }), session({ id: "2", folder: "M" })];
+    const lib = libraryReducer(save(emptyLibrary, session({ id: "0" })), { type: "saveSessions", sessions: batch });
+    expect(lib).toEqual(batch.reduce(save, save(emptyLibrary, session({ id: "0" }))));
+    expect(lib.folders).toEqual(["M", "M/A"]);
+  });
+
   it("deletes a session", () => {
     const lib = libraryReducer(save(emptyLibrary, session()), { type: "deleteSession", id: "s1" });
     expect(lib.sessions).toEqual([]);

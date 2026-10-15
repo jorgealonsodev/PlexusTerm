@@ -69,10 +69,47 @@ fn io(path: &Path, err: std::io::Error) -> StorageError {
     StorageError::Io(format!("{}: {err}", path.display()))
 }
 
+/// Reads a file the user picked for import, refusing anything larger than `max_bytes`.
+pub fn read_bounded(path: &Path, max_bytes: u64) -> Result<Vec<u8>, StorageError> {
+    use std::io::Read;
+
+    let file = std::fs::File::open(path).map_err(|err| io(path, err))?;
+    let mut bytes = Vec::new();
+    // Read one byte past the limit to detect oversized files without loading them whole.
+    file.take(max_bytes + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|err| io(path, err))?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(StorageError::Io(format!(
+            "{}: file is too large (limit {max_bytes} bytes)",
+            path.display()
+        )));
+    }
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn read_bounded_returns_the_bytes_of_small_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("sessions.ini");
+        std::fs::write(&path, b"[Bookmarks]\r\n\xf1").unwrap();
+        assert_eq!(read_bounded(&path, 1024).unwrap(), b"[Bookmarks]\r\n\xf1");
+    }
+
+    #[test]
+    fn read_bounded_refuses_files_over_the_limit_and_missing_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.ini");
+        std::fs::write(&path, vec![b'x'; 2048]).unwrap();
+        let err = read_bounded(&path, 1024).unwrap_err().to_string();
+        assert!(err.contains("too large"), "{err}");
+        assert!(read_bounded(&dir.path().join("missing.ini"), 1024).is_err());
+    }
 
     #[test]
     fn missing_file_loads_as_none() {

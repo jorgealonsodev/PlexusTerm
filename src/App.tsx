@@ -190,6 +190,7 @@ export default function App() {
                 }
               }}
               onNewFolder={newFolder}
+              onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
               onDeleteFolder={(path) => {
                 if (window.confirm(`Delete folder "${path}" and every session inside it?`)) {
                   sessions.dispatch({ type: "deleteFolder", path });

@@ -162,6 +162,14 @@ fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, SESSIONS_FILE)?, &contents)
 }
 
+/// Upper bound for files picked for import (a sessions.ini is a few kilobytes).
+const IMPORT_MAX_BYTES: u64 = 5 * 1024 * 1024;
+
+#[tauri::command]
+fn import_read_file(path: String) -> Result<Vec<u8>, StorageError> {
+    storage::read_bounded(std::path::Path::new(&path), IMPORT_MAX_BYTES)
+}
+
 #[tauri::command]
 fn tunnels_load(app: AppHandle) -> Result<Option<String>, StorageError> {
     storage::load(&config_path(&app, TUNNELS_FILE)?)
@@ -229,6 +237,7 @@ pub fn run() {
             sftp_rename,
             sessions_load,
             sessions_save,
+            import_read_file,
             tunnels_load,
             tunnels_save,
             tunnel_start,
