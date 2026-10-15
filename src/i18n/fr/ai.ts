@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "Compatible OpenAI",
+    openaiCompatibleEndpoint: "le point de terminaison compatible OpenAI",
+  },
+  errors: {
+    noKey: "Aucune clé d'API n'est enregistrée pour ce fournisseur.",
+    auth: "La clé d'API a été refusée.",
+    rateLimit: "Le fournisseur d'IA limite les requêtes ; réessayez dans un instant.",
+    network: "Impossible de joindre le fournisseur d'IA.",
+    timeout: "Le fournisseur d'IA n'a pas répondu à temps.",
+    refused: "Le fournisseur d'IA a refusé de répondre à cette requête.",
+    badResponse: "Le fournisseur d'IA a envoyé une réponse que PlexusTerm n'a pas pu lire.",
+    config: "Vérifiez les paramètres de l'IA.",
+  },
+  hint: {
+    unavailable: "IA : indisponible",
+    noKey: "IA : aucune clé d'API",
+    keyRejected: "IA : clé refusée",
+    rateLimited: "IA : limite de requêtes",
+  },
+  chat: {
+    label: "Discussion IA",
+    title: "IA",
+    close: "Fermer la discussion IA",
+    closeTitle: "Fermer la discussion IA (Ctrl+Shift+W)",
+    empty: "Posez n'importe quelle question. Les commandes ne s'exécutent que lorsque vous cliquez sur Exécuter.",
+    question: "Question",
+    asking: "Question en cours…",
+    noKey: "Aucune clé d'API n'est enregistrée pour {provider}. Ajoutez-en une dans Paramètres → IA.",
+    openSettings: "Ouvrir les paramètres de l'IA",
+    selectedText: "Texte sélectionné à envoyer",
+    removeSelection: "Retirer le texte sélectionné",
+    removeSelectionTitle: "Ne pas envoyer le texte sélectionné",
+    input: "Votre question",
+    placeholder: "Posez votre question…",
+    send: "Envoyer",
+  },
+  command: {
+    label: "Commande suggérée",
+    copied: "Copié",
+    copyFailed: "Échec de la copie",
+    insert: "Insérer",
+    insertTitle: "Saisit la commande dans le terminal sans l'exécuter",
+    run: "Exécuter",
+    runTitle: "Exécute la commande dans le terminal (la saisit et appuie sur Enter)",
+  },
+  answer: {
+    label: "Réponse",
+  },
+  models: {
+    chooseAnother: "{label} — choisir un autre modèle",
+    filter: "Filtrer les modèles",
+    filterPlaceholder: "Filtrer les modèles…",
+    list: "Modèles d'IA",
+    loading: "Chargement des modèles…",
+    noProvider: "Aucun fournisseur d'IA n'a de clé d'API. Ajoutez-en une dans Paramètres → IA.",
+    providerError: "{provider} : {error}",
+    unsupported: "{id} — pas encore pris en charge",
+    loadingProvider: "Chargement des modèles de {provider}…",
+  },
+};
