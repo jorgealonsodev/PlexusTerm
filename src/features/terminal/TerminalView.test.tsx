@@ -719,6 +719,25 @@ describe("TerminalView", () => {
         expect(ghost(container)).toBe(" -o wide");
       });
 
+      it("never sends nor records what is typed at a password prompt in another language", async () => {
+        vi.useFakeTimers();
+        const aiSuggest = vi.fn(async ({ line }: { line: string }) => `${line}x`);
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        const history = historyWith();
+        render(
+          <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} history={history} settings={aiOn} aiSuggest={aiSuggest} />,
+        );
+        await act(() => vi.advanceTimersByTimeAsync(10));
+        for (const prompt of ["[sudo] contraseña para jorge: ", "[sudo] jorge 的密码："]) {
+          act(() => void (term().line = prompt));
+          act(() => term().type("hunter2"));
+          await act(() => vi.advanceTimersByTimeAsync(1000));
+          act(() => term().type("\r"));
+        }
+        expect(aiSuggest).not.toHaveBeenCalled();
+        expect(history.recent("local", 5)).toEqual([]);
+      });
+
       it("never sends a line typed with a leading space (kept out of history) to the AI", async () => {
         vi.useFakeTimers();
         const aiSuggest = vi.fn(async ({ line }: { line: string }) => `${line}x`);

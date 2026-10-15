@@ -84,5 +84,29 @@ export function promptBefore(lineToCursor: string, typed: string): string {
 }
 
 /** "Password: ", "[sudo] password for u: ", "Enter passphrase for key …: ", "PIN:", "Verification code:", "OTP:", "Enter token:" */
-export const isSecretPrompt = (prompt: string) =>
-  /(pass(word|phrase|code)|\bpin\b|\b(otp|2fa|mfa|token|one[- ]time|(verification|authenticator|security|auth) code)\b)[^\n]*[:?]\s*$/i.test(prompt);
+/** Words that announce a secret: English first, then the interface languages (and Russian), as sudo and ssh print them. */
+const SECRET_WORDS = [
+  "pass(?:word|phrase|code)",
+  "\\bpin\\b",
+  "\\b(?:otp|2fa|mfa|token|one[- ]time|(?:verification|authenticator|security|auth) code)\\b",
+  "contrase(?:ñ|n)a",
+  "c(?:ó|o)digo de verificaci(?:ó|o)n",
+  "passwort",
+  "kennwort",
+  "mot de passe",
+  "senha",
+  "パスワード",
+  "暗証番号",
+  "密码",
+  "口令",
+  "암호",
+  "비밀번호",
+  "كلمة (?:السر|المرور)",
+  "पासवर्ड",
+  "пароль",
+].join("|");
+
+/** A secret word followed, on the same line, by a closing ":" or "?" (ASCII or full-width). */
+const SECRET_PROMPT = new RegExp(`(?:${SECRET_WORDS})[^\\n]*[:?：？]\\s*$`, "i");
+
+export const isSecretPrompt = (prompt: string) => SECRET_PROMPT.test(prompt);
