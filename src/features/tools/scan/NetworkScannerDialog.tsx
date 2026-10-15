@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { compareHosts, NETWORK_SERVICES, networkScan } from "./scanBackend";
+import { DEFAULT_RANGE, rangeTarget } from "./ipRange";
+import { IpRangeInput } from "./IpRangeInput";
 import { progressText, useScan } from "./useScan";
 import "./scan.css";
 
@@ -9,7 +11,8 @@ type Props = { onClose: () => void; onNewSshSession: (host: string) => void };
 
 /** Tools > Network scanner: live hosts of an IPv4 range or CIDR, found by probing common service ports. */
 export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
-  const [targets, setTargets] = useState("");
+  const [range, setRange] = useState(DEFAULT_RANGE);
+  const [inputError, setInputError] = useState<string | null>(null);
   const [hosts, setHosts] = useState<LiveHost[]>([]);
   const scan = useScan((event) => {
     if (event.event === "host") setHosts((rows) => [...rows, event.data]);
@@ -19,8 +22,11 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (running) return scan.stop();
+    const target = rangeTarget(range);
+    if (!target.ok) return setInputError(target.error);
+    setInputError(null);
     setHosts([]);
-    void scan.start(networkScan(targets));
+    void scan.start(networkScan(target.target));
   };
 
   const rows = [...hosts].sort((a, b) => compareHosts(a.host, b.host));
@@ -30,22 +36,19 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <form className="dialog scan-dialog" role="dialog" onSubmit={submit} aria-labelledby="network-scan-title" noValidate>
         <h2 id="network-scan-title">Network scanner</h2>
-        <label className="field">
-          Network
-          <input
-            autoFocus
-            spellCheck={false}
-            placeholder="192.168.1.0/24 or 192.168.1.1-254"
-            value={targets}
-            disabled={running}
-            onChange={(e) => setTargets(e.target.value)}
-          />
-        </label>
+        <div className="field">
+          <span>IP address range</span>
+          <IpRangeInput value={range} onChange={setRange} disabled={running} />
+        </div>
         <p className="muted">
           Finds hosts by probing {NETWORK_SERVICES.map(([, label]) => label).join(", ")} over TCP (no root, no ping). Only
           scan networks you are allowed to.
         </p>
-        {scan.error && <p className="form-error" role="alert">{scan.error}</p>}
+        {(inputError ?? scan.error) && (
+          <p className="form-error" role="alert">
+            {inputError ?? scan.error}
+          </p>
+        )}
         <p role="status" className="scan-dialog__status">{progressText(scan.phase, scan.progress, found)}</p>
         <div className="scan-results">
           <table className="scan-table">

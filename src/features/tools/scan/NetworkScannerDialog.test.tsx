@@ -26,8 +26,11 @@ afterEach(() => {
 
 const emit = (event: ScanEvent) => act(() => channels[channels.length - 1].onmessage!(event));
 
+const field = (name: string) => screen.getByLabelText(name) as HTMLInputElement;
+
+/** Pastes a full address, range or /24 network into the first field, then starts. */
 async function startScan(targets: string) {
-  fireEvent.change(screen.getByLabelText("Network"), { target: { value: targets } });
+  fireEvent.paste(field("First octet"), { clipboardData: { getData: () => targets } });
   await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
 }
 
@@ -37,7 +40,7 @@ describe("NetworkScannerDialog", () => {
     const onNewSshSession = vi.fn();
     render(<NetworkScannerDialog onClose={() => {}} onNewSshSession={onNewSshSession} />);
     await startScan("192.168.1.0/24");
-    expect(invoke).toHaveBeenCalledWith("scan_network", { targets: "192.168.1.0/24", onEvent: channels[0] });
+    expect(invoke).toHaveBeenCalledWith("scan_network", { targets: "192.168.1.1-254", onEvent: channels[0] });
     emit({ event: "started", data: { total: 2032 } });
     emit({ event: "host", data: { host: "192.168.1.20", name: null, mac: null, ports: [80, 443] } });
     emit({ event: "host", data: { host: "192.168.1.3", name: "nas.lan", mac: "aa:bb:cc:dd:ee:03", ports: [22, 445] } });
@@ -58,10 +61,46 @@ describe("NetworkScannerDialog", () => {
   });
 
   it("shows invalid input errors from the backend", async () => {
-    invoke.mockRejectedValueOnce("CIDR prefix must be between /24 and /32 (at most 256 hosts)");
+    invoke.mockRejectedValueOnce("Too many probes: 99999 (the limit is 65536; scan fewer hosts or ports)");
     render(<NetworkScannerDialog onClose={() => {}} onNewSshSession={() => {}} />);
-    await startScan("10.0.0.0/16");
-    expect(screen.getByRole("alert").textContent).toBe("CIDR prefix must be between /24 and /32 (at most 256 hosts)");
+    await startScan("10.0.0.1-200");
+    expect(screen.getByRole("alert").textContent).toBe("Too many probes: 99999 (the limit is 65536; scan fewer hosts or ports)");
+  });
+
+  it("asks for the range in separate fields, starting with 192.168.1.1 to 254", () => {
+    render(<NetworkScannerDialog onClose={() => {}} onNewSshSession={() => {}} />);
+    expect(["First octet", "Second octet", "Third octet", "Range start", "Range end"].map((n) => field(n).value)).toEqual([
+      "192",
+      "168",
+      "1",
+      "1",
+      "254",
+    ]);
+  });
+
+  it("scans the edited fields and checks them before starting", async () => {
+    invoke.mockResolvedValue(1);
+    render(<NetworkScannerDialog onClose={() => {}} onNewSshSession={() => {}} />);
+    fireEvent.change(field("First octet"), { target: { value: "10" } });
+    fireEvent.change(field("Second octet"), { target: { value: "0" } });
+    fireEvent.change(field("Third octet"), { target: { value: "300" } });
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
+    expect(screen.getByRole("alert").textContent).toBe("Each part of the address must be a number from 0 to 255");
+    expect(invoke).not.toHaveBeenCalled();
+    fireEvent.change(field("Third octet"), { target: { value: "0" } });
+    fireEvent.change(field("Range start"), { target: { value: "5" } });
+    fireEvent.change(field("Range end"), { target: { value: "20" } });
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
+    expect(invoke).toHaveBeenCalledWith("scan_network", { targets: "10.0.0.5-20", onEvent: channels[0] });
+  });
+
+  it("keeps digits only and moves to the next field after a dot or three digits", () => {
+    render(<NetworkScannerDialog onClose={() => {}} onNewSshSession={() => {}} />);
+    fireEvent.change(field("First octet"), { target: { value: "17a2" } });
+    expect(field("First octet").value).toBe("172");
+    expect(document.activeElement).toBe(field("Second octet"));
+    fireEvent.keyDown(field("Second octet"), { key: "." });
+    expect(document.activeElement).toBe(field("Third octet"));
   });
 
   it("Stop cancels the running scan", async () => {
