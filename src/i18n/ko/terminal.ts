@@ -1,0 +1,48 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "터미널에서 찾기",
+    placeholder: "찾기",
+    noMatches: "일치 항목 없음",
+    matchCase: "대/소문자 구분",
+    regexTitle: "정규식",
+    regex: "Regex",
+    previous: "이전 일치 항목",
+    next: "다음 일치 항목",
+    close: "찾기 닫기",
+  },
+  paste: {
+    title: { other: "{count}줄을 붙여 넣으시겠습니까?" },
+    warning: "각 줄이 명령으로 실행될 수 있습니다.",
+    dontAsk: "다시 묻지 않음",
+    paste: "붙여넣기",
+  },
+  menu: {
+    paste: "붙여넣기",
+    selectAll: "모두 선택",
+    clear: "스크롤백 지우기",
+    find: "찾기…",
+    save: "출력을 파일로 저장…",
+    stopLogging: "기록 중지",
+    log: "파일에 기록…",
+  },
+  view: {
+    textFiles: "텍스트",
+    connecting: "{target}에 연결하는 중...",
+    connectingVia: "{jumps}을(를) 거쳐 {target}에 연결하는 중...",
+    startingMosh: "SSH를 통해 {target}에서 mosh-server를 시작하는 중...",
+    startingMoshVia: "SSH로 {jumps}을(를) 거쳐 {target}에서 mosh-server를 시작하는 중...",
+    opening: "{target}을(를) 여는 중...",
+    telnetUnencrypted: "Telnet은 암호화되지 않습니다.",
+    serialEnded: "세션이 종료되었습니다. 이 탭을 닫거나 포트를 다시 여십시오.",
+    moshExited: "mosh-client가 종료되었습니다. 이 탭을 닫거나 세션을 다시 여십시오.",
+    moshExitedCode: "mosh-client가 코드 {code}(으)로 종료되었습니다. 이 탭을 닫거나 세션을 다시 여십시오.",
+    clipboardError: "클립보드를 읽을 수 없습니다.",
+    saveError: "출력을 저장할 수 없습니다: {error}",
+    loggingStopped: "기록이 중지되었습니다: {error}",
+    hostKeyCancelled: "연결이 취소되었습니다. 호스트 키를 신뢰하지 않았습니다.",
+    cancelled: "연결이 취소되었습니다.",
+  },
+};

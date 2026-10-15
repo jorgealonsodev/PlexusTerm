@@ -1,0 +1,76 @@
+import type { macros as en } from "../en/macros";
+import type { Messages } from "../types";
+
+export const macros: Messages<typeof en> = {
+  recording: {
+    title: "매크로 기록 중",
+    warning: "암호를 포함해 입력하는 모든 내용이 저장됩니다",
+    stop: "기록 중지",
+  },
+  name: {
+    title: "기록된 매크로 저장",
+    recorded: {
+      other: "{count}단계를 기록했습니다. 매크로는 일반 텍스트로 저장됩니다.",
+    },
+    discard: "버리기",
+  },
+  progress: {
+    running: '"{name}" 실행 중: {step}/{total}단계',
+    label: "매크로 {name} 진행률",
+  },
+  panel: {
+    title: "매크로",
+    new: "새로 만들기",
+    search: "매크로 검색",
+    readError: "저장된 매크로를 읽을 수 없습니다: {message}. 파일 보호를 위해 편집이 비활성화되었습니다.",
+    saveError: "매크로를 저장할 수 없습니다: {error}",
+    empty: "아직 매크로가 없습니다. Ctrl+Shift+R로 기록하거나 새로 만들기로 만드십시오.",
+    noMatch: "일치하는 매크로가 없습니다.",
+    steps: { other: "{count}단계" },
+    editNamed: "{name} 편집",
+    duplicate: "복제",
+    duplicateNamed: "{name} 복제",
+    deleteNamed: "{name} 삭제",
+    playNamed: "{name} 재생",
+    play: "포커스된 터미널에서 재생",
+    hint: "매크로는 포커스된 터미널에서 재생됩니다. Ctrl+Alt+1–9를 누르면 해당 키에 지정된 매크로가 재생됩니다. 매크로는 일반 텍스트로 저장됩니다.",
+  },
+  edit: {
+    newTitle: "새 매크로",
+    editTitle: "매크로 편집",
+    hotkey: "단축키",
+    none: "없음",
+    hotkeyUsed: "{hotkey}({name})",
+    escapes: "텍스트의 이스케이프: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C 및 기타 ^A–^Z 제어 키, ^[ 및 ^?.",
+    kindSend: "텍스트 보내기",
+    kindWait: "대기",
+    kindWaitFor: "텍스트 대기",
+    stepKind: "{n}단계 종류",
+    stepMs: "{n}단계 밀리초",
+    stepText: "{n}단계 텍스트",
+    sendPlaceholder: "예: ls -la\\r",
+    waitForPlaceholder: "예: password:",
+    stepTimeout: "{n}단계 제한 시간(초)",
+    moveUp: "{n}단계 위로 이동",
+    moveDown: "{n}단계 아래로 이동",
+    removeStep: "{n}단계 제거",
+    noSteps: "아직 단계가 없습니다.",
+    addStep: "단계 추가",
+  },
+  form: {
+    nameRequired: "이름을 입력하십시오.",
+    invalidWait: "{n}단계: 대기 시간은 0에서 {max} 사이의 정수(밀리초)여야 합니다.",
+    waitForTextRequired: "{n}단계: 기다릴 텍스트를 입력하십시오.",
+    invalidTimeout: "{n}단계: 제한 시간은 1에서 {max} 사이의 정수(초)여야 합니다.",
+  },
+  file: {
+    invalidJson: "매크로 파일이 올바른 JSON이 아닙니다: {error}",
+    unsupportedVersion: "지원되지 않는 매크로 파일 버전입니다",
+    invalidMacros: "매크로 파일에 잘못된 매크로가 있습니다",
+    duplicateHotkey: "매크로 파일에서 두 매크로가 {hotkey}을(를) 사용합니다",
+  },
+  copyName: "{name}(사본)",
+  player: {
+    timedOut: '매크로 "{name}"이(가) {step}/{total}단계에서 중지되었습니다: {seconds}초 안에 "{text}"이(가) 나타나지 않았습니다.',
+  },
+};
