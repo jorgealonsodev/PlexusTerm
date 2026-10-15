@@ -1,0 +1,30 @@
+.remote-monitor {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  min-height: 22px;
+  padding: 2px 10px;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.remote-monitor__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+
+.remote-monitor__item svg {
+  color: var(--accent);
+}
+
+.remote-monitor__note--warn {
+  color: var(--warning);
+}

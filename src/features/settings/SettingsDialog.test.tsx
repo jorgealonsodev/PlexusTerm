@@ -22,6 +22,7 @@ describe("SettingsDialog", () => {
     expect((screen.getByLabelText("Confirm multi-line paste") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Colour scheme") as HTMLSelectElement).value).toBe("catppuccin-mocha");
     expect((screen.getByLabelText("Font family") as HTMLInputElement).value).toBe(DEFAULT_SETTINGS.fontFamily);
+    expect((screen.getByLabelText("Remote monitor bar (SSH tabs)") as HTMLInputElement).checked).toBe(true);
   });
 
   it("lists dark and light schemes separately and previews the selected one", () => {
@@ -42,6 +43,7 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByLabelText("Confirm multi-line paste"));
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: " Hack Nerd Font " } });
+    fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith({
       fontSize: 32,
@@ -50,6 +52,7 @@ describe("SettingsDialog", () => {
       confirmMultilinePaste: false,
       theme: "solarized-light",
       fontFamily: "Hack Nerd Font",
+      remoteMonitor: false,
     });
   });
 

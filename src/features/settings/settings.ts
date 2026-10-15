@@ -14,6 +14,8 @@ export interface TerminalSettings {
   theme: string;
   /** Font family: one font name, or a CSS font list. */
   fontFamily: string;
+  /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
+  remoteMonitor: boolean;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   confirmMultilinePaste: true,
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
+  remoteMonitor: true,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -65,6 +68,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     confirmMultilinePaste: bool(value.confirmMultilinePaste, d.confirmMultilinePaste),
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
+    remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
   };
 }
 
