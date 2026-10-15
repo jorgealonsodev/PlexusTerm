@@ -3624,6 +3624,7 @@ dependencies = [
  "keyring",
  "keyring-core",
  "portable-pty",
+ "rand",
  "russh",
  "russh-sftp",
  "serde",
@@ -3637,6 +3638,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "zeroize",
 ]
 
 [[package]]
