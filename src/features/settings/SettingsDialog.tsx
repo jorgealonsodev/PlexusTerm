@@ -36,6 +36,8 @@ interface SettingsDialogProps {
   settings: TerminalSettings;
   onSave: (settings: TerminalSettings) => void;
   onCancel: () => void;
+  /** Section shown first (Appearance when omitted). */
+  initialSection?: SettingsSection;
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -69,7 +71,8 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
   );
 }
 
-type Section = "appearance" | "terminal" | "ssh" | "files" | "ai" | "about";
+export type SettingsSection = "appearance" | "terminal" | "ssh" | "files" | "ai" | "about";
+type Section = SettingsSection;
 
 const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -223,7 +226,7 @@ function openLink(e: MouseEvent, url: string) {
 }
 
 /** Terminal settings shared by every tab (S15.6), in sections chosen from a side menu. */
-export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection }: SettingsDialogProps) {
   const platform = usePlatform();
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
@@ -242,7 +245,7 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
   const [aiModel, setAiModel] = useState(settings.aiModel);
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
-  const [section, setSection] = useState<Section>("appearance");
+  const [section, setSection] = useState<Section>(initialSection ?? "appearance");
   const dark = TERMINAL_THEMES.filter((t) => t.dark);
   const light = TERMINAL_THEMES.filter((t) => !t.dark);
 
