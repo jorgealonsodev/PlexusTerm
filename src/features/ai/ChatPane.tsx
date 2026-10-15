@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TerminalSettings } from "../settings/settings";
 import { writeText } from "../terminal/clipboard";
@@ -32,6 +32,8 @@ interface ChatPaneProps {
   focused: boolean;
   /** Types a command into the linked terminal without Enter. */
   onInsert: (command: string) => void;
+  /** Sends a command to the linked terminal with Enter. */
+  onRun: (command: string) => void;
   onOpenSettings: () => void;
   /** Makes `model` of `provider` the AI provider and model (S10). */
   onSelectModel: (provider: AiProvider, model: string) => void;
@@ -48,8 +50,16 @@ interface ChatTurn {
   error: string;
 }
 
-/** A command from an answer, with Insert (types it, no Enter) and Copy. */
-function CommandBox({ command, onInsert }: { command: string; onInsert: (command: string) => void }) {
+/** A command from an answer, with Copy, Insert (types it, no Enter) and Run (types it and presses Enter). */
+function CommandBox({
+  command,
+  onInsert,
+  onRun,
+}: {
+  command: string;
+  onInsert: (command: string) => void;
+  onRun: (command: string) => void;
+}) {
   const [copied, setCopied] = useState<"no" | "yes" | "failed">("no");
   return (
     <div className="chat__command">
@@ -70,11 +80,20 @@ function CommandBox({ command, onInsert }: { command: string; onInsert: (command
         </button>
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn"
           title="Types the command into the terminal without running it"
           onClick={() => onInsert(command)}
         >
           Insert
+        </button>
+        <button
+          type="button"
+          className="btn btn--primary btn--icon"
+          title="Runs the command in the terminal (types it and presses Enter)"
+          onClick={() => onRun(command)}
+        >
+          <Play size={14} />
+          Run
         </button>
       </div>
     </div>
@@ -83,9 +102,9 @@ function CommandBox({ command, onInsert }: { command: string; onInsert: (command
 
 /**
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
- * earlier turns as context, and one OpenCode session per pane. Nothing is ever run.
+ * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ settings, context, selection, focused, onInsert, onOpenSettings, onSelectModel }: ChatPaneProps) {
+export function ChatPane({ settings, context, selection, focused, onInsert, onRun, onOpenSettings, onSelectModel }: ChatPaneProps) {
   const [sessionId] = useState(newAiSessionId);
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
@@ -187,7 +206,7 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onOp
       </header>
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (
-          <p className="muted chat__empty">Ask anything. Commands are only typed into the terminal, never run.</p>
+          <p className="muted chat__empty">Ask anything. Commands run only when you click Run.</p>
         )}
         {turns.map((turn) => (
           <div key={turn.id} className="chat__turn">
@@ -204,7 +223,7 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onOp
             {turn.state === "answer" && (
               <div className="assistant__answer">
                 {turn.answer && <AnswerText answer={turn.answer} />}
-                {turn.command && <CommandBox command={turn.command} onInsert={onInsert} />}
+                {turn.command && <CommandBox command={turn.command} onInsert={onInsert} onRun={onRun} />}
               </div>
             )}
           </div>

@@ -627,6 +627,36 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual(["du -sh * | sort -h"]);
     });
 
+    it("runs a command from the AI chat: clears what was typed, sends it with Enter and records it", async () => {
+      const history = historyWith();
+      const onInput = vi.fn();
+      let assist: { run: (text: string) => boolean } | null = null;
+      await renderView({ history, onInput, registerAssistTarget: (target) => ((assist = target), () => {}) });
+      typeAt("$ ", "half typ");
+      act(() => term().type("\t")); // the line is no longer known
+      let ran = false;
+      act(() => void (ran = assist!.run("uptime")));
+      expect(ran).toBe(true);
+      expect(backend.write).toHaveBeenLastCalledWith(7, "\x05\x15uptime\r");
+      expect(history.recent("local", 5)).toEqual(["uptime"]);
+      // Only the user's own typing reached onInput (multi-execution, macros).
+      expect(onInput).toHaveBeenCalledTimes(2);
+    });
+
+    it("refuses to run a command at a password prompt or in a full-screen program", async () => {
+      const history = historyWith();
+      let assist: { run: (text: string) => boolean } | null = null;
+      await renderView({ history, registerAssistTarget: (target) => ((assist = target), () => {}) });
+      backend.write.mockClear();
+      act(() => void (term().line = "[sudo] password for jorge: "));
+      expect(assist!.run("uptime")).toBe(false);
+      act(() => void (term().line = "$ "));
+      act(() => void (term().bufferType = "alternate"));
+      expect(assist!.run("uptime")).toBe(false);
+      expect(backend.write).not.toHaveBeenCalled();
+      expect(history.recent("local", 5)).toEqual([]);
+    });
+
     it("never records nor suggests at a password prompt", async () => {
       const history = historyWith("hunter2-is-not-a-command");
       const { container } = await renderView({ history });

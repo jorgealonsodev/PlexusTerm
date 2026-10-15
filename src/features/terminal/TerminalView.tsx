@@ -84,6 +84,11 @@ export interface AssistTarget {
    * with Enter), but never broadcast to other panes or recorded into a macro.
    */
   insert: (text: string) => void;
+  /**
+   * Replaces the typed line with `text` and sends it with Enter (recorded like a typed command, never
+   * broadcast). Refused (false) at a password prompt or in a full-screen program.
+   */
+  run: (text: string) => boolean;
 }
 
 export interface AiSuggestContext {
@@ -520,6 +525,15 @@ export function TerminalView({
       insert: (text) => {
         write(text);
         track(text);
+      },
+      run: (text) => {
+        if (fullScreen() || atSecretPrompt()) return false;
+        // Ctrl+E Ctrl+U first: whatever was half typed (even after Tab or arrows) is cleared, so
+        // the line sent is exactly the command.
+        write(`\x05\x15${text}\r`);
+        line = EMPTY_LINE;
+        track(`${text}\r`);
+        return true;
       },
     });
 
