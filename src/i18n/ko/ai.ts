@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "OpenAI 호환",
+    openaiCompatibleEndpoint: "OpenAI 호환 엔드포인트",
+  },
+  errors: {
+    noKey: "이 공급자에 저장된 API 키가 없습니다.",
+    auth: "API 키가 거부되었습니다.",
+    rateLimit: "AI 공급자가 요청을 제한하고 있습니다. 잠시 후 다시 시도하십시오.",
+    network: "AI 공급자에 연결할 수 없습니다.",
+    timeout: "AI 공급자가 제시간에 응답하지 않았습니다.",
+    refused: "AI 공급자가 이 요청에 대한 응답을 거부했습니다.",
+    badResponse: "AI 공급자가 PlexusTerm이 읽을 수 없는 응답을 보냈습니다.",
+    config: "AI 설정을 확인하십시오.",
+  },
+  hint: {
+    unavailable: "AI: 사용할 수 없음",
+    noKey: "AI: API 키 없음",
+    keyRejected: "AI: 키 거부됨",
+    rateLimited: "AI: 요청 제한됨",
+  },
+  chat: {
+    label: "AI 채팅",
+    title: "AI",
+    close: "AI 채팅 닫기",
+    closeTitle: "AI 채팅 닫기(Ctrl+Shift+W)",
+    empty: "무엇이든 물어보십시오. 명령은 실행을 클릭할 때만 실행됩니다.",
+    question: "질문",
+    asking: "질문하는 중…",
+    noKey: "{provider}에 저장된 API 키가 없습니다. 설정 → AI에서 추가하십시오.",
+    openSettings: "AI 설정 열기",
+    selectedText: "보낼 선택한 텍스트",
+    removeSelection: "선택한 텍스트 제거",
+    removeSelectionTitle: "선택한 텍스트를 보내지 않음",
+    input: "질문 입력",
+    placeholder: "무엇이든 물어보십시오…",
+    send: "보내기",
+  },
+  command: {
+    label: "제안된 명령",
+    copied: "복사됨",
+    copyFailed: "복사 실패",
+    insert: "삽입",
+    insertTitle: "명령을 실행하지 않고 터미널에 입력합니다",
+    run: "실행",
+    runTitle: "터미널에서 명령을 실행합니다(입력 후 Enter 누름)",
+  },
+  answer: {
+    label: "답변",
+  },
+  models: {
+    chooseAnother: "{label} — 다른 모델 선택",
+    filter: "모델 필터",
+    filterPlaceholder: "모델 필터…",
+    list: "AI 모델",
+    loading: "모델을 불러오는 중…",
+    noProvider: "API 키가 있는 AI 공급자가 없습니다. 설정 → AI에서 추가하십시오.",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} — 아직 지원되지 않음",
+    loadingProvider: "{provider} 모델을 불러오는 중…",
+  },
+};

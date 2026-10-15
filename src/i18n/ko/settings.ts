@@ -1,0 +1,102 @@
+import type { settings as en } from "../en/settings";
+import type { Messages } from "../types";
+
+export const settings: Messages<typeof en> = {
+  language: {
+    label: "언어",
+    system: "시스템",
+  },
+  dialog: {
+    title: "설정",
+    sections: "설정 섹션",
+  },
+  sections: {
+    appearance: "모양",
+    terminal: "터미널",
+    ssh: "SSH",
+    files: "파일",
+    ai: "AI",
+    about: "정보",
+  },
+  appearance: {
+    colourScheme: "색 구성표",
+    dark: "어둡게",
+    light: "밝게",
+    preview: "{name} 미리 보기",
+    fontFamily: "글꼴",
+    fontSize: "글꼴 크기",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0으로 글꼴 크기를 변경합니다. 아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
+    hideSidebar: "접을 때 사이드바를 완전히 숨기기",
+    sidebarHelp:
+      "Ctrl+Shift+B 또는 도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
+  },
+  terminal: {
+    copyOnSelect: "선택 시 복사",
+    rightClickPastes: "마우스 오른쪽 클릭으로 붙여넣기",
+    confirmMultilinePaste: "여러 줄 붙여넣기 확인",
+    rightClickHelp: "마우스 오른쪽 클릭으로 붙여넣을 때 Ctrl+오른쪽 클릭하면 터미널 메뉴가 열립니다.",
+  },
+  ssh: {
+    remoteMonitor: "원격 모니터 막대(SSH 탭)",
+    remoteMonitorHelp:
+      "각 SSH 창 아래에 서버의 CPU, 메모리, 디스크, 네트워크, 사용자를 같은 연결로 읽어 표시하는 막대입니다. 도구 메뉴에도 있습니다.",
+  },
+  files: {
+    textEditor: "텍스트 편집기",
+    systemDefault: "시스템 기본값",
+    useSystemDefault: "시스템 기본값 사용",
+    chooseEditor: "텍스트 편집기 선택",
+    textEditorHelp:
+      "텍스트 편집기는 SFTP 브라우저에서 파일을 엽니다. 프로그램 또는 {command} 같은 명령을 지정하고, 비워 두면 시스템 기본값을 사용합니다.",
+  },
+  ai: {
+    inlineSuggestions: "인라인 제안",
+    inlineSuggestionsHelp:
+      "입력하는 동안 명령의 나머지 부분을 회색으로 제안합니다. 오른쪽 화살표 또는 End로 수락하고, Ctrl+오른쪽 화살표로 한 단어씩 수락합니다.",
+    commandHistory: "명령 기록",
+    clearHistory: "기록 지우기",
+    historyCleared: "기록을 지웠습니다.",
+    historyClearFailed: "기록을 지울 수 없습니다: {error}",
+    historyHelp:
+      "실행한 명령은 다시 제안할 수 있도록 이 컴퓨터에 호스트별로 보관됩니다. 공백으로 시작하는 줄, 암호, 전체 화면 프로그램은 기록되지 않습니다.",
+    aiSuggestions: "AI 제안",
+    aiSuggestionsHelp:
+      "기록에 일치 항목이 없으면 AI 공급자에게 요청합니다. 입력한 줄, 현재 폴더, 최근 기록 명령만 전송되며 터미널 출력은 전송되지 않습니다.",
+    provider: "공급자",
+    openCodeGoNote:
+      "OpenCode Go는 코딩 에이전트용이며 트래픽을 모니터링합니다. 인라인 AI 제안은 짧은 요청을 많이 보냅니다.",
+    baseUrl: "기본 URL",
+    model: "모델",
+    historyContext: "컨텍스트로 보낼 기록 명령",
+    chooseModel: "모델 선택",
+    modelOption: "{name}({id})",
+    modelOptionUnsupported: "{name}({id}) — 아직 지원되지 않음",
+    refreshModels: "모델 새로 고침",
+    loadingModels: "모델을 불러오는 중…",
+    modelsError: "{error} {url}의 모델 ID를 입력하십시오.",
+    apiKey: "API 키",
+    keyChecking: "키링 확인 중…",
+    keySaved: "키가 저장되어 있음",
+    keyNone: "저장된 키 없음",
+    keyUnavailable: "키링을 사용할 수 없음",
+    keyReplacePlaceholder: "바꿀 새 키를 입력하십시오",
+    keyPastePlaceholder: "키를 붙여 넣으십시오",
+    saveKey: "키 저장",
+    removeKey: "키 제거",
+    saveKeyFailed: "키를 저장할 수 없습니다: {error}",
+    removeKeyFailed: "키를 제거할 수 없습니다: {error}",
+    assistantShortcut: "도우미 바로 가기 키",
+    shortcutInvalid: "Ctrl, Alt 또는 Meta를 다른 키와 함께 사용하십시오.",
+    shortcutTaken: "{shortcut}은(는) PlexusTerm에서 이미 사용 중입니다.",
+    shortcutCapturing: "새 키 조합을 누르거나, 유지하려면 Esc를 누르십시오.",
+    shortcutIdle: "변경하려면 필드를 클릭하십시오.",
+  },
+  about: {
+    version: "버전 {version}",
+    description:
+      "Linux 및 Windows용 터미널 겸 원격 세션 관리자: 로컬 셸, SSH, SFTP, 터널, 직렬, Telnet, Mosh를 한 창에서 사용합니다.",
+    credits: "색 구성표는 iTerm2-Color-Schemes(MIT)와 그 작성자들이 제공했습니다. {notices}를 참조하십시오.",
+    notices: "타사 고지 사항",
+  },
+};
