@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 92 312 328" role="img" aria-label="NexusTerm">
+  <!-- The icon's mark without its tile, for use on the app's own dark surfaces. -->
+  <path d="M150 370 L150 142 L362 370 L362 142" fill="none" stroke="#5ec4ff" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="370" r="40" fill="#161d24" stroke="#8bd49c" stroke-width="26"/>
+  <circle cx="362" cy="142" r="40" fill="#161d24" stroke="#8bd49c" stroke-width="26"/>
+</svg>

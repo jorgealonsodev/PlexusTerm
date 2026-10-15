@@ -41,9 +41,17 @@ body,
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--accent);
+}
+
+.brand__mark {
+  width: 18px;
+  height: 18px;
 }
 
 .btn {

@@ -33,6 +33,7 @@ import { TunnelsPanel } from "./features/tunnels/TunnelsPanel";
 import type { Tunnel } from "./features/tunnels/tunnels";
 import { useTunnelLauncher } from "./features/tunnels/useTunnelLauncher";
 import { useTunnels } from "./features/tunnels/useTunnels";
+import markUrl from "./assets/nexusterm-mark.svg";
 import "./App.css";
 
 const LOCAL: SessionTarget = { type: "local" };
@@ -215,7 +216,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="toolbar">
-        <span className="brand">NexusTerm</span>
+        <span className="brand">
+          <img className="brand__mark" src={markUrl} alt="" aria-hidden="true" />
+          NexusTerm
+        </span>
         <button className="btn" onClick={openLocal}>
           Terminal
         </button>

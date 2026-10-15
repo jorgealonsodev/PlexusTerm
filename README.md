@@ -4,6 +4,13 @@ A Linux terminal and remote-session manager inspired by another app's feature se
 
 Stack: Tauri 2 (Rust backend) + React/TypeScript + xterm.js.
 
+Brand assets live in `assets/brand/`: `nexusterm-icon.svg` (app icon: an "N" drawn as a route between two nodes) and `nexusterm-mark.svg` (the mark alone, for dark surfaces). Regenerate every platform icon with:
+
+```bash
+rsvg-convert -w 1024 -h 1024 assets/brand/nexusterm-icon.svg -o assets/brand/nexusterm-icon-1024.png
+pnpm tauri icon assets/brand/nexusterm-icon-1024.png   # then drop src-tauri/icons/{android,ios}
+```
+
 ## Development
 
 ```bash
