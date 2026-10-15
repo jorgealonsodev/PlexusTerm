@@ -55,6 +55,14 @@ describe("PortScannerDialog", () => {
     expect(screen.getByRole("button", { name: "Start" })).toBeTruthy();
   });
 
+  it("scans the common ports when the Ports field is left empty, and says so", async () => {
+    invoke.mockResolvedValue(1);
+    render(<PortScannerDialog onClose={() => {}} />);
+    expect((screen.getByLabelText("Ports") as HTMLInputElement).placeholder).toBe("Empty: common ports");
+    await startScan("192.168.1.1", "   ");
+    expect(invoke).toHaveBeenCalledWith("scan_ports", { targets: "192.168.1.1", ports: DEFAULT_PORTS, onEvent: channels[0] });
+  });
+
   it("shows invalid input errors from the backend", async () => {
     invoke.mockRejectedValueOnce("Invalid port: 70000 (use numbers from 1 to 65535)");
     render(<PortScannerDialog onClose={() => {}} />);

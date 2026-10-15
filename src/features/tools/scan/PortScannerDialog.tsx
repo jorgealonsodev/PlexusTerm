@@ -21,7 +21,8 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (running) return scan.stop();
     setOpen([]);
-    void scan.start(portScan(targets, ports));
+    // An emptied Ports field means the common ports, as the placeholder says.
+    void scan.start(portScan(targets, ports.trim() || DEFAULT_PORTS));
   };
 
   const rows = [...open].sort((a, b) => compareHosts(a.host, b.host) || a.port - b.port);
@@ -47,7 +48,7 @@ export function PortScannerDialog({ onClose }: { onClose: () => void }) {
             Ports
             <input
               spellCheck={false}
-              placeholder="22,80,8000-8100"
+              placeholder="Empty: common ports"
               value={ports}
               disabled={running}
               onChange={(e) => setPorts(e.target.value)}
