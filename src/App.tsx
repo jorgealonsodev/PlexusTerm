@@ -50,10 +50,14 @@ import wordmarkUrl from "./assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "./assets/plexusterm-wordmark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
 import { useCompactToolbar } from "./features/toolbar/compact";
+import { DropdownMenu } from "./features/menu/DropdownMenu";
+import { WakeOnLanDialog } from "./features/tools/WakeOnLanDialog";
 import {
   ChevronDown,
   Circle,
   Columns2,
+  Power,
+  Wrench,
   KeyRound,
   Radio,
   Rows2,
@@ -76,6 +80,7 @@ type Modal =
   | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | { kind: "settings" }
+  | { kind: "wakeOnLan" }
   | { kind: "editMacro"; macro: Macro; isNew: boolean }
   /** A recording just stopped: name it or discard it (S16.2). */
   | { kind: "nameMacro"; steps: Step[] }
@@ -123,50 +128,37 @@ const draftTunnel = (): Tunnel => ({
 
 /** Toolbar menu for the less common session types (S17.3). */
 function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => void }) {
-  const [open, setOpen] = useState(false);
   // Mosh has no Windows client (S18.2).
   const offerMosh = usePlatform() !== "windows";
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Any click outside the menu, or Escape, closes it.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("mousedown", onDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const choose = (action: () => void) => () => {
-    setOpen(false);
-    action();
-  };
-
+  const items = [{ label: "Telnet…", onSelect: onTelnet }];
+  if (offerMosh) items.push({ label: "Mosh…", onSelect: onMosh });
   return (
-    <div className="menu" ref={ref}>
-      <button className="btn btn--icon" aria-haspopup="menu" aria-expanded={open} title="More" onClick={() => setOpen((o) => !o)}>
-        <span className="btn__label">More</span>
-        <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="menu__list" role="menu">
-          <button role="menuitem" className="menu__item" onClick={choose(onTelnet)}>
-            Telnet…
-          </button>
-          {offerMosh && (
-            <button role="menuitem" className="menu__item" onClick={choose(onMosh)}>
-              Mosh…
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+    <DropdownMenu
+      title="More"
+      items={items}
+      button={
+        <>
+          <span className="btn__label">More</span>
+          <ChevronDown size={14} />
+        </>
+      }
+    />
+  );
+}
+
+/** Tools menu: network and SSH utilities (Wake On LAN, ...). */
+function ToolsMenu({ onWakeOnLan }: { onWakeOnLan: () => void }) {
+  return (
+    <DropdownMenu
+      title="Tools"
+      items={[{ label: "Wake On LAN…", icon: <Power size={15} />, onSelect: onWakeOnLan }]}
+      button={
+        <>
+          <Wrench size={16} />
+          <span className="btn__label">Tools</span>
+        </>
+      }
+    />
   );
 }
 
@@ -455,6 +447,7 @@ function AppContent() {
           onTelnet={() => setModal({ kind: "telnet" })}
           onMosh={() => setModal({ kind: "mosh" })}
         />
+        <ToolsMenu onWakeOnLan={() => setModal({ kind: "wakeOnLan" })} />
         <button className="btn btn--icon" disabled={!canSplit} title="Split right (Ctrl+Shift+D)" onClick={() => split("row")}>
           <Columns2 size={16} />
           <span className="btn__label">Split right</span>
@@ -746,6 +739,7 @@ function AppContent() {
           }}
         />
       )}
+      {modal?.kind === "wakeOnLan" && <WakeOnLanDialog onClose={() => setModal(null)} />}
       {modal?.kind === "settings" && (
         <SettingsDialog
           settings={terminalSettings.settings}

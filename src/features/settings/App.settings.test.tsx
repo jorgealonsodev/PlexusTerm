@@ -74,7 +74,7 @@ describe("App settings (S15.2, S15.6)", () => {
   it("shows an icon next to every toolbar action and sidebar tab", async () => {
     render(<App />);
     await act(() => Promise.resolve());
-    for (const name of ["Terminal", "SSH", "Serial", "More", "Split right", "Split down", "Multi-exec", "Record macro", "Settings"]) {
+    for (const name of ["Terminal", "SSH", "Serial", "More", "Tools", "Split right", "Split down", "Multi-exec", "Record macro", "Settings"]) {
       expect(screen.getByRole("button", { name }).querySelector("svg"), name).not.toBeNull();
     }
     // Labels can shrink or hide on narrow windows; the tooltip still names the action.
@@ -87,5 +87,13 @@ describe("App settings (S15.2, S15.6)", () => {
     const sidebarTabs = [...document.querySelectorAll(".sidebar__tabs [role=tab]")];
     expect(sidebarTabs.map((t) => t.textContent)).toEqual(["Sessions", "SFTP", "Tunnels", "Macros"]);
     for (const tab of sidebarTabs) expect(tab.querySelector("svg"), tab.textContent!).not.toBeNull();
+  });
+
+  it("opens Wake On LAN from the Tools menu", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Wake On LAN…" }));
+    expect(screen.getByRole("dialog", { name: "Wake On LAN" })).toBeTruthy();
   });
 });

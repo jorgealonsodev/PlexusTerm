@@ -8,6 +8,7 @@ mod ssh;
 mod storage;
 mod telnet;
 mod terminal;
+mod tools;
 mod tunnels;
 
 use mosh::{MoshLauncher, MoshRequest};
@@ -69,6 +70,26 @@ fn pty_close(id: u32, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
 #[tauri::command]
 fn serial_list_ports() -> Vec<String> {
     serial::list_ports()
+}
+
+/// Wake On LAN (Tools menu): sends the magic packet for `mac`; the broadcast address and
+/// port default to 255.255.255.255 and 9.
+#[tauri::command]
+async fn wol_send(mac: String, broadcast: Option<String>, port: Option<u16>) -> Result<(), String> {
+    let mac = tools::wol::parse_mac(&mac)?;
+    let broadcast = match broadcast.as_deref().map(str::trim) {
+        None | Some("") => std::net::Ipv4Addr::BROADCAST,
+        Some(text) => text
+            .parse()
+            .map_err(|_| "Broadcast address must be an IPv4 address".to_string())?,
+    };
+    let port = port.unwrap_or(tools::wol::DEFAULT_PORT);
+    if port == 0 {
+        return Err("Port must be a number between 1 and 65535".into());
+    }
+    tools::wol::send(mac, broadcast, port)
+        .await
+        .map_err(|err| format!("Could not send the packet: {err}"))
 }
 
 /// `"linux"`, `"windows"` or `"macos"`, so the frontend can adapt platform-specific texts.
@@ -436,7 +457,8 @@ pub fn run() {
             macros_load,
             macros_save,
             save_text_file,
-            append_text_file
+            append_text_file,
+            wol_send
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
