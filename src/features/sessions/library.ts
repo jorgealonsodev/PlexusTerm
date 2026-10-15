@@ -217,7 +217,7 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
       const index = lib.sessions.findIndex((s) => s.id === action.id);
       if (index === -1) return lib;
       const original = lib.sessions[index];
-      const copy = { ...original, id: action.newId, name: `${original.name} (copy)` };
+      const copy = { ...original, id: action.newId, name: t("sessions.library.copyName", { name: original.name }) };
       return { ...lib, sessions: [...lib.sessions.slice(0, index + 1), copy, ...lib.sessions.slice(index + 1)] };
     }
     case "saveSessions":

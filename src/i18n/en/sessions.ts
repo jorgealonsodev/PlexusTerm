@@ -71,6 +71,7 @@ export const sessions = {
     tooMany: '"{name}" goes through more than {max} jump hosts.',
   },
   library: {
+    copyName: "{name} (copy)",
     invalidJson: "sessions file is not valid JSON: {error}",
     unsupportedVersion: "unsupported sessions file version",
     invalidFolders: "sessions file has invalid folders",

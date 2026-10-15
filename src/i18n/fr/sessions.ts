@@ -75,6 +75,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: "« {name} » passe par plus de {max} hôtes de rebond.",
   },
   library: {
+    copyName: "{name} (copie)",
     invalidJson: "le fichier des sessions n'est pas un JSON valide : {error}",
     unsupportedVersion: "version du fichier des sessions non prise en charge",
     invalidFolders: "le fichier des sessions contient des dossiers non valides",

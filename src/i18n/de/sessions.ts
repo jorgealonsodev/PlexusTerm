@@ -77,6 +77,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: "„{name}“ verbindet über mehr als {max} Jump-Hosts.",
   },
   library: {
+    copyName: "{name} (Kopie)",
     invalidJson: "Die Sitzungsdatei ist kein gültiges JSON: {error}",
     unsupportedVersion: "Nicht unterstützte Version der Sitzungsdatei",
     invalidFolders: "Die Sitzungsdatei enthält ungültige Ordner",
