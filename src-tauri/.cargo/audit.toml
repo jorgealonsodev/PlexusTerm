@@ -1,0 +1,9 @@
+# cargo-audit settings for PlexusTerm.
+[advisories]
+ignore = [
+    # glib 0.18: unsoundness in VariantStrIter (RUSTSEC-2024-0429). It comes only through
+    # Tauri's GTK3 stack (gtk/gdk/atk/cairo 0.18 <- tauri, tao, wry, muda, webkit2gtk), which
+    # pins glib ^0.18, so it cannot be upgraded until Tauri leaves GTK3. PlexusTerm never uses
+    # glib directly, and the affected API is not called by those crates. Revisit on each Tauri update.
+    "RUSTSEC-2024-0429",
+]

@@ -16,7 +16,7 @@ Objective: fix the findings of the Strix scan (run plexusterm_2e93) that were ve
 - [x] T1 — S1 — inline — localized SECRET_WORDS (es, de, fr, pt, ja, zh, ko, ar, hi, ru) + full-width colon/question mark; lineTracker tests + TerminalView end-to-end test (RED on old regex, GREEN); guide updated.
 - [x] T2 — S4 — inline — Run refuses C0/C1/U+2028/2029 characters; sftp_compare requires an absolute local path (compare_target); isLoopback covers 127.0.0.0/8, [::1], 0:0:0:0:0:0:0:1. RED→GREEN for each.
 - [x] T3 — S2 — inline — strict csp + devCsp (adds Vite ws/http on 1420); bundled debug build (tauri build --debug --no-bundle) checked on Xvfb: UI, i18n, PTY terminal, AI chat, Settings with theme preview all work.
-- [ ] T4 — S3, S5 — inline
+- [x] T4 — S3, S5 — inline — rustls 0.23.43 -> 0.23.46 (cargo update -p rustls); src-tauri/.cargo/audit.toml ignores RUSTSEC-2024-0429 with the reason. cargo audit --no-fetch: glib gone; remaining: rsa RUSTSEC-2023-0071 (no fix, local RSA ops) and GTK3 unmaintained warnings (out of scope). cargo 367 + 5 ignored, clippy 0, Vitest 699, tsc OK.
 
 ## Log
 
