@@ -31,7 +31,9 @@ export function parseSessionForm(form: SessionForm, id: string): SessionFormResu
   const { host, port, username, auth } = parsed.target;
 
   const saved: SavedAuth =
-    auth.method === "key" ? { method: "key", path: auth.path } : { method: auth.method };
+    auth.method === "key"
+      ? { method: "key", path: auth.path }
+      : { method: auth.method === "agent" ? "agent" : "password" };
 
   return {
     ok: true,

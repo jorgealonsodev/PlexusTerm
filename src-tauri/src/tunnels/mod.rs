@@ -18,9 +18,13 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 use tokio::sync::oneshot;
 use tokio::task::JoinSet;
 
+use crate::secrets::{NoStore, SharedSecrets};
 #[cfg(test)]
 use crate::ssh::SshAuth;
-use crate::ssh::{Connection, ForwardedChannel, SshError, SshTarget, connect_authenticated};
+use crate::ssh::{
+    ConnectContext, Connection, ForwardedChannel, PasswordStorage, SshError, SshTarget,
+    connect_authenticated,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -158,6 +162,7 @@ pub struct TunnelManager {
     known_hosts: PathBuf,
     /// Overrides `SSH_AUTH_SOCK` (used by tests).
     agent_socket: Option<PathBuf>,
+    secrets: SharedSecrets,
     shared: Arc<Shared>,
 }
 
@@ -172,12 +177,19 @@ impl TunnelManager {
         Self {
             known_hosts,
             agent_socket: None,
+            secrets: Arc::new(NoStore),
             shared: Arc::new(Shared {
                 entries: Mutex::new(HashMap::new()),
                 next_generation: AtomicU64::new(0),
                 notify: Arc::new(notify),
             }),
         }
+    }
+
+    /// Uses `secrets` for stored passwords (none are available otherwise).
+    pub fn with_secrets(mut self, secrets: SharedSecrets) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     /// Uses the current user's `~/.ssh/known_hosts`, like SSH sessions.
@@ -188,12 +200,27 @@ impl TunnelManager {
         Self::new(home.join(".ssh").join("known_hosts"), notify)
     }
 
-    /// Opens the tunnel's SSH connection and starts forwarding.
+    /// Opens the tunnel's SSH connection and starts forwarding, without
+    /// touching saved passwords (tests; the app uses `start_with`).
+    #[cfg(test)]
     pub async fn start(
         &self,
         tunnel: TunnelDefinition,
         target: SshTarget,
         trusted_fingerprint: Option<String>,
+    ) -> Result<(), TunnelError> {
+        self.start_with(tunnel, target, trusted_fingerprint, None)
+            .await
+    }
+
+    /// Opens the tunnel's SSH connection and starts forwarding, then saves or forgets the session's
+    /// password as `storage` asks once the login succeeded.
+    pub async fn start_with(
+        &self,
+        tunnel: TunnelDefinition,
+        target: SshTarget,
+        trusted_fingerprint: Option<String>,
+        storage: Option<PasswordStorage>,
     ) -> Result<(), TunnelError> {
         let id = tunnel.id.clone();
         let generation = self.shared.generation();
@@ -218,7 +245,7 @@ impl TunnelManager {
         }
 
         let result = tokio::select! {
-            result = self.open(tunnel, target, trusted_fingerprint, generation) => result,
+            result = self.open(tunnel, target, trusted_fingerprint, storage, generation) => result,
             // `stop` already marked the tunnel stopped; dropping `open` releases its listener.
             _ = cancelled => return Ok(()),
         };
@@ -260,6 +287,7 @@ impl TunnelManager {
         tunnel: TunnelDefinition,
         target: SshTarget,
         trusted_fingerprint: Option<String>,
+        storage: Option<PasswordStorage>,
         generation: u64,
     ) -> Result<Running, TunnelError> {
         let default_host = match tunnel.kind {
@@ -296,8 +324,12 @@ impl TunnelManager {
             connect_authenticated(
                 target,
                 trusted_fingerprint,
-                &self.known_hosts,
-                self.agent_socket.as_deref(),
+                storage,
+                ConnectContext {
+                    known_hosts: &self.known_hosts,
+                    agent_socket: self.agent_socket.as_deref(),
+                    secrets: &self.secrets,
+                },
                 forwarded_tx,
             )
             .await?,

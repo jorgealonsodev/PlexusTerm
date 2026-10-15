@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { SerialFields } from "../serial/SerialFields";
 import { fieldSetter, SshFields } from "../ssh/SshFields";
 import type { LibrarySession } from "./library";
+import { secretDelete, secretExists } from "./secrets";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
 interface SessionEditDialogProps {
@@ -17,6 +18,30 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
   const [form, setForm] = useState<SessionForm>(() => formFromSession(session));
   const [error, setError] = useState<string | null>(null);
   const set = fieldSetter(setForm);
+  const [hasSecret, setHasSecret] = useState(false);
+  const [secretNote, setSecretNote] = useState<string | null>(null);
+
+  // Only existing SSH sessions can have a password saved in the keyring.
+  useEffect(() => {
+    if (isNew || session.kind === "serial") return;
+    let live = true;
+    void secretExists(session.id).then((exists) => live && setHasSecret(exists));
+    return () => {
+      live = false;
+    };
+  }, [isNew, session]);
+
+  const forgetSecret = () => {
+    secretDelete(session.id)
+      .then(() => {
+        setHasSecret(false);
+        setSecretNote("Saved password forgotten.");
+      })
+      .catch((err: unknown) => {
+        const message = (err as { message?: unknown } | null)?.message;
+        setSecretNote(`Could not forget the saved password: ${typeof message === "string" ? message : String(err)}`);
+      });
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -62,8 +87,16 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
           <>
             <SshFields form={form} set={set} withSecrets={false} />
             {form.method === "password" && (
-              <p className="muted">The password is asked each time you connect; it is never saved.</p>
+              <p className="muted">
+                The password is asked when you connect; the prompt can save it in the system keyring.
+              </p>
             )}
+            {hasSecret && (
+              <button type="button" className="btn" onClick={forgetSecret}>
+                Forget saved password
+              </button>
+            )}
+            {secretNote && <p className="muted" role="status">{secretNote}</p>}
           </>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}

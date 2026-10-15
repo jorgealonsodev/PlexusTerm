@@ -3,7 +3,9 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
-import { targetTitle, type SessionTarget } from "../sessions/types";
+import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
+import { PasswordPrompt } from "../sessions/PasswordPrompt";
+import { targetTitle, type PasswordStorage, type SessionTarget, type SshAuth } from "../sessions/types";
 import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
@@ -38,6 +40,12 @@ interface PendingHost {
 
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
 
+/** Login typed after the saved password failed; kept for later retries (e.g. host key trust). */
+interface TypedLogin {
+  auth: SshAuth;
+  storage?: PasswordStorage;
+}
+
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
 export function TerminalView({
   target,
@@ -55,6 +63,13 @@ export function TerminalView({
   const termRef = useRef<Terminal | null>(null);
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
+  const [askPassword, setAskPassword] = useState(false);
+  const typedLogin = useRef<TypedLogin | null>(null);
+  /** The saved session whose keyring password this tab connects with, if any. */
+  const savedLogin =
+    target.type === "ssh" && target.auth.method === "storedPassword"
+      ? { id: target.auth.sessionId, username: target.username, host: target.host, port: target.port }
+      : null;
   // Keep callbacks current without re-creating the terminal.
   const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter });
   callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter };
@@ -100,7 +115,7 @@ export function TerminalView({
       if (target.type === "ssh") term.write(`Connecting to ${targetTitle(target)}...\r\n`);
       if (target.type === "serial") term.write(`Opening ${targetTitle(target)}...\r\n`);
       backend
-        .start({ cols: term.cols, rows: term.rows, trustedFingerprint }, (msg) => {
+        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, ...typedLogin.current }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           if (msg.event === "output") term.write(msg.data);
@@ -124,7 +139,11 @@ export function TerminalView({
             return;
           }
           const err = toSshError(raw);
-          if (err.kind === "unknownHost") setPendingHost(err);
+          const auth = typedLogin.current?.auth ?? (target.type === "ssh" ? target.auth : null);
+          if (auth && shouldAskAgain(auth, err)) {
+            term.write(red(describeSshError(err)));
+            setAskPassword(true);
+          } else if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));
         });
     };
@@ -194,6 +213,26 @@ export function TerminalView({
           onCancel={() => {
             setPendingHost(null);
             termRef.current?.write(red("Connection cancelled: host key not trusted."));
+            termRef.current?.focus();
+          }}
+        />
+      )}
+      {askPassword && savedLogin && (
+        <PasswordPrompt
+          label={targetTitle(target)}
+          remember={{ initial: true }}
+          onSubmit={(password, remember) => {
+            setAskPassword(false);
+            typedLogin.current = {
+              auth: { method: "password", password },
+              storage: storageFor(savedLogin, remember, true),
+            };
+            startRef.current();
+            termRef.current?.focus();
+          }}
+          onCancel={() => {
+            setAskPassword(false);
+            termRef.current?.write(red("Connection cancelled."));
             termRef.current?.focus();
           }}
         />

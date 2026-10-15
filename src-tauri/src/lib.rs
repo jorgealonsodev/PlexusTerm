@@ -1,4 +1,5 @@
 mod pty;
+mod secrets;
 mod serial;
 mod sftp;
 mod ssh;
@@ -7,9 +8,10 @@ mod terminal;
 mod tunnels;
 
 use pty::{PtyError, PtyManager, SpawnRequest};
+use secrets::{KeyringStore, SecretError, SharedSecrets};
 use serial::{SerialError, SerialManager, SerialRequest};
 use sftp::SftpError;
-use ssh::{ConnectRequest, SshError, SshManager, SshTarget};
+use ssh::{ConnectRequest, PasswordStorage, SshError, SshManager, SshTarget};
 use storage::StorageError;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -87,13 +89,44 @@ fn serial_close(id: u32, serial: State<'_, SerialManager>) -> Result<(), SerialE
     serial.close(id)
 }
 
+/// `storage` saves the typed password in the keyring (or forgets the saved one) once logged in.
 #[tauri::command]
 async fn ssh_connect(
     request: ConnectRequest,
+    storage: Option<PasswordStorage>,
     on_event: Channel<TerminalEvent>,
     ssh: State<'_, SshManager>,
 ) -> Result<u32, SshError> {
-    ssh.connect(request, ChannelSink(on_event)).await
+    ssh.connect_with(request, storage, ChannelSink(on_event))
+        .await
+}
+
+/// Whether a system keyring (Secret Service) can hold saved passwords.
+#[tauri::command]
+async fn secret_available(secrets: State<'_, SharedSecrets>) -> Result<bool, ()> {
+    Ok(secrets::run(&secrets, |s| Ok(s.available()))
+        .await
+        .unwrap_or(false))
+}
+
+/// Whether a password is saved for the session; the password itself never leaves the backend.
+#[tauri::command]
+async fn secret_exists(
+    session_id: String,
+    secrets: State<'_, SharedSecrets>,
+) -> Result<bool, SecretError> {
+    secrets::run(&secrets, move |s| {
+        Ok(s.available() && s.get(&session_id)?.is_some())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn secret_delete(
+    session_id: String,
+    secrets: State<'_, SharedSecrets>,
+) -> Result<(), SecretError> {
+    secrets::run(&secrets, move |s| s.delete(&session_id)).await
 }
 
 #[tauri::command]
@@ -213,15 +246,19 @@ fn tunnels_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
 /// Event carrying every tunnel status change.
 const TUNNEL_STATUS_EVENT: &str = "tunnel-status";
 
-/// `target` is the tunnel's saved session, with the password filled in when it uses one.
+/// `target` is the tunnel's saved session, with the typed password or a reference
+/// to the saved one; `storage` works as for `ssh_connect`.
 #[tauri::command]
 async fn tunnel_start(
     tunnel: TunnelDefinition,
     target: SshTarget,
     trusted_fingerprint: Option<String>,
+    storage: Option<PasswordStorage>,
     tunnels: State<'_, TunnelManager>,
 ) -> Result<(), TunnelError> {
-    tunnels.start(tunnel, target, trusted_fingerprint).await
+    tunnels
+        .start_with(tunnel, target, trusted_fingerprint, storage)
+        .await
 }
 
 #[tauri::command]
@@ -237,17 +274,23 @@ fn tunnel_statuses(tunnels: State<'_, TunnelManager>) -> Vec<StatusUpdate> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let secrets: SharedSecrets = std::sync::Arc::new(KeyringStore::default());
+    let tunnel_secrets = secrets.clone();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(PtyManager::default())
         .manage(SerialManager::default())
-        .manage(SshManager::for_current_user())
-        .setup(|app| {
+        .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
+        .manage(secrets)
+        .setup(move |app| {
             let handle = app.handle().clone();
-            app.manage(TunnelManager::for_current_user(move |update| {
-                let _ = handle.emit(TUNNEL_STATUS_EVENT, update);
-            }));
+            app.manage(
+                TunnelManager::for_current_user(move |update| {
+                    let _ = handle.emit(TUNNEL_STATUS_EVENT, update);
+                })
+                .with_secrets(tunnel_secrets),
+            );
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -263,6 +306,9 @@ pub fn run() {
             ssh_write,
             ssh_resize,
             ssh_close,
+            secret_available,
+            secret_exists,
+            secret_delete,
             sftp_home,
             sftp_list,
             sftp_download,

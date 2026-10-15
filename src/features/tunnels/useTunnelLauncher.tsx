@@ -1,13 +1,28 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { toTarget, type SavedSession } from "../sessions/library";
+import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
+import { secretExists } from "../sessions/secrets";
+import type { PasswordStorage, SshAuth } from "../sessions/types";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { toSshError } from "../ssh/sshErrors";
 import type { Tunnel, TunnelStatus } from "./tunnels";
 
+interface PasswordAnswer {
+  password: string;
+  /** Undefined while the keyring state is unknown: the saved password is left as it is. */
+  remember: boolean | undefined;
+}
+
 type Prompt =
-  | { kind: "password"; label: string; resolve: (password: string | null) => void }
+  | {
+      kind: "password";
+      label: string;
+      /** Whether "Save password in the system keyring" starts ticked. */
+      rememberInitially: boolean;
+      resolve: (answer: PasswordAnswer | null) => void;
+    }
   | {
       kind: "hostKey";
       host: string;
@@ -32,8 +47,9 @@ const isRecordedByBackend = (raw: unknown) =>
   typeof raw === "object" && raw !== null && typeof (raw as { kind?: unknown }).kind === "string";
 
 /**
- * Starts and stops tunnels through the backend. Password sessions ask for the
- * password (never stored) and unknown hosts ask for trust, like terminal tabs.
+ * Starts and stops tunnels through the backend. Password sessions use the password
+ * saved in the keyring, or ask for it (optionally saving it), and unknown hosts ask
+ * for trust, like terminal tabs.
  * `tunnels` is the current saved list: a tunnel deleted or changed while a
  * prompt was open is not started.
  */
@@ -55,8 +71,10 @@ export function useTunnelLauncher(
     return current !== undefined && sameForward(current, tunnel);
   };
 
-  const askPassword = (label: string) =>
-    new Promise<string | null>((resolve) => setPrompt({ kind: "password", label, resolve }));
+  const askPassword = (label: string, rememberInitially: boolean) =>
+    new Promise<PasswordAnswer | null>((resolve) =>
+      setPrompt({ kind: "password", label, rememberInitially, resolve }),
+    );
 
   const start = useCallback(
     async (tunnel: Tunnel) => {
@@ -65,17 +83,31 @@ export function useTunnelLauncher(
         reportError(tunnel.id, "Its saved session no longer exists; edit the tunnel to choose another one.");
         return;
       }
-      let password: string | undefined;
+      const { type: _local, auth: savedAuth, ...where } = toTarget(session);
+      const label = `${session.username}@${session.host}`;
+      let auth: SshAuth = savedAuth;
+      let storage: PasswordStorage | undefined;
+      /** Asks for the password; false when the user cancelled or the tunnel changed meanwhile. */
+      const typePassword = async (hadSecret: boolean) => {
+        const answer = await askPassword(label, hadSecret);
+        if (answer === null || !stillWanted(tunnel)) return false;
+        auth = { method: "password", password: answer.password };
+        storage = storageFor(session, answer.remember, hadSecret);
+        return true;
+      };
       if (session.auth.method === "password") {
-        const answer = await askPassword(`${session.username}@${session.host}`);
-        if (answer === null || !stillWanted(tunnel)) return;
-        password = answer;
+        if (await secretExists(session.id)) {
+          if (!stillWanted(tunnel)) return;
+          auth = { method: "storedPassword", sessionId: session.id };
+        } else if (!(await typePassword(false))) {
+          return;
+        }
       }
-      const { type: _local, ...target } = toTarget(session, password);
       let trustedFingerprint: string | null = null;
       for (;;) {
         try {
-          await invoke("tunnel_start", { tunnel, target, trustedFingerprint });
+          const target = { ...where, auth };
+          await invoke("tunnel_start", { tunnel, target, trustedFingerprint, storage: storage ?? null });
           return;
         } catch (raw) {
           // A rejection without a `kind` (IPC or argument errors) never reached the
@@ -85,6 +117,11 @@ export function useTunnelLauncher(
             return;
           }
           const err = toSshError(raw);
+          // The saved password is missing or outdated: ask for it and retry (once, typed).
+          if (shouldAskAgain(auth, err)) {
+            if (!(await typePassword(true))) return;
+            continue;
+          }
           // Every other failure is already shown as the tunnel's error status;
           // `alreadyRunning` means the backend already reported it starting or running.
           if (err.kind !== "unknownHost" || trustedFingerprint !== null) return;
@@ -132,8 +169,9 @@ export function useTunnelLauncher(
     dialog = (
       <PasswordPrompt
         label={prompt.label}
+        remember={{ initial: prompt.rememberInitially }}
         onCancel={() => answer(prompt.resolve, null)}
-        onSubmit={(password) => answer(prompt.resolve, password)}
+        onSubmit={(password, remember) => answer(prompt.resolve, { password, remember })}
       />
     );
   } else if (prompt?.kind === "hostKey") {

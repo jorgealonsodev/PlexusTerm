@@ -1,16 +1,25 @@
 import { useState, type FormEvent } from "react";
+import { useSecretAvailable } from "./secrets";
 
 interface PasswordPromptProps {
   label: string;
-  onSubmit: (password: string) => void;
+  /** Offers "Save password in the system keyring" (saved sessions only), ticked when `initial`. */
+  remember?: { initial: boolean };
+  /** `remember` is true only when the checkbox was offered, usable and ticked. */
+  /** `remember` is undefined when the keyring state is not known yet (nothing should change). */
+  onSubmit: (password: string, remember: boolean | undefined) => void;
   onCancel: () => void;
 }
 
-export function PasswordPrompt({ label, onSubmit, onCancel }: PasswordPromptProps) {
+export function PasswordPrompt({ label, remember, onSubmit, onCancel }: PasswordPromptProps) {
   const [password, setPassword] = useState("");
+  const [save, setSave] = useState(remember?.initial ?? false);
+  const available = useSecretAvailable(remember !== undefined);
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit(password);
+    // Unknown keyring state (still loading) leaves any saved password as it is.
+    if (remember === undefined) onSubmit(password, false);
+    else onSubmit(password, available === null ? undefined : available === true && save);
   };
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
@@ -26,6 +35,22 @@ export function PasswordPrompt({ label, onSubmit, onCancel }: PasswordPromptProp
             autoComplete="current-password"
           />
         </label>
+        {remember && (
+          <>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={save}
+                disabled={available !== true}
+                onChange={(e) => setSave(e.target.checked)}
+              />
+              Save password in the system keyring
+            </label>
+            {available === false && (
+              <p className="muted">No system keyring (Secret Service) is available, so the password cannot be saved.</p>
+            )}
+          </>
+        )}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
             Cancel
