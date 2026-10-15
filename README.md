@@ -1,4 +1,9 @@
-# PlexusTerm
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/plexusterm-wordmark.svg">
+    <img src="assets/brand/plexusterm-wordmark-light.svg" alt="PlexusTerm" height="80">
+  </picture>
+</h1>
 
 A Linux terminal and remote-session manager inspired by another app's feature set (clean-room; see `docs/reference/another app-feature-inventory.md`).
 
