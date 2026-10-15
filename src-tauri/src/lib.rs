@@ -220,7 +220,13 @@ fn ssh_resize(id: u32, cols: u16, rows: u16, ssh: State<'_, SshManager>) -> Resu
 }
 
 #[tauri::command]
-fn ssh_close(id: u32, ssh: State<'_, SshManager>) -> Result<(), SshError> {
+fn ssh_close(
+    id: u32,
+    ssh: State<'_, SshManager>,
+    copies: State<'_, sftp::edit::TempFiles>,
+) -> Result<(), SshError> {
+    // Temporary copies opened from the SFTP browser go with their session.
+    copies.remove(id);
     ssh.close(id)
 }
 
@@ -404,6 +410,7 @@ pub fn run() {
         .manage(TelnetManager::default())
         .manage(MoshLauncher::default())
         .manage(tools::scan::ScanManager::default())
+        .manage(sftp::edit::TempFiles::default())
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
         .setup(move |app| {
@@ -472,7 +479,12 @@ pub fn run() {
             tools::scan::scan_ports,
             tools::scan::scan_network,
             tools::scan::scan_stop,
-            tools::monitor::monitor_sample
+            tools::monitor::monitor_sample,
+            sftp::commands::sftp_chmod,
+            sftp::commands::sftp_edit,
+            sftp::commands::sftp_edit_upload,
+            sftp::commands::sftp_compare,
+            sftp::commands::sftp_discard_copies
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

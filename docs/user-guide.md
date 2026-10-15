@@ -22,6 +22,8 @@ How each feature works, its limits and where its data is stored. For installing,
 Open **SSH** (or Ctrl+Shift+S) and enter a host; the field also accepts `user@host:port`.
 Authentication: password, private key file (`~/` is expanded, optional passphrase) or the running SSH agent (`SSH_AUTH_SOCK`).
 
+Password logins (terminal tabs, SFTP, tunnels, jump hosts and the Mosh login) first try your keys, like OpenSSH: the keys of the SSH agent, then the default files `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa` and `~/.ssh/id_rsa`, at most 5 keys in all. Only unencrypted files are tried; a passphrase-protected one is skipped without asking unless the agent holds it. The password is sent only when the server rejects every key. If the server closes the connection after too many rejected keys, PlexusTerm reconnects once and tries only the password. When a key logs in, a typed password is never checked, so it is not saved in the keyring.
+
 Host keys are verified against `~/.ssh/known_hosts`, like OpenSSH:
 
 - a known, matching key connects directly;
@@ -82,13 +84,13 @@ If the file cannot be read, the panel shows the error and disables editing so th
 
 ### Saved passwords
 
-Password sessions ask for the password when you connect. For saved sessions (terminal tabs and tunnels) the prompt has a **Save password in the system keyring** checkbox, unchecked by default; quick-connect sessions never save passwords.
+Saved password sessions (terminal tabs, Mosh and tunnels) connect first: PlexusTerm tries your keys (see [SSH sessions](#ssh-sessions)), then the password saved in the keyring, and asks for the password only when the server still needs it. That prompt has a **Save password in the system keyring** checkbox, unchecked by default. Quick-connect sessions take the password in the connect dialog and never save it. **Install** in the SSH key generator still asks before connecting.
 
 - Passwords are kept only in the system keyring through the Secret Service API (GNOME Keyring, KWallet), under the service `dev.plexusterm.app` with the session id as the account and the label `PlexusTerm: user@host:port`. They are never written to `sessions.json` or `tunnels.json`.
 - A password is saved only after a successful login. Later connections read it in the backend; it is never sent back to the user interface.
 - A saved password is bound to the `user@host:port` it was typed for and is only ever sent there. Changing the host, port or username of a session (or switching it away from password authentication) forgets the saved password; passwords saved by earlier versions, which carry no such binding, are asked again once.
 - If the keyring cannot save or delete the password (for example because it is locked and does not answer within 10 seconds), the connection still opens and a warning is shown: a yellow line in the terminal tab, or a note under the tunnel.
-- If the saved password is missing or rejected, the prompt appears again with the checkbox ticked: a successful login replaces it, and unticking the checkbox deletes it.
+- If the saved password is rejected, the prompt appears with the checkbox ticked: a successful login replaces it, and unticking the checkbox deletes it. If no usable password is saved, the prompt appears unticked, like a first login.
 - **Forget saved password** in the session's edit dialog deletes it; deleting a session, or a folder containing it, deletes it too.
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
 - Key passphrases are never saved.
@@ -99,7 +101,7 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 - PlexusTerm logs into the first jump host, opens a forwarded connection from it to the next host's address and port, logs into that one, and so on until the session's own server. Each host is reached from the previous one, so its address must make sense there (e.g. a private IP behind the bastion).
 - Every host is checked against `~/.ssh/known_hosts` with its own address and port; an unknown jump host shows the trust prompt naming it ("bastion — jump host 1 of 2").
-- Every host logs in with its own saved session's method (key, agent or password). Passwords saved in the keyring are used for each host; the others are asked one by one before connecting ("Password for bastion — jump host 1 of 2"), each prompt with its own **Save password in the system keyring** checkbox.
+- Every host logs in with its own saved session's method (key, agent or password). Password hosts try your keys first, then the password saved in the keyring; a host that still needs a password is asked while connecting, one at a time ("Password for bastion — jump host 1 of 2"), each prompt with its own **Save password in the system keyring** checkbox.
 - If a jump host has its own jump hosts, they are crossed first. A session cannot be its own jump host, and chains with cycles, repeated sessions, more than 3 hosts in total, or deleted or non-SSH jump sessions are refused with an error.
 - Errors name the host that failed, e.g. `via bastion (jump host 1): authentication failed`.
 - The SFTP browser of the tab uses the same connection, and SSH tunnels whose session has jump hosts go through them too. Closing the tab (or stopping the tunnel) closes every connection of the chain.
@@ -124,6 +126,14 @@ The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses
 - **Upload** picks one or more local files; dropping files from the desktop onto the panel uploads them too. Both go into the current folder.
 - **New folder**, **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
 
+Right-click an entry for more:
+
+- **Open** (enters a folder; downloads a file), **Download…**, **Rename…**, **Delete**.
+- **Copy file path** copies the full remote path; **Copy file path to terminal** types it into the focused pane of the active tab, quoted for the shell when needed. Middle-clicking an entry does the same.
+- **Properties** shows the name, path, type, size, modification time, owner, group and permissions (`rwxr-xr-x (0755)`).
+- **Permissions…** changes the mode (`chmod`) with read/write/execute checkboxes for owner, group and others, kept in sync with the octal value.
+- For files: **Open with default text editor**, **Open with default program**, **Open with…** (choose a program) and **Compare file with…** (choose a local file; opens both in Meld, KDiff3, Kompare or Visual Studio Code, the first one installed). The open options download the file to a private temporary folder and watch it: each time the copy is saved, PlexusTerm asks the first time whether to upload it to the same remote path, then uploads it and reports the result. The temporary copies are deleted when the SSH session closes.
+
 With **Follow terminal folder** on (the default), the browser follows the shell's working directory. This needs the remote shell to report it with an OSC 7 sequence; for bash, add this to the remote `~/.bashrc`:
 
 ```bash
@@ -142,7 +152,7 @@ The **Tunnels** tab of the sidebar keeps port forwards that run over a saved SSH
 
 Listeners bind to `127.0.0.1` by default; any other address must be typed explicitly and the editor warns that other machines can reach it.
 Each tunnel shows its status (stopped, starting, running, or the error) and a Start/Stop toggle; **Start all** and **Stop all** act on every tunnel.
-Starting a tunnel whose session uses a password uses the password saved in the keyring or asks for it (see [Saved passwords](#saved-passwords)), and an unknown host asks to trust its fingerprint like SSH tabs do. A tunnel deleted or changed while one of these prompts is open is not started.
+Starting a tunnel whose session uses a password tries your keys, then the password saved in the keyring, and asks for the password only if the server still needs it (see [Saved passwords](#saved-passwords)), and an unknown host asks to trust its fingerprint like SSH tabs do. A tunnel deleted or changed while one of these prompts is open is not started.
 Stopping closes the listener, the open connections and the SSH connection; running tunnels stop when the app exits.
 
 Tunnels are stored in `~/.config/dev.plexusterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).

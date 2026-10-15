@@ -3,6 +3,8 @@
 //! Remote paths are POSIX strings as sent on the wire; transfers are streamed
 //! in chunks so large files never sit in memory.
 
+pub mod commands;
+pub mod edit;
 #[cfg(test)]
 mod tests;
 
@@ -54,6 +56,11 @@ pub struct Entry {
     /// Unix seconds.
     pub modified: Option<u64>,
     pub permissions: Option<u32>,
+    /// Owner ids (SFTP v3) and names (only when the server sends them).
+    pub uid: Option<u32>,
+    pub gid: Option<u32>,
+    pub user: Option<String>,
+    pub group: Option<String>,
 }
 
 /// Read/write buffer for transfers; large enough to keep many SFTP requests in flight.
@@ -132,6 +139,10 @@ pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<Entry>, SftpErro
                 size: meta.size.unwrap_or(0),
                 modified: meta.mtime.map(u64::from),
                 permissions: meta.permissions.map(|p| p & !S_IFMT),
+                uid: meta.uid,
+                gid: meta.gid,
+                user: meta.user.clone(),
+                group: meta.group.clone(),
             }
         })
         .collect();
@@ -185,8 +196,6 @@ pub async fn upload(
     local: &Path,
     remote_dir: &str,
 ) -> Result<String, SftpError> {
-    use tokio::io::AsyncWriteExt;
-
     let local_label = local.display().to_string();
     let name = local
         .file_name()
@@ -195,23 +204,32 @@ pub async fn upload(
             message: format!("cannot upload {local_label}: not a file name"),
         })?;
     let remote = join(remote_dir, name);
+    upload_file(sftp, local, &remote).await?;
+    Ok(remote)
+}
+
+/// Streams the local file `local` into the remote file `remote` (created or truncated).
+pub async fn upload_file(sftp: &SftpSession, local: &Path, remote: &str) -> Result<(), SftpError> {
+    use tokio::io::AsyncWriteExt;
+
+    let local_label = local.display().to_string();
     let source = tokio::fs::File::open(local)
         .await
         .map_err(|err| failure("read", &local_label, err))?;
     let mut target = sftp
-        .create(remote.as_str())
+        .create(remote)
         .await
-        .map_err(|err| failure("upload to", &remote, err))?;
+        .map_err(|err| failure("upload to", remote, err))?;
     let mut reader = tokio::io::BufReader::with_capacity(TRANSFER_CHUNK, source);
     tokio::io::copy_buf(&mut reader, &mut target)
         .await
-        .map_err(|err| failure("upload to", &remote, err))?;
+        .map_err(|err| failure("upload to", remote, err))?;
     // Waits for every pending write to be acknowledged.
     target
         .shutdown()
         .await
-        .map_err(|err| failure("upload to", &remote, err))?;
-    Ok(remote)
+        .map_err(|err| failure("upload to", remote, err))?;
+    Ok(())
 }
 
 pub async fn mkdir(sftp: &SftpSession, path: &str) -> Result<(), SftpError> {
@@ -234,4 +252,40 @@ pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), Sftp
     sftp.rename(from, to)
         .await
         .map_err(|err| failure("rename", from, err))
+}
+
+/// Highest mode `chmod` accepts: permission bits plus setuid, setgid and sticky.
+pub const MAX_MODE: u32 = 0o7777;
+
+/// Sets the permission bits of `path` (`mode` must be at most `0o7777`).
+pub async fn chmod(sftp: &SftpSession, path: &str, mode: u32) -> Result<(), SftpError> {
+    const ACTION: &str = "change permissions of";
+    if mode > MAX_MODE {
+        return Err(SftpError::Sftp {
+            message: format!("cannot {ACTION} {path}: invalid mode {mode:#o}"),
+        });
+    }
+    let attrs = russh_sftp::protocol::FileAttributes {
+        permissions: Some(mode),
+        ..Default::default()
+    };
+    sftp.set_metadata(path, attrs)
+        .await
+        .map_err(|err| failure(ACTION, path, err))
+}
+
+/// Downloads `remote` into its private temporary copy for `purpose` in session `id`
+/// and returns the copy's path.
+pub async fn download_copy(
+    sftp: &SftpSession,
+    temp: &edit::TempFiles,
+    id: u32,
+    purpose: &str,
+    remote: &str,
+) -> Result<std::path::PathBuf, SftpError> {
+    let local = temp
+        .local_path(id, purpose, remote)
+        .map_err(|err| failure("download", remote, err))?;
+    download(sftp, remote, &local).await?;
+    Ok(local)
 }

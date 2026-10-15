@@ -18,7 +18,7 @@ import { stepFontSize } from "./features/settings/settings";
 import { SettingsDialog } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
-import { chainTarget, collectLogins, hopLabel, type PasswordAnswer } from "./features/sessions/jumpHosts";
+import { chainTarget, collectLogins } from "./features/sessions/jumpHosts";
 import {
   isMoshSession,
   isSshSession,
@@ -30,8 +30,7 @@ import {
   type SavedSession,
 } from "./features/sessions/library";
 import { removedSshSessions, secretToForgetOnEdit } from "./features/sessions/passwordFlow";
-import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
-import { forgetSecrets, secretExists } from "./features/sessions/secrets";
+import { forgetSecrets } from "./features/sessions/secrets";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
@@ -85,8 +84,6 @@ type Modal =
   | { kind: "telnet" }
   | { kind: "mosh" }
   | { kind: "editSession"; session: LibrarySession; isNew: boolean }
-  /** Password of one hop of a saved session (jump hosts first, then the target). */
-  | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | { kind: "settings" }
   | { kind: "wakeOnLan" }
@@ -350,9 +347,10 @@ function AppContent() {
   const openLocal = useCallback(() => open(LOCAL), [open]);
 
   /**
-   * The login of a saved SSH session, through its jump hosts (S14). Every password hop uses
-   * the password saved in the keyring when there is one, otherwise it is asked, one hop at a
-   * time. Null when the chain is invalid (a notice says why) or a prompt is cancelled.
+   * The login of a saved SSH session, through its jump hosts (S14). Password hops connect
+   * first (the backend tries the SSH agent and default keys, then the saved password); the
+   * terminal asks for a password only when the server still needs one. Null when the chain
+   * is invalid (a notice says why).
    */
   const sshLoginFor = async (session: SavedSession): Promise<SshTarget | null> => {
     const chain = resolveChain(sessions.library, session);
@@ -361,11 +359,7 @@ function AppContent() {
       return null;
     }
     const hops = [...chain.jumps, session];
-    const logins = await collectLogins(hops, {
-      secretExists,
-      askPassword: (index) =>
-        new Promise((resolve) => setModal({ kind: "password", label: hopLabel(hops, index), resolve })),
-    });
+    const logins = await collectLogins(hops);
     return logins && chainTarget(hops, logins);
   };
 
@@ -548,6 +542,7 @@ function AppContent() {
                 cwd={activeSession.cwd}
                 follow={followCwd}
                 onFollowChange={setFollowCwd}
+                onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
               />
             )
           }
@@ -829,20 +824,6 @@ function AppContent() {
         />
       )}
       {launcher.dialog}
-      {modal?.kind === "password" && (
-        <PasswordPrompt
-          label={modal.label}
-          remember={{ initial: false }}
-          onCancel={() => {
-            setModal(null);
-            modal.resolve(null);
-          }}
-          onSubmit={(password, remember) => {
-            setModal(null);
-            modal.resolve({ password, remember });
-          }}
-        />
-      )}
     </div>
   );
 }

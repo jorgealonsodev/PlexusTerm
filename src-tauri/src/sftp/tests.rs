@@ -118,10 +118,17 @@ fn entries_serialize_in_camel_case() {
         size: 3,
         modified: Some(10),
         permissions: None,
+        uid: Some(1000),
+        gid: None,
+        user: Some("jo".into()),
+        group: None,
     };
     assert_eq!(
         serde_json::to_value(&entry).unwrap(),
-        serde_json::json!({"name": "a", "path": "/a", "kind": "symlink", "size": 3, "modified": 10, "permissions": null})
+        serde_json::json!({
+            "name": "a", "path": "/a", "kind": "symlink", "size": 3, "modified": 10, "permissions": null,
+            "uid": 1000, "gid": null, "user": "jo", "group": null
+        })
     );
 }
 
@@ -244,4 +251,213 @@ async fn sftp_on_an_unknown_session_is_an_unknown_session_error() {
         serde_json::to_value(&err).unwrap(),
         serde_json::json!({"kind": "unknownSession", "id": 99})
     );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn list_entries_carry_the_owner_ids() {
+    use std::os::unix::fs::MetadataExt;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("f"), b"x").unwrap();
+    let meta = std::fs::metadata(root.path().join("f")).unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let entries = list(&sftp, "/").await.unwrap();
+    assert_eq!(
+        (entries[0].uid, entries[0].gid),
+        (Some(meta.uid()), Some(meta.gid()))
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn chmod_sets_the_permission_bits() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = tempfile::tempdir().unwrap();
+    let file = root.path().join("script.sh");
+    std::fs::write(&file, b"x").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+
+    chmod(&sftp, "/script.sh", 0o750).await.unwrap();
+    let mode = std::fs::metadata(&file).unwrap().permissions().mode();
+    assert_eq!(mode & 0o7777, 0o750);
+    let listed = list(&sftp, "/").await.unwrap();
+    assert_eq!(listed[0].permissions.map(|p| p & 0o7777), Some(0o750));
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn chmod_rejects_modes_above_0o7777_and_keeps_the_file() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = tempfile::tempdir().unwrap();
+    let file = root.path().join("f");
+    std::fs::write(&file, b"x").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+
+    let err = chmod(&sftp, "/f", 0o10000).await.unwrap_err();
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "sftp");
+    assert_eq!(
+        json["message"],
+        "cannot change permissions of /f: invalid mode 0o10000"
+    );
+    let mode = std::fs::metadata(&file).unwrap().permissions().mode();
+    assert_eq!(mode & 0o7777, 0o644);
+}
+
+#[tokio::test]
+async fn chmod_of_a_missing_path_is_an_sftp_error() {
+    let root = tempfile::tempdir().unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let err = chmod(&sftp, "/missing", 0o644).await.unwrap_err();
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "sftp");
+    assert!(json["message"].as_str().unwrap().contains("/missing"));
+}
+
+// --- S2: temporary copies, edit-and-upload, external programs ---
+
+use super::edit::{self, TempFiles};
+
+#[tokio::test]
+async fn edited_copy_is_uploaded_back_to_the_same_remote_path() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join("etc")).unwrap();
+    std::fs::write(root.path().join("etc/app.conf"), b"old").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let temp = TempFiles::default();
+
+    let local = download_copy(&sftp, &temp, 7, "edit", "/etc/app.conf")
+        .await
+        .unwrap();
+    assert_eq!(local.file_name().unwrap(), "app.conf");
+    assert_eq!(std::fs::read(&local).unwrap(), b"old");
+
+    std::fs::write(&local, b"new contents").unwrap();
+    upload_file(&sftp, &local, "/etc/app.conf").await.unwrap();
+    assert_eq!(
+        std::fs::read(root.path().join("etc/app.conf")).unwrap(),
+        b"new contents"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn copies_live_in_a_private_folder_one_subfolder_per_remote_file() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = TempFiles::default();
+    let a = temp.local_path(1, "edit", "/x/a.txt").unwrap();
+    let same = temp.local_path(1, "edit", "/x/a.txt").unwrap();
+    let other = temp.local_path(1, "edit", "/y/a.txt").unwrap();
+    let compare = temp.local_path(1, "compare", "/x/a.txt").unwrap();
+    assert_eq!(a, same);
+    assert_ne!(a, other);
+    assert_ne!(a, compare);
+    assert_eq!(other.file_name().unwrap(), "a.txt");
+    let dir = temp.session_dir(1).unwrap();
+    assert!(a.starts_with(&dir) && other.starts_with(&dir));
+    let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
+    assert_eq!(mode & 0o777, 0o700);
+    assert_eq!(temp.existing(1, "edit", "/x/a.txt"), Some(a));
+    assert_eq!(temp.existing(1, "edit", "/z"), None);
+}
+
+#[test]
+fn removing_a_session_deletes_its_copies() {
+    let temp = TempFiles::default();
+    let a = temp.local_path(1, "edit", "/a").unwrap();
+    std::fs::write(&a, b"x").unwrap();
+    let b = temp.local_path(2, "edit", "/b").unwrap();
+    let dir = temp.session_dir(1).unwrap();
+    temp.remove(1);
+    assert!(!dir.exists());
+    assert_eq!(temp.existing(1, "edit", "/a"), None);
+    assert!(
+        b.parent().unwrap().exists(),
+        "other sessions keep their copies"
+    );
+}
+
+#[tokio::test]
+async fn the_watcher_reports_each_save_and_stops_with_the_session() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let temp = TempFiles::default();
+    let local = temp.local_path(1, "edit", "/a").unwrap();
+    std::fs::write(&local, b"v1").unwrap();
+    let saves = Arc::new(AtomicUsize::new(0));
+    let counter = saves.clone();
+    temp.watch(1, "edit", "/a", Duration::from_millis(20), move || {
+        counter.fetch_add(1, Ordering::SeqCst);
+    });
+    tokio::time::sleep(Duration::from_millis(80)).await;
+    assert_eq!(saves.load(Ordering::SeqCst), 0, "no save yet");
+
+    std::fs::write(&local, b"version 2").unwrap();
+    tokio::time::sleep(Duration::from_millis(120)).await;
+    assert_eq!(saves.load(Ordering::SeqCst), 1);
+
+    temp.remove(1);
+    tokio::time::sleep(Duration::from_millis(80)).await;
+    assert_eq!(saves.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn desktop_exec_puts_the_file_in_place_of_its_field_code() {
+    let file = Path::new("/tmp/x/a b.txt");
+    let args = |exec: &str| -> Vec<String> {
+        edit::desktop_exec_args(exec, file)
+            .into_iter()
+            .map(|a| a.into_string().unwrap())
+            .collect()
+    };
+    assert_eq!(args("gedit %U"), ["gedit", "/tmp/x/a b.txt"]);
+    assert_eq!(
+        args("flatpak run --branch=stable org.gnome.TextEditor %F --new-window"),
+        [
+            "flatpak",
+            "run",
+            "--branch=stable",
+            "org.gnome.TextEditor",
+            "/tmp/x/a b.txt",
+            "--new-window"
+        ]
+    );
+    assert_eq!(
+        args("\"/opt/My Editor/edit\" -n"),
+        ["/opt/My Editor/edit", "-n", "/tmp/x/a b.txt"]
+    );
+    assert_eq!(args("kate %i %c -b %u"), ["kate", "-b", "/tmp/x/a b.txt"]);
+}
+
+#[test]
+fn desktop_exec_is_read_from_the_desktop_entry_group() {
+    let contents =
+        "[Desktop Entry]\nName=Ed\nExec=ed --x %f\n\n[Desktop Action new]\nExec=ed --new\n";
+    assert_eq!(edit::desktop_exec(contents).as_deref(), Some("ed --x %f"));
+    let only_action = "[Desktop Action new]\nExec=ed --new\n";
+    assert_eq!(edit::desktop_exec(only_action), None);
+}
+
+#[cfg(unix)]
+#[test]
+fn the_first_installed_diff_tool_wins_in_order() {
+    let bin1 = tempfile::tempdir().unwrap();
+    let bin2 = tempfile::tempdir().unwrap();
+    std::fs::write(bin1.path().join("code"), b"").unwrap();
+    std::fs::write(bin2.path().join("kompare"), b"").unwrap();
+    let path = std::env::join_paths([bin1.path(), bin2.path()]).unwrap();
+
+    let (program, args) = edit::find_diff_tool(Some(path.clone())).unwrap();
+    assert_eq!(program, bin2.path().join("kompare"));
+    assert!(args.is_empty());
+
+    std::fs::remove_file(bin2.path().join("kompare")).unwrap();
+    let (program, args) = edit::find_diff_tool(Some(path.clone())).unwrap();
+    assert_eq!(program, bin1.path().join("code"));
+    assert_eq!(args, ["--diff"]);
+
+    std::fs::remove_file(bin1.path().join("code")).unwrap();
+    assert!(edit::find_diff_tool(Some(path)).is_none());
+    assert!(edit::find_diff_tool(None).is_none());
 }
