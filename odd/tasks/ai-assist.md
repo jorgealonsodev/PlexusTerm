@@ -11,7 +11,7 @@ Objective: inline command suggestions in the terminal (on by default, learning f
 
 ## Tasks
 
-- [ ] T1 — S1, S4 (history + inline part) — delegated (writer trigger: parallel units) — Line tracking, history store, ghost-text suggestions, accept keys, settings toggles.
+- [x] T1 — S1, S4 (history + inline part) — delegated (writer trigger: parallel units) — Line tracking, history store, ghost-text suggestions, accept keys, settings toggles. Writer: RED→GREEN, Vitest 579, tsc OK; parent registered history commands, cargo history 4/4. Pending: visual check of ghost alignment; independent verifier at feature end.
 - [ ] T2 — S2, S3, S4 (provider part) — delegated (writer trigger: parallel units) — Rust AI providers (Anthropic + OpenAI-compatible), keyring keys, commands for completion and assistant, tests with a local mock server.
 - [ ] T3 — S2, S3 — pending — Wire AI completion into inline suggestions and build the assistant panel + shortcut (after T1 and T2).
 
@@ -22,4 +22,5 @@ Objective: inline command suggestions in the terminal (on by default, learning f
 - L3 (2026-10-15): "Por defecto autocompletado en linea, tiene que ir aprendiendo de comandos anteriores, etc ... y con una shortcut personalizable asistente bajo demanda"
 - L4 (2026-10-15): reqwest 0.13.5 already in Cargo.lock (Tauri); Anthropic has no official Rust SDK, so the backend calls the Messages API over raw HTTPS (claude-api skill rule for languages without an SDK). Engram mirror pending (session registered under project `nexusterm`).
 - L5 (2026-10-15): "Mete tambien gemini" — Gemini added as a provider (S2, S4); provider id "gemini".
+- L6 (2026-10-15): T1 integrated. Open: ghost alignment not checked visually; scroll hiding relies on term.onScroll; zsh right prompts/autosuggestions hide our ghost; one prompt check per input chunk.
 

@@ -1,24 +1,36 @@
-import { useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FileText, Info, KeyRound, Palette, SquareTerminal, type LucideIcon } from "lucide-react";
+import { FileText, Info, KeyRound, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
+import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
 import {
+  clampAiHistoryContext,
   clampFontSize,
+  cleanAiBaseUrl,
+  cleanAiModel,
   cleanFontFamily,
   cleanTextEditor,
   cssFontFamily,
+  DEFAULT_AI_MODELS,
+  isAiProvider,
+  MAX_AI_BASE_URL_LENGTH,
+  MAX_AI_HISTORY_CONTEXT,
+  MAX_AI_MODEL_LENGTH,
   MAX_FONT_FAMILY_LENGTH,
   MAX_FONT_SIZE,
   MAX_TEXT_EDITOR_LENGTH,
   MIN_FONT_SIZE,
+  type AiProvider,
   type TerminalSettings,
 } from "./settings";
+import { appShortcutConflict, isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -57,15 +69,148 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
   );
 }
 
-type Section = "appearance" | "terminal" | "ssh" | "files" | "about";
+type Section = "appearance" | "terminal" | "ssh" | "files" | "ai" | "about";
 
 const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "terminal", label: "Terminal", icon: SquareTerminal },
   { id: "ssh", label: "SSH", icon: KeyRound },
   { id: "files", label: "Files", icon: FileText },
+  { id: "ai", label: "AI", icon: Sparkles },
   { id: "about", label: "About", icon: Info },
 ];
+
+const PROVIDER_LABELS: Record<AiProvider, string> = {
+  anthropic: "Anthropic",
+  gemini: "Gemini",
+  openai: "OpenAI",
+  "openai-compatible": "OpenAI-compatible",
+};
+
+type KeyStatus = "checking" | "saved" | "none" | "unavailable";
+
+/**
+ * The provider's API key in the system keyring: only whether one is saved is ever shown.
+ * Saving and removing apply at once, not on Save.
+ */
+function ApiKeyField({ provider }: { provider: AiProvider }) {
+  const [status, setStatus] = useState<KeyStatus>("checking");
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    setStatus("checking");
+    setError(null);
+    Promise.resolve()
+      .then(() => invoke<boolean>("ai_key_status", { provider }))
+      .then((saved) => current && setStatus(saved ? "saved" : "none"))
+      .catch(() => current && setStatus("unavailable"));
+    return () => {
+      current = false;
+    };
+  }, [provider]);
+
+  const run = (action: () => Promise<unknown>, after: KeyStatus, failure: string) => {
+    setBusy(true);
+    setError(null);
+    Promise.resolve()
+      .then(action)
+      .then(() => {
+        setStatus(after);
+        setKey("");
+      })
+      .catch((err) => setError(`${failure}: ${err}`))
+      .finally(() => setBusy(false));
+  };
+
+  const label = { checking: "Checking the keyring…", saved: "A key is saved", none: "No key saved", unavailable: "Keyring unavailable" };
+  return (
+    <div className="field">
+      <label htmlFor="settings-ai-key">API key</label>
+      <div className="form-row field__picker">
+        <input
+          id="settings-ai-key"
+          type="password"
+          autoComplete="off"
+          value={key}
+          placeholder={status === "saved" ? "Type a new key to replace it" : "Paste the key"}
+          onChange={(e) => setKey(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || !key.trim()}
+          onClick={() => run(() => invoke("ai_key_save", { provider, key: key.trim() }), "saved", "Could not save the key")}
+        >
+          Save key
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || status !== "saved"}
+          onClick={() => run(() => invoke("ai_key_delete", { provider }), "none", "Could not remove the key")}
+        >
+          Remove key
+        </button>
+      </div>
+      <span className="muted">{label[status]}</span>
+      {error && <span className="form-error">{error}</span>}
+    </div>
+  );
+}
+
+/** Press a key combination to set it; Escape cancels; app shortcuts are refused. */
+function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut: string) => void }) {
+  const [capturing, setCapturing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!capturing) return;
+    const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
+    if (plain && e.key === "Tab") return; // keep moving through the form
+    e.preventDefault();
+    e.stopPropagation();
+    if (plain && e.key === "Escape") {
+      setCapturing(false);
+      setError(null);
+      return;
+    }
+    const shortcut = shortcutFromEvent(e);
+    if (shortcut === null) return;
+    if (!isValidShortcut(shortcut)) setError("Use Ctrl, Alt or Meta with a key.");
+    else if (appShortcutConflict(shortcut)) setError(`${shortcut} is already used by PlexusTerm.`);
+    else {
+      setError(null);
+      setCapturing(false);
+      onChange(shortcut);
+    }
+  };
+
+  return (
+    <div className="field">
+      <label htmlFor="settings-assistant-shortcut">Assistant shortcut</label>
+      <input
+        id="settings-assistant-shortcut"
+        className={capturing ? "shortcut-capture shortcut-capture--active" : "shortcut-capture"}
+        readOnly
+        value={value}
+        onFocus={() => setCapturing(true)}
+        onClick={() => setCapturing(true)}
+        onBlur={() => {
+          setCapturing(false);
+          setError(null);
+        }}
+        onKeyDown={onKeyDown}
+      />
+      <span className="muted">
+        {capturing ? "Press the new key combination, or Escape to keep it." : "Click the field to change it."}
+      </span>
+      {error && <span className="form-error">{error}</span>}
+    </div>
+  );
+}
 
 const APP_VERSION = packageJson.version;
 const REPO_URL = "https://github.com/jorgealonsodev/PlexusTerm";
@@ -88,6 +233,15 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [textEditor, setTextEditor] = useState(settings.textEditor);
+  const [inlineSuggestions, setInlineSuggestions] = useState(settings.inlineSuggestions);
+  const [history, setHistory] = useState(settings.commandHistory);
+  const [historyNote, setHistoryNote] = useState<string | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState(settings.aiSuggestions);
+  const [aiProvider, setAiProvider] = useState<AiProvider>(settings.aiProvider);
+  const [aiBaseUrl, setAiBaseUrl] = useState(settings.aiBaseUrl);
+  const [aiModel, setAiModel] = useState(settings.aiModel);
+  const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
+  const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [section, setSection] = useState<Section>("appearance");
   const dark = TERMINAL_THEMES.filter((t) => t.dark);
   const light = TERMINAL_THEMES.filter((t) => !t.dark);
@@ -106,9 +260,25 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
     }
   };
 
+  /** A model that is still some provider's default follows the provider. */
+  const changeProvider = (value: string) => {
+    if (!isAiProvider(value)) return;
+    if (Object.values(DEFAULT_AI_MODELS).includes(aiModel.trim())) setAiModel(DEFAULT_AI_MODELS[value]);
+    setAiProvider(value);
+  };
+
+  const clearHistory = () => {
+    setHistoryNote(null);
+    commandHistory
+      .clear()
+      .then(() => setHistoryNote("History cleared."))
+      .catch((err) => setHistoryNote(`Could not clear the history: ${err}`));
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const size = Number.parseFloat(fontSize);
+    const context = Number.parseFloat(aiHistoryContext);
     onSave({
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       copyOnSelect,
@@ -118,6 +288,14 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
       textEditor: cleanTextEditor(textEditor),
+      inlineSuggestions,
+      commandHistory: history,
+      aiSuggestions,
+      aiProvider,
+      aiBaseUrl: cleanAiBaseUrl(aiBaseUrl),
+      aiModel: cleanAiModel(aiModel, aiProvider),
+      aiHistoryContext: Number.isFinite(context) ? clampAiHistoryContext(context) : settings.aiHistoryContext,
+      assistantShortcut,
     });
   };
 
@@ -253,6 +431,86 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
               The text editor opens files from the SFTP browser: a program, or a command such as{" "}
               <code>code --wait</code>; leave it empty to use the system default.
             </p>
+          </div>
+
+          <div {...panel("ai")}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={inlineSuggestions}
+                onChange={(e) => setInlineSuggestions(e.target.checked)}
+              />
+              Inline suggestions
+            </label>
+            <p className="muted">
+              A grey suggestion of the rest of the command while you type. Right Arrow or End accepts it, Ctrl+Right
+              accepts one word.
+            </p>
+            <div className="form-row">
+              <label className="check">
+                <input type="checkbox" checked={history} onChange={(e) => setHistory(e.target.checked)} />
+                Command history
+              </label>
+              <button type="button" className="btn" onClick={clearHistory}>
+                Clear history
+              </button>
+            </div>
+            {historyNote && <p className="muted">{historyNote}</p>}
+            <p className="muted">
+              Commands you run are kept on this computer, per host, to suggest them again. Lines starting with a
+              space, passwords and full-screen programs are never recorded.
+            </p>
+            <label className="check">
+              <input type="checkbox" checked={aiSuggestions} onChange={(e) => setAiSuggestions(e.target.checked)} />
+              AI suggestions
+            </label>
+            <p className="muted">
+              When the history has nothing, ask the AI provider. Only the typed line, the current folder and the last
+              history commands are sent, never the terminal output.
+            </p>
+            <label className="field">
+              Provider
+              <select value={aiProvider} onChange={(e) => changeProvider(e.target.value)}>
+                {Object.entries(PROVIDER_LABELS).map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {aiProvider === "openai-compatible" && (
+              <label className="field">
+                Base URL
+                <input
+                  value={aiBaseUrl}
+                  placeholder="http://localhost:11434/v1"
+                  maxLength={MAX_AI_BASE_URL_LENGTH}
+                  spellCheck={false}
+                  onChange={(e) => setAiBaseUrl(e.target.value)}
+                />
+              </label>
+            )}
+            <label className="field">
+              Model
+              <input
+                value={aiModel}
+                maxLength={MAX_AI_MODEL_LENGTH}
+                spellCheck={false}
+                onChange={(e) => setAiModel(e.target.value)}
+              />
+            </label>
+            <ApiKeyField provider={aiProvider} />
+            <label className="field field--port">
+              History commands sent as context
+              <input
+                type="number"
+                min={0}
+                max={MAX_AI_HISTORY_CONTEXT}
+                value={aiHistoryContext}
+                onChange={(e) => setAiHistoryContext(e.target.value)}
+              />
+            </label>
+            <ShortcutField value={assistantShortcut} onChange={setAssistantShortcut} />
           </div>
 
           <div {...panel("about")}>

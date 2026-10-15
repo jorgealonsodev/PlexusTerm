@@ -2,12 +2,28 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
 import { DEFAULT_SETTINGS } from "./settings";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+/** The keyring of the AI key commands, by provider. */
+const keys = vi.hoisted(() => new Map<string, string>());
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string }) => {
+    if (cmd === "ai_key_status") return keys.has(args!.provider!);
+    if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
+    if (cmd === "ai_key_delete") keys.delete(args!.provider!);
+    if (cmd === "history_load") return null;
+    return null;
+  }),
+}));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  keys.clear();
+  vi.mocked(invoke).mockClear();
+});
 
 const setup = () => {
   const onSave = vi.fn();
@@ -20,7 +36,7 @@ describe("SettingsDialog", () => {
   it("shows one section at a time from the side menu, starting with Appearance", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     const sections = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(sections).toEqual(["Appearance", "Terminal", "SSH", "Files", "About"]);
+    expect(sections).toEqual(["Appearance", "Terminal", "SSH", "Files", "AI", "About"]);
     const visible = () => screen.getAllByRole("tabpanel").filter((p) => !p.hidden).map((p) => p.getAttribute("aria-label"));
     expect(visible()).toEqual(["Appearance"]);
     expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");
@@ -108,6 +124,7 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith({
+      ...DEFAULT_SETTINGS,
       fontSize: 32,
       copyOnSelect: false,
       rightClickPastes: false,
@@ -139,5 +156,116 @@ describe("SettingsDialog", () => {
     fireEvent.keyDown(screen.getByLabelText("Font size"), { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  describe("AI section (S4)", () => {
+    const openAi = () => {
+      const result = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+      return result;
+    };
+    const field = <T extends HTMLElement = HTMLInputElement>(label: string) => screen.getByLabelText(label) as unknown as T;
+
+    it("shows the defaults: suggestions and history on, AI off, Anthropic with its model", async () => {
+      openAi();
+      expect(field("Inline suggestions").checked).toBe(true);
+      expect(field("Command history").checked).toBe(true);
+      expect(field("AI suggestions").checked).toBe(false);
+      expect(field<HTMLSelectElement>("Provider").value).toBe("anthropic");
+      expect([...field<HTMLSelectElement>("Provider").options].map((o) => o.text)).toEqual([
+        "Anthropic",
+        "Gemini",
+        "OpenAI",
+        "OpenAI-compatible",
+      ]);
+      expect(field("Model").value).toBe("claude-opus-5-5");
+      expect(field("History commands sent as context").value).toBe("5");
+      expect(field("Assistant shortcut").value).toBe("Ctrl+Shift+Space");
+      expect(screen.queryByLabelText("Base URL")).toBeNull();
+      expect(await screen.findByText("No key saved")).toBeTruthy();
+    });
+
+    it("saves the AI settings, clamping the history context", () => {
+      const { onSave } = openAi();
+      fireEvent.click(field("Inline suggestions"));
+      fireEvent.click(field("Command history"));
+      fireEvent.click(field("AI suggestions"));
+      fireEvent.change(field("Provider"), { target: { value: "openai-compatible" } });
+      fireEvent.change(field("Base URL"), { target: { value: " http://localhost:11434/v1 " } });
+      fireEvent.change(field("Model"), { target: { value: " llama3.1 " } });
+      fireEvent.change(field("History commands sent as context"), { target: { value: "40" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith({
+        ...DEFAULT_SETTINGS,
+        inlineSuggestions: false,
+        commandHistory: false,
+        aiSuggestions: true,
+        aiProvider: "openai-compatible",
+        aiBaseUrl: "http://localhost:11434/v1",
+        aiModel: "llama3.1",
+        aiHistoryContext: 20,
+      });
+    });
+
+    it("switches a provider's default model to the new provider's default, but keeps a custom one", () => {
+      openAi();
+      fireEvent.change(field("Provider"), { target: { value: "gemini" } });
+      expect(field("Model").value).toBe("gemini-2.5-flash");
+      fireEvent.change(field("Provider"), { target: { value: "openai" } });
+      expect(field("Model").value).toBe("");
+      fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
+      expect(field("Model").value).toBe("claude-opus-5-5");
+      fireEvent.change(field("Model"), { target: { value: "claude-haiku-4-5" } });
+      fireEvent.change(field("Provider"), { target: { value: "gemini" } });
+      expect(field("Model").value).toBe("claude-haiku-4-5");
+    });
+
+    it("saves and removes the provider's API key in the keyring, showing only whether one is saved", async () => {
+      openAi();
+      fireEvent.change(field("Provider"), { target: { value: "gemini" } });
+      expect(await screen.findByText("No key saved")).toBeTruthy();
+      fireEvent.change(field("API key"), { target: { value: "AIza-secret" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
+      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      expect(invoke).toHaveBeenCalledWith("ai_key_save", { provider: "gemini", key: "AIza-secret" });
+      expect(field("API key").value).toBe("");
+      expect(screen.queryByDisplayValue("AIza-secret")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Remove key" }));
+      expect(await screen.findByText("No key saved")).toBeTruthy();
+      expect(invoke).toHaveBeenCalledWith("ai_key_delete", { provider: "gemini" });
+      // Another provider has its own key.
+      keys.set("anthropic", "sk-ant");
+      fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
+      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "anthropic" });
+    });
+
+    it("clears the command history at once", async () => {
+      openAi();
+      fireEvent.click(screen.getByRole("button", { name: "Clear history" }));
+      expect(await screen.findByText("History cleared.")).toBeTruthy();
+      expect(invoke).toHaveBeenCalledWith("history_save", { contents: '{"version":1,"hosts":{}}' });
+    });
+
+    it("captures the assistant shortcut, refusing app shortcuts; Escape cancels without closing", () => {
+      const { onSave, onCancel } = openAi();
+      const input = field("Assistant shortcut");
+      fireEvent.focus(input);
+      fireEvent.keyDown(input, { key: "Control", ctrlKey: true });
+      fireEvent.keyDown(input, { key: "T", ctrlKey: true, shiftKey: true });
+      expect(screen.getByText("Ctrl+Shift+T is already used by PlexusTerm.")).toBeTruthy();
+      fireEvent.keyDown(input, { key: "a" });
+      expect(screen.getByText("Use Ctrl, Alt or Meta with a key.")).toBeTruthy();
+      fireEvent.keyDown(input, { key: "k", ctrlKey: true, altKey: true });
+      expect(input.value).toBe("Ctrl+Alt+K");
+      fireEvent.focus(input);
+      fireEvent.keyDown(input, { key: "j", ctrlKey: true, altKey: true });
+      fireEvent.focus(input);
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(onCancel).not.toHaveBeenCalled();
+      expect(input.value).toBe("Ctrl+Alt+J");
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+J" });
+    });
   });
 });

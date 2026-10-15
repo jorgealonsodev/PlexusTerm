@@ -174,7 +174,7 @@ The SFTP browser and **Follow terminal folder** use the focused pane of the acti
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor) and **About** (version and project links); **Save** keeps the changes of every section:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions](#command-suggestions)) and **About** (version and project links); **Save** keeps the changes of every section:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
 - **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
@@ -210,6 +210,27 @@ Pasted text is sent like typed text, so multi-exec forwards it too, and shells t
 
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
+
+### Command suggestions
+
+While you type a command in any terminal pane (local, SSH, Telnet, Mosh or serial), PlexusTerm draws the rest of a command you ran before in grey after the cursor. Suggestions come from your own command history, so they work with no AI configured: commands of the same host first, then those of every host, the most recent and most often used first.
+
+- **Right Arrow** or **End**, with the cursor at the end of the line, accepts the whole suggestion; **Ctrl+Right** accepts its next word. The accepted text is sent as if typed, so multi-execution and macro recording see it too.
+- Every other key reaches the shell as usual: **Tab** stays the shell's own completion.
+- Suggestions pause until the next Enter once PlexusTerm can no longer be sure what the line holds: after Up/Down (shell history), Ctrl+R, Tab completion, the left arrow or other cursor keys, Alt shortcuts, or a paste with several lines. They are also hidden in full-screen programs (vim, less, top), at password and passphrase prompts, while the pane is scrolled back or not focused, and when the shell draws something after the cursor (a right-hand prompt, or another autosuggestion plugin).
+
+Every command sent with Enter is recorded on this computer in `history.json` in the app config directory (readable only by you), per host (`user@host:port` for SSH and Mosh, `telnet:host:port`, `serial:device`, `local`), without duplicates and capped at 2000 commands per host and 200 hosts. Never recorded: lines starting with a space, anything typed at a password or passphrase prompt, anything typed in a full-screen program, and commands that reach a pane only through multi-execution.
+
+The **AI** section of Settings holds:
+
+- **Inline suggestions** (on by default): the grey suggestions above.
+- **Command history** (on by default): records commands and suggests from them. **Clear history** empties `history.json` at once.
+- **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider after a short pause in typing. Only the typed line, the current folder (when the shell reports it) and the host's last history commands are sent, never the terminal output, and nothing typed at a password prompt.
+- **Provider**: Anthropic, Gemini, OpenAI or OpenAI-compatible; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
+- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-2.5-flash`, OpenAI and compatible: fill in your model). Changing the provider while the model is still a provider default switches it to the new provider's default.
+- **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once.
+- **History commands sent as context** (0-20, default 5).
+- **Assistant shortcut** (default Ctrl+Shift+Space): click the field and press the new combination; Escape keeps the current one. It needs Ctrl, Alt or Meta, and combinations PlexusTerm already uses are refused.
 
 ## Macros
 
@@ -279,6 +300,8 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Ctrl+Shift+R | Start or stop recording a macro |
 | Ctrl+Alt+1 … Ctrl+Alt+9 | Play the macro bound to that key in the focused terminal |
 | Escape (while a macro plays) | Stop the macro |
+| Right Arrow / End (with a grey suggestion) | Accept the suggested command |
+| Ctrl+Right (with a grey suggestion) | Accept the next word of the suggestion |
 | Middle click on a tab | Close that tab |
 | Right click on a tab | Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 

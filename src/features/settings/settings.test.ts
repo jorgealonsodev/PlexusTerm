@@ -12,6 +12,14 @@ describe("parseSettings", () => {
       fontFamily: DEFAULT_FONT_FAMILY,
       remoteMonitor: true,
       textEditor: "",
+      inlineSuggestions: true,
+      commandHistory: true,
+      aiSuggestions: false,
+      aiProvider: "anthropic",
+      aiBaseUrl: "",
+      aiModel: "claude-opus-5-5",
+      aiHistoryContext: 5,
+      assistantShortcut: "Ctrl+Shift+Space",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -24,7 +32,9 @@ describe("parseSettings", () => {
 
   it("reads saved values", () => {
     const json =
-      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait"}';
+      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
+      '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
+      '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -34,6 +44,14 @@ describe("parseSettings", () => {
       fontFamily: "Fira Code",
       remoteMonitor: false,
       textEditor: "code --wait",
+      inlineSuggestions: false,
+      commandHistory: false,
+      aiSuggestions: true,
+      aiProvider: "openai-compatible",
+      aiBaseUrl: "http://localhost:11434/v1",
+      aiModel: "llama3.1",
+      aiHistoryContext: 0,
+      assistantShortcut: "Ctrl+Alt+K",
     });
   });
 
@@ -76,6 +94,40 @@ describe("parseSettings", () => {
     expect(parseSettings('{"textEditor":"  /usr/bin/kate  "}').textEditor).toBe("/usr/bin/kate");
   });
 
+  it("defaults invalid suggestion and AI switches", () => {
+    const parsed = parseSettings('{"inlineSuggestions":"no","commandHistory":1,"aiSuggestions":"yes"}');
+    expect([parsed.inlineSuggestions, parsed.commandHistory, parsed.aiSuggestions]).toEqual([true, true, false]);
+  });
+
+  it("knows Anthropic, Gemini, OpenAI and OpenAI-compatible providers, each with its default model", () => {
+    expect(parseSettings('{"aiProvider":"gemini"}')).toMatchObject({ aiProvider: "gemini", aiModel: "gemini-2.5-flash" });
+    expect(parseSettings('{"aiProvider":"openai"}')).toMatchObject({ aiProvider: "openai", aiModel: "" });
+    expect(parseSettings('{"aiProvider":"opencode"}')).toMatchObject({ aiProvider: "anthropic", aiModel: "claude-opus-5-5" });
+    expect(parseSettings('{"aiProvider":"gemini","aiModel":"  gemini-2.5-pro "}').aiModel).toBe("gemini-2.5-pro");
+    expect(parseSettings(JSON.stringify({ aiModel: "x".repeat(201) })).aiModel).toBe("claude-opus-5-5");
+    expect(parseSettings('{"aiProvider":"openai","aiModel":7}').aiModel).toBe("");
+  });
+
+  it("accepts only http(s) base URLs", () => {
+    expect(parseSettings('{"aiBaseUrl":" https://openrouter.ai/api/v1 "}').aiBaseUrl).toBe("https://openrouter.ai/api/v1");
+    expect(parseSettings('{"aiBaseUrl":"file:///etc/passwd"}').aiBaseUrl).toBe("");
+    expect(parseSettings('{"aiBaseUrl":3}').aiBaseUrl).toBe("");
+  });
+
+  it("keeps 0..20 history commands as AI context, rounding and clamping", () => {
+    expect(parseSettings('{"aiHistoryContext":25}').aiHistoryContext).toBe(20);
+    expect(parseSettings('{"aiHistoryContext":-3}').aiHistoryContext).toBe(0);
+    expect(parseSettings('{"aiHistoryContext":2.6}').aiHistoryContext).toBe(3);
+    expect(parseSettings('{"aiHistoryContext":"many"}').aiHistoryContext).toBe(5);
+  });
+
+  it("uses the default assistant shortcut for an invalid one", () => {
+    expect(parseSettings('{"assistantShortcut":"Space"}').assistantShortcut).toBe("Ctrl+Shift+Space");
+    expect(parseSettings('{"assistantShortcut":"Ctrl+Shift+T"}').assistantShortcut).toBe("Ctrl+Shift+Space");
+    expect(parseSettings('{"assistantShortcut":42}').assistantShortcut).toBe("Ctrl+Shift+Space");
+    expect(parseSettings('{"assistantShortcut":"Alt+Shift+A"}').assistantShortcut).toBe("Alt+Shift+A");
+  });
+
   it("keeps valid values next to invalid ones", () => {
     expect(parseSettings('{"fontSize":20,"copyOnSelect":"no"}')).toEqual({ ...DEFAULT_SETTINGS, fontSize: 20 });
   });
@@ -92,6 +144,14 @@ describe("serializeSettings", () => {
       fontFamily: "Iosevka",
       remoteMonitor: false,
       textEditor: "/opt/My Editor/editor",
+      inlineSuggestions: false,
+      commandHistory: true,
+      aiSuggestions: true,
+      aiProvider: "gemini" as const,
+      aiBaseUrl: "",
+      aiModel: "gemini-2.5-pro",
+      aiHistoryContext: 12,
+      assistantShortcut: "Ctrl+Alt+Space",
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });

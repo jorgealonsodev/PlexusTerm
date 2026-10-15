@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Terminal } from "@xterm/xterm";
@@ -7,6 +7,8 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
+import { hostKeyOf } from "../history/history";
+import { commandHistory, type HistoryStore } from "../history/historyStore";
 import { patchJump } from "../sessions/jumpHosts";
 import { savedPasswordRejected, shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
@@ -27,6 +29,7 @@ import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
+import { EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
 import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
@@ -58,7 +61,38 @@ interface TerminalViewProps {
   onLogging?: (path: string | null) => void;
   /** Hands out this pane's macro interface (S16.3); returns its unregister function. */
   registerMacroTarget?: (target: MacroTarget) => () => void;
+  /**
+   * Asks the AI provider to complete the typed line when the history has no suggestion
+   * (S2); resolves with the whole command line (starting with `line`) or null.
+   */
+  aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
+  /** The command history behind inline suggestions (S1); the app's history when omitted. */
+  history?: HistoryStore;
 }
+
+export interface AiSuggestContext {
+  line: string;
+  hostKey: string;
+  /** Working directory reported through OSC 7, if any. */
+  cwd: string | null;
+  /** The host's last commands, oldest first (`aiHistoryContext` of them). */
+  history: string[];
+}
+
+/** Pause in typing before the AI is asked (S2). */
+export const AI_SUGGEST_DELAY_MS = 400;
+
+/** The grey rest of the command drawn after the cursor (S1). */
+interface Ghost {
+  text: string;
+  style: CSSProperties;
+}
+
+const sameGhost = (a: Ghost | null, b: Ghost | null) =>
+  a === b || (a !== null && b !== null && a.text === b.text && JSON.stringify(a.style) === JSON.stringify(b.style));
+
+/** The next word of a suggestion, with the spaces before it (Ctrl+Right). */
+const nextWord = (rest: string) => /^\s*\S+/.exec(rest)?.[0] ?? rest;
 
 interface PendingHost {
   host: string;
@@ -126,13 +160,28 @@ export function TerminalView({
   onSettingsChange,
   onLogging,
   registerMacroTarget,
+  aiSuggest,
+  history = commandHistory,
 }: TerminalViewProps) {
+  const paneRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const historyRef = useRef(history);
+  historyRef.current = history;
+  /** Visible and holding the keyboard: the only state that shows suggestions. */
+  const shownRef = useRef(active && focused);
+  shownRef.current = active && focused;
+  const [ghost, setGhost] = useState<Ghost | null>(null);
+  /** The suggestion drawn right now, accepted by Right Arrow / End / Ctrl+Right. */
+  const ghostRestRef = useRef<string | null>(null);
+  /** Redraws the suggestion (set by the terminal effect). */
+  const refreshGhostRef = useRef<() => void>(() => {});
+  /** Accepts the drawn suggestion for a key event; true when the key was used. */
+  const acceptRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   const [findOpen, setFindOpen] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [pendingPaste, setPendingPaste] = useState<PendingPaste | null>(null);
@@ -158,8 +207,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -182,6 +231,7 @@ export function TerminalView({
     // returning false lets the event bubble to the window listener without xterm handling it.
     // Find, copy and paste belong to this pane and are handled here.
     term.attachCustomKeyEventHandler((e) => {
+      if (acceptRef.current(e)) return false;
       const shortcut = shortcutFor(e);
       if (shortcut === null) return true;
       if (e.type === "keydown") {
@@ -293,11 +343,147 @@ export function TerminalView({
     const write = (data: string) => {
       if (sessionId !== null) void backend.write(sessionId, data);
     };
-    const unregisterWriter = callbacks.current.registerWriter?.(write);
+
+    // Inline suggestions (S1): the typed line, its suggestion and what is drawn.
+    const hostKey = hostKeyOf(target);
+    // Read history.json now so the first keys already get suggestions.
+    void historyRef.current.ready();
+    let line: LineState = EMPTY_LINE;
+    let suggestion: { line: string; rest: string } | null = null;
+    let cwd: string | null = null;
+    let aiTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Bumped on every change of the line: older AI answers are stale. */
+    let aiSeq = 0;
+
+    /** The cursor line up to the cursor, and whether anything is drawn after it. */
+    const cursorRow = () => {
+      const buffer = term.buffer.active;
+      const row = buffer.getLine(buffer.baseY + buffer.cursorY);
+      const toCursor = row?.translateToString(false, 0, buffer.cursorX) ?? "";
+      const textAfter = (row?.translateToString(true).length ?? 0) > buffer.cursorX;
+      return { toCursor, textAfter };
+    };
+    const atSecretPrompt = () => isSecretPrompt(promptBefore(cursorRow().toCursor, line.text));
+    const fullScreen = () => term.buffer.active.type === "alternate";
+
+    const refreshGhost = () => {
+      const buffer = term.buffer.active;
+      let rest: string | null = null;
+      if (
+        settingsRef.current.inlineSuggestions &&
+        shownRef.current &&
+        !line.uncertain &&
+        suggestion?.line === line.text &&
+        !fullScreen() &&
+        buffer.viewportY === buffer.baseY
+      ) {
+        const { toCursor, textAfter } = cursorRow();
+        // The shell echoed the typed text and the cursor ends it.
+        if (toCursor.endsWith(line.text) && !textAfter && !isSecretPrompt(promptBefore(toCursor, line.text))) {
+          rest = suggestion.rest.split(/[\r\n]/)[0] || null;
+        }
+      }
+      ghostRestRef.current = rest;
+      let next: Ghost | null = null;
+      if (rest !== null) {
+        const screen = host.querySelector<HTMLElement>(".xterm-screen");
+        const pane = paneRef.current;
+        const cellWidth = screen ? screen.clientWidth / term.cols : 0;
+        const cellHeight = screen ? screen.clientHeight / term.rows : 0;
+        const origin = screen?.getBoundingClientRect();
+        const paneBox = pane?.getBoundingClientRect();
+        next = {
+          text: rest,
+          style: {
+            left: (origin?.left ?? 0) - (paneBox?.left ?? 0) + buffer.cursorX * cellWidth,
+            top: (origin?.top ?? 0) - (paneBox?.top ?? 0) + buffer.cursorY * cellHeight,
+            maxWidth: cellWidth ? (term.cols - buffer.cursorX) * cellWidth : undefined,
+            height: cellHeight || undefined,
+            lineHeight: cellHeight ? `${cellHeight}px` : undefined,
+            fontFamily: cssFontFamily(settingsRef.current.fontFamily),
+            fontSize: settingsRef.current.fontSize,
+            color: themeById(settingsRef.current.theme).theme.foreground,
+          },
+        };
+      }
+      setGhost((previous) => (sameGhost(previous, next) ? previous : next));
+    };
+    refreshGhostRef.current = refreshGhost;
+
+    const askAi = () => {
+      const ask = callbacks.current.aiSuggest;
+      const s = settingsRef.current;
+      if (!ask || !s.aiSuggestions || !s.inlineSuggestions || line.uncertain || !line.text.trim()) return;
+      const seq = aiSeq;
+      const asked = line.text;
+      aiTimer = setTimeout(() => {
+        aiTimer = null;
+        // Never send what is typed at a password prompt or in a full-screen program.
+        if (seq !== aiSeq || fullScreen() || atSecretPrompt()) return;
+        const recent = settingsRef.current.commandHistory ? historyRef.current.recent(hostKey, s.aiHistoryContext) : [];
+        ask({ line: asked, hostKey, cwd, history: recent })
+          .then((full) => {
+            if (seq !== aiSeq || !full || !full.startsWith(asked) || full.length <= asked.length) return;
+            suggestion = { line: asked, rest: full.slice(asked.length) };
+            refreshGhost();
+          })
+          .catch(() => {});
+      }, AI_SUGGEST_DELAY_MS);
+    };
+
+    const updateSuggestion = () => {
+      aiSeq++;
+      if (aiTimer) clearTimeout(aiTimer);
+      aiTimer = null;
+      suggestion = null;
+      const s = settingsRef.current;
+      if (s.inlineSuggestions && !line.uncertain && line.text) {
+        const full = s.commandHistory ? historyRef.current.suggest(hostKey, line.text) : null;
+        if (full) suggestion = { line: line.text, rest: full.slice(line.text.length) };
+        else askAi();
+      }
+      refreshGhost();
+    };
+
+    /** Follows the typed line and records the commands sent with Enter. */
+    const track = (data: string) => {
+      if (fullScreen()) {
+        // vim, less, top...: nothing typed there is a command line.
+        line = EMPTY_LINE;
+      } else {
+        const result = feedInput(line, data);
+        const secret = result.commits.length > 0 && atSecretPrompt();
+        line = result.state;
+        if (settingsRef.current.commandHistory && !secret) {
+          for (const command of result.commits) if (!command.startsWith(" ")) historyRef.current.record(hostKey, command);
+        }
+      }
+      updateSuggestion();
+    };
+
+    const unregisterWriter = callbacks.current.registerWriter?.((data) => {
+      write(data);
+      // Multi-execution and other panes' data is never recorded.
+      line = feedExternal(line, data);
+      updateSuggestion();
+    });
     /** The normal input path: typing, pastes and macros all go through it (multi-execution included). */
     const typed = (data: string) => {
       write(data);
       callbacks.current.onInput?.(data);
+      track(data);
+    };
+    acceptRef.current = (e) => {
+      const rest = ghostRestRef.current;
+      if (rest === null || e.altKey || e.metaKey || e.shiftKey) return false;
+      const all = !e.ctrlKey && (e.key === "ArrowRight" || e.key === "End");
+      const word = e.ctrlKey && e.key === "ArrowRight";
+      if (!all && !word) return false;
+      if (e.type === "keydown") {
+        e.preventDefault?.();
+        typed(all ? rest : nextWord(rest));
+      }
+      return true;
     };
     const unregisterMacroTarget = callbacks.current.registerMacroTarget?.({
       send: typed,
@@ -310,11 +496,17 @@ export function TerminalView({
 
     const subs = [
       term.onData(typed),
+      term.onWriteParsed(refreshGhost),
+      term.onCursorMove(refreshGhost),
+      term.onScroll(refreshGhost),
       term.onResize(({ cols, rows }) => sessionId !== null && void backend.resize(sessionId, cols, rows)),
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
       term.parser.registerOscHandler(7, (data) => {
         const path = parseOsc7(data);
-        if (path) callbacks.current.onCwd?.(path);
+        if (path) {
+          cwd = path;
+          callbacks.current.onCwd?.(path);
+        }
         return true;
       }),
     ];
@@ -348,6 +540,9 @@ export function TerminalView({
       void logRef.current?.stop();
       logRef.current = null;
       clearTimeout(startTimer);
+      if (aiTimer) clearTimeout(aiTimer);
+      aiSeq++;
+      acceptRef.current = () => false;
       unregisterWriter?.();
       unregisterMacroTarget?.();
       outputListeners.clear();
@@ -359,6 +554,11 @@ export function TerminalView({
     // The target of a tab never changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Suggestions show only in the visible, focused pane, and follow their settings.
+  useEffect(() => {
+    refreshGhostRef.current();
+  }, [active, focused, settings.inlineSuggestions, settings.fontSize, settings.fontFamily, settings.theme]);
 
   useEffect(() => {
     if (!active) return;
@@ -502,13 +702,18 @@ export function TerminalView({
   };
 
   return (
-    <div className="terminal-pane" hidden={!active}>
+    <div className="terminal-pane" hidden={!active} ref={paneRef}>
       <div
         className="terminal-host"
         ref={hostRef}
         style={{ background: theme.background }}
         onContextMenu={onContextMenu}
       />
+      {ghost && (
+        <div className="terminal-ghost" aria-hidden="true" style={ghost.style}>
+          {ghost.text}
+        </div>
+      )}
       {findOpen && <FindBar onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu
