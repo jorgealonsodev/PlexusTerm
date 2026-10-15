@@ -1398,6 +1398,8 @@ textarea::placeholder {
 
 /* The on-demand AI assistant (S3). */
 .dialog.assistant {
+  /* Square corners, unlike the other dialogs. */
+  border-radius: 0;
   width: min(560px, 100%);
 }
 
