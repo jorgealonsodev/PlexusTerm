@@ -3,6 +3,7 @@
 use serde_json::{Value, json};
 
 use super::opencode::GoFormat;
+use super::text::Exchange;
 use super::{AiConfig, AiError, ApiKey, Endpoints, Provider, Task};
 
 /// The answer format of a request.
@@ -22,11 +23,13 @@ pub struct Call {
     pub shape: Shape,
 }
 
-/// What to ask: the feature, its system prompt and the user's part.
+/// What to ask: the feature, its system prompt, earlier turns of the chat (oldest first)
+/// and the user's new message.
 #[derive(Clone, Copy)]
 pub struct Prompt<'a> {
     pub task: Task,
     pub system: &'a str,
+    pub turns: &'a [Exchange],
     pub user: &'a str,
 }
 
@@ -152,6 +155,33 @@ fn gemini_model(model: &str) -> Result<&str, AiError> {
     }
 }
 
+/// The chat as `{role, content}` messages: earlier turns (user, then the assistant under
+/// `assistant_role`) and the new user message last.
+fn chat_messages(prompt: &Prompt<'_>, assistant_role: &str) -> Vec<Value> {
+    let mut messages = Vec::with_capacity(prompt.turns.len() * 2 + 1);
+    for turn in prompt.turns {
+        messages.push(json!({"role": "user", "content": turn.user}));
+        messages.push(json!({"role": assistant_role, "content": turn.assistant}));
+    }
+    messages.push(json!({"role": "user", "content": prompt.user}));
+    messages
+}
+
+/// Chat Completions messages: the system prompt first, then the chat.
+fn openai_messages(prompt: &Prompt<'_>) -> Vec<Value> {
+    let mut messages = vec![json!({"role": "system", "content": prompt.system})];
+    messages.extend(chat_messages(prompt, "assistant"));
+    messages
+}
+
+/// Gemini `contents`: the chat with roles `user` and `model`, text in `parts`.
+fn gemini_contents(prompt: &Prompt<'_>) -> Vec<Value> {
+    chat_messages(prompt, "model")
+        .into_iter()
+        .map(|m| json!({"role": m["role"], "parts": [{"text": m["content"]}]}))
+        .collect()
+}
+
 /// Builds the request; `go_format` only matters to OpenCode Go.
 pub fn build(
     endpoints: &Endpoints,
@@ -160,7 +190,7 @@ pub fn build(
     prompt: Prompt<'_>,
     go_format: GoFormat,
 ) -> Result<Call, AiError> {
-    let Prompt { task, system, user } = prompt;
+    let Prompt { task, system, .. } = prompt;
     let model = config.model.trim();
     if model.is_empty() {
         return Err(AiError::config("Choose a model in Settings > AI."));
@@ -182,7 +212,7 @@ pub fn build(
                 "model": model,
                 "max_tokens": limit,
                 "system": system,
-                "messages": [{"role": "user", "content": user}],
+                "messages": chat_messages(&prompt, "assistant"),
             });
             if anthropic_supports_output_config(model) {
                 let mut output = json!({
@@ -229,7 +259,7 @@ pub fn build(
                 headers,
                 body: json!({
                     "systemInstruction": {"parts": [{"text": system}]},
-                    "contents": [{"role": "user", "parts": [{"text": user}]}],
+                    "contents": gemini_contents(&prompt),
                     "generationConfig": generation,
                 }),
                 shape: Shape::Gemini,
@@ -250,10 +280,7 @@ pub fn build(
             }
             let mut body = json!({
                 "model": model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
+                "messages": openai_messages(&prompt),
             });
             if provider == Provider::OpenAi {
                 // OpenAI deprecated `max_tokens` (reasoning models reject it).
@@ -288,7 +315,9 @@ fn opencode_go(
     prompt: Prompt<'_>,
     format: GoFormat,
 ) -> Result<Call, AiError> {
-    let Prompt { task, system, user } = prompt;
+    let Prompt {
+        task, system, user, ..
+    } = prompt;
     let model = config.model.trim();
     let limit = max_tokens(Provider::OpenCodeGo, task);
     let base = endpoints.opencode_go.trim_end_matches('/');
@@ -303,10 +332,7 @@ fn opencode_go(
             headers,
             body: json!({
                 "model": model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
+                "messages": openai_messages(&prompt),
                 "max_tokens": limit,
             }),
             shape: Shape::OpenAiChat,
@@ -324,7 +350,7 @@ fn opencode_go(
                     "model": model,
                     "max_tokens": limit,
                     "system": system,
-                    "messages": [{"role": "user", "content": user}],
+                    "messages": chat_messages(&prompt, "assistant"),
                 }),
                 shape: Shape::Anthropic,
             }
@@ -335,7 +361,12 @@ fn opencode_go(
             body: json!({
                 "model": model,
                 "instructions": system,
-                "input": user,
+                // A plain string for a first question, the chat as message items after it.
+                "input": if prompt.turns.is_empty() {
+                    json!(user)
+                } else {
+                    json!(chat_messages(&prompt, "assistant"))
+                },
                 "max_output_tokens": limit,
                 "store": false,
             }),

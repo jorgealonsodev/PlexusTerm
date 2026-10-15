@@ -12,7 +12,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
-| [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI assistant |
+| [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI chat |
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
 | [Windows](#windows) | What differs on Windows 10/11 |
@@ -263,20 +263,24 @@ Choose **OpenCode Go** as the provider and save your OpenCode API key; nothing e
 - **Model** becomes a list of the OpenCode Go models with their names. PlexusTerm reads it from OpenCode's public list (`https://opencode.ai/inference/go/v1/models`) and learns which API each model uses from [models.dev](https://models.dev). The list is kept for 24 hours in `opencode-go-models.json` in the app config directory; **Refresh models** fetches it again.
 - Models served with the chat completions, Anthropic messages or OpenAI responses APIs work. Models on Google's API are shown as **not supported yet** and cannot be picked.
 - If models.dev cannot be reached, every model is treated as chat completions and a note says so; if nothing can be fetched, the list saved earlier is shown, or you can type a model id.
-- Every request carries a session ID (`x-opencode-session`), as OpenCode asks: one per terminal pane for inline suggestions and a new one each time the assistant opens.
+- Every request carries a session ID (`x-opencode-session`), as OpenCode asks: one per terminal pane for inline suggestions and one per AI chat pane.
 - OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short requests. Settings shows this note when OpenCode Go is selected.
 
-### AI assistant
+### AI chat
 
-The assistant answers any question or request in plain words (explanations, steps, what an error means, general help, any topic), in the language you write in, and offers a command for the focused terminal only when one fits. Open it with **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or by clicking the PlexusTerm X at the left of the toolbar. The X turns once each time the assistant opens (not when the system asks for reduced motion).
+The AI chat answers any question or request in plain words (explanations, steps, what an error means, general help, any topic), in the language you write in, and offers a command for its terminal only when one fits. Press **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or click the PlexusTerm X at the left of the toolbar: the focused terminal is split and the chat opens in a pane below it, linked to that terminal. The X turns once each time the chat opens or takes the focus (not when the system asks for reduced motion).
 
-- Type your question and press **Enter** or **Ask** (**Shift+Enter** starts a new line). **Cancel** drops a slow answer.
+- Each terminal has at most one chat: pressing the shortcut (or the X) in a terminal that already has one moves the focus to it; pressing it in a chat goes back to its terminal.
+- The chat counts as one of the tab's 4 panes. When the tab is full, a notice says so and no chat opens; close a pane first.
+- Type your question and press **Enter** or **Send** (**Shift+Enter** starts a new line). The conversation scrolls above the input. **Stop** cancels the answer being waited for and puts the question back in the input. An error is shown under the question it belongs to.
+- Follow-up questions send the earlier questions and answers of the same chat as context: the last 10 at most, and at most 16,000 characters in all (the oldest are left out first). Each chat is one conversation (one session ID for OpenCode).
 - The answer is shown as plain text: line breaks are kept and code between ``` fences is shown in monospace blocks; nothing in it is ever treated as HTML or run. Control and invisible formatting characters are removed (line breaks and tabs stay), and an answer longer than 8000 characters is shortened, ending with "… (answer shortened)".
-- When a single shell command does what you asked, it is shown below the answer with **Insert** and **Copy**; otherwise there is no command box. **Insert** types the command into the focused pane without Enter, so nothing runs until you press Enter yourself; **Copy** puts it on the clipboard. Inserted commands are not recorded in the command history. Commands always come back on one line, without control characters or invisible formatting characters (such as zero-width spaces or right-to-left overrides); a command longer than 2000 characters is left out and only the answer is shown.
-- **Include selected text** (available when the pane has a selection) also sends the selected text, shown in the panel before you ask; at most 2000 characters are sent. When text is selected as you open the assistant (with the shortcut or the X), it starts ticked, so the selection goes with your question; untick it to leave it out. It is never sent unless ticked.
-- Each opening of the assistant is a new conversation (a new session ID for OpenCode).
-- Besides your request, the assistant sends the operating system, the current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
-- When no key is saved for the provider, the panel says so and **Open AI settings** opens Settings, where the key is saved in the **AI** section.
+- When a single shell command does what you asked, it is shown below the answer with **Insert** and **Copy**; otherwise there is no command box. **Insert** types the command into the chat's terminal without Enter and moves the focus there, so nothing runs until you press Enter yourself; **Copy** puts it on the clipboard. Inserted commands are not recorded in the command history. Commands always come back on one line, without control characters or invisible formatting characters (such as zero-width spaces or right-to-left overrides); a command longer than 2000 characters is left out and only the answer is shown.
+- When text is selected in the terminal as you open the chat, it is attached to your first question and shown above the input before you send it; at most 2000 characters are sent. Click its **×** to leave it out.
+- Besides your question, the chat sends the operating system, the terminal's current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
+- When no key is saved for the provider, the chat says so and **Open AI settings** opens Settings on the **AI** section, where the key is saved.
+- The chat closes like any pane: its **×**, the pane's corner **×**, or **Ctrl+Shift+W** while it has the focus. Closing its terminal (or the shell exiting) closes the chat too.
+- The chat is never part of multi-execution, macros never play into it or record from it, typing in it is not recorded in the command history, and while it has the focus the SFTP browser keeps following its terminal.
 
 ## Macros
 
@@ -348,7 +352,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Escape (while a macro plays) | Stop the macro |
 | Right Arrow / End (with a grey suggestion) | Accept the suggested command |
 | Ctrl+Right (with a grey suggestion) | Accept the next word of the suggestion |
-| Ctrl+Shift+Space (changeable) | Open the AI assistant |
+| Ctrl+Shift+Space (changeable) | Open the AI chat below the focused terminal, or switch between a terminal and its chat |
 | Middle click on a tab | Close that tab |
 | Right click on a tab | Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 

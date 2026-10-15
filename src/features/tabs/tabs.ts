@@ -2,6 +2,7 @@ import { targetTitle, type SessionTarget } from "../sessions/types";
 import {
   closePane,
   leaf,
+  MAX_PANES,
   neighbour,
   paneIds,
   setRatio,
@@ -11,13 +12,42 @@ import {
   type SplitDirection,
 } from "../panes/paneLayout";
 
+/** An AI chat pane (S9) and the terminal pane its commands are inserted into. */
+export interface ChatLink {
+  terminalPaneId: string;
+  /** Terminal selection when the chat opened, offered with its first question ("" for none). */
+  selection: string;
+}
+
 export interface Tab {
   key: string;
   title: string;
   target: SessionTarget;
-  /** Split panes of the tab; every pane runs its own terminal for `target`. */
+  /**
+   * Split panes of the tab; every pane runs its own terminal for `target`, except the
+   * panes listed in `chats`, which are AI chats.
+   */
   layout: PaneLayout;
   focusedPane: string;
+  /** AI chat panes by pane id; at most one per terminal pane. */
+  chats: Record<string, ChatLink>;
+}
+
+/** What opening the AI chat does in a tab: open one, focus one, go back to the terminal, or nothing (full tab). */
+export type ChatAction =
+  | { kind: "open"; terminalPaneId: string }
+  | { kind: "focus"; paneId: string }
+  | { kind: "terminal"; paneId: string }
+  | { kind: "full" };
+
+export function chatAction(tab: Tab): ChatAction {
+  const focused = tab.focusedPane;
+  const link = tab.chats[focused];
+  if (link) return { kind: "terminal", paneId: link.terminalPaneId };
+  const existing = Object.keys(tab.chats).find((id) => tab.chats[id].terminalPaneId === focused);
+  if (existing) return { kind: "focus", paneId: existing };
+  if (paneIds(tab.layout).length >= MAX_PANES) return { kind: "full" };
+  return { kind: "open", terminalPaneId: focused };
 }
 
 export interface TabsState {
@@ -36,6 +66,8 @@ export type TabsAction =
   | { type: "activate"; key: string }
   | { type: "rename"; key: string; title: string }
   | { type: "split"; key: string; direction: SplitDirection }
+  /** The AI chat key (S9): see `chatAction`. */
+  | { type: "openChat"; key: string; selection: string }
   | { type: "closePane"; key: string; paneId: string }
   | { type: "focusPane"; key: string; paneId: string }
   | { type: "focusDirection"; key: string; direction: FocusDirection }
@@ -70,6 +102,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         target: action.target,
         layout: leaf(pane),
         focusedPane: pane,
+        chats: {},
       };
       return {
         tabs: [...state.tabs, tab],
@@ -110,20 +143,43 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       });
       return next === state ? state : { ...next, nextPaneSeq: state.nextPaneSeq + 1 };
     }
+    case "openChat": {
+      const tab = state.tabs.find((t) => t.key === action.key);
+      if (!tab) return state;
+      const next = chatAction(tab);
+      if (next.kind === "full") return state;
+      if (next.kind !== "open") return tabsReducer(state, { type: "focusPane", key: tab.key, paneId: next.paneId });
+      const pane = `pane-${state.nextPaneSeq}`;
+      const layout = splitPane(tab.layout, next.terminalPaneId, "column", pane);
+      if (layout === tab.layout) return state;
+      const chats = { ...tab.chats, [pane]: { terminalPaneId: next.terminalPaneId, selection: action.selection } };
+      return {
+        ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, chats })),
+        nextPaneSeq: state.nextPaneSeq + 1,
+      };
+    }
     case "closePane": {
       const tab = state.tabs.find((t) => t.key === action.key);
       if (!tab) return state;
-      const layout = closePane(tab.layout, action.paneId);
+      // A terminal's chat pane goes with it.
+      const closing = [action.paneId, ...Object.keys(tab.chats).filter((id) => tab.chats[id].terminalPaneId === action.paneId)];
+      let layout: PaneLayout | null = tab.layout;
+      for (const id of closing) layout = layout && closePane(layout, id);
       if (layout === null) return closeTab(state, tab.key);
       if (layout === tab.layout) return state;
       let focusedPane = tab.focusedPane;
-      if (focusedPane === action.paneId) {
+      const chatOf = tab.chats[action.paneId];
+      if (chatOf && focusedPane === action.paneId) {
+        // A closed chat gives the focus back to its terminal.
+        focusedPane = chatOf.terminalPaneId;
+      } else if (closing.includes(focusedPane)) {
         // Focus the pane that now sits where the closed one was in visual order.
         const index = paneIds(tab.layout).indexOf(action.paneId);
         const remaining = paneIds(layout);
         focusedPane = remaining[Math.min(index, remaining.length - 1)];
       }
-      return updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane }));
+      const chats = Object.fromEntries(Object.entries(tab.chats).filter(([id]) => !closing.includes(id)));
+      return updateTab(state, tab.key, (t) => ({ ...t, layout: layout!, focusedPane, chats }));
     }
     case "focusPane":
       return updateTab(state, action.key, (tab) =>

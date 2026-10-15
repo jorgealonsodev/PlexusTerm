@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { useEffect } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useEffect, useState } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import App from "../../App";
@@ -15,26 +15,44 @@ const clipboard = vi.hoisted(() => ({ readText: vi.fn(async () => ""), writeText
 vi.mock("../terminal/clipboard", () => clipboard);
 
 interface StubProps {
+  focused?: boolean;
   onCwd?: (path: string) => void;
+  onExit?: (code: number | null) => void;
+  onSession?: (id: number | null) => void;
+  onInput?: (data: string) => void;
   registerWriter?: (write: (data: string) => void) => () => void;
   registerAssistTarget?: (target: AssistTarget) => () => void;
   aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
 }
 
-/** What the fake pane was sent, its selection, and the latest aiSuggest it was given. */
+/** What the fake terminals were sent (by terminal number), their selection, and the latest aiSuggest. */
 const pane = vi.hoisted(() => ({
-  written: [] as string[],
+  written: [] as [number, string][],
   selection: "",
   focus: vi.fn(),
+  mounts: 0,
+  next: 1,
   aiSuggest: null as null | ((context: { line: string; hostKey: string; cwd: string | null; history: string[] }) => Promise<string | null>),
 }));
 
 vi.mock("../terminal/TerminalView", () => ({
-  TerminalView: function StubTerminal({ onCwd, registerWriter, registerAssistTarget, aiSuggest }: StubProps) {
+  TerminalView: function StubTerminal({
+    focused,
+    onCwd,
+    onExit,
+    onSession,
+    onInput,
+    registerWriter,
+    registerAssistTarget,
+    aiSuggest,
+  }: StubProps) {
+    const [id] = useState(() => pane.next++);
     pane.aiSuggest = aiSuggest ?? null;
     useEffect(() => {
+      pane.mounts += 1;
       onCwd?.("/srv/app");
-      const a = registerWriter?.((data) => pane.written.push(data));
+      onSession?.(id);
+      const a = registerWriter?.((data) => pane.written.push([id, data]));
       const b = registerAssistTarget?.({ selection: () => pane.selection, focus: pane.focus });
       return () => {
         a?.();
@@ -42,7 +60,12 @@ vi.mock("../terminal/TerminalView", () => ({
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    return <div data-testid="terminal" />;
+    return (
+      <div data-testid="terminal" data-focused={focused}>
+        <button onClick={() => onInput?.(`typed in ${id}`)}>type in {id}</button>
+        <button onClick={() => onExit?.(0)}>exit {id}</button>
+      </div>
+    );
   },
 }));
 
@@ -69,9 +92,25 @@ const pressShortcut = () =>
   act(() => {
     fireEvent.keyDown(window, { key: " ", ctrlKey: true, shiftKey: true });
   });
+const press = (key: string) =>
+  act(() => {
+    fireEvent.keyDown(window, { key, ctrlKey: true, shiftKey: true });
+  });
 
-const assistant = () => screen.queryByRole("dialog", { name: "AI assistant" });
+const chats = () => screen.queryAllByRole("region", { name: "AI chat" });
+const chat = () => screen.getByRole("region", { name: "AI chat" });
+const chatInput = () => within(chat()).getByPlaceholderText("Ask anything…");
+const terminals = () => screen.queryAllByTestId("terminal");
+const focusedTerminal = () => terminals().findIndex((t) => t.dataset.focused === "true");
+const paneOf = (el: HTMLElement) => el.closest<HTMLElement>(".pane")!;
 const brandImg = () => screen.getByAltText("PlexusTerm");
+
+const ask = async (question: string) => {
+  const input = chatInput();
+  fireEvent.change(input, { target: { value: question } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  await settle();
+};
 
 const mockReducedMotion = (reduce: boolean) => {
   window.matchMedia = vi.fn((query: string) => ({
@@ -85,6 +124,8 @@ const mockReducedMotion = (reduce: boolean) => {
 beforeEach(() => {
   pane.written = [];
   pane.selection = "";
+  pane.mounts = 0;
+  pane.next = 1;
   pane.focus.mockClear();
   answers = {
     platform: () => "linux",
@@ -108,24 +149,44 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("AI assistant (S3, S5)", () => {
-  it("opens with the shortcut, focused on its input", async () => {
+describe("AI chat pane (S3, S5, S9)", () => {
+  it("opens with the shortcut as a pane below the focused terminal, without restarting it, focused on its input", async () => {
     await renderApp();
-    expect(assistant()).toBeNull();
+    expect(chats()).toHaveLength(0);
     pressShortcut();
-    expect(assistant()).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByPlaceholderText("Ask anything…"));
-    fireEvent.keyDown(screen.getByPlaceholderText("Ask anything…"), { key: "Escape" });
-    expect(assistant()).toBeNull();
+    expect(chats()).toHaveLength(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const terminalPane = paneOf(terminals()[0]);
+    const chatPane = paneOf(chat());
+    expect(terminalPane.style.top).toBe("0%");
+    expect(terminalPane.style.height).toBe("50%");
+    expect(chatPane.style.top).toBe("50%");
+    expect(chatPane.style.width).toBe("100%");
+    expect(chatPane.classList.contains("pane--focused")).toBe(true);
+    expect(document.activeElement).toBe(chatInput());
+    expect(terminals()).toHaveLength(1);
+    expect(pane.mounts).toBe(1);
+  });
+
+  it("splits the focused terminal, not another one", async () => {
+    await renderApp();
+    press("D"); // terminal 2, focused, right of terminal 1
+    pressShortcut();
+    const second = paneOf(terminals()[1]);
+    const chatPane = paneOf(chat());
+    expect(chatPane.style.left).toBe(second.style.left);
+    expect(chatPane.style.top).toBe("50%");
+    expect(paneOf(terminals()[0]).style.height).toBe("100%");
+    expect(pane.mounts).toBe(2);
   });
 
   it("follows a changed assistant shortcut", async () => {
     withSettings({ assistantShortcut: "Alt+K" });
     await renderApp();
     pressShortcut();
-    expect(assistant()).toBeNull();
+    expect(chats()).toHaveLength(0);
     act(() => void fireEvent.keyDown(window, { key: "k", altKey: true }));
-    expect(assistant()).toBeTruthy();
+    expect(chats()).toHaveLength(1);
   });
 
   it("opens from the X button, whose tooltip names the shortcut", async () => {
@@ -134,7 +195,34 @@ describe("AI assistant (S3, S5)", () => {
     expect(x.title).toBe("AI assistant (Ctrl+Shift+Space)");
     expect(x.contains(brandImg())).toBe(true);
     fireEvent.click(x);
-    expect(assistant()).toBeTruthy();
+    expect(chats()).toHaveLength(1);
+  });
+
+  it("focuses the terminal's existing chat instead of opening another, and from the chat goes back to the terminal", async () => {
+    await renderApp();
+    pressShortcut();
+    // Back to the terminal: the shortcut in the chat toggles.
+    pressShortcut();
+    expect(chats()).toHaveLength(1);
+    expect(focusedTerminal()).toBe(0);
+    expect(pane.focus).toHaveBeenCalled();
+    expect(paneOf(chat()).classList.contains("pane--focused")).toBe(false);
+    // From the terminal again: the same chat takes the focus.
+    fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
+    expect(chats()).toHaveLength(1);
+    expect(paneOf(chat()).classList.contains("pane--focused")).toBe(true);
+    expect(document.activeElement).toBe(chatInput());
+  });
+
+  it("says so when the tab is full instead of opening a chat", async () => {
+    await renderApp();
+    press("D");
+    press("D");
+    press("D");
+    expect(terminals()).toHaveLength(4);
+    pressShortcut();
+    expect(chats()).toHaveLength(0);
+    expect(screen.getByRole("status").textContent).toContain("This tab already has 4 panes");
   });
 
   it("spins the X once on every open, restarting it on a new trigger", async () => {
@@ -143,8 +231,8 @@ describe("AI assistant (S3, S5)", () => {
     pressShortcut();
     const first = brandImg();
     expect(first.classList.contains("brand--spin")).toBe(true);
-    fireEvent.keyDown(screen.getByPlaceholderText("Ask anything…"), { key: "Escape" });
-    fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
+    pressShortcut(); // back to the terminal
+    fireEvent.click(screen.getByRole("button", { name: "AI assistant" })); // focuses the chat again
     // A new element: the animation starts over instead of continuing.
     expect(brandImg()).not.toBe(first);
     expect(brandImg().classList.contains("brand--spin")).toBe(true);
@@ -158,48 +246,90 @@ describe("AI assistant (S3, S5)", () => {
     mockReducedMotion(true);
     await renderApp();
     pressShortcut();
-    expect(assistant()).toBeTruthy();
+    expect(chats()).toHaveLength(1);
     expect(brandImg().classList.contains("brand--spin")).toBe(false);
   });
 
-  it("asks with the context and inserts the answer into the focused pane without Enter", async () => {
+  it("shows the provider and model in its header", async () => {
+    withSettings({ aiProvider: "opencode-go", aiModel: "kimi-k3" });
+    await renderApp();
+    pressShortcut();
+    expect(within(chat()).getByText("AI")).toBeTruthy();
+    expect(within(chat()).getByText("OpenCode Go · kimi-k3")).toBeTruthy();
+  });
+
+  it("asks with the context and inserts the answer's command into the linked terminal without Enter", async () => {
     withSettings({ aiProvider: "openai-compatible", aiBaseUrl: "http://localhost:11434/v1", aiModel: "llama3.2", aiHistoryContext: 2 });
     answers.ai_assist = () => ({ answer: "Sizes of the entries, smallest first.", command: "du -sh * | sort -h" });
     await renderApp();
+    press("D"); // terminal 2 gets the chat; terminal 1 must receive nothing
     pressShortcut();
-    const input = screen.getByPlaceholderText("Ask anything…");
-    fireEvent.change(input, { target: { value: "what uses the most space here" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    await settle();
+    await ask("what uses the most space here");
     expect(calls("ai_assist")).toEqual([
       {
         config: { provider: "openai-compatible", model: "llama3.2", baseUrl: "http://localhost:11434/v1", sessionId: expect.any(String) },
-        request: { prompt: "what uses the most space here", os: "linux", cwd: "/srv/app", history: ["make", "make test"], selection: null },
+        request: {
+          prompt: "what uses the most space here",
+          os: "linux",
+          cwd: "/srv/app",
+          history: ["make", "make test"],
+          selection: null,
+          conversation: [],
+        },
       },
     ]);
-    expect(screen.getByText("du -sh * | sort -h")).toBeTruthy();
-    expect(screen.getByText("Sizes of the entries, smallest first.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    expect(within(chat()).getByLabelText("Question").textContent).toBe("what uses the most space here");
+    expect(within(chat()).getByLabelText("Answer").textContent).toBe("Sizes of the entries, smallest first.");
+    expect(within(chat()).getByLabelText("Suggested command").textContent).toBe("du -sh * | sort -h");
+    expect((chatInput() as HTMLTextAreaElement).value).toBe("");
+    fireEvent.click(within(chat()).getByRole("button", { name: "Copy" }));
     expect(clipboard.writeText).toHaveBeenCalledWith("du -sh * | sort -h");
-    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
-    expect(pane.written).toEqual(["du -sh * | sort -h"]);
-    expect(assistant()).toBeNull();
+    fireEvent.click(within(chat()).getByRole("button", { name: "Insert" }));
+    expect(pane.written).toEqual([[2, "du -sh * | sort -h"]]);
+    expect(focusedTerminal()).toBe(1);
     expect(pane.focus).toHaveBeenCalled();
+    // The chat stays open.
+    expect(chats()).toHaveLength(1);
   });
 
-  const askAssistant = async (question: string) => {
+  it("sends the earlier turns with a follow-up question, in one AI session per chat pane", async () => {
+    let n = 0;
+    answers.ai_assist = () => (++n === 1 ? { answer: "Use du.", command: "du -sh *" } : { answer: "Add sort.", command: null });
+    await renderApp();
+    pane.selection = "disk full";
     pressShortcut();
-    const input = screen.getByPlaceholderText("Ask anything…");
-    fireEvent.change(input, { target: { value: question } });
+    await ask("what uses space?");
+    await ask("and sorted?");
+    const [first, second] = calls("ai_assist");
+    expect((first.request as { conversation: unknown[] }).conversation).toEqual([]);
+    expect((second.request as { conversation: unknown[]; selection: string | null })).toMatchObject({
+      prompt: "and sorted?",
+      selection: null,
+      conversation: [{ question: "what uses space?", selection: "disk full", answer: "Use du.", command: "du -sh *" }],
+    });
+    const id = (args: Record<string, unknown>) => (args.config as { sessionId: string }).sessionId;
+    expect(id(first)).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
+    expect(id(second)).toBe(id(first));
+    expect(within(chat()).getAllByLabelText("Answer").map((a) => a.textContent)).toEqual(["Use du.", "Add sort."]);
+    // Another terminal's chat is another conversation.
+    press("T");
+    pressShortcut();
+    await settle();
+    const other = chats().find((c) => !c.closest(".tab-panes")!.hasAttribute("hidden"))!;
+    const input = within(other).getByPlaceholderText("Ask anything…");
+    fireEvent.change(input, { target: { value: "hi" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await settle();
-  };
+    expect(id(calls("ai_assist")[2])).not.toBe(id(first));
+    expect((calls("ai_assist")[2].request as { conversation: unknown[] }).conversation).toEqual([]);
+  });
 
   it("shows a general answer with no command box, Insert or Copy when no command fits (S8)", async () => {
     answers.ai_assist = () => ({ answer: "¡Hola! ¿En qué te ayudo?\nPuedo explicar errores.", command: null });
     await renderApp();
-    await askAssistant("hola");
-    const answer = screen.getByLabelText("Answer");
+    pressShortcut();
+    await ask("hola");
+    const answer = within(chat()).getByLabelText("Answer");
     expect(answer.textContent).toContain("¡Hola! ¿En qué te ayudo?");
     expect(answer.textContent).toContain("Puedo explicar errores.");
     expect(answer.querySelectorAll("br")).toHaveLength(1);
@@ -207,18 +337,6 @@ describe("AI assistant (S3, S5)", () => {
     expect(screen.queryByRole("button", { name: "Insert" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
     expect(screen.queryByText(/No command/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Ask" })).toBeTruthy();
-  });
-
-  it("shows the answer above the command box with Insert and Copy when a command fits", async () => {
-    answers.ai_assist = () => ({ answer: "Muestra el espacio libre.", command: "df -h" });
-    await renderApp();
-    await askAssistant("¿cuánto disco queda?");
-    expect(screen.getByLabelText("Answer").textContent).toBe("Muestra el espacio libre.");
-    expect(screen.getByLabelText("Suggested command").textContent).toBe("df -h");
-    expect(screen.getByRole("button", { name: "Copy" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
-    expect(pane.written).toEqual(["df -h"]);
   });
 
   it("renders fenced code in an answer as monospace blocks and never as HTML", async () => {
@@ -227,8 +345,9 @@ describe("AI assistant (S3, S5)", () => {
       command: null,
     });
     await renderApp();
-    await askAssistant("inodos");
-    const answer = screen.getByLabelText("Answer");
+    pressShortcut();
+    await ask("inodos");
+    const answer = within(chat()).getByLabelText("Answer");
     const blocks = answer.querySelectorAll("pre");
     expect(blocks).toHaveLength(1);
     expect(blocks[0].textContent).toBe("ls -i\nstat a.txt");
@@ -237,120 +356,127 @@ describe("AI assistant (S3, S5)", () => {
     expect(answer.textContent).not.toContain("```");
   });
 
-  it("starts a new AI session for every assistant opening", async () => {
-    answers.ai_assist = () => ({ answer: "", command: "ls" });
-    await renderApp();
-    const askOnce = async () => {
-      pressShortcut();
-      const input = screen.getByPlaceholderText("Ask anything…");
-      fireEvent.change(input, { target: { value: "list" } });
-      fireEvent.keyDown(input, { key: "Enter" });
-      await settle();
-      fireEvent.change(input, { target: { value: "list again" } });
-      fireEvent.keyDown(input, { key: "Enter" });
-      await settle();
-      fireEvent.keyDown(input, { key: "Escape" });
-    };
-    await askOnce();
-    await askOnce();
-    const ids = calls("ai_assist").map((args) => (args.config as { sessionId: string }).sessionId);
-    expect(ids).toHaveLength(4);
-    for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
-    expect(ids[0]).toBe(ids[1]);
-    expect(ids[2]).toBe(ids[3]);
-    expect(ids[0]).not.toBe(ids[2]);
-  });
-
-  it("sends no history when command history is off, and Shift+Enter does not ask", async () => {
+  it("sends no history when command history is off, and Shift+Enter does not send", async () => {
     withSettings({ commandHistory: false });
     answers.ai_assist = () => ({ answer: "", command: "ls" });
     await renderApp();
     pressShortcut();
-    const input = screen.getByPlaceholderText("Ask anything…");
-    fireEvent.change(input, { target: { value: "list" } });
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    fireEvent.change(chatInput(), { target: { value: "list" } });
+    fireEvent.keyDown(chatInput(), { key: "Enter", shiftKey: true });
     await settle();
     expect(calls("ai_assist")).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    fireEvent.click(within(chat()).getByRole("button", { name: "Send" }));
     await settle();
     expect(calls("ai_assist")[0]).toMatchObject({ config: { provider: "anthropic", model: "claude-opus-5-5" } });
     expect(calls("ai_assist")[0].config).not.toHaveProperty("baseUrl");
     expect((calls("ai_assist")[0].request as { history: string[] }).history).toEqual([]);
   });
 
-  it("starts with the selected text ticked and shown, sends it with Ask, and not once unticked", async () => {
-    answers.ai_assist = () => ({ answer: "", command: "sudo chown me file" });
+  it("attaches the terminal selection to the first question as a chip shown before sending", async () => {
+    answers.ai_assist = () => ({ answer: "Use sudo.", command: null });
     await renderApp();
     pane.selection = "error: permission denied";
     pressShortcut();
-    const box = screen.getByLabelText("Include selected text") as HTMLInputElement;
-    expect(box.disabled).toBe(false);
-    expect(box.checked).toBe(true);
-    expect(screen.getByLabelText("Selected text to send").textContent).toBe("error: permission denied");
-    const input = screen.getByPlaceholderText("Ask anything…");
-    fireEvent.change(input, { target: { value: "fix this" } });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    await settle();
-    fireEvent.click(box);
-    expect(box.checked).toBe(false);
+    expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("error: permission denied");
+    await ask("fix this");
     expect(screen.queryByLabelText("Selected text to send")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    await settle();
+    await ask("and without sudo?");
     expect(calls("ai_assist").map((c) => (c.request as { selection: string | null }).selection)).toEqual([
       "error: permission denied",
       null,
     ]);
   });
 
-  it("ticks the selected text also when opened from the X button", async () => {
+  it("sends no selection once its chip is removed, and cuts it to 2000 characters", async () => {
+    answers.ai_assist = () => ({ answer: "ok", command: null });
     await renderApp();
-    pane.selection = "make: *** [all] Error 2";
-    fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
-    expect((screen.getByLabelText("Include selected text") as HTMLInputElement).checked).toBe(true);
-    expect(screen.getByLabelText("Selected text to send").textContent).toBe("make: *** [all] Error 2");
-  });
-
-  it("leaves Include selected text unticked and disabled without a selection", async () => {
-    answers.ai_assist = () => ({ answer: "", command: "ls" });
-    await renderApp();
+    pane.selection = "x".repeat(2500);
     pressShortcut();
-    const box = screen.getByLabelText("Include selected text") as HTMLInputElement;
-    expect(box.disabled).toBe(true);
-    expect(box.checked).toBe(false);
+    expect(within(chat()).getByLabelText("Selected text to send").textContent).toHaveLength(2000);
+    fireEvent.click(within(chat()).getByRole("button", { name: "Remove selected text" }));
     expect(screen.queryByLabelText("Selected text to send")).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("Ask anything…"), { target: { value: "list" } });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    await settle();
+    await ask("hi");
     expect((calls("ai_assist")[0].request as { selection: string | null }).selection).toBeNull();
   });
 
-  it("says when no key is saved and opens Settings from there", async () => {
+  it("shows no chip without a selection", async () => {
+    await renderApp();
+    pressShortcut();
+    expect(screen.queryByLabelText("Selected text to send")).toBeNull();
+  });
+
+  it("says when no key is saved and opens Settings on the AI section from there", async () => {
     answers.ai_key_status = () => false;
     await renderApp();
     pressShortcut();
     await settle();
-    expect(screen.getByText(/No API key is saved for Anthropic/)).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Ask" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Open AI settings" }));
-    expect(assistant()).toBeNull();
+    expect(within(chat()).getByText(/No API key is saved for Anthropic/)).toBeTruthy();
+    fireEvent.change(chatInput(), { target: { value: "x" } });
+    expect((within(chat()).getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(chat()).getByRole("button", { name: "Open AI settings" }));
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "AI" }).getAttribute("aria-selected")).toBe("true");
   });
 
-  it("shows provider errors and lets a slow request be cancelled", async () => {
+  it("Stop cancels the request in flight and puts the question back; errors show in their turn", async () => {
     let fail: (err: unknown) => void = () => {};
-    answers.ai_assist = () => new Promise((_, reject) => (fail = reject));
+    let late: (value: unknown) => void = () => {};
+    let n = 0;
+    answers.ai_assist = () => new Promise((resolve, reject) => (++n === 1 ? (late = resolve) : (fail = reject)));
     await renderApp();
     pressShortcut();
-    fireEvent.change(screen.getByPlaceholderText("Ask anything…"), { target: { value: "x" } });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    await settle();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByRole("button", { name: "Ask" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    await settle();
+    await ask("slow one");
+    expect(within(chat()).getByText("Asking…")).toBeTruthy();
+    fireEvent.click(within(chat()).getByRole("button", { name: "Stop" }));
+    expect(within(chat()).queryByText("Asking…")).toBeNull();
+    expect(within(chat()).queryByLabelText("Question")).toBeNull();
+    expect((chatInput() as HTMLTextAreaElement).value).toBe("slow one");
+    // A cancelled answer arriving late is dropped.
+    await act(async () => late({ answer: "too late", command: null }));
+    expect(screen.queryByText("too late")).toBeNull();
+    await ask("slow one");
     await act(async () => fail({ kind: "rateLimit", message: "Too many requests; wait a minute." }));
-    expect(screen.getByText("Too many requests; wait a minute.")).toBeTruthy();
+    expect(within(chat()).getByRole("alert").textContent).toBe("Too many requests; wait a minute.");
+    expect(within(chat()).getByLabelText("Question").textContent).toBe("slow one");
+  });
+
+  it("is never a multi-execution target and gets no exclude toggle", async () => {
+    await renderApp();
+    press("D");
+    pressShortcut(); // chat under terminal 2
+    press("M");
+    expect(screen.getByRole("status").textContent).toContain("input goes to 2 terminals");
+    expect(screen.getAllByRole("button", { name: "Exclude from multi-execution" })).toHaveLength(2);
+    // Typing in the chat reaches no terminal.
+    fireEvent.change(chatInput(), { target: { value: "ls" } });
+    expect(pane.written).toEqual([]);
+  });
+
+  it("closes like a pane: Ctrl+Shift+W, its corner × and its header ×, leaving the terminal running", async () => {
+    await renderApp();
+    pressShortcut();
+    press("W");
+    expect(chats()).toHaveLength(0);
+    expect(terminals()).toHaveLength(1);
+    expect(focusedTerminal()).toBe(0);
+    pressShortcut();
+    const corner = paneOf(chat()).querySelector(".pane__corner")!;
+    fireEvent.mouseEnter(corner);
+    fireEvent.click(within(paneOf(chat())).getByRole("button", { name: "Close pane" }));
+    expect(chats()).toHaveLength(0);
+    pressShortcut();
+    fireEvent.click(within(chat()).getByRole("button", { name: "Close AI chat" }));
+    expect(chats()).toHaveLength(0);
+    expect(pane.mounts).toBe(1);
+  });
+
+  it("closes with its terminal", async () => {
+    await renderApp();
+    press("D");
+    pressShortcut(); // chat under terminal 2
+    fireEvent.click(screen.getByRole("button", { name: "exit 2" }));
+    expect(chats()).toHaveLength(0);
+    expect(terminals()).toHaveLength(1);
   });
 });
 

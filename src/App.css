@@ -1415,11 +1415,135 @@ textarea::placeholder {
   }
 }
 
-/* The on-demand AI assistant (S3). */
-.dialog.assistant {
-  /* Square corners, unlike the other dialogs. */
-  border-radius: 0;
-  width: min(560px, 100%);
+/* The AI chat pane below a terminal (S9). */
+.chat {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.chat__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  /* Room for the pane's corner ×, which sits over the top-right corner. */
+  padding: 4px 60px 4px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat__title {
+  font-weight: 600;
+}
+
+.chat__model {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat__close,
+.chat__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.chat__close:hover,
+.chat__chip-remove:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.chat__turns {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.chat__empty {
+  margin: 0;
+}
+
+.chat__turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The user's question, set apart from the answer under it. */
+.chat__question {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.chat__command {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat__command-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.chat > .assistant__notice {
+  margin: 0 10px 8px;
+}
+
+.chat__chip {
+  position: relative;
+  flex: none;
+  margin: 0 10px 6px;
+}
+
+.chat__chip .assistant__selection {
+  max-height: 80px;
+  padding-right: 28px;
+}
+
+.chat__chip-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.chat__input-row {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.chat__input {
+  flex: 1;
+  min-height: 0;
+  max-height: 160px;
 }
 
 .assistant__prompt {
@@ -1439,7 +1563,8 @@ textarea::placeholder {
 }
 
 .assistant__selection,
-.assistant__command {
+.assistant__command,
+.assistant__code {
   margin: 0;
   padding: 6px 8px;
   overflow: auto;
@@ -1456,7 +1581,8 @@ textarea::placeholder {
   color: var(--muted);
 }
 
-.assistant__command {
+.assistant__command,
+.assistant__code {
   color: var(--text);
 }
 
@@ -1476,11 +1602,6 @@ textarea::placeholder {
   border-radius: 6px;
 }
 
-.assistant__loading {
-  align-self: center;
-  margin-right: auto;
-}
-
 /* Why the last AI suggestion failed (S2): small and out of the way, bottom right of the pane. */
 .pane__ai-hint {
   position: absolute;
@@ -1495,13 +1616,11 @@ textarea::placeholder {
   pointer-events: auto;
 }
 
-/* The assistant's answer: plain text with its line breaks, scrolling when long. */
+/* An AI answer: plain text with its line breaks (the chat list scrolls). */
 .assistant__reply {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 40vh;
-  overflow-y: auto;
 }
 
 .assistant__text {
