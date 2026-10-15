@@ -1,0 +1,48 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "टर्मिनल में खोजें",
+    placeholder: "खोजें",
+    noMatches: "कोई मिलान नहीं",
+    matchCase: "केस मिलाएँ",
+    regexTitle: "रेगुलर एक्सप्रेशन",
+    regex: "Regex",
+    previous: "पिछला मिलान",
+    next: "अगला मिलान",
+    close: "खोज बंद करें",
+  },
+  paste: {
+    title: { one: "{count} पंक्ति पेस्ट करें?", other: "{count} पंक्तियाँ पेस्ट करें?" },
+    warning: "हर पंक्ति एक कमांड के रूप में चल सकती है।",
+    dontAsk: "फिर से न पूछें",
+    paste: "पेस्ट करें",
+  },
+  menu: {
+    paste: "पेस्ट करें",
+    selectAll: "सभी चुनें",
+    clear: "स्क्रॉलबैक साफ़ करें",
+    find: "खोजें…",
+    save: "आउटपुट फ़ाइल में सहेजें…",
+    stopLogging: "लॉगिंग रोकें",
+    log: "फ़ाइल में लॉग करें…",
+  },
+  view: {
+    textFiles: "टेक्स्ट",
+    connecting: "{target} से कनेक्ट हो रहा है...",
+    connectingVia: "{jumps} के माध्यम से {target} से कनेक्ट हो रहा है...",
+    startingMosh: "SSH पर {target} पर mosh-server शुरू हो रहा है...",
+    startingMoshVia: "SSH पर {jumps} के माध्यम से {target} पर mosh-server शुरू हो रहा है...",
+    opening: "{target} खोला जा रहा है...",
+    telnetUnencrypted: "Telnet एन्क्रिप्टेड नहीं है।",
+    serialEnded: "सेशन समाप्त हुआ। यह टैब बंद करें या पोर्ट फिर से खोलें।",
+    moshExited: "mosh-client बंद हो गया। यह टैब बंद करें या सेशन फिर से खोलें।",
+    moshExitedCode: "mosh-client कोड {code} के साथ बंद हो गया। यह टैब बंद करें या सेशन फिर से खोलें।",
+    clipboardError: "क्लिपबोर्ड पढ़ा नहीं जा सका।",
+    saveError: "आउटपुट सहेजा नहीं जा सका: {error}",
+    loggingStopped: "लॉगिंग रुक गई: {error}",
+    hostKeyCancelled: "कनेक्शन रद्द: होस्ट कुंजी पर भरोसा नहीं किया गया।",
+    cancelled: "कनेक्शन रद्द किया गया।",
+  },
+};
