@@ -35,6 +35,7 @@ interface ChatPaneProps {
   /** Sends a command to the linked terminal with Enter. */
   onRun: (command: string) => void;
   onOpenSettings: () => void;
+  onClose: () => void;
   /** Makes `model` of `provider` the AI provider and model (S10). */
   onSelectModel: (provider: AiProvider, model: string) => void;
 }
@@ -104,7 +105,7 @@ function CommandBox({
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ settings, context, selection, focused, onInsert, onRun, onOpenSettings, onSelectModel }: ChatPaneProps) {
+export function ChatPane({ settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel }: ChatPaneProps) {
   const [sessionId] = useState(newAiSessionId);
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
@@ -203,6 +204,15 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
       <header className="chat__header">
         <span className="chat__title">AI</span>
         <ModelPicker provider={provider} model={model} baseUrl={settings.aiBaseUrl} onSelect={onSelectModel} />
+        <button
+          type="button"
+          className="chat__close"
+          aria-label="Close AI chat"
+          title="Close AI chat (Ctrl+Shift+W)"
+          onClick={onClose}
+        >
+          <X size={16} />
+        </button>
       </header>
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (

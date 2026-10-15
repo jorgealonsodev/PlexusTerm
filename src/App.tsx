@@ -813,8 +813,8 @@ function AppContent() {
                                 onRun={(command) => runFromChat(tab, link, command)}
                                 onSelectModel={(aiProvider, aiModel) => terminalSettings.update({ aiProvider, aiModel })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
+                                onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
                               />
-                              <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />
                             </div>
                           </div>
                         );

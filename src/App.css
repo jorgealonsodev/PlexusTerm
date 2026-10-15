@@ -1463,8 +1463,7 @@ textarea::placeholder {
   align-items: center;
   gap: 8px;
   min-height: 31px;
-  /* Room for the pane's corner ×, which sits over the top-right corner. */
-  padding: 5px 60px 5px 10px;
+  padding: 5px 8px 5px 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1576,6 +1575,7 @@ textarea::placeholder {
   font-size: 12px;
 }
 
+.chat__close,
 .chat__chip-remove {
   display: inline-flex;
   align-items: center;
@@ -1588,6 +1588,7 @@ textarea::placeholder {
   cursor: pointer;
 }
 
+.chat__close:hover,
 .chat__chip-remove:hover {
   color: var(--text);
   background: var(--surface-2);
