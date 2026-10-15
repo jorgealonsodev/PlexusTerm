@@ -2,7 +2,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScanEvent } from "./scanBackend";
-import { DEFAULT_PORTS, PortScannerDialog } from "./PortScannerDialog";
+import { PortScannerDialog } from "./PortScannerDialog";
+import { DEFAULT_PORTS } from "./portChoice";
 
 const { invoke, channels } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -28,7 +29,10 @@ const emit = (event: ScanEvent) => act(() => channels[channels.length - 1].onmes
 
 async function startScan(targets: string, ports?: string) {
   fireEvent.change(screen.getByLabelText("Hosts"), { target: { value: targets } });
-  if (ports !== undefined) fireEvent.change(screen.getByLabelText("Ports"), { target: { value: ports } });
+  if (ports !== undefined) {
+    fireEvent.click(screen.getByLabelText("Custom list"));
+    fireEvent.change(screen.getByLabelText("Custom ports"), { target: { value: ports } });
+  }
   await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
 }
 
@@ -38,7 +42,6 @@ describe("PortScannerDialog", () => {
   it("scans the entered hosts and ports and fills the table as open ports arrive", async () => {
     invoke.mockResolvedValue(4);
     render(<PortScannerDialog onClose={() => {}} />);
-    expect((screen.getByLabelText("Ports") as HTMLInputElement).value).toBe(DEFAULT_PORTS);
     await startScan("192.168.1.1-20", "22,80");
     expect(invoke).toHaveBeenCalledWith("scan_ports", { targets: "192.168.1.1-20", ports: "22,80", onEvent: channels[0] });
     emit({ event: "started", data: { total: 40 } });
@@ -55,10 +58,40 @@ describe("PortScannerDialog", () => {
     expect(screen.getByRole("button", { name: "Start" })).toBeTruthy();
   });
 
-  it("scans the common ports when the Ports field is left empty, and says so", async () => {
+  it("scans the known ports by default, or a range from two fields", async () => {
     invoke.mockResolvedValue(1);
     render(<PortScannerDialog onClose={() => {}} />);
-    expect((screen.getByLabelText("Ports") as HTMLInputElement).placeholder).toBe("Empty: common ports");
+    expect((screen.getByLabelText("Known ports") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("First port") as HTMLInputElement).disabled).toBe(true);
+    await startScan("10.0.0.9");
+    expect(invoke).toHaveBeenLastCalledWith("scan_ports", { targets: "10.0.0.9", ports: DEFAULT_PORTS, onEvent: channels[0] });
+    emit({ event: "done", data: { done: 1, total: 1, cancelled: false } });
+    fireEvent.click(screen.getByLabelText("Port range"));
+    expect([screen.getByLabelText("First port"), screen.getByLabelText("Last port")].map((i) => (i as HTMLInputElement).value)).toEqual([
+      "1",
+      "65535",
+    ]);
+    fireEvent.change(screen.getByLabelText("Last port"), { target: { value: "1024" } });
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
+    expect(invoke).toHaveBeenLastCalledWith("scan_ports", { targets: "10.0.0.9", ports: "1-1024", onEvent: channels[1] });
+  });
+
+  it("checks the range before starting", async () => {
+    render(<PortScannerDialog onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Hosts"), { target: { value: "10.0.0.9" } });
+    fireEvent.click(screen.getByLabelText("Port range"));
+    fireEvent.change(screen.getByLabelText("First port"), { target: { value: "2000" } });
+    fireEvent.change(screen.getByLabelText("Last port"), { target: { value: "20" } });
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Start" })));
+    expect(screen.getByRole("alert").textContent).toBe("The first port must not be greater than the last one");
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("scans the known ports when the custom list is left empty, and says so", async () => {
+    invoke.mockResolvedValue(1);
+    render(<PortScannerDialog onClose={() => {}} />);
+    fireEvent.click(screen.getByLabelText("Custom list"));
+    expect((screen.getByLabelText("Custom ports") as HTMLInputElement).placeholder).toBe("Empty: known ports");
     await startScan("192.168.1.1", "   ");
     expect(invoke).toHaveBeenCalledWith("scan_ports", { targets: "192.168.1.1", ports: DEFAULT_PORTS, onEvent: channels[0] });
   });
