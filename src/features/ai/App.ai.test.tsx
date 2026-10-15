@@ -494,7 +494,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(pane.written).toEqual([]);
   });
 
-  it("closes like a pane: Ctrl+Shift+W and its corner × (no second × in its header), leaving the terminal running", async () => {
+  it("closes with Ctrl+Shift+W or the fixed × in its header (no hover × in its corner), leaving the terminal running", async () => {
     await renderApp();
     pressShortcut();
     press("W");
@@ -502,12 +502,10 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(terminals()).toHaveLength(1);
     expect(focusedTerminal()).toBe(0);
     pressShortcut();
-    const corner = paneOf(chat()).querySelector(".pane__corner")!;
-    fireEvent.mouseEnter(corner);
-    fireEvent.click(within(paneOf(chat())).getByRole("button", { name: "Close pane" }));
+    expect(paneOf(chat()).querySelector(".pane__corner")).toBeNull();
+    fireEvent.click(within(chat()).getByRole("button", { name: "Close AI chat" }));
     expect(chats()).toHaveLength(0);
-    pressShortcut();
-    expect(within(chat()).queryByRole("button", { name: "Close AI chat" })).toBeNull();
+    expect(focusedTerminal()).toBe(0);
     expect(pane.mounts).toBe(1);
   });
 

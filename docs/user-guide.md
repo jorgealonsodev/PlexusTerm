@@ -280,7 +280,7 @@ The AI chat answers any question or request in plain words (explanations, steps,
 - Besides your question, the chat sends the operating system, the terminal's current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
 - The chat's header shows the provider and model; click it to choose another model from a scrollable list. The list holds the models of every provider with an API key saved (and of the OpenAI-compatible server when its base URL is set; on `opencode.ai` only once that provider has its own key, since OpenCode answers only with one), each with its provider's name, and can be filtered by typing. Choosing one makes it the AI provider and model, as in Settings → AI, for every chat and for AI suggestions. A provider whose list cannot be read shows why, and the others are still listed.
 - When no key is saved for the provider, the chat says so and **Open AI settings** opens Settings on the **AI** section, where the key is saved.
-- The chat closes like any pane: the pane's corner **×**, or **Ctrl+Shift+W** while it has the focus. Closing its terminal (or the shell exiting) closes the chat too.
+- The chat closes with the **×** at the right of its header, or **Ctrl+Shift+W** while it has the focus. Closing its terminal (or the shell exiting) closes the chat too.
 - The chat is never part of multi-execution, macros never play into it or record from it, typing in it is not recorded in the command history, and while it has the focus the SFTP browser keeps following its terminal.
 
 ## Macros
