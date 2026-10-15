@@ -201,7 +201,7 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
         setStatus(after);
         setKey("");
       })
-      .catch((err) => setError(t(`settings.ai.${failure}`, { error: String(err) })))
+      .catch((err) => setError(t(`settings.ai.${failure}`, { error: describeAiError(err) })))
       .finally(() => setBusy(false));
   };
 

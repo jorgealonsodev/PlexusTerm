@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
@@ -254,6 +254,32 @@ describe("SettingsDialog", () => {
       fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
       expect(await screen.findByText("A key is saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "anthropic" });
+    });
+
+    it("shows the backend's message when the key cannot be saved", async () => {
+      const backend = vi.mocked(invoke).getMockImplementation()!;
+      // Tauri rejects with the serialized AiError: a plain object, not an Error.
+      vi.mocked(invoke).mockImplementation(async (cmd, args) => {
+        if (cmd === "ai_key_save") {
+          throw { kind: "config", message: "Could not use the system keyring: the system keyring is not available." };
+        }
+        return backend(cmd, args);
+      });
+      onTestFinished(() => {
+        vi.mocked(invoke).mockImplementation(backend);
+      });
+      openAi();
+      fireEvent.change(field("Provider"), { target: { value: "gemini" } });
+      expect(await screen.findByText("No key saved")).toBeTruthy();
+      fireEvent.change(field("API key"), { target: { value: "AIza-secret" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
+      expect(
+        await screen.findByText(
+          "Could not save the key: Could not use the system keyring: the system keyring is not available.",
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText(/\[object Object\]/)).toBeNull();
+      expect(screen.getByText("No key saved")).toBeTruthy();
     });
 
     it("offers OpenCode Go models in a list fetched by the backend, with a refresh and a usage note", async () => {
