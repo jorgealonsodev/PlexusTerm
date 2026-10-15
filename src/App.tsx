@@ -669,6 +669,8 @@ function AppContent() {
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                           />
                           {paneIds(tab.layout).length > 1 && (
+                            // The × only shows while the pointer is in this corner of the pane.
+                            <div className="pane__corner">
                             <button
                               className="pane__close"
                               aria-label="Close pane"
@@ -682,6 +684,7 @@ function AppContent() {
                             >
                               <X size={14} />
                             </button>
+                            </div>
                           )}
                           {multiExec && (
                             <button
