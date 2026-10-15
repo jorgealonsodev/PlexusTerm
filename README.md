@@ -117,3 +117,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend tests
 ```
 
 Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`. More in [Building and releasing](docs/building-and-releasing.md).
+
+## License
+
+PlexusTerm is released under the [MIT License](LICENSE). The colour schemes and other third-party parts keep their own licences, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
