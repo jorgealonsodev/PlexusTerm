@@ -67,6 +67,15 @@ describe("createHistoryStore", () => {
     expect(saved(save)).toEqual([{ version: 1, hosts: {} }]);
   });
 
+  it("counts a command recorded while an invalid file loads only once", async () => {
+    const { store } = setup("[1,2]");
+    store.record("local", "ls -a");
+    await store.ready();
+    store.record("local", "ls -b");
+    // Both were run once, so the more recent one comes first; counted twice, "ls -a" would win.
+    expect(store.suggest("local", "ls -")).toBe("ls -b");
+  });
+
   it("clears the history at once, also on disk", async () => {
     const { store, save } = setup(JSON.stringify({ version: 1, hosts: { local: [{ command: "ls -la", count: 1, last: 1 }] } }));
     await store.ready();

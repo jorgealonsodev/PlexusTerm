@@ -68,6 +68,8 @@ export function createHistoryStore(
           // A file that is not valid history is kept as it is, like one that cannot be read.
           if (!isHistoryFile(json)) {
             canSave = false;
+            // The commands recorded so far are already in memory.
+            early = [];
             return;
           }
           if (!loaded) data = parseHistory(json);
