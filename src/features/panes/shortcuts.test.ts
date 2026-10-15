@@ -28,9 +28,28 @@ describe("shortcutFor", () => {
     expect(shortcutFor(key("ArrowDown", { altKey: true }))).toEqual({ type: "focus", direction: "down" });
   });
 
+  it("maps find, copy and paste (S15.1, S15.3)", () => {
+    expect(shortcutFor(ctrlShift("F"))).toEqual({ type: "find" });
+    expect(shortcutFor(ctrlShift("c"))).toEqual({ type: "copy" });
+    expect(shortcutFor(ctrlShift("V"))).toEqual({ type: "paste" });
+  });
+
+  it("maps Ctrl+= / Ctrl++ / Ctrl+- / Ctrl+0 to font size changes (S15.2)", () => {
+    expect(shortcutFor(key("=", { ctrlKey: true }))).toEqual({ type: "fontSize", step: "increase" });
+    expect(shortcutFor(key("+", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "fontSize", step: "increase" });
+    expect(shortcutFor(key("+", { ctrlKey: true }))).toEqual({ type: "fontSize", step: "increase" });
+    expect(shortcutFor(key("-", { ctrlKey: true }))).toEqual({ type: "fontSize", step: "decrease" });
+    expect(shortcutFor(key("0", { ctrlKey: true }))).toEqual({ type: "fontSize", step: "reset" });
+    expect(shortcutFor(key("0", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(shortcutFor(key("-", { altKey: true }))).toBeNull();
+  });
+
   it("leaves every other key to the terminal", () => {
     expect(shortcutFor(key("d", { ctrlKey: true }))).toBeNull(); // Ctrl+D is EOF for the shell
-    expect(shortcutFor(ctrlShift("C"))).toBeNull();
+    expect(shortcutFor(key("c", { ctrlKey: true }))).toBeNull(); // Ctrl+C interrupts
+    expect(shortcutFor(key("v", { ctrlKey: true }))).toBeNull();
+    expect(shortcutFor(key("1", { ctrlKey: true }))).toBeNull();
+    expect(shortcutFor(ctrlShift("X"))).toBeNull();
     expect(shortcutFor(key("ArrowLeft"))).toBeNull();
     expect(shortcutFor(key("ArrowLeft", { altKey: true, ctrlKey: true }))).toBeNull();
     expect(shortcutFor(key("D", { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull();

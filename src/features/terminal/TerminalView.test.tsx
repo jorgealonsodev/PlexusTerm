@@ -11,20 +11,52 @@ const backend = vi.hoisted(() => ({
 }));
 
 vi.mock("./backend", () => ({ backendFor: () => backend }));
+const clipboard = vi.hoisted(() => ({ readText: vi.fn(async () => ""), writeText: vi.fn(async () => {}) }));
+vi.mock("./clipboard", () => clipboard);
 // Only the keyring commands reach `invoke` here (the backend is mocked): a keyring is available.
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => true) }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/session.log") }));
+
+/** Every fake xterm created, newest last. */
+const terms = vi.hoisted(() => [] as FakeTerminal[]);
+interface FakeTerminal {
+  options: { fontSize?: number };
+  keyHandler: (e: Partial<KeyboardEvent>) => boolean;
+  paste: ReturnType<typeof vi.fn>;
+  clear: ReturnType<typeof vi.fn>;
+  selectAll: ReturnType<typeof vi.fn>;
+}
+
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
     rows = 24;
+    options: { fontSize?: number };
     parser = { registerOscHandler: () => ({ dispose() {} }) };
+    keyHandler: (e: unknown) => boolean = () => true;
+    paste = vi.fn();
+    clear = vi.fn();
+    selectAll = vi.fn();
+    buffer = { active: { length: 0, getLine: () => undefined } };
+    constructor(options: { fontSize?: number }) {
+      this.options = { ...options };
+      terms.push(this as unknown as FakeTerminal);
+    }
     loadAddon() {}
-    attachCustomKeyEventHandler() {}
+    attachCustomKeyEventHandler(handler: (e: unknown) => boolean) {
+      this.keyHandler = handler;
+    }
     open() {}
     write() {}
     focus() {}
     dispose() {}
+    hasSelection() {
+      return false;
+    }
+    getSelection() {
+      return "";
+    }
     onData = () => ({ dispose() {} });
     onResize = () => ({ dispose() {} });
     onTitleChange = () => ({ dispose() {} });
@@ -32,8 +64,21 @@ vi.mock("@xterm/xterm", () => ({
 }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class { fit() {} } }));
 vi.mock("@xterm/addon-web-links", () => ({ WebLinksAddon: class {} }));
+vi.mock("@xterm/addon-search", () => ({
+  SearchAddon: class {
+    findNext() {
+      return true;
+    }
+    findPrevious() {
+      return true;
+    }
+    clearDecorations() {}
+  },
+}));
 
+import { invoke } from "@tauri-apps/api/core";
 import { TerminalView } from "./TerminalView";
+import { DEFAULT_SETTINGS } from "../settings/settings";
 
 globalThis.ResizeObserver = class {
   observe() {}
@@ -66,6 +111,105 @@ describe("TerminalView", () => {
     unmount();
     await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(backend.start).not.toHaveBeenCalled();
+  });
+
+  describe("terminal comfort (S15)", () => {
+    // The webview's navigator.clipboard cannot read in WebKitGTK: the app goes through ./clipboard.
+    Object.defineProperty(navigator, "clipboard", {
+      value: { readText: () => Promise.reject(new Error("denied")), writeText: () => Promise.reject(new Error("denied")) },
+      configurable: true,
+    });
+    const term = () => terms[terms.length - 1];
+    const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+    const renderView = (props: Partial<Parameters<typeof TerminalView>[0]> = {}) =>
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} {...props} />);
+    const rightClick = (container: HTMLElement, mods: { ctrlKey?: boolean } = {}) =>
+      fireEvent.contextMenu(container.querySelector(".terminal-host")!, { clientX: 5, clientY: 6, ...mods });
+
+    it("starts with the font size of the settings and follows its changes", () => {
+      const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, fontSize: 18 } });
+      expect(term().options.fontSize).toBe(18);
+      rerender(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, fontSize: 22 }}
+        />,
+      );
+      expect(term().options.fontSize).toBe(22);
+    });
+
+    it("pastes a single line from the clipboard on right click", async () => {
+      clipboard.readText.mockResolvedValueOnce("ls -la");
+      const { container } = renderView();
+      rightClick(container);
+      await settle();
+      expect(term().paste).toHaveBeenCalledWith("ls -la");
+    });
+
+    it("asks before pasting several lines and can stop asking", async () => {
+      clipboard.readText.mockResolvedValueOnce("one\ntwo");
+      const onSettingsChange = vi.fn();
+      const { container } = renderView({ onSettingsChange });
+      rightClick(container);
+      expect(await screen.findByText("Paste 2 lines?")).toBeTruthy();
+      expect(term().paste).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByLabelText("Don't ask again"));
+      fireEvent.click(screen.getByRole("button", { name: "Paste" }));
+      expect(term().paste).toHaveBeenCalledWith("one\ntwo");
+      expect(onSettingsChange).toHaveBeenCalledWith({ confirmMultilinePaste: false });
+      expect(screen.queryByText("Paste 2 lines?")).toBeNull();
+    });
+
+    it("opens the context menu on right click when right click does not paste, or on Ctrl+right click", async () => {
+      const { container } = renderView({ settings: { ...DEFAULT_SETTINGS, rightClickPastes: false } });
+      rightClick(container);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Clear scrollback" }));
+      expect(term().clear).toHaveBeenCalled();
+      expect(screen.queryByRole("menu")).toBeNull();
+      cleanup();
+      const second = renderView();
+      rightClick(second.container, { ctrlKey: true });
+      fireEvent.click(screen.getByRole("menuitem", { name: "Select all" }));
+      expect(term().selectAll).toHaveBeenCalled();
+      expect(clipboard.readText).not.toHaveBeenCalled();
+    });
+
+    it("keeps Ctrl+Shift+F from the shell and opens the find bar; Escape closes it", async () => {
+      renderView();
+      let passed = true;
+      act(() => {
+        passed = term().keyHandler({ type: "keydown", key: "F", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false });
+      });
+      expect(passed).toBe(false);
+      const input = screen.getByLabelText("Find in terminal");
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(screen.queryByLabelText("Find in terminal")).toBeNull();
+    });
+
+    it("logs received output to the chosen file without escape sequences", async () => {
+      let emit: (msg: { event: string; data: unknown }) => void = () => {};
+      backend.start.mockImplementationOnce((_options, onEvent) => {
+        emit = onEvent as typeof emit;
+        return Promise.resolve(7);
+      });
+      const onLogging = vi.fn();
+      const { container, unmount } = renderView({
+        settings: { ...DEFAULT_SETTINGS, rightClickPastes: false },
+        onLogging,
+      });
+      await settle();
+      rightClick(container);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Log to file…" }));
+      await vi.waitFor(() => expect(onLogging).toHaveBeenCalledWith("/tmp/session.log"));
+      act(() => emit({ event: "output", data: "\x1b[1mbold\x1b[0m\r\n" }));
+      unmount(); // closing the pane flushes the log
+      await vi.waitFor(() =>
+        expect(vi.mocked(invoke)).toHaveBeenCalledWith("append_text_file", { path: "/tmp/session.log", contents: "bold\n" }),
+      );
+    });
   });
 
   describe("with a saved password", () => {

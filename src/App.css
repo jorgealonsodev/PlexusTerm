@@ -768,3 +768,120 @@ body,
 .jump-hosts__add {
   align-self: flex-end;
 }
+
+/* Terminal comfort (S15) */
+.toolbar__settings {
+  margin-left: auto;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tab__log {
+  color: #ef6b73;
+  font-size: 9px;
+}
+
+/* Bottom right, clear of the multi-exec "exclude" toggle in the top-right corner. */
+.find-bar {
+  position: absolute;
+  bottom: 10px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.find-bar input:not([type]) {
+  width: 180px;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.find-bar input:not([type]):focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.find-bar__status {
+  color: #ef6b73;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.find-bar__option {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.find-bar__btn {
+  padding: 2px 6px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.find-bar__btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+.context-menu__item {
+  padding: 6px 10px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.context-menu__item:hover,
+.context-menu__item:focus-visible {
+  outline: none;
+  background: var(--surface-2);
+}
+
+.paste-preview {
+  max-height: 140px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace;
+  font-size: 12px;
+  white-space: pre;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}

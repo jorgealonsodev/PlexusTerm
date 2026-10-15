@@ -1,3 +1,4 @@
+import type { FontStep } from "../settings/settings";
 import type { FocusDirection, SplitDirection } from "./paneLayout";
 
 /** The subset of KeyboardEvent the shortcut table needs. */
@@ -15,7 +16,13 @@ export type Shortcut =
   | { type: "closePane" }
   | { type: "split"; direction: SplitDirection }
   | { type: "toggleMultiExec" }
-  | { type: "focus"; direction: FocusDirection };
+  | { type: "focus"; direction: FocusDirection }
+  /** Pane-local: handled by the focused terminal itself (S15.1, S15.3). */
+  | { type: "find" }
+  | { type: "copy" }
+  | { type: "paste" }
+  /** Global font size (S15.2). */
+  | { type: "fontSize"; step: FontStep };
 
 const CTRL_SHIFT: Record<string, Shortcut> = {
   T: { type: "newTerminal" },
@@ -24,6 +31,17 @@ const CTRL_SHIFT: Record<string, Shortcut> = {
   D: { type: "split", direction: "row" },
   E: { type: "split", direction: "column" },
   M: { type: "toggleMultiExec" },
+  F: { type: "find" },
+  C: { type: "copy" },
+  V: { type: "paste" },
+};
+
+/** Ctrl+= (or Ctrl++, which needs Shift on most layouts), Ctrl+- and Ctrl+0. */
+const FONT_KEYS: Record<string, FontStep> = {
+  "=": "increase",
+  "+": "increase",
+  "-": "decrease",
+  "0": "reset",
 };
 
 const ARROWS: Record<string, FocusDirection> = {
@@ -39,6 +57,7 @@ const ARROWS: Record<string, FocusDirection> = {
  */
 export function shortcutFor(e: KeyLike): Shortcut | null {
   if (e.metaKey) return null;
+  if (e.ctrlKey && !e.altKey && Object.prototype.hasOwnProperty.call(FONT_KEYS, e.key)) return { type: "fontSize", step: FONT_KEYS[e.key] };
   if (e.ctrlKey && e.shiftKey && !e.altKey) return CTRL_SHIFT[e.key.toUpperCase()] ?? null;
   if (e.altKey && !e.ctrlKey && !e.shiftKey) {
     const direction = ARROWS[e.key];

@@ -5,6 +5,9 @@ import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
+import { stepFontSize } from "./features/settings/settings";
+import { SettingsDialog } from "./features/settings/SettingsDialog";
+import { useSettings } from "./features/settings/useSettings";
 import { chainTarget, collectLogins, hopLabel, type PasswordAnswer } from "./features/sessions/jumpHosts";
 import {
   isSshSession,
@@ -45,6 +48,7 @@ type Modal =
   /** Password of one hop of a saved session (jump hosts first, then the target). */
   | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
+  | { kind: "settings" }
   | null;
 
 /** What a terminal pane reported about its backend session, plus its multi-execution exclusion. */
@@ -52,9 +56,11 @@ interface PaneMeta {
   sessionId: number | null;
   cwd: string | null;
   excluded: boolean;
+  /** The pane's output is being logged to a file (S15.5). */
+  logging: boolean;
 }
 
-const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false };
+const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false };
 
 const draftSession = (folder: string): SavedSession => ({
   kind: "ssh",
@@ -84,6 +90,7 @@ export default function App() {
     tabsReducer(s, { type: "open", target: LOCAL }),
   );
   const [modal, setModal] = useState<Modal>(null);
+  const terminalSettings = useSettings();
   const sessions = useSessionLibrary();
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
@@ -107,7 +114,10 @@ export default function App() {
     setPaneMeta((prev) => {
       const current = prev[paneId] ?? NO_SESSION;
       const next = { ...current, ...patch };
-      return next.sessionId === current.sessionId && next.cwd === current.cwd && next.excluded === current.excluded
+      return next.sessionId === current.sessionId &&
+        next.cwd === current.cwd &&
+        next.excluded === current.excluded &&
+        next.logging === current.logging
         ? prev
         : { ...prev, [paneId]: next };
     });
@@ -128,6 +138,9 @@ export default function App() {
   const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
   const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
+  const loggingTabs = new Set(
+    state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
+  );
 
   const allPanes: PaneInfo[] = state.tabs.flatMap((t) =>
     paneIds(t.layout).map((id) => ({
@@ -185,6 +198,8 @@ export default function App() {
     if (name?.trim()) sessions.dispatch({ type: "addFolder", path: parent ? `${parent}/${name}` : name });
   };
 
+  const { updateWith: updateSettingsWith } = terminalSettings;
+
   // Terminals let these keys through unhandled (see TerminalView), so the window sees them.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -198,6 +213,13 @@ export default function App() {
           return setModal({ kind: "quickConnect" });
         case "toggleMultiExec":
           return setMultiExec((on) => !on);
+        case "fontSize":
+          return updateSettingsWith((s) => ({ fontSize: stepFontSize(s.fontSize, shortcut.step) }));
+        // Handled by the focused terminal itself.
+        case "find":
+        case "copy":
+        case "paste":
+          return;
       }
       if (!activeTab) return;
       const key = activeTab.key;
@@ -207,7 +229,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openLocal, activeTab]);
+  }, [openLocal, activeTab, updateSettingsWith]);
 
   const split = (direction: "row" | "column") => {
     if (activeTab) dispatch({ type: "split", key: activeTab.key, direction });
@@ -242,6 +264,14 @@ export default function App() {
           onClick={() => setMultiExec((on) => !on)}
         >
           Multi-exec
+        </button>
+        <button
+          className="btn toolbar__settings"
+          aria-label="Settings"
+          title="Settings"
+          onClick={() => setModal({ kind: "settings" })}
+        >
+          ⚙
         </button>
       </header>
       {notice && (
@@ -318,6 +348,7 @@ export default function App() {
           <TabBar
             tabs={state.tabs}
             activeKey={state.activeKey}
+            logging={loggingTabs}
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
             onNew={openLocal}
@@ -352,6 +383,9 @@ export default function App() {
                             }}
                             onInput={(data) => broadcast(paneId, data)}
                             registerWriter={(write) => writers.register(paneId, write)}
+                            settings={terminalSettings.settings}
+                            onSettingsChange={terminalSettings.update}
+                            onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                           />
                           {multiExec && (
                             <button
@@ -438,6 +472,16 @@ export default function App() {
           onCancel={() => setModal(null)}
           onSave={(tunnel) => {
             tunnels.dispatch({ type: "save", tunnel });
+            setModal(null);
+          }}
+        />
+      )}
+      {modal?.kind === "settings" && (
+        <SettingsDialog
+          settings={terminalSettings.settings}
+          onCancel={() => setModal(null)}
+          onSave={(next) => {
+            terminalSettings.update(next);
             setModal(null);
           }}
         />

@@ -157,6 +157,20 @@ Multi-execution is off when the app starts and is never saved.
 
 The SFTP browser and **Follow terminal folder** use the focused pane of the active tab.
 
+## Terminal settings
+
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory:
+
+- **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
+- **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
+- **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it.
+- **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
+
+Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
+
+The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
+Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -168,6 +182,10 @@ The SFTP browser and **Follow terminal folder** use the focused pane of the acti
 | Ctrl+Shift+W | Close the focused pane (the tab closes with its last pane) |
 | Alt+Arrow | Move the focus to the neighbouring pane |
 | Ctrl+Shift+M | Turn multi-execution on or off |
+| Ctrl+Shift+F | Find in the focused terminal |
+| Ctrl+Shift+C | Copy the selection |
+| Ctrl+Shift+V | Paste |
+| Ctrl+= / Ctrl+- / Ctrl+0 | Larger / smaller / default font size (every terminal) |
 | Middle click on a tab | Close that tab |
 
 These shortcuts are handled by the app and never reach the shell.

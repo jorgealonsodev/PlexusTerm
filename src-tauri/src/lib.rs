@@ -243,6 +243,33 @@ fn tunnels_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, TUNNELS_FILE)?, &contents)
 }
 
+const SETTINGS_FILE: &str = "settings.json";
+
+#[tauri::command]
+fn settings_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    storage::load(&config_path(&app, SETTINGS_FILE)?)
+}
+
+#[tauri::command]
+fn settings_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, SETTINGS_FILE)?, &contents)
+}
+
+/// Upper bound for terminal output written to a file in one call (saved scrollback or a log batch).
+const TEXT_FILE_MAX_BYTES: u64 = 50 * 1024 * 1024;
+
+/// Saves terminal output to a file the user picked in the save dialog.
+#[tauri::command]
+fn save_text_file(path: String, contents: String) -> Result<(), StorageError> {
+    storage::write_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+}
+
+/// Appends a batch of session log output to the file the user picked.
+#[tauri::command]
+fn append_text_file(path: String, contents: String) -> Result<(), StorageError> {
+    storage::append_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+}
+
 /// Event carrying every tunnel status change.
 const TUNNEL_STATUS_EVENT: &str = "tunnel-status";
 
@@ -279,6 +306,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(PtyManager::default())
         .manage(SerialManager::default())
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
@@ -323,7 +351,11 @@ pub fn run() {
             tunnels_save,
             tunnel_start,
             tunnel_stop,
-            tunnel_statuses
+            tunnel_statuses,
+            settings_load,
+            settings_save,
+            save_text_file,
+            append_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
