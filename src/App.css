@@ -6,6 +6,7 @@
   --text: #d8dee9;
   --muted: #7a8794;
   --accent: #5ec4ff;
+  color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 13px;
   color: var(--text);
@@ -248,4 +249,138 @@ body,
   justify-items: center;
   height: 100%;
   color: var(--muted);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+  flex-shrink: 0;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.sidebar__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn--small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.sidebar__search {
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.sidebar__search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sidebar__note,
+.sidebar__hint {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sidebar__hint {
+  margin-top: auto;
+  font-size: 11px;
+}
+
+.tree,
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: default;
+  user-select: none;
+}
+
+.tree-row:hover,
+.tree-row:focus {
+  outline: none;
+  background: var(--surface-2);
+}
+
+.tree-row--folder {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tree-row__chevron {
+  width: 10px;
+  color: var(--muted);
+}
+
+.tree-row__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-row__actions {
+  display: none;
+  gap: 2px;
+}
+
+.tree-row:hover .tree-row__actions,
+.tree-row:focus-within .tree-row__actions {
+  display: flex;
+}
+
+.tree-row__actions button {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tree-row__actions button:hover {
+  color: var(--text);
+  background: var(--border);
 }

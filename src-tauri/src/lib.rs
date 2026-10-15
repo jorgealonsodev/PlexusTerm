@@ -1,11 +1,13 @@
 mod pty;
 mod ssh;
+mod storage;
 mod terminal;
 
 use pty::{PtyError, PtyManager, SpawnRequest};
 use ssh::{ConnectRequest, SshError, SshManager};
-use tauri::State;
+use storage::StorageError;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, State};
 use terminal::TerminalSink;
 
 /// Events streamed to the frontend for one terminal session.
@@ -75,6 +77,26 @@ fn ssh_close(id: u32, ssh: State<'_, SshManager>) -> Result<(), SshError> {
     ssh.close(id)
 }
 
+const SESSIONS_FILE: &str = "sessions.json";
+
+fn sessions_path(app: &AppHandle) -> Result<std::path::PathBuf, StorageError> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|err| StorageError::Io(err.to_string()))?;
+    Ok(dir.join(SESSIONS_FILE))
+}
+
+#[tauri::command]
+fn sessions_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    storage::load(&sessions_path(&app)?)
+}
+
+#[tauri::command]
+fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&sessions_path(&app)?, &contents)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -89,7 +111,9 @@ pub fn run() {
             ssh_connect,
             ssh_write,
             ssh_resize,
-            ssh_close
+            ssh_close,
+            sessions_load,
+            sessions_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

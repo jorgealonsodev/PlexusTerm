@@ -24,6 +24,15 @@ Host keys are verified against `~/.ssh/known_hosts`, like OpenSSH:
 - an unknown host shows its SHA256 fingerprint and is only recorded after you choose **Trust and connect**;
 - a key that differs from the recorded one is always refused. Remove the old entry with `ssh-keygen -R <host>` if the change is expected.
 
+## Saved sessions
+
+The **Sessions** panel on the left keeps SSH sessions in folders (`Prod/DB` style paths).
+Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name or host.
+
+Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`).
+Passwords and key passphrases are never saved: password sessions ask for it on every connection.
+If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
