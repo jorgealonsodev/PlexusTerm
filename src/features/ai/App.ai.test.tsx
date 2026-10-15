@@ -205,6 +205,26 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(chats()).toHaveLength(1);
   });
 
+  it("the X closes the open chat with a spin, whether the chat or its terminal has the focus", async () => {
+    await renderApp();
+    const x = () => screen.getByRole("button", { name: "AI assistant" });
+    fireEvent.click(x());
+    expect(chats()).toHaveLength(1);
+    fireEvent.animationEnd(brandImg());
+    fireEvent(brandImg(), new Event("webkitAnimationEnd", { bubbles: true }));
+    fireEvent.click(x()); // the chat has the focus
+    expect(chats()).toHaveLength(0);
+    expect(focusedTerminal()).toBe(0);
+    expect(brandImg().classList.contains("brand--spin")).toBe(true);
+    fireEvent.click(x());
+    expect(chats()).toHaveLength(1);
+    pressShortcut(); // back to the terminal
+    fireEvent.click(x()); // the terminal has the focus
+    expect(chats()).toHaveLength(0);
+    expect(terminals()).toHaveLength(1);
+    expect(pane.mounts).toBe(1);
+  });
+
   it("focuses the terminal's existing chat instead of opening another, and from the chat goes back to the terminal", async () => {
     await renderApp();
     pressShortcut();
@@ -215,7 +235,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(pane.focus).toHaveBeenCalled();
     expect(paneOf(chat()).classList.contains("pane--focused")).toBe(false);
     // From the terminal again: the same chat takes the focus.
-    fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
+    pressShortcut();
     expect(chats()).toHaveLength(1);
     expect(paneOf(chat()).classList.contains("pane--focused")).toBe(true);
     expect(document.activeElement).toBe(chatInput());
@@ -239,7 +259,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     const first = brandImg();
     expect(first.classList.contains("brand--spin")).toBe(true);
     pressShortcut(); // back to the terminal
-    fireEvent.click(screen.getByRole("button", { name: "AI assistant" })); // focuses the chat again
+    pressShortcut(); // focuses the chat again
     // A new element: the animation starts over instead of continuing.
     expect(brandImg()).not.toBe(first);
     expect(brandImg().classList.contains("brand--spin")).toBe(true);

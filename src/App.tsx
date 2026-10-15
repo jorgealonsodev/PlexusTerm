@@ -498,6 +498,26 @@ function AppContent() {
     if (!prefersReducedMotion()) setSpin((n) => n + 1);
   };
 
+  /**
+   * The X (S5, S9): opens the focused terminal's AI chat like the shortcut, and when that chat is
+   * already open (the chat or its terminal has the focus) closes it; both spin the X.
+   */
+  const toggleAssistantFromLogo = () => {
+    const tab = activeTab;
+    const focused = tab?.focusedPane;
+    const chatId =
+      tab && focused
+        ? tab.chats[focused]
+          ? focused
+          : Object.keys(tab.chats).find((id) => tab.chats[id].terminalPaneId === focused)
+        : undefined;
+    if (!tab || !chatId) return openAssistant();
+    const terminalPaneId = tab.chats[chatId].terminalPaneId;
+    dispatch({ type: "closePane", key: tab.key, paneId: chatId });
+    assistTargets.get(terminalPaneId)?.focus();
+    if (!prefersReducedMotion()) setSpin((n) => n + 1);
+  };
+
   /** What a chat pane knows about its terminal: OS, folder and the host's recent commands, never its output. */
   const chatContextOf = (tab: Tab, terminalPaneId: string) => {
     const hostKey = hostKeyOf(tab.target);
@@ -588,7 +608,7 @@ function AppContent() {
           className="brand-button"
           aria-label="AI assistant"
           title={`AI assistant (${settings.assistantShortcut})`}
-          onClick={openAssistant}
+          onClick={toggleAssistantFromLogo}
         >
           <img
             key={spin}
