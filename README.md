@@ -1,4 +1,4 @@
-# NexusTerm
+# OxyTerm
 
 A Linux terminal and remote-session manager inspired by another app's feature set (clean-room; see `docs/reference/another app-feature-inventory.md`).
 
@@ -28,7 +28,7 @@ Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `l
 
 ## Windows
 
-NexusTerm also builds for Windows 10/11. Everything works as on Linux except:
+OxyTerm also builds for Windows 10/11. Everything works as on Linux except:
 
 - **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`.
 - **Home directory**: `~` is `%USERPROFILE%`, so host keys go to `%USERPROFILE%\.ssh\known_hosts` and key paths accept both `~/` and `~\`.
@@ -52,10 +52,10 @@ Every GitHub Release carries these assets (`<version>` without the leading `v`):
 
 | Asset | Contents |
 | --- | --- |
-| `nexusterm_<version>_linux_amd64.tar.gz`, `nexusterm_<version>_linux_arm64.tar.gz` | Portable folder `nexusterm_<version>_linux_<arch>/` with the `nexusterm` binary, `nexusterm.desktop`, `icons/`, `README.md` and `install.sh` |
-| `nexusterm_<version>_linux_amd64.deb`, `nexusterm_<version>_linux_arm64.deb` | Debian/Ubuntu packages |
-| `nexusterm_<version>_linux_x86_64.rpm`, `nexusterm_<version>_linux_aarch64.rpm` | Fedora/openSUSE/RHEL packages |
-| `nexusterm_<version>_windows_x86_64.msi`, `nexusterm_<version>_windows_x86_64-setup.exe` | Windows installers (MSI and NSIS) |
+| `oxyterm_<version>_linux_amd64.tar.gz`, `oxyterm_<version>_linux_arm64.tar.gz` | Portable folder `oxyterm_<version>_linux_<arch>/` with the `oxyterm` binary, `oxyterm.desktop`, `icons/`, `README.md` and `install.sh` |
+| `oxyterm_<version>_linux_amd64.deb`, `oxyterm_<version>_linux_arm64.deb` | Debian/Ubuntu packages |
+| `oxyterm_<version>_linux_x86_64.rpm`, `oxyterm_<version>_linux_aarch64.rpm` | Fedora/openSUSE/RHEL packages |
+| `oxyterm_<version>_windows_x86_64.msi`, `oxyterm_<version>_windows_x86_64-setup.exe` | Windows installers (MSI and NSIS) |
 | `checksums.txt` | SHA-256 of every other asset, in `sha256sum` format |
 
 **Producing a release.** Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (all three must match), commit, then push a tag `v<version>`:
@@ -69,7 +69,7 @@ The `Release` workflow (`.github/workflows/release.yml`) builds amd64 on `ubuntu
 The Linux assets are built the same way locally (native architecture only; the Linux build dependencies above are required):
 
 ```bash
-scripts/package-release.sh 1.2.0 amd64   # writes dist-release/nexusterm_1.2.0_linux_*
+scripts/package-release.sh 1.2.0 amd64   # writes dist-release/oxyterm_1.2.0_linux_*
 scripts/checksums.sh dist-release        # writes and verifies dist-release/checksums.txt
 ```
 
@@ -83,14 +83,14 @@ sha256sum --ignore-missing -c checksums.txt
 
 ```bash
 # Portable tarball, per user (~/.local/bin, ~/.local/share/applications, ~/.local/share/icons)
-tar -xzf nexusterm_1.2.0_linux_amd64.tar.gz
-nexusterm_1.2.0_linux_amd64/install.sh               # remove later with: install.sh --uninstall
+tar -xzf oxyterm_1.2.0_linux_amd64.tar.gz
+oxyterm_1.2.0_linux_amd64/install.sh               # remove later with: install.sh --uninstall
 
 # Debian/Ubuntu
-sudo apt install ./nexusterm_1.2.0_linux_amd64.deb
+sudo apt install ./oxyterm_1.2.0_linux_amd64.deb
 
 # Fedora/RHEL (zypper install on openSUSE)
-sudo dnf install ./nexusterm_1.2.0_linux_x86_64.rpm
+sudo dnf install ./oxyterm_1.2.0_linux_x86_64.rpm
 ```
 
 The tarball binary needs the same system libraries as the `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`).
@@ -138,7 +138,7 @@ The toolbar **More ▾** menu opens **Telnet…** and **Mosh…** quick-connect 
 **Telnet** uses a built-in client (host, port 23 by default, 15 s connect timeout).
 
 - Telnet is not encrypted: everything typed, passwords included, crosses the network in clear text. The tab starts with a yellow "Telnet is not encrypted." line.
-- Option negotiation: the server may enable ECHO and SUPPRESS-GO-AHEAD; NexusTerm offers TERMINAL-TYPE (`xterm-256color`) and the window size (NAWS, sent again on every resize) and refuses every other option.
+- Option negotiation: the server may enable ECHO and SUPPRESS-GO-AHEAD; OxyTerm offers TERMINAL-TYPE (`xterm-256color`) and the window size (NAWS, sent again on every resize) and refuses every other option.
 - Enter is sent as CR NUL (a bare carriage return as RFC 854 requires); byte 255 is escaped in what you type and Telnet commands never reach the terminal.
 
 **Mosh** keeps a session alive across roaming, sleep and flaky links. It logs in with a saved SSH session (its key, agent or password, saved keyring password and jump hosts all apply), runs `mosh-server new -s -c 256 -l LANG=en_US.UTF-8` there (override it per session with **Server command**), closes the SSH connection and starts the local `mosh-client` in the tab.
@@ -154,7 +154,7 @@ The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions i
 Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
 The edit dialog has a **Session type** selector (SSH, Serial, Telnet or Mosh) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command.
 
-Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet` or `mosh`), and entries written by earlier versions without it load as SSH sessions.
+Sessions are stored in `~/.config/dev.oxyterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet` or `mosh`), and entries written by earlier versions without it load as SSH sessions.
 The file never contains passwords or key passphrases (see [Saved passwords](#saved-passwords)).
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 
@@ -162,7 +162,7 @@ If the file cannot be read, the panel shows the error and disables editing so th
 
 Password sessions ask for the password when you connect. For saved sessions (terminal tabs and tunnels) the prompt has a **Save password in the system keyring** checkbox, unchecked by default; quick-connect sessions never save passwords.
 
-- Passwords are kept only in the system keyring through the Secret Service API (GNOME Keyring, KWallet), under the service `dev.nexusterm.app` with the session id as the account and the label `NexusTerm: user@host:port`. They are never written to `sessions.json` or `tunnels.json`.
+- Passwords are kept only in the system keyring through the Secret Service API (GNOME Keyring, KWallet), under the service `dev.oxyterm.app` with the session id as the account and the label `OxyTerm: user@host:port`. They are never written to `sessions.json` or `tunnels.json`.
 - A password is saved only after a successful login. Later connections read it in the backend; it is never sent back to the user interface.
 - A saved password is bound to the `user@host:port` it was typed for and is only ever sent there. Changing the host, port or username of a session (or switching it away from password authentication) forgets the saved password; passwords saved by earlier versions, which carry no such binding, are asked again once.
 - If the keyring cannot save or delete the password (for example because it is locked and does not answer within 10 seconds), the connection still opens and a warning is shown: a yellow line in the terminal tab, or a note under the tunnel.
@@ -175,7 +175,7 @@ Password sessions ask for the password when you connect. For saved sessions (ter
 
 A saved SSH session can reach its server through up to 3 jump hosts (bastions), like `ssh -J`. In the session's edit dialog, **Jump hosts** lists other saved SSH sessions in the order they are crossed: add them from the list, move them up or down, or remove them. Quick-connect sessions have no jump hosts.
 
-- NexusTerm logs into the first jump host, opens a forwarded connection from it to the next host's address and port, logs into that one, and so on until the session's own server. Each host is reached from the previous one, so its address must make sense there (e.g. a private IP behind the bastion).
+- OxyTerm logs into the first jump host, opens a forwarded connection from it to the next host's address and port, logs into that one, and so on until the session's own server. Each host is reached from the previous one, so its address must make sense there (e.g. a private IP behind the bastion).
 - Every host is checked against `~/.ssh/known_hosts` with its own address and port; an unknown jump host shows the trust prompt naming it ("bastion — jump host 1 of 2").
 - Every host logs in with its own saved session's method (key, agent or password). Passwords saved in the keyring are used for each host; the others are asked one by one before connecting ("Password for bastion — jump host 1 of 2"), each prompt with its own **Save password in the system keyring** checkbox.
 - If a jump host has its own jump hosts, they are crossed first. A session cannot be its own jump host, and chains with cycles, repeated sessions, more than 3 hosts in total, or deleted or non-SSH jump sessions are refused with an error.
@@ -223,7 +223,7 @@ Each tunnel shows its status (stopped, starting, running, or the error) and a St
 Starting a tunnel whose session uses a password uses the password saved in the keyring or asks for it (see [Saved passwords](#saved-passwords)), and an unknown host asks to trust its fingerprint like SSH tabs do. A tunnel deleted or changed while one of these prompts is open is not started.
 Stopping closes the listener, the open connections and the SSH connection; running tunnels stop when the app exits.
 
-Tunnels are stored in `~/.config/dev.nexusterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).
+Tunnels are stored in `~/.config/dev.oxyterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).
 
 ## Split panes and multi-execution
 

@@ -174,7 +174,7 @@ describe("useTunnelLauncher", () => {
     fireEvent.click(screen.getByText("Connect"));
     await act(() => started);
     expect(startArgs(0).target.auth).toEqual({ method: "password", password: "pw" });
-    expect(startArgs(0).storage).toEqual({ action: "remember", sessionId: "s1", label: "NexusTerm: u@10.0.0.1:22" });
+    expect(startArgs(0).storage).toEqual({ action: "remember", sessionId: "s1", label: "OxyTerm: u@10.0.0.1:22" });
   });
 
   it("asks again with the checkbox ticked when the saved password is rejected, then replaces it", async () => {

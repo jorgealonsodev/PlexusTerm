@@ -48,7 +48,7 @@ describe("mosh backend", () => {
   it("lets a retry replace the login, the jump hosts and the saved-password request", async () => {
     invoke.mockResolvedValue(9);
     const auth = { method: "password" as const, password: "pw" };
-    const storage = { action: "remember" as const, sessionId: "s1", label: "NexusTerm: deploy@web.example.com:2222" };
+    const storage = { action: "remember" as const, sessionId: "s1", label: "OxyTerm: deploy@web.example.com:2222" };
     await backendFor({ ...target, serverCommand: undefined }).start(
       { cols: 80, rows: 24, trustedFingerprint: "SHA256:x", auth, storage, jumps: [] },
       () => {},

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    nexusterm_lib::run()
+    oxyterm_lib::run()
 }

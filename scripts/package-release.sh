@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Builds the Linux release assets for one architecture and writes them to
 # dist-release/ with the release naming convention:
-#   nexusterm_<version>_linux_<arch>.deb
-#   nexusterm_<version>_linux_<rpmarch>.rpm
-#   nexusterm_<version>_linux_<arch>.tar.gz
+#   oxyterm_<version>_linux_<arch>.deb
+#   oxyterm_<version>_linux_<rpmarch>.rpm
+#   oxyterm_<version>_linux_<arch>.tar.gz
 # The build is native: <arch> must match the machine running the script.
 # Usage: scripts/package-release.sh <version> <amd64|arm64>
 set -euo pipefail
@@ -82,11 +82,11 @@ DEB_SRC="$(single "$BUNDLE"/deb/*_"$VERSION"_"$ARCH".deb)"
 RPM_SRC="$(single "$BUNDLE"/rpm/*-"$VERSION"-*."$RPM_ARCH".rpm)"
 
 OUT="$ROOT/dist-release"
-NAME="nexusterm_${VERSION}_linux_${ARCH}"
+NAME="oxyterm_${VERSION}_linux_${ARCH}"
 mkdir -p "$OUT"
-rm -f "$OUT/$NAME.deb" "$OUT/nexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"
+rm -f "$OUT/$NAME.deb" "$OUT/oxyterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"
 cp "$DEB_SRC" "$OUT/$NAME.deb"
-cp "$RPM_SRC" "$OUT/nexusterm_${VERSION}_linux_${RPM_ARCH}.rpm"
+cp "$RPM_SRC" "$OUT/oxyterm_${VERSION}_linux_${RPM_ARCH}.rpm"
 
 # Portable tarball: binary and desktop entry taken from the .deb so all three
 # assets ship identical files.
@@ -95,18 +95,18 @@ trap 'rm -rf "$WORK"' EXIT
 dpkg-deb -x "$DEB_SRC" "$WORK/deb"
 STAGE="$WORK/$NAME"
 mkdir -p "$STAGE"
-install -m 0755 "$WORK/deb/usr/bin/nexusterm" "$STAGE/nexusterm"
-install -m 0644 "$(single "$WORK"/deb/usr/share/applications/*.desktop)" "$STAGE/nexusterm.desktop"
+install -m 0755 "$WORK/deb/usr/bin/oxyterm" "$STAGE/oxyterm"
+install -m 0644 "$(single "$WORK"/deb/usr/share/applications/*.desktop)" "$STAGE/oxyterm.desktop"
 install -m 0644 README.md "$STAGE/README.md"
 for size in 32 64 128; do
-  install -D -m 0644 "src-tauri/icons/${size}x${size}.png" "$STAGE/icons/hicolor/${size}x${size}/apps/nexusterm.png"
+  install -D -m 0644 "src-tauri/icons/${size}x${size}.png" "$STAGE/icons/hicolor/${size}x${size}/apps/oxyterm.png"
 done
-install -D -m 0644 "src-tauri/icons/128x128@2x.png" "$STAGE/icons/hicolor/256x256/apps/nexusterm.png"
-install -D -m 0644 "src-tauri/icons/icon.png" "$STAGE/icons/hicolor/512x512/apps/nexusterm.png"
+install -D -m 0644 "src-tauri/icons/128x128@2x.png" "$STAGE/icons/hicolor/256x256/apps/oxyterm.png"
+install -D -m 0644 "src-tauri/icons/icon.png" "$STAGE/icons/hicolor/512x512/apps/oxyterm.png"
 
 cat >"$STAGE/install.sh" <<'INSTALL'
 #!/usr/bin/env bash
-# Installs NexusTerm for the current user under ~/.local (no root needed).
+# Installs OxyTerm for the current user under ~/.local (no root needed).
 # Usage: ./install.sh [--uninstall | --help]
 set -euo pipefail
 
@@ -127,16 +127,16 @@ refresh_caches() {
 }
 
 install_app() {
-  install -D -m 0755 "$SRC/nexusterm" "$BIN_DIR/nexusterm"
+  install -D -m 0755 "$SRC/oxyterm" "$BIN_DIR/oxyterm"
   mkdir -p "$APP_DIR"
   # Absolute Exec path: ~/.local/bin is not always on PATH for the desktop session.
-  sed "s|^Exec=.*|Exec=\"$BIN_DIR/nexusterm\"|" "$SRC/nexusterm.desktop" >"$APP_DIR/nexusterm.desktop"
-  chmod 0644 "$APP_DIR/nexusterm.desktop"
+  sed "s|^Exec=.*|Exec=\"$BIN_DIR/oxyterm\"|" "$SRC/oxyterm.desktop" >"$APP_DIR/oxyterm.desktop"
+  chmod 0644 "$APP_DIR/oxyterm.desktop"
   for size in $SIZES; do
-    install -D -m 0644 "$SRC/icons/hicolor/$size/apps/nexusterm.png" "$ICON_DIR/$size/apps/nexusterm.png"
+    install -D -m 0644 "$SRC/icons/hicolor/$size/apps/oxyterm.png" "$ICON_DIR/$size/apps/oxyterm.png"
   done
   refresh_caches
-  echo "Installed NexusTerm to $BIN_DIR/nexusterm"
+  echo "Installed OxyTerm to $BIN_DIR/oxyterm"
   case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
     *) echo "Note: $BIN_DIR is not on your PATH; the desktop entry still works." ;;
@@ -144,12 +144,12 @@ install_app() {
 }
 
 uninstall_app() {
-  rm -f "$BIN_DIR/nexusterm" "$APP_DIR/nexusterm.desktop"
+  rm -f "$BIN_DIR/oxyterm" "$APP_DIR/oxyterm.desktop"
   for size in $SIZES; do
-    rm -f "$ICON_DIR/$size/apps/nexusterm.png"
+    rm -f "$ICON_DIR/$size/apps/oxyterm.png"
   done
   refresh_caches
-  echo "Uninstalled NexusTerm (saved sessions and settings were kept)"
+  echo "Uninstalled OxyTerm (saved sessions and settings were kept)"
 }
 
 case "${1:-}" in
@@ -157,7 +157,7 @@ case "${1:-}" in
   --uninstall) uninstall_app ;;
   -h | --help)
     echo "Usage: $0 [--uninstall]"
-    echo "Installs NexusTerm into \$HOME/.local/bin, \$HOME/.local/share/applications and"
+    echo "Installs OxyTerm into \$HOME/.local/bin, \$HOME/.local/share/applications and"
     echo "\$HOME/.local/share/icons/hicolor; --uninstall removes those files."
     ;;
   *)
@@ -171,4 +171,4 @@ chmod 0755 "$STAGE/install.sh"
 tar -C "$WORK" --owner=0 --group=0 --numeric-owner -czf "$OUT/$NAME.tar.gz" "$NAME"
 
 echo "Release assets in $OUT:"
-ls -l "$OUT/$NAME.deb" "$OUT/nexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"
+ls -l "$OUT/$NAME.deb" "$OUT/oxyterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"

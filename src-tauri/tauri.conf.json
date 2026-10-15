@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "NexusTerm",
+  "productName": "OxyTerm",
   "version": "0.1.0",
-  "identifier": "dev.nexusterm.app",
+  "identifier": "dev.oxyterm.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "NexusTerm",
+        "title": "OxyTerm",
         "width": 1200,
         "height": 760
       }
@@ -36,7 +36,7 @@
     ],
     "category": "Utility",
     "shortDescription": "Terminal and remote-session manager for Linux",
-    "longDescription": "NexusTerm is a terminal and remote-session manager: local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with another app import).",
+    "longDescription": "OxyTerm is a terminal and remote-session manager: local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with another app import).",
     "publisher": "Jorge Alonso",
     "copyright": "\u00a9 2026 Jorge Alonso",
     "linux": {

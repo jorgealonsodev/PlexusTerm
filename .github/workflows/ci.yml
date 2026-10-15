@@ -61,6 +61,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: nexusterm-${{ runner.os }}
+          name: oxyterm-${{ runner.os }}
           path: ${{ matrix.artifacts }}
           if-no-files-found: error

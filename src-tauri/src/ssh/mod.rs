@@ -1356,7 +1356,7 @@ mod tests {
     fn remember(session_id: &str) -> Option<PasswordStorage> {
         Some(PasswordStorage::Remember {
             session_id: session_id.into(),
-            label: "NexusTerm: tester@127.0.0.1:22".into(),
+            label: "OxyTerm: tester@127.0.0.1:22".into(),
         })
     }
 
@@ -1505,7 +1505,7 @@ mod tests {
         );
         assert_eq!(
             store.label("s1").as_deref(),
-            Some("NexusTerm: tester@127.0.0.1:22")
+            Some("OxyTerm: tester@127.0.0.1:22")
         );
     }
 
