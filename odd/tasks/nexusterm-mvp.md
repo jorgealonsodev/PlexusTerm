@@ -25,6 +25,15 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S9.4 Tunnel definitions persist in tunnels.json via the atomic 0600 storage (same rules as sessions: an unreadable file disables editing; no secrets stored). Fields: id, name, type, sessionId, listenHost, listenPort, destHost, destPort (dest fields unused for dynamic).
   - S9.5 UI: a third sidebar tab "Tunnels" listing every tunnel with its status (stopped / starting / running / error with message) and a start/stop toggle; New, Edit, Delete (confirm), Start all, Stop all. Stopping closes the listener, open forwarded connections and the SSH connection. Running tunnels stop when the app exits.
 
+- S10 (decided by the parent under "haz lo que te creas mas optimo"): import saved sessions from a MobaXterm configuration file (`MobaXterm.ini`).
+  - S10.1 The Sessions panel gets an "Import" action that opens a file picker for the .ini file (read in the webview; nothing is uploaded or stored besides the imported sessions).
+  - S10.2 Sections `[Bookmarks]` and `[Bookmarks_N]` are read; `SubRep` is the folder (backslashes become "/"); `ImgNum` and other metadata keys are ignored. Imported sessions go under a top-level folder "MobaXterm" followed by their SubRep path.
+  - S10.3 Session lines are `name=#<type>#<n>%field0%field1%...`. Type 109 is SSH: host = field0, port = field1 (default 22 when empty or invalid), username = field2. Imported SSH sessions use password authentication (asked at connect time; editable later). Lines with an empty host are skipped as invalid. Private key paths are not imported (their position in the line is not documented).
+  - S10.4 Other session types (e.g. 98 Telnet, 1 RDP, 2 VNC, 131 Serial, 105 WSL, 4 FTP, unknown codes) are not imported yet; the import reports how many were skipped per type. The `[Passwords]` section and any stored secrets are never read into NexusTerm.
+  - S10.5 A preview dialog shows: sessions to import, duplicates (same folder, name, host, port and username already saved) that will be skipped, and skipped counts per type/reason; the user confirms before anything is saved.
+  - S10.6 Encoding: decode as UTF-8 when valid, otherwise as Windows-1252 (MobaXterm writes the ANSI code page).
+  - Source for the line layout: open-source parser bobzzgm/mobaxterm-mcp (src/services/ini-parser.ts); no real MobaXterm.ini was available to verify against.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -36,6 +45,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T5 — S9 (S9.1-S9.5) — delegated (writer trigger: long-session context backstop) — SSH tunnels. Writer: cargo 61 (+17 tunnel tests RED→GREEN), vitest 79. Verifier: 1 blocker (stop while Starting kept the listener bound up to 15 s) → parent fix with a oneshot cancel (RED: start hung >2 s → GREEN); cargo 62/62. Interop vs OpenSSH 9.7: local tunnel + shell + SFTP 3/3 (script now enables AllowTcpForwarding, Alpine default is "no"). UI smoke vs real sshd: create → trust prompt → running → nc through tunnel → stop closes port (4/4 cycles; 1 earlier failure not reproduced, consistent with the blocker).
 
 - [x] T5c — S9.5 — delegated (context backstop) — Native review warnings for T5: SOCKS5 handshake timeout (R1-001/R4/R3), Running/Stopped notification ordering (R4/R3-start-notify-race), status snapshot vs newer events (R3-snapshot-overwrite), delete during password/host-key prompt (R4/R3-delete-during-prompt), silent start failures (R3-silent-start-failure), connection-drop watcher test (R3-watch-fail-untested). Done: SOCKS 10 s handshake deadline, notifications sent under the entries lock (ordered), snapshot only fills tunnels without live events, prompts re-check the tunnel before starting, IPC failures surfaced; watcher test via aborted TCP proxy. RED→GREEN per finding; cargo 67/67 (+3 ignored), vitest 86/86.
+
+- [ ] T6 — S10 (S10.1-S10.6) — delegated (writer trigger: long-session context backstop) — Import sessions from MobaXterm.ini.
 
 ## Log
 
@@ -56,3 +67,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L15 (2026-10-15): Native review. User granted consent twice: full branch (9177 lines) stopped with lens_context_budget_exceeded (no authority created); reduced candidate T5 slice 8dcc938..83f2383 (2624 lines, lenses risk/resilience/reliability) → approved with 10 WARNING/SUGGESTION findings, acknowledged (review-d390727a4f854a1a). Follow-up T5c created for the warnings. Earlier slices (T1-T4) were not natively reviewed (too large as one candidate); they had independent verifiers.
 - L16 (2026-10-15): User on Windows support: "lo haremos cuando la app este terminada". Deferred until the feature set is complete. Known porting points (verified in code): storage.rs unix permissions, default shell/HOME in pty, HOME-based known_hosts path in ssh/tunnels, agent via named pipe (russh `connect_named_pipe`), unix-only tests, bash interop script; plus a Windows CI runner. New code should avoid adding more unix-only assumptions where it is free to do so.
 - L17 (2026-10-15): Process mistake: a parent docs commit used `git commit -a` while the T5c writer was editing, sweeping part of its code into 76e2454 (local, never pushed). Fixed with `git reset --soft` and two clean commits. Parent now stages explicit paths only.
+- L18 (2026-10-15): "haz lo que te creas mas optimo" — next unit T6 (MobaXterm.ini import), chosen because migrating existing sessions is the main adoption blocker.
