@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 92 312 328" role="img" aria-label="NexusTerm">
-  <!-- The icon's mark without its tile, for use on the app's own dark surfaces. -->
-  <path d="M150 370 L150 142 L362 370 L362 142" fill="none" stroke="#5ec4ff" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="150" cy="370" r="40" fill="#161d24" stroke="#8bd49c" stroke-width="26"/>
-  <circle cx="362" cy="142" r="40" fill="#161d24" stroke="#8bd49c" stroke-width="26"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="81 71 350 370" role="img" aria-label="NexusTerm">
+  <!-- The icon's crossing routes without the tile; the gap is a mask so any background shows through. -->
+  <mask id="nt-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+    <rect width="512" height="512" fill="#fff"/>
+    <path d="M392 110 L120 402" stroke="#000" stroke-width="122" stroke-linecap="round"/>
+  </mask>
+  <path d="M120 110 L392 402" stroke="#5ec4ff" stroke-width="78" stroke-linecap="round" mask="url(#nt-gap)"/>
+  <path d="M392 110 L120 402" stroke="#8bd49c" stroke-width="78" stroke-linecap="round"/>
 </svg>
