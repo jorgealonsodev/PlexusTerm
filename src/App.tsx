@@ -46,7 +46,7 @@ import { TunnelsPanel } from "./features/tunnels/TunnelsPanel";
 import type { Tunnel } from "./features/tunnels/tunnels";
 import { useTunnelLauncher } from "./features/tunnels/useTunnelLauncher";
 import { useTunnels } from "./features/tunnels/useTunnels";
-import wordmarkUrl from "./assets/nexusterm-wordmark.svg";
+import wordmarkUrl from "./assets/oxyterm-wordmark.svg";
 import "./App.css";
 
 const LOCAL: SessionTarget = { type: "local" };
@@ -416,7 +416,7 @@ function AppContent() {
   return (
     <div className="app">
       <header className="toolbar">
-        <img className="brand" src={wordmarkUrl} alt="NexusTerm" />
+        <img className="brand" src={wordmarkUrl} alt="OxyTerm" />
         <button className="btn" onClick={openLocal}>
           Terminal
         </button>

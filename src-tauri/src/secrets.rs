@@ -8,8 +8,8 @@ use std::sync::Arc;
 #[cfg(test)]
 use std::sync::Mutex;
 
-/// Keyring service under which every NexusTerm secret is stored.
-pub const SERVICE: &str = "dev.nexusterm.app";
+/// Keyring service under which every OxyTerm secret is stored.
+pub const SERVICE: &str = "dev.oxyterm.app";
 
 #[derive(Debug, thiserror::Error, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -278,9 +278,9 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let store = KeyringStore::with_service(&format!("dev.nexusterm.test.{nonce}"));
+        let store = KeyringStore::with_service(&format!("dev.oxyterm.test.{nonce}"));
         assert!(store.available(), "no Secret Service on this machine");
-        store.set("s1", "NexusTerm test", "pw").unwrap();
+        store.set("s1", "OxyTerm test", "pw").unwrap();
         let got = store.get("s1");
         store.delete("s1").unwrap();
         assert_eq!(got.unwrap().as_deref(), Some("pw"));

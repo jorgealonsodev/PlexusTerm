@@ -2,9 +2,9 @@
 //!
 //! Ignored by default (shell, SFTP, local tunnels and a jump host); `scripts/openssh-interop.sh` starts a disposable
 //! OpenSSH container and runs them with:
-//! - `NEXUSTERM_INTEROP_PORT`: sshd port on 127.0.0.1
-//! - `NEXUSTERM_INTEROP_USER`: login user
-//! - `NEXUSTERM_INTEROP_KEY`: private key accepted by that user
+//! - `OXYTERM_INTEROP_PORT`: sshd port on 127.0.0.1
+//! - `OXYTERM_INTEROP_USER`: login user
+//! - `OXYTERM_INTEROP_KEY`: private key accepted by that user
 
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
@@ -22,9 +22,9 @@ struct Target {
 fn target() -> Target {
     let var = |name: &str| std::env::var(name).unwrap_or_else(|_| panic!("{name} is not set"));
     Target {
-        port: var("NEXUSTERM_INTEROP_PORT").parse().unwrap(),
-        user: var("NEXUSTERM_INTEROP_USER"),
-        key: var("NEXUSTERM_INTEROP_KEY"),
+        port: var("OXYTERM_INTEROP_PORT").parse().unwrap(),
+        user: var("OXYTERM_INTEROP_USER"),
+        key: var("OXYTERM_INTEROP_KEY"),
     }
 }
 
@@ -91,9 +91,9 @@ async fn openssh_shell_resize_and_known_hosts() {
     let mgr = SshManager::new(dir.path().join("known_hosts"));
     let (id, rx) = connect(&t, &mgr).await;
 
-    mgr.write(id, b"echo nexus-$((40+2))\n").unwrap();
-    let out = wait_for(&rx, "nexus-42");
-    assert!(out.contains("nexus-42"), "shell output: {out:?}");
+    mgr.write(id, b"echo oxy-$((40+2))\n").unwrap();
+    let out = wait_for(&rx, "oxy-42");
+    assert!(out.contains("oxy-42"), "shell output: {out:?}");
 
     mgr.resize(id, 132, 43).unwrap();
     mgr.write(id, b"stty size\n").unwrap();
@@ -118,7 +118,7 @@ async fn openssh_sftp_round_trip() {
     let session = mgr.sftp(id).await.unwrap();
 
     let home = sftp::home(&session).await.unwrap();
-    let work = format!("{}/nexusterm-interop", home.trim_end_matches('/'));
+    let work = format!("{}/oxyterm-interop", home.trim_end_matches('/'));
     let _ = sftp::remove(&session, &format!("{work}/payload.bin"), false).await;
     let _ = sftp::remove(&session, &work, true).await;
     sftp::mkdir(&session, &work).await.unwrap();

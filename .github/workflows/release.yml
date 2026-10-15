@@ -113,8 +113,8 @@ jobs:
             echo "::error::expected one MSI and one NSIS installer, found ${#msi[@]} and ${#exe[@]}"
             exit 1
           fi
-          cp "${msi[0]}" "dist-release/nexusterm_${VERSION}_windows_x86_64.msi"
-          cp "${exe[0]}" "dist-release/nexusterm_${VERSION}_windows_x86_64-setup.exe"
+          cp "${msi[0]}" "dist-release/oxyterm_${VERSION}_windows_x86_64.msi"
+          cp "${exe[0]}" "dist-release/oxyterm_${VERSION}_windows_x86_64-setup.exe"
           ls -l dist-release
 
       - uses: actions/upload-artifact@v4
@@ -147,6 +147,6 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --draft \
-            --title "NexusTerm ${GITHUB_REF_NAME#v}" \
+            --title "OxyTerm ${GITHUB_REF_NAME#v}" \
             --generate-notes \
             dist-release/*

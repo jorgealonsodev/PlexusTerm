@@ -8,7 +8,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-/// The platform families NexusTerm distinguishes.
+/// The platform families OxyTerm distinguishes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Os {
     Unix,

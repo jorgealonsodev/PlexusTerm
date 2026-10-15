@@ -6,7 +6,7 @@
 set -euo pipefail
 
 IMAGE="alpine:3.20"
-NAME="nexusterm-interop-$$"
+NAME="oxyterm-interop-$$"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 
@@ -16,7 +16,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-ssh-keygen -q -t ed25519 -N '' -C nexusterm-interop -f "$WORK/id_ed25519"
+ssh-keygen -q -t ed25519 -N '' -C oxyterm-interop -f "$WORK/id_ed25519"
 PUBKEY="$(cat "$WORK/id_ed25519.pub")"
 
 docker run -d --name "$NAME" -p 127.0.0.1::22 -e PUBKEY="$PUBKEY" "$IMAGE" sh -c '
@@ -43,7 +43,7 @@ ssh -V 2>/dev/null || true
 docker exec "$NAME" sh -c 'sshd -V 2>&1 | head -n1' || true
 
 cd "$ROOT/src-tauri"
-NEXUSTERM_INTEROP_PORT="$PORT" \
-NEXUSTERM_INTEROP_USER=tester \
-NEXUSTERM_INTEROP_KEY="$WORK/id_ed25519" \
+OXYTERM_INTEROP_PORT="$PORT" \
+OXYTERM_INTEROP_USER=tester \
+OXYTERM_INTEROP_KEY="$WORK/id_ed25519" \
   cargo test --lib interop_tests -- --ignored --test-threads=1

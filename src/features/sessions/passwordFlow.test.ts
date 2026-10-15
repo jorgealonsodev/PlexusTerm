@@ -22,8 +22,8 @@ const web: SavedSession = {
 };
 
 describe("secretLabel", () => {
-  it("names the session as NexusTerm: user@host:port", () => {
-    expect(secretLabel(web)).toBe("NexusTerm: u@10.0.0.1:2222");
+  it("names the session as OxyTerm: user@host:port", () => {
+    expect(secretLabel(web)).toBe("OxyTerm: u@10.0.0.1:2222");
   });
 });
 
@@ -66,7 +66,7 @@ describe("storageFor", () => {
     expect(storageFor(web, true, false)).toEqual({
       action: "remember",
       sessionId: "s1",
-      label: "NexusTerm: u@10.0.0.1:2222",
+      label: "OxyTerm: u@10.0.0.1:2222",
     });
     expect(storageFor(web, true, true)).toMatchObject({ action: "remember" });
   });

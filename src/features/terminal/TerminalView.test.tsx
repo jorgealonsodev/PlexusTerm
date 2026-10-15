@@ -270,7 +270,7 @@ describe("TerminalView", () => {
       await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
       expect(backend.start.mock.calls[1][0]).toMatchObject({
         auth: { method: "password", password: "new" },
-        storage: { action: "remember", sessionId: "s1", label: "NexusTerm: u@10.0.0.1:22" },
+        storage: { action: "remember", sessionId: "s1", label: "OxyTerm: u@10.0.0.1:22" },
       });
     });
 
@@ -323,7 +323,7 @@ describe("TerminalView", () => {
       await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
       expect(backend.start.mock.calls[1][0]).toMatchObject({
         auth: { method: "password", password: "new" },
-        storage: { action: "remember", sessionId: "s1", label: "NexusTerm: u@10.0.0.1:22" },
+        storage: { action: "remember", sessionId: "s1", label: "OxyTerm: u@10.0.0.1:22" },
       });
     });
 
@@ -393,7 +393,7 @@ describe("TerminalView", () => {
         {
           ...t.jumps[0],
           auth: { method: "password", password: "jpw" },
-          storage: { action: "remember", sessionId: "j1", label: "NexusTerm: j@10.0.0.9:22" },
+          storage: { action: "remember", sessionId: "j1", label: "OxyTerm: j@10.0.0.9:22" },
         },
       ]);
     });

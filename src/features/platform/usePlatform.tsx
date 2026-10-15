@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-/** The operating system NexusTerm runs on, as reported by the backend. */
+/** The operating system OxyTerm runs on, as reported by the backend. */
 export type Platform = "linux" | "windows" | "macos";
 
 const PLATFORMS: readonly string[] = ["linux", "windows", "macos"];

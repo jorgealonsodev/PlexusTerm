@@ -3,7 +3,7 @@
 Source: `MobaXterm_Personal_26.5.exe` (PE32, Delphi VCL) and the bundled `CygUtils*.plugin` archives.
 Method: REA static PE resource inventory (Evidence `ev_a896e964a12b8d02d7c183def9bd68c123b7ff457f140ac486098a1537e3ae09`)
 plus visible UI captions from the form resources and zip member listings. No code was decompiled.
-This document describes **observable features only**; NexusTerm is an independent implementation.
+This document describes **observable features only**; OxyTerm is an independent implementation.
 
 ## Observations vs. unknowns
 
@@ -18,7 +18,7 @@ Each one has "Basic" and "Advanced" settings tabs plus "Bookmark settings" (name
 
 ## Feature areas → forms
 
-| Area | Forms / evidence | Notes for NexusTerm (Linux) |
+| Area | Forms / evidence | Notes for OxyTerm (Linux) |
 | --- | --- | --- |
 | Main window, tabs | `TFORMXTERM`, `TFORMDETACHEDTAB` | Tabs: close / close others / left / right / inactive, duplicate, detach, cycle; compact mode |
 | Session manager | `TFORMSESSIONEDIT`, `TFORMBOOKFOLDEREDIT`, `TFORMSELECTPRESETS`, `TFORMSHAREDSESSIONS`, `TFORMCSVIMPORT`, `TFORMIMPORTEXPORT` | Folder tree, presets, shared sessions, CSV import, "execute all sessions in folder" |
@@ -39,8 +39,8 @@ Each one has "Basic" and "Advanced" settings tabs plus "Bookmark settings" (name
 ## Bundled tooling (Cygwin plugins)
 
 ssh/scp/sftp/sshd, autossh, mosh, rsync, git, curl, openssl, kinit/klist (Kerberos), iperf, telnet/rsh/rlogin, vim, zsh/bash, lrz/lsz (ZMODEM), minicom, plus games.
-On Linux these come from the system, so NexusTerm should call native binaries or libraries instead of shipping them.
+On Linux these come from the system, so OxyTerm should call native binaries or libraries instead of shipping them.
 
 ## Excluded from the clone
 
-Branding, icons, skins, fonts (`MOBAFONT`, `MOBAFIRA`, `MOBAFANTA`) and text resources are Mobatek's and are not reused. NexusTerm picks its own typography and visual identity.
+Branding, icons, skins, fonts (`MOBAFONT`, `MOBAFIRA`, `MOBAFANTA`) and text resources are Mobatek's and are not reused. OxyTerm picks its own typography and visual identity.

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="nt-title">
-  <title id="nt-title">NexusTerm</title>
-  <!-- The "x" of NexusTerm drawn as two routes crossing: where connections meet. -->
+  <title id="nt-title">OxyTerm</title>
+  <!-- The "x" of OxyTerm drawn as two routes crossing: where connections meet. -->
   <rect x="16" y="16" width="480" height="480" rx="108" fill="#0f1419" stroke="#26313c" stroke-width="8"/>
   <path d="M150 140 L362 372" stroke="#5ec4ff" stroke-width="64" stroke-linecap="round"/>
   <path d="M362 140 L150 372" stroke="#0f1419" stroke-width="104" stroke-linecap="round"/>
