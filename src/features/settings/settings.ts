@@ -16,12 +16,18 @@ export interface TerminalSettings {
   fontFamily: string;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
+  /**
+   * Program that "Open with default text editor" uses: a program path, or a command line
+   * with arguments; empty uses the system's default text editor.
+   */
+  textEditor: string;
 }
 
 export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_FAMILY_LENGTH = 200;
 export const DEFAULT_FONT_FAMILY = '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace';
 export const MAX_FONT_SIZE = 32;
+export const MAX_TEXT_EDITOR_LENGTH = 1024;
 
 export const DEFAULT_SETTINGS: TerminalSettings = {
   fontSize: 14,
@@ -31,6 +37,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   remoteMonitor: true,
+  textEditor: "",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -41,6 +48,12 @@ const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" 
 export function cleanFontFamily(value: unknown): string {
   const family = typeof value === "string" ? value.trim() : "";
   return family && family.length <= MAX_FONT_FAMILY_LENGTH ? family : DEFAULT_FONT_FAMILY;
+}
+
+/** A trimmed text editor command of at most 1024 characters, or "" (the system default). */
+export function cleanTextEditor(value: unknown): string {
+  const editor = typeof value === "string" ? value.trim() : "";
+  return editor.length <= MAX_TEXT_EDITOR_LENGTH ? editor : "";
 }
 
 /** The CSS font list for a setting: a single name is quoted and falls back to monospace. */
@@ -69,6 +82,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
+    textEditor: cleanTextEditor(value.textEditor),
   };
 }
 

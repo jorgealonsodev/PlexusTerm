@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { useDialogs } from "../dialogs/DialogProvider";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
 import { formatDate, formatSize } from "./format";
@@ -18,6 +19,8 @@ interface SftpPanelProps {
   onFollowChange: (follow: boolean) => void;
   /** Types text into the focused terminal pane; without it "Copy file path to terminal" is disabled. */
   onPathToTerminal?: (text: string) => void;
+  /** Text editor chosen in Settings; empty or missing uses the system's default one. */
+  textEditor?: string;
 }
 
 const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
@@ -25,7 +28,8 @@ const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", sy
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor }: SftpPanelProps) {
+  const dialogs = useDialogs();
   const [path, setPath] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<SftpEntry[]>([]);
@@ -94,7 +98,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     if (dir === null || paths.length === 0) return;
     const existing = new Set(current.current.entries.map((e) => e.name));
     const clashes = paths.map(basename).filter((name) => existing.has(name));
-    if (clashes.length && !window.confirm(`Replace ${clashes.join(", ")} in ${dir}?`)) return;
+    if (
+      clashes.length &&
+      !(await dialogs.confirm({ message: `Replace ${clashes.join(", ")} in ${dir}?`, confirmLabel: "Replace", danger: true }))
+    ) {
+      return;
+    }
     const count = paths.length === 1 ? basename(paths[0]) : `${paths.length} files`;
     await act(
       `Uploading ${count}…`,
@@ -139,7 +148,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const newFolder = async () => {
     const dir = current.current.path;
-    const name = window.prompt("New folder name")?.trim();
+    const name = (await dialogs.prompt({ message: "New folder name", confirmLabel: "Create" }))?.trim();
     if (dir === null || !name) return;
     if (!validName(name)) return setError(`"${name}" is not a valid folder name.`);
     if (await act(`Creating ${name}…`, () => sftp.mkdir(sessionId, joinPath(dir, name)))) await navigate(dir);
@@ -150,7 +159,9 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
   const renameEntry = async (entry: SftpEntry | null) => {
     const dir = current.current.path;
     if (!entry || dir === null) return;
-    const name = window.prompt(`Rename "${entry.name}" to`, entry.name)?.trim();
+    const name = (
+      await dialogs.prompt({ message: `Rename "${entry.name}" to`, defaultValue: entry.name, confirmLabel: "Rename" })
+    )?.trim();
     if (!name || name === entry.name) return;
     if (!validName(name)) return setError(`"${name}" is not a valid name.`);
     const target = joinPath(dir, name);
@@ -166,7 +177,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const question = isDir
       ? `Delete folder "${entry.name}"? Only empty folders can be deleted.`
       : `Delete "${entry.name}"?`;
-    if (!window.confirm(question)) return;
+    if (!(await dialogs.confirm({ message: question, confirmLabel: "Delete", danger: true }))) return;
     if (await act(`Deleting ${entry.name}…`, () => sftp.remove(sessionId, entry.path, isDir))) {
       await navigate(dir);
     }
@@ -213,7 +224,10 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const isFile = entry.kind !== "dir";
     const fileItems: ContextMenuItem[] = isFile
       ? [
-          { label: "Open with default text editor", onSelect: () => editWith(entry, { kind: "textEditor" }) },
+          {
+            label: "Open with default text editor",
+            onSelect: () => editWith(entry, textEditor ? { kind: "textEditor", command: textEditor } : { kind: "textEditor" }),
+          },
           { label: "Open with default program", onSelect: () => editWith(entry, { kind: "default" }) },
           { label: "Open with…", onSelect: () => void openWithProgram(entry) },
           { label: "Compare file with…", onSelect: () => void compareWith(entry) },

@@ -21,8 +21,11 @@ const COMPARE: &str = "compare";
 pub enum OpenWith {
     /// The system's default program for the file.
     Default,
-    /// The default text editor.
-    TextEditor,
+    /// The text editor chosen in Settings (`command`), or the system's default one.
+    TextEditor {
+        #[serde(default)]
+        command: Option<String>,
+    },
     /// A program chosen by the user.
     Program { path: String },
 }
@@ -50,8 +53,15 @@ fn launch(with: &OpenWith, local: &Path) -> Result<(), SftpError> {
             tauri_plugin_opener::open_path(path, Some(program.as_str()))
                 .map_err(|err| open_failure(local, err))
         }
+        // The chosen editor runs directly, never through a shell.
+        OpenWith::TextEditor {
+            command: Some(command),
+        } if !command.trim().is_empty() => match edit::chosen_editor_command(command, local) {
+            Some(args) => edit::spawn_detached(&args).map_err(|err| open_failure(local, err)),
+            None => Err(open_failure(local, "no text editor command")),
+        },
         // Without a known text editor, fall back to the default program.
-        OpenWith::TextEditor => match edit::text_editor_command(local) {
+        OpenWith::TextEditor { .. } => match edit::text_editor_command(local) {
             Some(command) => edit::spawn_detached(&command).map_err(|err| open_failure(local, err)),
             None => tauri_plugin_opener::open_path(path, None::<&str>)
                 .map_err(|err| open_failure(local, err)),

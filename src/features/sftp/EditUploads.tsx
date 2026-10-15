@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
+import { useDialogs } from "../dialogs/DialogProvider";
 import { basename } from "./remotePath";
 import { describeSftpError, EDIT_SAVED_EVENT, sftp, type EditSaved } from "./sftpClient";
 
@@ -11,13 +12,18 @@ export function EditUploads({ onNotice }: { onNotice: (text: string) => void }) 
   const confirmed = useRef(new Set<string>());
   const notice = useRef(onNotice);
   notice.current = onNotice;
+  const dialogs = useRef(useDialogs());
 
   useEffect(() => {
     const onSaved = async ({ id, remote }: EditSaved) => {
       const name = basename(remote);
       const key = `${id}:${remote}`;
       if (!confirmed.current.has(key)) {
-        if (!window.confirm(`${name} was saved. Upload it to ${remote}?`)) return;
+        const upload = await dialogs.current.confirm({
+          message: `${name} was saved. Upload it to ${remote}?`,
+          confirmLabel: "Upload",
+        });
+        if (!upload) return;
         confirmed.current.add(key);
       }
       try {

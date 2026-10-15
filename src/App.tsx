@@ -10,6 +10,7 @@ import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
+import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
@@ -196,6 +197,7 @@ function AppContent() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  const dialogs = useDialogs();
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
@@ -393,17 +395,20 @@ function AppContent() {
   };
 
   /** Asks before deleting, naming the sessions that use the deleted ones as jump hosts (S14.5). */
-  const confirmDelete = (question: string, action: LibraryAction) => {
+  const confirmDelete = async (question: string, action: LibraryAction) => {
     const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
     const users = jumpUsers(sessions.library, ids).map((s) => `"${s.name}"`);
     const note = users.length
       ? `\n\nUsed as a jump host by ${users.join(", ")}; it will be removed from their jump hosts.`
       : "";
-    if (window.confirm(question + note)) deleteSessions(action);
+    if (await dialogs.confirm({ message: question + note, confirmLabel: "Delete", danger: true })) deleteSessions(action);
   };
 
-  const newFolder = (parent: string) => {
-    const name = window.prompt(parent ? `New folder inside "${parent}"` : "New folder");
+  const newFolder = async (parent: string) => {
+    const name = await dialogs.prompt({
+      message: parent ? `New folder inside "${parent}"` : "New folder",
+      confirmLabel: "Create",
+    });
     if (name?.trim()) sessions.dispatch({ type: "addFolder", path: parent ? `${parent}/${name}` : name });
   };
 
@@ -545,6 +550,7 @@ function AppContent() {
                 follow={followCwd}
                 onFollowChange={setFollowCwd}
                 onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
+                textEditor={terminalSettings.settings.textEditor}
               />
             )
           }
@@ -561,8 +567,8 @@ function AppContent() {
               }}
               onNew={() => setModal({ kind: "editTunnel", tunnel: draftTunnel(), isNew: true })}
               onEdit={(tunnel) => setModal({ kind: "editTunnel", tunnel, isNew: false })}
-              onDelete={(tunnel) => {
-                if (window.confirm(`Delete tunnel "${tunnel.name}"?`)) {
+              onDelete={async (tunnel) => {
+                if (await dialogs.confirm({ message: `Delete tunnel "${tunnel.name}"?`, confirmLabel: "Delete", danger: true })) {
                   void launcher.stop(tunnel.id);
                   tunnels.dispatch({ type: "delete", id: tunnel.id });
                 }
@@ -583,8 +589,10 @@ function AppContent() {
               }
               onEdit={(macro) => setModal({ kind: "editMacro", macro, isNew: false })}
               onDuplicate={(macro) => macros.dispatch({ type: "duplicate", id: macro.id, newId: crypto.randomUUID() })}
-              onDelete={(macro) => {
-                if (window.confirm(`Delete macro "${macro.name}"?`)) macros.dispatch({ type: "delete", id: macro.id });
+              onDelete={async (macro) => {
+                if (await dialogs.confirm({ message: `Delete macro "${macro.name}"?`, confirmLabel: "Delete", danger: true })) {
+                  macros.dispatch({ type: "delete", id: macro.id });
+                }
               }}
             />
           }
@@ -597,15 +605,15 @@ function AppContent() {
               onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
               onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
               onDelete={(session) =>
-                confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
+                void confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
               }
-              onNewFolder={newFolder}
+              onNewFolder={(parent) => void newFolder(parent)}
               onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
               onDuplicate={(session) =>
                 sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
               }
               onDeleteFolder={(path) =>
-                confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
+                void confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
               }
             />
           }
@@ -830,11 +838,16 @@ function AppContent() {
   );
 }
 
-/** The app, with the platform (asked from the backend once) available to every component. */
+/**
+ * The app, with the platform (asked from the backend once) and the in-app confirmations and
+ * prompts available to every component.
+ */
 export default function App() {
   return (
     <PlatformProvider>
-      <AppContent />
+      <DialogProvider>
+        <AppContent />
+      </DialogProvider>
     </PlatformProvider>
   );
 }
