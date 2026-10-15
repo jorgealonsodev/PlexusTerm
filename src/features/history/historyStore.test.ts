@@ -56,6 +56,17 @@ describe("createHistoryStore", () => {
     expect(store.recent("local", 5)).toEqual(["ls"]);
   });
 
+  it("never overwrites a history file that is not valid JSON, until it is cleared", async () => {
+    const { store, save } = setup('{"version":1,"hosts":{"local":[{"command":"ls"');
+    await store.ready();
+    store.record("local", "uptime");
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).not.toHaveBeenCalled();
+    expect(store.suggest("local", "up")).toBe("uptime");
+    await store.clear();
+    expect(saved(save)).toEqual([{ version: 1, hosts: {} }]);
+  });
+
   it("clears the history at once, also on disk", async () => {
     const { store, save } = setup(JSON.stringify({ version: 1, hosts: { local: [{ command: "ls -la", count: 1, last: 1 }] } }));
     await store.ready();
