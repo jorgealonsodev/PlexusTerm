@@ -268,9 +268,19 @@ fn sh_quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
 }
 
+/// `text` as octal escapes (`\163\163\150...`) for `printf`: digits and backslashes only, so
+/// no shell between sshd and `sh` (fish included) can reinterpret it.
+fn octal_escaped(text: &str) -> String {
+    text.bytes().map(|b| format!("\\{b:03o}")).collect()
+}
+
 /// The command that adds `line` to `~/.ssh/authorized_keys` unless the same key (type and
 /// base64, whatever its comment) is already there, creating `~/.ssh` (0700) and the file
 /// (0600). It runs under `sh` whatever the login shell is, and prints [`ADDED`] or [`PRESENT`].
+///
+/// sshd hands the command to the user's login shell first. The script therefore contains no
+/// single quote and no backslash other than `\n` and octal escapes, and the user's text (the
+/// comment) only travels octal-escaped.
 pub fn install_command(line: &str) -> Result<String, String> {
     let (kind, blob) = validate_public_line(line)?;
     let script = format!(
@@ -278,15 +288,17 @@ pub fn install_command(line: &str) -> Result<String, String> {
             "umask 077; set -e; ",
             "mkdir -p \"$HOME/.ssh\"; chmod 700 \"$HOME/.ssh\"; ",
             "f=\"$HOME/.ssh/authorized_keys\"; touch \"$f\"; chmod 600 \"$f\"; ",
-            "if grep -qF -- {needle} \"$f\"; then echo {present}; else ",
+            "if grep -qF -- \"{kind} {blob}\" \"$f\"; then echo {present}; else ",
             "if [ -s \"$f\" ] && [ -n \"$(tail -c 1 \"$f\")\" ]; then echo >> \"$f\"; fi; ",
-            "printf '%s\\n' {line} >> \"$f\"; echo {added}; fi"
+            "printf \"{line}\\n\" >> \"$f\"; echo {added}; fi"
         ),
-        needle = sh_quote(&format!("{kind} {blob}")),
-        line = sh_quote(line),
+        kind = kind,
+        blob = blob,
+        line = octal_escaped(line),
         present = PRESENT,
         added = ADDED,
     );
+    debug_assert!(!script.contains('\''));
     Ok(format!("sh -c {}", sh_quote(&script)))
 }
 
@@ -636,6 +648,36 @@ mod tests {
         let renamed = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/x+y= other";
         assert_eq!(run_locally(renamed, home.path()).trim(), PRESENT);
         assert_eq!(std::fs::read_to_string(&file).unwrap(), format!("{line}\n"));
+    }
+
+    /// sshd hands the command to the user's login shell, which parses it before `sh -c`
+    /// runs: the key line must arrive intact whatever that shell is (fish treats `\'` and
+    /// `\\` as escapes even inside single quotes).
+    #[cfg(unix)]
+    #[test]
+    fn the_install_command_survives_every_login_shell() {
+        let comments = ["jorge's laptop", r"a\'b\\c", r#"x'"'"'y; touch pwned #"#, "plain", "$(id) `id` %s %n ~ * !!"];
+        for shell in ["sh", "dash", "bash", "zsh", "fish"] {
+            if std::process::Command::new(shell).arg("-c").arg("true").output().is_err() {
+                eprintln!("{shell} not installed, skipped");
+                continue;
+            }
+            for comment in comments {
+                let home = tempfile::tempdir().unwrap();
+                let line = format!("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/x+y= {comment}");
+                let output = std::process::Command::new(shell)
+                    .arg("-c")
+                    .arg(install_command(&line).unwrap())
+                    .env("HOME", home.path())
+                    .output()
+                    .unwrap();
+                assert!(output.status.success(), "{shell} {comment:?}: {output:?}");
+                assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), ADDED, "{shell} {comment:?}");
+                let written = std::fs::read_to_string(home.path().join(".ssh/authorized_keys")).unwrap();
+                assert_eq!(written, format!("{line}\n"), "{shell} {comment:?}");
+                assert!(!home.path().join("pwned").exists(), "{shell} {comment:?}");
+            }
+        }
     }
 
     #[cfg(unix)]
