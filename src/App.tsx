@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
-import { toTarget, type SavedSession } from "./features/sessions/library";
+import { SerialDialog } from "./features/serial/SerialDialog";
+import {
+  isSshSession,
+  toTarget,
+  type LibrarySession,
+  type SavedSession,
+} from "./features/sessions/library";
 import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
@@ -27,7 +33,8 @@ const LOCAL: SessionTarget = { type: "local" };
 
 type Modal =
   | { kind: "quickConnect" }
-  | { kind: "editSession"; session: SavedSession; isNew: boolean }
+  | { kind: "serial" }
+  | { kind: "editSession"; session: LibrarySession; isNew: boolean }
   | { kind: "password"; session: SavedSession }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | null;
@@ -42,6 +49,7 @@ interface PaneMeta {
 const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false };
 
 const draftSession = (folder: string): SavedSession => ({
+  kind: "ssh",
   id: crypto.randomUUID(),
   name: "",
   folder,
@@ -69,9 +77,11 @@ export default function App() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const sessions = useSessionLibrary();
+  // Tunnels run over SSH, so they only see SSH sessions.
+  const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
   const tunnels = useTunnels();
   const launcher = useTunnelLauncher(
-    sessions.library.sessions,
+    sshSessions,
     tunnels.statusOf,
     tunnels.reportError,
     tunnels.list.tunnels,
@@ -126,8 +136,8 @@ export default function App() {
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
 
-  const openSaved = (session: SavedSession) => {
-    if (session.auth.method === "password") setModal({ kind: "password", session });
+  const openSaved = (session: LibrarySession) => {
+    if (isSshSession(session) && session.auth.method === "password") setModal({ kind: "password", session });
     else open(toTarget(session));
   };
 
@@ -174,6 +184,9 @@ export default function App() {
         <button className="btn" onClick={() => setModal({ kind: "quickConnect" })}>
           SSH
         </button>
+        <button className="btn" onClick={() => setModal({ kind: "serial" })}>
+          Serial
+        </button>
         <button className="btn" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
           Split right
         </button>
@@ -214,7 +227,7 @@ export default function App() {
               list={tunnels.list}
               status={tunnels.status}
               saveError={tunnels.saveError}
-              sessions={sessions.library.sessions}
+              sessions={sshSessions}
               statusOf={tunnels.statusOf}
               onToggle={(tunnel) => {
                 if (launcher.isActive(tunnels.statusOf(tunnel.id))) void launcher.stop(tunnel.id);
@@ -343,6 +356,15 @@ export default function App() {
           }}
         />
       )}
+      {modal?.kind === "serial" && (
+        <SerialDialog
+          onCancel={() => setModal(null)}
+          onConnect={(target) => {
+            setModal(null);
+            open(target);
+          }}
+        />
+      )}
       {modal?.kind === "editSession" && (
         <SessionEditDialog
           session={modal.session}
@@ -359,7 +381,7 @@ export default function App() {
         <TunnelEditDialog
           tunnel={modal.tunnel}
           isNew={modal.isNew}
-          sessions={sessions.library.sessions}
+          sessions={sshSessions}
           onCancel={() => setModal(null)}
           onSave={(tunnel) => {
             tunnels.dispatch({ type: "save", tunnel });

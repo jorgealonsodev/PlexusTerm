@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { targetTitle, type SessionTarget } from "../sessions/types";
+import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
@@ -84,21 +85,33 @@ export function TerminalView({
     const backend = backendFor(target);
     let sessionId: number | null = null;
     let disposed = false;
+    /** Set when a serial device went away: the pane stays open so its error remains readable. */
+    let ended = false;
+
+    const endSerial = () => {
+      ended = true;
+      term.write("\r\n[Session ended. Close this tab or open the port again.]\r\n");
+      if (sessionId !== null) void backend.close(sessionId).catch(() => {});
+      sessionId = null;
+      callbacks.current.onSession?.(null);
+    };
 
     const start = (trustedFingerprint?: string) => {
       if (target.type === "ssh") term.write(`Connecting to ${targetTitle(target)}...\r\n`);
+      if (target.type === "serial") term.write(`Opening ${targetTitle(target)}...\r\n`);
       backend
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           if (msg.event === "output") term.write(msg.data);
+          else if (target.type === "serial") endSerial();
           else {
             callbacks.current.onSession?.(null);
             callbacks.current.onExit(msg.data);
           }
         })
         .then((id) => {
-          if (disposed) void backend.close(id);
+          if (disposed || ended) void backend.close(id).catch(() => {});
           else {
             sessionId = id;
             callbacks.current.onSession?.(id);
@@ -106,13 +119,21 @@ export function TerminalView({
         })
         .catch((raw) => {
           if (disposed) return;
+          if (target.type === "serial") {
+            term.write(red(describeSerialError(raw)));
+            return;
+          }
           const err = toSshError(raw);
           if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));
         });
     };
     startRef.current = start;
-    start();
+    // Deferred one tick: StrictMode mounts, unmounts and remounts synchronously, and the
+    // discarded mount must not open anything (a serial port allows a single opener).
+    const startTimer = setTimeout(() => {
+      if (!disposed) start();
+    }, 0);
 
     const write = (data: string) => {
       if (sessionId !== null) void backend.write(sessionId, data);
@@ -140,6 +161,7 @@ export function TerminalView({
 
     return () => {
       disposed = true;
+      clearTimeout(startTimer);
       unregisterWriter?.();
       observer.disconnect();
       subs.forEach((s) => s.dispose());

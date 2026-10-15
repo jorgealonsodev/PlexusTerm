@@ -1,9 +1,14 @@
-import type { SshTarget } from "./types";
+import type { SerialSettings, SerialTarget, SshTarget } from "./types";
 
 /** Saved auth never contains secrets: passwords are asked at connect time. */
 export type SavedAuth = { method: "password" } | { method: "key"; path: string } | { method: "agent" };
 
+/**
+ * A saved SSH session. `kind` is absent in files written before serial sessions existed;
+ * parsing fills it in, so sessions loaded or saved through this module always carry it.
+ */
 export interface SavedSession {
+  kind?: "ssh";
   id: string;
   name: string;
   /** Slash-separated folder path; "" is the root. */
@@ -14,23 +19,38 @@ export interface SavedSession {
   auth: SavedAuth;
 }
 
+/** A saved serial console; no secrets are involved. */
+export interface SavedSerialSession extends SerialSettings {
+  kind: "serial";
+  id: string;
+  name: string;
+  /** Slash-separated folder path; "" is the root. */
+  folder: string;
+}
+
+/** Any entry of the session library. */
+export type LibrarySession = SavedSession | SavedSerialSession;
+
+export const isSerialSession = (s: LibrarySession): s is SavedSerialSession => s.kind === "serial";
+export const isSshSession = (s: LibrarySession): s is SavedSession => s.kind !== "serial";
+
 export interface SessionLibrary {
   version: 1;
   folders: string[];
-  sessions: SavedSession[];
+  sessions: LibrarySession[];
 }
 
 export type LibraryAction =
-  | { type: "saveSession"; session: SavedSession }
+  | { type: "saveSession"; session: LibrarySession }
   /** Saves several sessions with a single write (e.g. an import). */
-  | { type: "saveSessions"; sessions: SavedSession[] }
+  | { type: "saveSessions"; sessions: LibrarySession[] }
   | { type: "deleteSession"; id: string }
   | { type: "addFolder"; path: string }
   | { type: "deleteFolder"; path: string };
 
 export type TreeNode =
   | { kind: "folder"; name: string; path: string; children: TreeNode[] }
-  | { kind: "session"; name: string; session: SavedSession };
+  | { kind: "session"; name: string; session: LibrarySession };
 
 export const emptyLibrary: SessionLibrary = { version: 1, folders: [], sessions: [] };
 
@@ -66,14 +86,20 @@ function sanitizeAuth(auth: SavedAuth): SavedAuth {
   }
 }
 
+/** Keeps only the saved shape of a session (no secrets, no stray fields), with its `kind`. */
+function sanitizeSession(s: LibrarySession): LibrarySession {
+  const base = { id: s.id, name: s.name, folder: normalizeFolder(s.folder) };
+  if (isSerialSession(s)) {
+    const { path, baud, dataBits, parity, stopBits, flow } = s;
+    return { kind: "serial", ...base, path, baud, dataBits, parity, stopBits, flow };
+  }
+  return { kind: "ssh", ...base, host: s.host, port: s.port, username: s.username, auth: sanitizeAuth(s.auth) };
+}
+
 export function libraryReducer(lib: SessionLibrary, action: LibraryAction): SessionLibrary {
   switch (action.type) {
     case "saveSession": {
-      const session = {
-        ...action.session,
-        folder: normalizeFolder(action.session.folder),
-        auth: sanitizeAuth(action.session.auth),
-      };
+      const session = sanitizeSession(action.session);
       const exists = lib.sessions.some((s) => s.id === session.id);
       return {
         ...lib,
@@ -115,9 +141,29 @@ function isSavedAuth(v: unknown): v is SavedAuth {
   return auth.method === "password" || auth.method === "agent";
 }
 
-function isSavedSession(v: unknown): v is SavedSession {
+const oneOf = <T>(values: readonly T[], v: unknown): v is T => values.includes(v as T);
+
+function isSavedSerialSession(s: Record<string, unknown>): boolean {
+  return (
+    isString(s.id) &&
+    isString(s.name) &&
+    isString(s.folder) &&
+    isString(s.path) &&
+    Number.isSafeInteger(s.baud) &&
+    (s.baud as number) > 0 &&
+    oneOf([5, 6, 7, 8], s.dataBits) &&
+    oneOf(["none", "odd", "even"], s.parity) &&
+    oneOf([1, 2], s.stopBits) &&
+    oneOf(["none", "software", "hardware"], s.flow)
+  );
+}
+
+/** Sessions without `kind` come from files written before serial sessions and are SSH. */
+function isLibrarySession(v: unknown): v is LibrarySession {
   if (typeof v !== "object" || v === null) return false;
   const s = v as Record<string, unknown>;
+  if (s.kind === "serial") return isSavedSerialSession(s);
+  if (s.kind !== undefined && s.kind !== "ssh") return false;
   return (
     isString(s.id) &&
     isString(s.name) &&
@@ -145,14 +191,15 @@ export function parseLibrary(json: string | null): ParseResult {
   if (!Array.isArray(lib.folders) || !lib.folders.every(isString)) {
     return { ok: false, error: "sessions file has invalid folders" };
   }
-  if (!Array.isArray(lib.sessions) || !lib.sessions.every(isSavedSession)) {
+  if (!Array.isArray(lib.sessions) || !lib.sessions.every(isLibrarySession)) {
     return { ok: false, error: "sessions file has invalid sessions" };
   }
-  return { ok: true, library: { version: 1, folders: lib.folders, sessions: lib.sessions } };
+  const sessions = lib.sessions.map(sanitizeSession);
+  return { ok: true, library: { version: 1, folders: lib.folders, sessions } };
 }
 
 export function serializeLibrary(lib: SessionLibrary): string {
-  const sessions = lib.sessions.map((s) => ({ ...s, auth: sanitizeAuth(s.auth) }));
+  const sessions = lib.sessions.map(sanitizeSession);
   return JSON.stringify({ version: 1, folders: lib.folders, sessions }, null, 2);
 }
 
@@ -161,8 +208,10 @@ const byName = (a: TreeNode, b: TreeNode) => a.name.localeCompare(b.name, undefi
 /** Folders first, then sessions, both sorted; a filter keeps matches and the folders leading to them. */
 export function buildTree(lib: SessionLibrary, filter: string): TreeNode[] {
   const needle = filter.trim().toLowerCase();
-  const matches = (s: SavedSession) =>
-    !needle || s.name.toLowerCase().includes(needle) || s.host.toLowerCase().includes(needle);
+  const matches = (s: LibrarySession) =>
+    !needle ||
+    s.name.toLowerCase().includes(needle) ||
+    (isSerialSession(s) ? s.path : s.host).toLowerCase().includes(needle);
 
   const build = (parent: string): TreeNode[] => {
     const folders: TreeNode[] = lib.folders
@@ -184,7 +233,14 @@ export function buildTree(lib: SessionLibrary, filter: string): TreeNode[] {
   return build("");
 }
 
-export function toTarget(saved: SavedSession, password?: string): SshTarget {
+export function toTarget(saved: SavedSession, password?: string): SshTarget;
+export function toTarget(saved: SavedSerialSession): SerialTarget;
+export function toTarget(saved: LibrarySession, password?: string): SshTarget | SerialTarget;
+export function toTarget(saved: LibrarySession, password?: string): SshTarget | SerialTarget {
+  if (isSerialSession(saved)) {
+    const { path, baud, dataBits, parity, stopBits, flow } = saved;
+    return { type: "serial", path, baud, dataBits, parity, stopBits, flow };
+  }
   const auth =
     saved.auth.method === "password"
       ? { method: "password" as const, password: password ?? "" }

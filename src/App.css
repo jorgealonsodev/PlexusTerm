@@ -663,3 +663,42 @@ body,
 .tunnel__detail.form-error {
   color: #ef6b73;
 }
+
+.serial-ports {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.serial-ports__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.serial-ports__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.serial-port {
+  padding: 4px 8px;
+  font: inherit;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.serial-port:hover,
+.serial-port--selected {
+  border-color: var(--accent);
+}
+
+.form-row .field--grow {
+  min-width: 0;
+}

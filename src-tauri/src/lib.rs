@@ -1,4 +1,5 @@
 mod pty;
+mod serial;
 mod sftp;
 mod ssh;
 mod storage;
@@ -6,6 +7,7 @@ mod terminal;
 mod tunnels;
 
 use pty::{PtyError, PtyManager, SpawnRequest};
+use serial::{SerialError, SerialManager, SerialRequest};
 use sftp::SftpError;
 use ssh::{ConnectRequest, SshError, SshManager, SshTarget};
 use storage::StorageError;
@@ -55,6 +57,34 @@ fn pty_resize(id: u32, cols: u16, rows: u16, ptys: State<'_, PtyManager>) -> Res
 #[tauri::command]
 fn pty_close(id: u32, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
     ptys.close(id)
+}
+
+#[tauri::command]
+fn serial_list_ports() -> Vec<String> {
+    serial::list_ports()
+}
+
+#[tauri::command]
+fn serial_open(
+    request: SerialRequest,
+    on_event: Channel<TerminalEvent>,
+    serial: State<'_, SerialManager>,
+) -> Result<u32, SerialError> {
+    serial.open(request, ChannelSink(on_event))
+}
+
+#[tauri::command]
+fn serial_write(
+    id: u32,
+    data: String,
+    serial: State<'_, SerialManager>,
+) -> Result<(), SerialError> {
+    serial.write(id, data.as_bytes())
+}
+
+#[tauri::command]
+fn serial_close(id: u32, serial: State<'_, SerialManager>) -> Result<(), SerialError> {
+    serial.close(id)
 }
 
 #[tauri::command]
@@ -211,6 +241,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(PtyManager::default())
+        .manage(SerialManager::default())
         .manage(SshManager::for_current_user())
         .setup(|app| {
             let handle = app.handle().clone();
@@ -224,6 +255,10 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_close,
+            serial_list_ports,
+            serial_open,
+            serial_write,
+            serial_close,
             ssh_connect,
             ssh_write,
             ssh_resize,
