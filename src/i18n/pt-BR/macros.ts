@@ -1,0 +1,78 @@
+import type { macros as en } from "../en/macros";
+import type { Messages } from "../types";
+
+export const macros: Messages<typeof en> = {
+  recording: {
+    title: "Gravando macro",
+    warning: "Tudo o que você digita é salvo, incluindo senhas",
+    stop: "Parar gravação",
+  },
+  name: {
+    title: "Salvar macro gravada",
+    recorded: {
+      one: "{count} passo gravado. As macros são salvas como texto simples.",
+      many: "{count} passos gravados. As macros são salvas como texto simples.",
+      other: "{count} passos gravados. As macros são salvas como texto simples.",
+    },
+    discard: "Descartar",
+  },
+  progress: {
+    running: 'Executando "{name}": passo {step} de {total}',
+    label: "Progresso da macro {name}",
+  },
+  panel: {
+    title: "Macros",
+    new: "Nova",
+    search: "Pesquisar macros",
+    readError: "Não foi possível ler as macros salvas: {message}. A edição está desativada para proteger o arquivo.",
+    saveError: "Não foi possível salvar as macros: {error}",
+    empty: "Nenhuma macro ainda. Grave uma com Ctrl+Shift+R ou crie uma com Nova.",
+    noMatch: "Nenhuma macro corresponde.",
+    steps: { one: "{count} passo", many: "{count} passos", other: "{count} passos" },
+    editNamed: "Editar {name}",
+    duplicate: "Duplicar",
+    duplicateNamed: "Duplicar {name}",
+    deleteNamed: "Excluir {name}",
+    playNamed: "Reproduzir {name}",
+    play: "Reproduzir no terminal em foco",
+    hint: "As macros são reproduzidas no terminal em foco; Ctrl+Alt+1–9 reproduz a macro associada a essa tecla. As macros são salvas como texto simples.",
+  },
+  edit: {
+    newTitle: "Nova macro",
+    editTitle: "Editar macro",
+    hotkey: "Tecla de atalho",
+    none: "Nenhuma",
+    hotkeyUsed: "{hotkey} ({name})",
+    escapes: "Sequências de escape no texto: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C e as outras teclas de controle ^A–^Z, ^[ e ^?.",
+    kindSend: "Enviar texto",
+    kindWait: "Aguardar",
+    kindWaitFor: "Aguardar texto",
+    stepKind: "Tipo do passo {n}",
+    stepMs: "Milissegundos do passo {n}",
+    stepText: "Texto do passo {n}",
+    sendPlaceholder: "ex.: ls -la\\r",
+    waitForPlaceholder: "ex.: password:",
+    stepTimeout: "Tempo limite do passo {n} em segundos",
+    moveUp: "Mover o passo {n} para cima",
+    moveDown: "Mover o passo {n} para baixo",
+    removeStep: "Remover o passo {n}",
+    noSteps: "Nenhum passo ainda.",
+    addStep: "Adicionar passo",
+  },
+  form: {
+    nameRequired: "Digite um nome.",
+    invalidWait: "Passo {n}: a espera deve ser um número inteiro de milissegundos de 0 a {max}.",
+    waitForTextRequired: "Passo {n}: digite o texto a aguardar.",
+    invalidTimeout: "Passo {n}: o tempo limite deve ser um número inteiro de segundos de 1 a {max}.",
+  },
+  file: {
+    invalidJson: "o arquivo de macros não é um JSON válido: {error}",
+    unsupportedVersion: "versão do arquivo de macros não suportada",
+    invalidMacros: "o arquivo de macros tem macros inválidas",
+    duplicateHotkey: "o arquivo de macros tem duas macros em {hotkey}",
+  },
+  copyName: "{name} (cópia)",
+  player: {
+    timedOut: 'A macro "{name}" parou no passo {step} de {total}: "{text}" não apareceu em {seconds} s.',
+  },
+};

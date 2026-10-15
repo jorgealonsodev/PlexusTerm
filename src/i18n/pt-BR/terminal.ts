@@ -1,0 +1,52 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "Localizar no terminal",
+    placeholder: "Localizar",
+    noMatches: "Nenhum resultado",
+    matchCase: "Diferenciar maiúsculas e minúsculas",
+    regexTitle: "Expressão regular",
+    regex: "Regex",
+    previous: "Resultado anterior",
+    next: "Próximo resultado",
+    close: "Fechar localização",
+  },
+  paste: {
+    title: {
+      one: "Colar {count} linha?",
+      many: "Colar {count} linhas?",
+      other: "Colar {count} linhas?",
+    },
+    warning: "Cada linha pode ser executada como um comando.",
+    dontAsk: "Não perguntar novamente",
+    paste: "Colar",
+  },
+  menu: {
+    paste: "Colar",
+    selectAll: "Selecionar tudo",
+    clear: "Limpar histórico de rolagem",
+    find: "Localizar…",
+    save: "Salvar saída em arquivo…",
+    stopLogging: "Parar registro",
+    log: "Registrar em arquivo…",
+  },
+  view: {
+    textFiles: "Texto",
+    connecting: "Conectando a {target}...",
+    connectingVia: "Conectando a {target} via {jumps}...",
+    startingMosh: "Iniciando mosh-server em {target} por SSH...",
+    startingMoshVia: "Iniciando mosh-server em {target} via {jumps} por SSH...",
+    opening: "Abrindo {target}...",
+    telnetUnencrypted: "O Telnet não é criptografado.",
+    serialEnded: "Sessão encerrada. Feche esta aba ou abra a porta novamente.",
+    moshExited: "O mosh-client foi encerrado. Feche esta aba ou abra a sessão novamente.",
+    moshExitedCode: "O mosh-client foi encerrado com o código {code}. Feche esta aba ou abra a sessão novamente.",
+    clipboardError: "Não foi possível ler a área de transferência.",
+    saveError: "Não foi possível salvar a saída: {error}",
+    loggingStopped: "Registro interrompido: {error}",
+    hostKeyCancelled: "Conexão cancelada: chave do host não confiável.",
+    cancelled: "Conexão cancelada.",
+  },
+};
