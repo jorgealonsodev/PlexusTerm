@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/plexusterm.png" alt="PlexusTerm with a local terminal, the saved-sessions sidebar and the AI chat open below the terminal" width="900">
+  <img src="assets/screenshots/plexusterm-overview.png" alt="PlexusTerm with a local terminal, the saved-sessions sidebar and the AI chat open below the terminal" width="900">
 </p>
 
 PlexusTerm brings the everyday feature set of another app to Linux as a native app (tabs and split panes, a saved-session library, an SFTP browser next to each SSH tab, port forwards, serial consoles, macros) and adds an **AI chat next to every terminal** that explains, diagnoses and suggests commands. It is a clean-room implementation built with Tauri 2 (Rust), React/TypeScript and xterm.js, and speaks ten languages.
