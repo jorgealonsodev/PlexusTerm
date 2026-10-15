@@ -6,7 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
-import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
+import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { patchJump } from "../sessions/jumpHosts";
 import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
@@ -32,7 +32,7 @@ import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, type MenuAction } from "./TerminalContextMenu";
-import { terminalTheme } from "./theme";
+import { themeById } from "./themes";
 
 interface TerminalViewProps {
   target: SessionTarget;
@@ -164,11 +164,11 @@ export function TerminalView({
 
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace',
+      fontFamily: cssFontFamily(settingsRef.current.fontFamily),
       fontSize: settingsRef.current.fontSize,
       lineHeight: 1.15,
       scrollback: 10000,
-      theme: terminalTheme,
+      theme: themeById(settingsRef.current.theme).theme,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -369,6 +369,21 @@ export function TerminalView({
     if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
   }, [fontSize]);
 
+  // Colour scheme and font changes apply live too; a new font changes the cell size.
+  const theme = themeById(settings.theme).theme;
+  const fontFamily = cssFontFamily(settings.fontFamily);
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || term.options.theme === theme) return;
+    term.options.theme = theme;
+  }, [theme]);
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || term.options.fontFamily === fontFamily) return;
+    term.options.fontFamily = fontFamily;
+    if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
+  }, [fontFamily]);
+
   const focusTerminal = () => termRef.current?.focus();
 
   /** Pastes as if typed (multi-execution included), asking first for several lines (S15.3). */
@@ -482,7 +497,12 @@ export function TerminalView({
 
   return (
     <div className="terminal-pane" hidden={!active}>
-      <div className="terminal-host" ref={hostRef} onContextMenu={onContextMenu} />
+      <div
+        className="terminal-host"
+        ref={hostRef}
+        style={{ background: theme.background }}
+        onContextMenu={onContextMenu}
+      />
       {findOpen && <FindBar onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu

@@ -21,7 +21,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/sess
 /** Every fake xterm created, newest last. */
 const terms = vi.hoisted(() => [] as FakeTerminal[]);
 interface FakeTerminal {
-  options: { fontSize?: number };
+  options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
   keyHandler: (e: Partial<KeyboardEvent>) => boolean;
   paste: ReturnType<typeof vi.fn>;
   clear: ReturnType<typeof vi.fn>;
@@ -33,14 +33,14 @@ vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
     rows = 24;
-    options: { fontSize?: number };
+    options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
     parser = { registerOscHandler: () => ({ dispose() {} }) };
     keyHandler: (e: unknown) => boolean = () => true;
     paste = vi.fn();
     clear = vi.fn();
     selectAll = vi.fn();
     buffer = { active: { length: 0, getLine: () => undefined } };
-    constructor(options: { fontSize?: number }) {
+    constructor(options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } }) {
       this.options = { ...options };
       terms.push(this as unknown as FakeTerminal);
     }
@@ -145,6 +145,23 @@ describe("TerminalView", () => {
         />,
       );
       expect(term().options.fontSize).toBe(22);
+    });
+
+    it("starts with the colour scheme and font of the settings and follows their changes", () => {
+      const view = (settings: typeof DEFAULT_SETTINGS) => (
+        <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />
+      );
+      const before = terms.length;
+      const { container, rerender } = render(view({ ...DEFAULT_SETTINGS, theme: "nord", fontFamily: "Fira Code" }));
+      const host = container.querySelector(".terminal-host") as HTMLElement;
+      expect(term().options.theme?.background).toBe("#2e3440");
+      expect(term().options.fontFamily).toBe('"Fira Code", monospace');
+      expect(host.style.background).toBe("rgb(46, 52, 64)");
+      rerender(view({ ...DEFAULT_SETTINGS, theme: "catppuccin-latte" }));
+      expect(term().options.theme?.background).toBe("#eff1f5");
+      expect(term().options.fontFamily).toBe(DEFAULT_SETTINGS.fontFamily);
+      expect(host.style.background).toBe("rgb(239, 241, 245)");
+      expect(terms.length - before).toBe(1);
     });
 
     it("pastes a single line from the clipboard on right click", async () => {

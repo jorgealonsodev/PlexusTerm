@@ -1,3 +1,5 @@
+import { DEFAULT_THEME_ID, isThemeId } from "../terminal/themes";
+
 /** Terminal settings shared by every tab, stored in settings.json (S15.6). */
 export interface TerminalSettings {
   /** Font size in pixels, 8..32. */
@@ -8,9 +10,15 @@ export interface TerminalSettings {
   rightClickPastes: boolean;
   /** Pasting more than one line asks first. */
   confirmMultilinePaste: boolean;
+  /** Colour scheme id (see TERMINAL_THEMES). */
+  theme: string;
+  /** Font family: one font name, or a CSS font list. */
+  fontFamily: string;
 }
 
 export const MIN_FONT_SIZE = 8;
+export const MAX_FONT_FAMILY_LENGTH = 200;
+export const DEFAULT_FONT_FAMILY = '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace';
 export const MAX_FONT_SIZE = 32;
 
 export const DEFAULT_SETTINGS: TerminalSettings = {
@@ -18,11 +26,22 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   copyOnSelect: true,
   rightClickPastes: true,
   confirmMultilinePaste: true,
+  theme: DEFAULT_THEME_ID,
+  fontFamily: DEFAULT_FONT_FAMILY,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
 
 const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback);
+
+/** A trimmed, non-empty font family of at most 200 characters, or the default one. */
+export function cleanFontFamily(value: unknown): string {
+  const family = typeof value === "string" ? value.trim() : "";
+  return family && family.length <= MAX_FONT_FAMILY_LENGTH ? family : DEFAULT_FONT_FAMILY;
+}
+
+/** The CSS font list for a setting: a single name is quoted and falls back to monospace. */
+export const cssFontFamily = (family: string) => (/[,"']/.test(family) ? family : `"${family}", monospace`);
 
 /**
  * Reads settings.json. A missing or unreadable file gives the defaults; every invalid value
@@ -44,6 +63,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     copyOnSelect: bool(value.copyOnSelect, d.copyOnSelect),
     rightClickPastes: bool(value.rightClickPastes, d.rightClickPastes),
     confirmMultilinePaste: bool(value.confirmMultilinePaste, d.confirmMultilinePaste),
+    theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
+    fontFamily: cleanFontFamily(value.fontFamily),
   };
 }
 

@@ -11,7 +11,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
-| [Terminal settings](#terminal-settings) | Font, copy and paste, find, saving and logging output |
+| [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Windows](#windows) | What differs on Windows 10/11 |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
@@ -163,6 +163,30 @@ The SFTP browser and **Follow terminal folder** use the focused pane of the acti
 The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
+- **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
+- **Colour scheme** (default Catppuccin Mocha): 57 schemes grouped as Dark and Light, with a preview of the prompt, file colours and the 12 accent colours before saving. Every terminal switches at once, without restarting its session.
+
+| Family | Schemes |
+| --- | --- |
+| Catppuccin | Mocha, Macchiato, Frappé, Latte |
+| Tokyo Night | Tokyo Night, Storm, Light |
+| Gruvbox | Dark, Light, Material Dark |
+| Nord | Nord, Nord Light |
+| Rosé Pine | Rosé Pine, Moon, Dawn |
+| Everforest | Dark, Light |
+| Kanagawa | Wave, Dragon |
+| Ayu | Dark, Mirage, Light |
+| GitHub | Dark, Dark Default, Light, Dimmed |
+| Material | Dark, Ocean |
+| Atom One / One Half | Atom One Dark, Atom One Light, One Half Dark, One Half Light |
+| Solarized / Tango | Solarized Dark, Solarized Light, Tango Dark, Tango Light |
+| Tomorrow | Tomorrow Night, Night Eighties, Night Bright, Tomorrow |
+| Monokai | Monokai, Monokai Soda |
+| Others | PlexusTerm, Dracula, Afterglow, Adventure Time, AlienBlood, Andromeda, Argonaut, Blue Matrix, 3024 Night, 3024 Day, JetBrains Darcula, Jellybeans, Red Sands, Retro, Laser |
+
+The palettes come from iTerm2-Color-Schemes (MIT, see `THIRD_PARTY_NOTICES.md`). The colour scheme changes the terminal only; the rest of the window keeps its dark look.
+
+Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `robbyrussell` or `agnoster`) are configured in the shell, on the machine where it runs (`~/.zshrc`, `~/.config/starship.toml`), not in PlexusTerm. Their colours follow the colour scheme. Themes that draw icons or powerline arrows need a [Nerd Font](https://www.nerdfonts.com/) installed on this machine and set as the font family.
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
 - **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it.
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
