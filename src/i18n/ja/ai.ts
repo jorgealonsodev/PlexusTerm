@@ -23,6 +23,7 @@ export const ai: Messages<typeof en> = {
     rateLimited: "AI: レート制限中",
   },
   chat: {
+    newConversation: "新しい会話",
     label: "AI チャット",
     title: "AI",
     close: "AI チャットを閉じる",

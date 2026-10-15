@@ -23,6 +23,7 @@ export const ai: Messages<typeof en> = {
     rateLimited: "IA : limite de requêtes",
   },
   chat: {
+    newConversation: "Nouvelle conversation",
     label: "Discussion IA",
     title: "IA",
     close: "Fermer la discussion IA",

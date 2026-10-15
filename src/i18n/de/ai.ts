@@ -23,6 +23,7 @@ export const ai: Messages<typeof en> = {
     rateLimited: "KI: Anfragelimit erreicht",
   },
   chat: {
+    newConversation: "Neue Unterhaltung",
     label: "KI-Chat",
     title: "KI",
     close: "KI-Chat schließen",
