@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
+import packageJson from "../../../package.json";
 import { DEFAULT_SETTINGS } from "./settings";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
@@ -76,7 +77,7 @@ describe("SettingsDialog", () => {
     const { unmount } = render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("tab", { name: "About" }));
     expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).not.toContain("light");
-    expect(await screen.findByText("Version 0.1.0")).toBeTruthy();
+    expect(await screen.findByText(`Version ${packageJson.version}`)).toBeTruthy();
     expect(screen.getByRole("link", { name: "github.com/jorgealonsodev/PlexusTerm" })).toBeTruthy();
     unmount();
     render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, theme: "solarized-light" }} onSave={vi.fn()} onCancel={vi.fn()} />);
