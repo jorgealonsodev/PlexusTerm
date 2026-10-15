@@ -1,3 +1,4 @@
+import { isLanguageSetting, type LanguageSetting } from "../../i18n/i18n";
 import { DEFAULT_THEME_ID, isThemeId } from "../terminal/themes";
 import { appShortcutConflict, isValidShortcut } from "./shortcutCapture";
 
@@ -54,6 +55,8 @@ export interface TerminalSettings {
   sidebarCollapsed: boolean;
   /** Folding hides the sidebar completely instead of leaving its tab icons. */
   sidebarHideWhenCollapsed: boolean;
+  /** Interface language; "system" follows the operating system, English when it is not supported. */
+  language: LanguageSetting;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -85,6 +88,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   assistantShortcut: DEFAULT_ASSISTANT_SHORTCUT,
   sidebarCollapsed: false,
   sidebarHideWhenCollapsed: false,
+  language: "system",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -168,6 +172,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
     sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
+    language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }
 

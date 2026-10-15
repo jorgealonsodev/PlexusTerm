@@ -29,6 +29,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Shift+Space",
       sidebarCollapsed: false,
       sidebarHideWhenCollapsed: false,
+      language: "system",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -44,7 +45,7 @@ describe("parseSettings", () => {
       '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
-      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true}';
+      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"language":"ja"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -64,6 +65,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Alt+K",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      language: "ja",
     });
   });
 
@@ -171,6 +173,7 @@ describe("serializeSettings", () => {
       assistantShortcut: "Ctrl+Alt+Space",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      language: "pt-BR" as const,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });
@@ -195,5 +198,12 @@ describe("sidebar settings", () => {
     const parsed = parseSettings(JSON.stringify({ sidebarCollapsed: true, sidebarHideWhenCollapsed: "yes" }));
     expect(parsed.sidebarCollapsed).toBe(true);
     expect(parsed.sidebarHideWhenCollapsed).toBe(false);
+  });
+});
+
+describe("language setting", () => {
+  it("defaults to the system language and keeps only supported values", () => {
+    expect(parseSettings(JSON.stringify({ language: "zh-CN" })).language).toBe("zh-CN");
+    expect(parseSettings(JSON.stringify({ language: "klingon" })).language).toBe("system");
   });
 });
