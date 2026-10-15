@@ -1,0 +1,48 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "Im Terminal suchen",
+    placeholder: "Suchen",
+    noMatches: "Keine Treffer",
+    matchCase: "Groß-/Kleinschreibung beachten",
+    regexTitle: "Regulärer Ausdruck",
+    regex: "Regex",
+    previous: "Vorheriger Treffer",
+    next: "Nächster Treffer",
+    close: "Suche schließen",
+  },
+  paste: {
+    title: { one: "{count} Zeile einfügen?", other: "{count} Zeilen einfügen?" },
+    warning: "Jede Zeile kann als Befehl ausgeführt werden.",
+    dontAsk: "Nicht mehr fragen",
+    paste: "Einfügen",
+  },
+  menu: {
+    paste: "Einfügen",
+    selectAll: "Alles auswählen",
+    clear: "Scrollback leeren",
+    find: "Suchen…",
+    save: "Ausgabe in Datei speichern…",
+    stopLogging: "Protokollierung beenden",
+    log: "In Datei protokollieren…",
+  },
+  view: {
+    textFiles: "Text",
+    connecting: "Verbindung zu {target} wird hergestellt...",
+    connectingVia: "Verbindung zu {target} über {jumps} wird hergestellt...",
+    startingMosh: "mosh-server wird auf {target} über SSH gestartet...",
+    startingMoshVia: "mosh-server wird auf {target} über {jumps} per SSH gestartet...",
+    opening: "{target} wird geöffnet...",
+    telnetUnencrypted: "Telnet ist nicht verschlüsselt.",
+    serialEnded: "Sitzung beendet. Schließe diesen Tab oder öffne den Port erneut.",
+    moshExited: "mosh-client wurde beendet. Schließe diesen Tab oder öffne die Sitzung erneut.",
+    moshExitedCode: "mosh-client wurde mit Code {code} beendet. Schließe diesen Tab oder öffne die Sitzung erneut.",
+    clipboardError: "Die Zwischenablage konnte nicht gelesen werden.",
+    saveError: "Die Ausgabe konnte nicht gespeichert werden: {error}",
+    loggingStopped: "Protokollierung beendet: {error}",
+    hostKeyCancelled: "Verbindung abgebrochen: Hostschlüssel nicht vertraut.",
+    cancelled: "Verbindung abgebrochen.",
+  },
+};
