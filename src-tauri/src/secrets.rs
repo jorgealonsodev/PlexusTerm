@@ -99,19 +99,28 @@ impl KeyringStore {
     }
 
     fn entry(&self, id: &str, label: Option<&str>) -> Result<keyring_core::Entry, SecretError> {
-        // Installs the Secret Service store as keyring-core's default store, once.
+        // Installs the platform's store (Secret Service, Windows or Apple) as keyring-core's default store, once.
         if keyring::Entry::store_status().is_err() {
             return Err(SecretError::Unavailable);
         }
-        let entry = match label {
-            Some(label) => keyring_core::Entry::new_with_modifiers(
-                &self.service,
-                id,
-                &HashMap::from([("label", label)]),
-            ),
+        let modifiers = label.and_then(|label| entry_modifiers(std::env::consts::OS, label));
+        let entry = match modifiers {
+            Some(modifiers) => {
+                keyring_core::Entry::new_with_modifiers(&self.service, id, &modifiers)
+            }
             None => keyring_core::Entry::new(&self.service, id),
         };
         entry.map_err(keyring_error)
+    }
+}
+
+/// The modifiers that give a new keyring item `label` on platform `os`. Only the Secret
+/// Service store (Unix except Apple and Android) knows `label`; the Windows and Apple stores
+/// reject unknown modifiers, so their items go without one.
+fn entry_modifiers<'a>(os: &str, label: &'a str) -> Option<HashMap<&'static str, &'a str>> {
+    match os {
+        "windows" | "macos" | "ios" | "android" => None,
+        _ => Some(HashMap::from([("label", label)])),
     }
 }
 
@@ -249,6 +258,25 @@ mod tests {
         run(&store, |s| s.delete("s1")).await.unwrap();
         run(&store, |s| s.delete("s1")).await.unwrap();
         assert_eq!(run(&store, |s| s.get("s1")).await.unwrap(), None);
+    }
+
+    #[test]
+    fn only_secret_service_platforms_get_a_label_modifier() {
+        let label = |os| entry_modifiers(os, "PlexusTerm AI key (OpenCode Go)");
+        for os in ["linux", "freebsd", "openbsd"] {
+            assert_eq!(
+                label(os),
+                Some(HashMap::from([(
+                    "label",
+                    "PlexusTerm AI key (OpenCode Go)"
+                )])),
+                "{os}"
+            );
+        }
+        // The Windows and Apple stores reject unknown modifiers ("unknown key").
+        for os in ["windows", "macos", "ios", "android"] {
+            assert_eq!(label(os), None, "{os}");
+        }
     }
 
     #[test]
