@@ -4,20 +4,7 @@ A Linux terminal and remote-session manager inspired by MobaXterm's feature set 
 
 Stack: Tauri 2 (Rust backend) + React/TypeScript + xterm.js.
 
-Brand assets live in `assets/brand/`: `nexusterm-icon.svg` (app icon: the "x" of NexusTerm drawn as two routes crossing), `nexusterm-mark.svg` (the crossing alone, without the tile) `nexusterm-wordmark.svg` / `nexusterm-wordmark-light.svg` (Manrope ExtraBold outlined to paths, for dark and light backgrounds) and the one-colour black versions `nexusterm-wordmark-black.svg` / `nexusterm-mark-black.svg`. Regenerate every platform icon with:
-
-```bash
-rsvg-convert -w 1024 -h 1024 assets/brand/nexusterm-icon.svg -o assets/brand/nexusterm-icon-1024.png
-pnpm tauri icon assets/brand/nexusterm-icon-1024.png   # then drop src-tauri/icons/{android,ios}
-```
-
-Regenerate the wordmarks from the Manrope variable font (OFL, not vendored) with fontTools:
-
-```bash
-fonttools varLib.instancer 'Manrope[wght].ttf' wght=800 -o Manrope-800.ttf
-python3 scripts/brand-wordmark.py Manrope-800.ttf assets/brand
-cp assets/brand/nexusterm-wordmark.svg src/assets/
-```
+Brand assets (logo, wordmark, colour and one-colour versions, PNG exports and how to regenerate them) live in `assets/brand/`; see `assets/brand/README.md`.
 
 ## Development
 
