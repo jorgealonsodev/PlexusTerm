@@ -59,8 +59,19 @@ Use **New** / **Folder** or the hover actions on a folder; double-click a sessio
 The edit dialog has a **Session type** selector (SSH or Serial) that shows the matching fields. Serial sessions keep the device path and line settings and open directly, without any password.
 
 Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh` or `serial`), and entries written by earlier versions without it load as SSH sessions.
-Passwords and key passphrases are never saved: password sessions ask for it on every connection.
+The file never contains passwords or key passphrases (see [Saved passwords](#saved-passwords)).
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
+
+### Saved passwords
+
+Password sessions ask for the password when you connect. For saved sessions (terminal tabs and tunnels) the prompt has a **Save password in the system keyring** checkbox, unchecked by default; quick-connect sessions never save passwords.
+
+- Passwords are kept only in the system keyring through the Secret Service API (GNOME Keyring, KWallet), under the service `dev.nexusterm.app` with the session id as the account and the label `NexusTerm: user@host:port`. They are never written to `sessions.json` or `tunnels.json`.
+- A password is saved only after a successful login. Later connections read it in the backend; it is never sent back to the user interface.
+- If the saved password is missing or rejected, the prompt appears again with the checkbox ticked: a successful login replaces it, and unticking the checkbox deletes it.
+- **Forget saved password** in the session's edit dialog deletes it; deleting a session, or a folder containing it, deletes it too.
+- Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
+- Key passphrases are never saved.
 
 ### Import from another app
 
@@ -99,7 +110,7 @@ The **Tunnels** tab of the sidebar keeps port forwards that run over a saved SSH
 
 Listeners bind to `127.0.0.1` by default; any other address must be typed explicitly and the editor warns that other machines can reach it.
 Each tunnel shows its status (stopped, starting, running, or the error) and a Start/Stop toggle; **Start all** and **Stop all** act on every tunnel.
-Starting a tunnel whose session uses a password asks for it (it is never saved), and an unknown host asks to trust its fingerprint like SSH tabs do. A tunnel deleted or changed while one of these prompts is open is not started.
+Starting a tunnel whose session uses a password uses the password saved in the keyring or asks for it (see [Saved passwords](#saved-passwords)), and an unknown host asks to trust its fingerprint like SSH tabs do. A tunnel deleted or changed while one of these prompts is open is not started.
 Stopping closes the listener, the open connections and the SSH connection; running tunnels stop when the app exits.
 
 Tunnels are stored in `~/.config/dev.nexusterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).

@@ -1,5 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { SessionTarget, SshTarget } from "../sessions/types";
+import type { PasswordStorage, SessionTarget, SshAuth, SshTarget } from "../sessions/types";
 import { serialBackend } from "../serial/serialBackend";
 
 export type TerminalEvent =
@@ -11,6 +11,10 @@ export interface StartOptions {
   rows: number;
   /** SSH only: fingerprint the user accepted for an unknown host. */
   trustedFingerprint?: string;
+  /** SSH only: replaces the target's auth (e.g. a password typed after the saved one failed). */
+  auth?: SshAuth;
+  /** SSH only: replaces the target's saved-password request. */
+  storage?: PasswordStorage;
 }
 
 /** One kind of terminal session (local PTY, SSH, ...) behind the Rust commands. */
@@ -44,17 +48,18 @@ const localBackend: TerminalBackend = {
 
 function sshBackend(target: SshTarget): TerminalBackend {
   return {
-    start: ({ cols, rows, trustedFingerprint }, onEvent) =>
+    start: ({ cols, rows, trustedFingerprint, auth, storage }, onEvent) =>
       invoke<number>("ssh_connect", {
         request: {
           host: target.host,
           port: target.port,
           username: target.username,
-          auth: target.auth,
+          auth: auth ?? target.auth,
           cols,
           rows,
           trustedFingerprint: trustedFingerprint ?? null,
         },
+        storage: storage ?? target.storage ?? null,
         onEvent: channelFor(onEvent),
       }),
     ...commands("ssh"),

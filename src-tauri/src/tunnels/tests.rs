@@ -6,6 +6,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::*;
+use crate::secrets::{MemoryStore, SecretStore};
+use crate::ssh::PasswordStorage;
 use crate::ssh::test_server::{self, PASSWORD, TestServer};
 
 /// Accepts connections on 127.0.0.1 and echoes every byte back.
@@ -506,4 +508,49 @@ async fn a_dropped_ssh_connection_sets_the_error_status_and_releases_the_listene
         TcpStream::connect(("127.0.0.1", listen)).await.is_err(),
         "the listener must be released after the connection dropped"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stored_password_starts_the_tunnel() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, _updates) = manager(&dir, &server);
+    let store = MemoryStore::shared();
+    store.set("s1", "label", PASSWORD).unwrap();
+    let mgr = mgr.with_secrets(store.clone());
+    let (echo, listen) = (echo_server().await, free_port().await);
+    let mut session = target(&server);
+    session.auth = SshAuth::StoredPassword {
+        session_id: "s1".into(),
+    };
+
+    mgr.start(tunnel(TunnelKind::Local, listen, echo), session, None)
+        .await
+        .unwrap();
+    let mut tcp = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"up").await, b"up");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tunnel_start_can_remember_the_typed_password() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, _updates) = manager(&dir, &server);
+    let store = MemoryStore::shared();
+    let mgr = mgr.with_secrets(store.clone());
+    let (echo, listen) = (echo_server().await, free_port().await);
+    let remember = PasswordStorage::Remember {
+        session_id: "s1".into(),
+        label: "NexusTerm: tester@127.0.0.1:22".into(),
+    };
+
+    mgr.start_with(
+        tunnel(TunnelKind::Local, listen, echo),
+        target(&server),
+        None,
+        Some(remember),
+    )
+    .await
+    .unwrap();
+    assert_eq!(store.get("s1").unwrap().as_deref(), Some(PASSWORD));
 }

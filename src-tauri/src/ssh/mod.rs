@@ -27,6 +27,7 @@ use russh::{Channel, ChannelMsg, ChannelOpenFailure, client};
 use russh_sftp::client::SftpSession;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
+use crate::secrets::{self, NoStore, SharedSecrets};
 use crate::sftp::SftpError;
 use crate::terminal::{TerminalSink, Utf8Stream};
 
@@ -61,6 +62,25 @@ pub enum SshAuth {
         passphrase: Option<String>,
     },
     Agent,
+    /// The password saved in the system keyring for this saved session.
+    #[serde(rename_all = "camelCase")]
+    StoredPassword {
+        session_id: String,
+    },
+}
+
+/// What to do with the saved password of a session once a login succeeded.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(
+    tag = "action",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum PasswordStorage {
+    /// Save the typed password (`SshAuth::Password`) in the keyring.
+    Remember { session_id: String, label: String },
+    /// Delete the saved password.
+    Forget { session_id: String },
 }
 
 /// Hand-written so secrets never reach logs or panic messages.
@@ -74,6 +94,10 @@ impl std::fmt::Debug for SshAuth {
                 .field("passphrase", &passphrase.as_ref().map(|_| "<redacted>"))
                 .finish(),
             Self::Agent => f.write_str("Agent"),
+            Self::StoredPassword { session_id } => f
+                .debug_struct("StoredPassword")
+                .field("session_id", session_id)
+                .finish(),
         }
     }
 }
@@ -99,6 +123,8 @@ pub enum SshError {
     },
     #[error("authentication failed")]
     AuthFailed,
+    #[error("no password is saved for this session")]
+    SecretMissing,
     #[error("unknown terminal session {id}")]
     UnknownSession { id: u32 },
     #[error("{message}")]
@@ -246,14 +272,27 @@ pub struct SshTarget {
     pub auth: SshAuth,
 }
 
-/// Connects, applies the known_hosts policy and authenticates.
+/// How [`connect_authenticated`] reaches the server and the saved passwords.
+pub(crate) struct ConnectContext<'a> {
+    pub known_hosts: &'a Path,
+    pub agent_socket: Option<&'a Path>,
+    pub secrets: &'a SharedSecrets,
+}
+
+/// Connects, applies the known_hosts policy and authenticates, then applies
+/// `storage` to the saved password. Nothing is stored or deleted on failure.
 pub(crate) async fn connect_authenticated(
     target: SshTarget,
     trusted_fingerprint: Option<String>,
-    known_hosts: &Path,
-    agent_socket: Option<&Path>,
+    storage: Option<PasswordStorage>,
+    ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
 ) -> Result<Connection, SshError> {
+    let ConnectContext {
+        known_hosts,
+        agent_socket,
+        secrets,
+    } = ctx;
     let rejection = Arc::new(Mutex::new(None));
     let handler = ClientHandler {
         host: target.host.clone(),
@@ -288,8 +327,41 @@ pub(crate) async fn connect_authenticated(
         Ok(Ok(handle)) => handle,
     };
 
-    authenticate(&mut handle, &target.username, target.auth, agent_socket).await?;
+    let typed_password = match &target.auth {
+        SshAuth::Password { password } => Some(password.clone()),
+        _ => None,
+    };
+    authenticate(
+        &mut handle,
+        &target.username,
+        target.auth,
+        agent_socket,
+        secrets,
+    )
+    .await?;
+    apply_storage(secrets, storage, typed_password).await;
     Ok(handle)
+}
+
+/// Saves or forgets the session's password after a successful login. A keyring
+/// failure does not fail the login; the password is then simply asked again later.
+async fn apply_storage(
+    secrets: &SharedSecrets,
+    storage: Option<PasswordStorage>,
+    typed_password: Option<String>,
+) {
+    let result = match (storage, typed_password) {
+        (Some(PasswordStorage::Remember { session_id, label }), Some(password)) => {
+            secrets::run(secrets, move |s| s.set(&session_id, &label, &password)).await
+        }
+        (Some(PasswordStorage::Forget { session_id }), _) => {
+            secrets::run(secrets, move |s| s.delete(&session_id)).await
+        }
+        _ => Ok(()),
+    };
+    if let Err(err) = result {
+        eprintln!("nexusterm: cannot update the saved password: {err}");
+    }
 }
 
 async fn authenticate(
@@ -297,6 +369,7 @@ async fn authenticate(
     user: &str,
     auth: SshAuth,
     agent_socket: Option<&Path>,
+    secrets: &SharedSecrets,
 ) -> Result<(), SshError> {
     let accepted = match auth {
         SshAuth::Password { password } => handle
@@ -304,6 +377,19 @@ async fn authenticate(
             .await
             .map_err(connection)?
             .success(),
+        SshAuth::StoredPassword { session_id } => {
+            // An unreadable keyring is treated like a missing secret: the user is asked instead.
+            let password = secrets::run(secrets, move |s| s.get(&session_id))
+                .await
+                .ok()
+                .flatten()
+                .ok_or(SshError::SecretMissing)?;
+            handle
+                .authenticate_password(user, password)
+                .await
+                .map_err(connection)?
+                .success()
+        }
         SshAuth::Key { path, passphrase } => {
             let key =
                 load_secret_key(expand_home(&path), passphrase.as_deref()).map_err(|err| {
@@ -378,6 +464,7 @@ pub struct SshManager {
     known_hosts: PathBuf,
     /// Overrides `SSH_AUTH_SOCK` (used by tests).
     agent_socket: Option<PathBuf>,
+    secrets: SharedSecrets,
     next_id: AtomicU32,
     sessions: Mutex<HashMap<u32, SessionEntry>>,
 }
@@ -387,9 +474,16 @@ impl SshManager {
         Self {
             known_hosts,
             agent_socket: None,
+            secrets: Arc::new(NoStore),
             next_id: AtomicU32::new(0),
             sessions: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Uses `secrets` for stored passwords (none are available otherwise).
+    pub fn with_secrets(mut self, secrets: SharedSecrets) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     #[cfg(test)]
@@ -406,9 +500,22 @@ impl SshManager {
         Self::new(home.join(".ssh").join("known_hosts"))
     }
 
+    /// Connects without touching saved passwords (tests; the app uses `connect_with`).
+    #[cfg(test)]
     pub async fn connect(
         &self,
         req: ConnectRequest,
+        sink: impl TerminalSink,
+    ) -> Result<u32, SshError> {
+        self.connect_with(req, None, sink).await
+    }
+
+    /// Opens an interactive shell, then saves or forgets the session's
+    /// password as `storage` asks once the login succeeded.
+    pub async fn connect_with(
+        &self,
+        req: ConnectRequest,
+        storage: Option<PasswordStorage>,
         sink: impl TerminalSink,
     ) -> Result<u32, SshError> {
         let target = SshTarget {
@@ -417,14 +524,13 @@ impl SshManager {
             username: req.username,
             auth: req.auth,
         };
-        let handle = connect_authenticated(
-            target,
-            req.trusted_fingerprint,
-            &self.known_hosts,
-            self.agent_socket.as_deref(),
-            None,
-        )
-        .await?;
+        let ctx = ConnectContext {
+            known_hosts: &self.known_hosts,
+            agent_socket: self.agent_socket.as_deref(),
+            secrets: &self.secrets,
+        };
+        let handle =
+            connect_authenticated(target, req.trusted_fingerprint, storage, ctx, None).await?;
 
         let channel = handle.channel_open_session().await.map_err(connection)?;
         channel
@@ -569,6 +675,7 @@ impl SshManager {
 mod tests {
     use super::test_server::{self, PASSWORD, key_from_seed};
     use super::*;
+    use crate::secrets::{MemoryStore, SecretStore};
     use tokio::sync::mpsc::UnboundedReceiver;
 
     enum Event {
@@ -986,6 +1093,194 @@ mod tests {
             mgr.resize(99, 1, 1),
             Err(SshError::UnknownSession { id: 99 })
         ));
+    }
+
+    /// Manager trusting the test server whose keyring is `store`.
+    fn with_store(
+        dir: &tempfile::TempDir,
+        server: &test_server::TestServer,
+        store: &Arc<MemoryStore>,
+    ) -> SshManager {
+        trusting(dir, server.addr.port(), &server.host_key).with_secrets(store.clone())
+    }
+
+    fn stored(session_id: &str) -> SshAuth {
+        SshAuth::StoredPassword {
+            session_id: session_id.into(),
+        }
+    }
+
+    fn remember(session_id: &str) -> Option<PasswordStorage> {
+        Some(PasswordStorage::Remember {
+            session_id: session_id.into(),
+            label: "NexusTerm: tester@127.0.0.1:22".into(),
+        })
+    }
+
+    #[tokio::test]
+    async fn stored_password_login_reads_the_secret_from_the_store() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store.set("s1", "label", PASSWORD).unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    #[tokio::test]
+    async fn stored_password_without_a_secret_is_secret_missing() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::SecretMissing), "got {err:?}");
+        assert_eq!(
+            serde_json::to_value(&err).unwrap(),
+            serde_json::json!({"kind": "secretMissing"})
+        );
+    }
+
+    #[tokio::test]
+    async fn a_wrong_stored_password_is_auth_failed_and_the_secret_is_kept() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store.set("s1", "label", "old-password").unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::AuthFailed), "got {err:?}");
+        assert_eq!(store.get("s1").unwrap().as_deref(), Some("old-password"));
+    }
+
+    #[tokio::test]
+    async fn remember_stores_the_typed_password_after_a_successful_login() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store.set("s1", "label", "old-password").unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        mgr.connect_with(
+            request(server.addr.port(), password(PASSWORD)),
+            remember("s1"),
+            s,
+        )
+        .await
+        .unwrap();
+        assert_eq!(store.get("s1").unwrap().as_deref(), Some(PASSWORD));
+        assert_eq!(
+            store.label("s1").as_deref(),
+            Some("NexusTerm: tester@127.0.0.1:22")
+        );
+    }
+
+    #[tokio::test]
+    async fn remember_stores_nothing_when_the_login_fails() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect_with(
+                request(server.addr.port(), password("nope")),
+                remember("s1"),
+                s,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::AuthFailed), "got {err:?}");
+        assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn remember_only_stores_typed_passwords() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store.set("other", "label", PASSWORD).unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        mgr.connect_with(
+            request(server.addr.port(), stored("other")),
+            remember("s1"),
+            s,
+        )
+        .await
+        .unwrap();
+        assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn forget_deletes_the_secret_only_after_a_successful_login() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store.set("s1", "label", "old-password").unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let forget = || {
+            Some(PasswordStorage::Forget {
+                session_id: "s1".into(),
+            })
+        };
+
+        let (s, _rx) = sink();
+        mgr.connect_with(request(server.addr.port(), password("nope")), forget(), s)
+            .await
+            .unwrap_err();
+        assert!(store.get("s1").unwrap().is_some(), "deleted on failure");
+
+        let (s, _rx) = sink();
+        mgr.connect_with(request(server.addr.port(), password(PASSWORD)), forget(), s)
+            .await
+            .unwrap();
+        assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    #[test]
+    fn stored_password_and_storage_requests_deserialize_from_camel_case() {
+        let auth: SshAuth = serde_json::from_value(
+            serde_json::json!({"method": "storedPassword", "sessionId": "s1"}),
+        )
+        .unwrap();
+        assert!(matches!(auth, SshAuth::StoredPassword { session_id } if session_id == "s1"));
+        let storage: PasswordStorage = serde_json::from_value(
+            serde_json::json!({"action": "remember", "sessionId": "s1", "label": "L"}),
+        )
+        .unwrap();
+        assert!(matches!(storage, PasswordStorage::Remember { .. }));
+        let storage: PasswordStorage =
+            serde_json::from_value(serde_json::json!({"action": "forget", "sessionId": "s1"}))
+                .unwrap();
+        assert!(matches!(storage, PasswordStorage::Forget { session_id } if session_id == "s1"));
+    }
+
+    #[test]
+    fn debug_of_stored_password_requests_never_contains_the_password() {
+        let dbg = format!("{:?}", stored("s1"));
+        assert!(dbg.contains("s1"), "{dbg}");
+        let req = request(22, password("hunter2"));
+        let dbg = format!("{:?} {:?}", req, remember("s1"));
+        assert!(!dbg.contains("hunter2"), "{dbg}");
     }
 
     #[tokio::test]

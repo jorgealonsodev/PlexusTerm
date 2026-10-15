@@ -1,7 +1,14 @@
 export type SshAuth =
   | { method: "password"; password: string }
   | { method: "key"; path: string; passphrase?: string }
-  | { method: "agent" };
+  | { method: "agent" }
+  /** The password saved in the system keyring for this saved session; read by the backend only. */
+  | { method: "storedPassword"; sessionId: string };
+
+/** What the backend does with a session's saved password once a login succeeded. */
+export type PasswordStorage =
+  | { action: "remember"; sessionId: string; label: string }
+  | { action: "forget"; sessionId: string };
 
 export interface SshTarget {
   type: "ssh";
@@ -9,6 +16,8 @@ export interface SshTarget {
   port: number;
   username: string;
   auth: SshAuth;
+  /** Applied after a successful login with a typed password. */
+  storage?: PasswordStorage;
 }
 
 export type SerialParity = "none" | "odd" | "even";

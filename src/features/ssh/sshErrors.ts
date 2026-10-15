@@ -3,6 +3,7 @@ export type SshError =
   | { kind: "unknownHost"; host: string; fingerprint: string; otherKnownKeys: string[] }
   | { kind: "hostKeyChanged"; host: string; fingerprint: string; line: number }
   | { kind: "authFailed" }
+  | { kind: "secretMissing" }
   | { kind: "unknownSession"; id: number }
   | { kind: "connection"; message: string };
 
@@ -38,6 +39,8 @@ export function describeSshError(err: SshError): string {
       ].join("\r\n");
     case "authFailed":
       return "Authentication failed.";
+    case "secretMissing":
+      return "No saved password was found for this session.";
     case "unknownSession":
       return `Session ${err.id} is no longer open.`;
     case "connection":

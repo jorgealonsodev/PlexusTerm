@@ -8,10 +8,19 @@ import { SerialDialog } from "./features/serial/SerialDialog";
 import {
   isSshSession,
   toTarget,
+  type LibraryAction,
   type LibrarySession,
   type SavedSession,
 } from "./features/sessions/library";
+import {
+  removedSshSessions,
+  secretToForgetOnEdit,
+  storageFor,
+  storedPasswordTarget,
+  typedPasswordTarget,
+} from "./features/sessions/passwordFlow";
 import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
+import { forgetSecrets, secretExists } from "./features/sessions/secrets";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
@@ -92,6 +101,8 @@ export default function App() {
   // Multi-execution is off at start and never persisted (S11.4).
   const [multiExec, setMultiExec] = useState(false);
   const [writers] = useState(createWriterRegistry);
+  /** Non-blocking message, e.g. a saved password the keyring refused to delete. */
+  const [notice, setNotice] = useState<string | null>(null);
 
   const updatePane = useCallback((paneId: string, patch: Partial<PaneMeta>) => {
     setPaneMeta((prev) => {
@@ -136,9 +147,18 @@ export default function App() {
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
 
-  const openSaved = (session: LibrarySession) => {
-    if (isSshSession(session) && session.auth.method === "password") setModal({ kind: "password", session });
-    else open(toTarget(session));
+  /** Password sessions use the password saved in the keyring when there is one, otherwise ask. */
+  const openSaved = async (session: LibrarySession) => {
+    if (!isSshSession(session) || session.auth.method !== "password") return open(toTarget(session));
+    if (await secretExists(session.id)) open(storedPasswordTarget(session));
+    else setModal({ kind: "password", session });
+  };
+
+  /** Deletes sessions and the passwords saved for them; a keyring failure only shows a notice. */
+  const deleteSessions = (action: LibraryAction) => {
+    const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
+    sessions.dispatch(action);
+    void forgetSecrets(ids).then((error) => error && setNotice(error));
   };
 
   const newFolder = (parent: string) => {
@@ -202,6 +222,14 @@ export default function App() {
           Multi-exec
         </button>
       </header>
+      {notice && (
+        <div className="notice" role="status">
+          <span>{notice}</span>
+          <button className="btn" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
       {multiExec && (
         <MultiExecBanner count={multiExecGroup(allPanes).length} onTurnOff={() => setMultiExec(false)} />
       )}
@@ -250,19 +278,19 @@ export default function App() {
               library={sessions.library}
               status={sessions.status}
               saveError={sessions.saveError}
-              onOpen={openSaved}
+              onOpen={(session) => void openSaved(session)}
               onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
               onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
               onDelete={(session) => {
                 if (window.confirm(`Delete session "${session.name}"?`)) {
-                  sessions.dispatch({ type: "deleteSession", id: session.id });
+                  deleteSessions({ type: "deleteSession", id: session.id });
                 }
               }}
               onNewFolder={newFolder}
               onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
               onDeleteFolder={(path) => {
                 if (window.confirm(`Delete folder "${path}" and every session inside it?`)) {
-                  sessions.dispatch({ type: "deleteFolder", path });
+                  deleteSessions({ type: "deleteFolder", path });
                 }
               }}
             />
@@ -372,7 +400,13 @@ export default function App() {
           folders={sessions.library.folders}
           onCancel={() => setModal(null)}
           onSave={(session) => {
+            const before = modal.session;
             sessions.dispatch({ type: "saveSession", session });
+            // Switching away from password authentication drops the saved password too.
+            if (isSshSession(before)) {
+              const stale = secretToForgetOnEdit(before, session as SavedSession);
+              if (stale) void forgetSecrets([stale]).then((error) => error && setNotice(error));
+            }
             setModal(null);
           }}
         />
@@ -393,11 +427,12 @@ export default function App() {
       {modal?.kind === "password" && (
         <PasswordPrompt
           label={`${modal.session.username}@${modal.session.host}`}
+          remember={{ initial: false }}
           onCancel={() => setModal(null)}
-          onSubmit={(password) => {
+          onSubmit={(password, remember) => {
             const session = modal.session;
             setModal(null);
-            open(toTarget(session, password));
+            open(typedPasswordTarget(session, password, storageFor(session, remember, false)));
           }}
         />
       )}

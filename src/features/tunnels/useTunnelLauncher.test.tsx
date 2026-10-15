@@ -61,6 +61,19 @@ function setup(sessions: SavedSession[], tunnels: Tunnel[]) {
 
 const startCalls = () => mockedInvoke.mock.calls.filter(([command]) => command === "tunnel_start");
 
+interface StartArgs {
+  target: { auth: unknown };
+  storage: unknown;
+}
+const startArgs = (i: number) => startCalls()[i][1] as unknown as StartArgs;
+
+const SAVE = "Save password in the system keyring";
+
+/** Answers each command with its handler (undefined when none); a throw rejects. */
+function fakeBackend(handlers: Record<string, () => unknown>) {
+  mockedInvoke.mockImplementation(async (command: string) => handlers[command]?.());
+}
+
 const unknownHost = {
   kind: "unknownHost",
   host: "10.0.0.1:22",
@@ -82,7 +95,7 @@ describe("useTunnelLauncher", () => {
       started = launcher().start(db);
     });
     setTunnels([]);
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "pw" } });
+    fireEvent.change(await screen.findByLabelText("Password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByText("Connect"));
     await act(() => started);
     expect(startCalls()).toHaveLength(0);
@@ -95,7 +108,7 @@ describe("useTunnelLauncher", () => {
       started = launcher().start(db);
     });
     setTunnels([{ ...db, listenPort: 6000 }]);
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "pw" } });
+    fireEvent.change(await screen.findByLabelText("Password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByText("Connect"));
     await act(() => started);
     expect(startCalls()).toHaveLength(0);
@@ -109,7 +122,7 @@ describe("useTunnelLauncher", () => {
       started = launcher().start(db);
     });
     setTunnels([{ ...db }]);
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "pw" } });
+    fireEvent.change(await screen.findByLabelText("Password"), { target: { value: "pw" } });
     fireEvent.click(screen.getByText("Connect"));
     await act(() => started);
     expect(startCalls()).toHaveLength(1);
@@ -134,6 +147,103 @@ describe("useTunnelLauncher", () => {
     const { launcher, reportError } = setup([agentSession], [db]);
     await act(() => launcher().start(db));
     expect(reportError).toHaveBeenCalledWith("t1", expect.stringContaining("invalid args"));
+  });
+
+  it("starts with the saved password, without prompting, when one exists", async () => {
+    fakeBackend({ secret_exists: () => true });
+    const { launcher } = setup([passwordSession], [db]);
+    await act(() => launcher().start(db));
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(startCalls()).toHaveLength(1);
+    expect(startArgs(0).target.auth).toEqual({ method: "storedPassword", sessionId: "s1" });
+    expect(startArgs(0).storage).toBeNull();
+  });
+
+  it("saves the typed password when the checkbox is ticked", async () => {
+    fakeBackend({ secret_exists: () => false, secret_available: () => true });
+    const { launcher } = setup([passwordSession], [db]);
+    let started!: Promise<void>;
+    act(() => {
+      started = launcher().start(db);
+    });
+    const box = await screen.findByLabelText<HTMLInputElement>(SAVE);
+    expect(box.checked).toBe(false);
+    await vi.waitFor(() => expect(box.disabled).toBe(false));
+    fireEvent.click(box);
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "pw" } });
+    fireEvent.click(screen.getByText("Connect"));
+    await act(() => started);
+    expect(startArgs(0).target.auth).toEqual({ method: "password", password: "pw" });
+    expect(startArgs(0).storage).toEqual({ action: "remember", sessionId: "s1", label: "NexusTerm: u@10.0.0.1:22" });
+  });
+
+  it("asks again with the checkbox ticked when the saved password is rejected, then replaces it", async () => {
+    let attempts = 0;
+    fakeBackend({
+      secret_exists: () => true,
+      secret_available: () => true,
+      tunnel_start: () => {
+        attempts += 1;
+        if (attempts === 1) throw { kind: "authFailed" };
+      },
+    });
+    const { launcher } = setup([passwordSession], [db]);
+    let started!: Promise<void>;
+    act(() => {
+      started = launcher().start(db);
+    });
+    const box = await screen.findByLabelText<HTMLInputElement>(SAVE);
+    expect(box.checked).toBe(true);
+    await vi.waitFor(() => expect(box.disabled).toBe(false));
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "new" } });
+    fireEvent.click(screen.getByText("Connect"));
+    await act(() => started);
+    expect(startCalls()).toHaveLength(2);
+    expect(startArgs(1).target.auth).toEqual({ method: "password", password: "new" });
+    expect(startArgs(1).storage).toMatchObject({ action: "remember", sessionId: "s1" });
+  });
+
+  it("forgets the saved password when the checkbox is unticked on the retry", async () => {
+    let attempts = 0;
+    fakeBackend({
+      secret_exists: () => true,
+      secret_available: () => true,
+      tunnel_start: () => {
+        attempts += 1;
+        if (attempts === 1) throw { kind: "secretMissing" };
+      },
+    });
+    const { launcher } = setup([passwordSession], [db]);
+    let started!: Promise<void>;
+    act(() => {
+      started = launcher().start(db);
+    });
+    const box = await screen.findByLabelText<HTMLInputElement>(SAVE);
+    await vi.waitFor(() => expect(box.disabled).toBe(false));
+    fireEvent.click(box);
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "new" } });
+    fireEvent.click(screen.getByText("Connect"));
+    await act(() => started);
+    expect(startArgs(1).storage).toEqual({ action: "forget", sessionId: "s1" });
+  });
+
+  it("does not ask again when a typed password is rejected", async () => {
+    fakeBackend({
+      secret_exists: () => false,
+      tunnel_start: () => {
+        throw { kind: "authFailed" };
+      },
+    });
+    const { launcher } = setup([passwordSession], [db]);
+    let started!: Promise<void>;
+    act(() => {
+      started = launcher().start(db);
+    });
+    fireEvent.change(await screen.findByLabelText("Password"), { target: { value: "bad" } });
+    fireEvent.click(screen.getByText("Connect"));
+    await act(() => started);
+    expect(startCalls()).toHaveLength(1);
+    expect(screen.queryByLabelText("Password")).toBeNull();
   });
 
   it("leaves failures the backend already shows as the tunnel status alone", async () => {
