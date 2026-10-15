@@ -174,7 +174,7 @@ The SFTP browser and **Follow terminal folder** use the focused pane of the acti
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor) and **About** (version and project links); **Save** keeps the changes of every section:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
 - **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
