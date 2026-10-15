@@ -1,4 +1,5 @@
 import type { AiProvider, TerminalSettings } from "../settings/settings";
+import { t } from "../../i18n/i18n";
 import { isAiError, type AiConfig } from "./aiClient";
 
 /** Longest terminal selection the assistant sends (it is shown in full before sending). */
@@ -20,16 +21,16 @@ export const needsApiKey = (provider: AiProvider) => provider !== "openai-compat
 
 /** The short status hint a failed AI suggestion leaves in its pane. */
 export function aiHint(err: unknown): string {
-  if (!isAiError(err)) return "AI: unavailable";
+  if (!isAiError(err)) return t("ai.hint.unavailable");
   switch (err.kind) {
     case "noKey":
-      return "AI: no API key";
+      return t("ai.hint.noKey");
     case "auth":
-      return "AI: key rejected";
+      return t("ai.hint.keyRejected");
     case "rateLimit":
-      return "AI: rate limited";
+      return t("ai.hint.rateLimited");
     default:
-      return "AI: unavailable";
+      return t("ai.hint.unavailable");
   }
 }
 

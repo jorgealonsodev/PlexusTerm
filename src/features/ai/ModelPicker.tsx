@@ -1,14 +1,19 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { t as translate, useT } from "../../i18n/i18n";
 import { aiKeyStatus, aiModels, describeAiError, type AiModelInfo, type AiProvider } from "./aiClient";
 
-export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
+/** Provider names; "OpenAI-compatible" describes the endpoint, so it is translated. */
+const PROVIDER_NAMES: Record<Exclude<AiProvider, "openai-compatible">, string> = {
   anthropic: "Anthropic",
   gemini: "Gemini",
   openai: "OpenAI",
   "opencode-go": "OpenCode Go",
-  "openai-compatible": "OpenAI-compatible",
 };
+
+/** A provider's label in the current language. */
+export const aiProviderLabel = (provider: AiProvider) =>
+  provider === "openai-compatible" ? translate("ai.providers.openaiCompatible") : PROVIDER_NAMES[provider];
 
 const ORDER: AiProvider[] = ["anthropic", "gemini", "openai", "opencode-go", "openai-compatible"];
 
@@ -59,6 +64,7 @@ async function usableProviders(baseUrl: string): Promise<AiProvider[]> {
  * every usable provider (S10). Choosing one makes it the AI provider and model.
  */
 export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [filter, setFilter] = useState("");
@@ -120,8 +126,8 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
 
   const query = filter.trim().toLowerCase();
   const matches = (p: AiProvider, m: AiModelInfo) =>
-    !query || [m.name, m.id, AI_PROVIDER_LABELS[p]].some((s) => s.toLowerCase().includes(query));
-  const label = `${AI_PROVIDER_LABELS[provider]}${model ? ` · ${model}` : ""}`;
+    !query || [m.name, m.id, aiProviderLabel(p)].some((s) => s.toLowerCase().includes(query));
+  const label = `${aiProviderLabel(provider)}${model ? ` · ${model}` : ""}`;
 
   return (
     <div className="model-picker" ref={rootRef} onKeyDown={open ? onKey : undefined}>
@@ -130,7 +136,7 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
         className="model-picker__button muted"
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={`${label} — choose another model`}
+        title={t("ai.models.chooseAnother", { label })}
         onClick={() => setOpen((o) => !o)}
       >
         <span className="model-picker__label">{label}</span>
@@ -142,24 +148,24 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
             ref={filterRef}
             type="search"
             className="model-picker__filter"
-            aria-label="Filter models"
-            placeholder="Filter models…"
+            aria-label={t("ai.models.filter")}
+            placeholder={t("ai.models.filterPlaceholder")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <div className="model-picker__list" role="listbox" aria-label="AI models" ref={listRef}>
-            {groups === null && <p className="muted model-picker__message">Loading models…</p>}
+          <div className="model-picker__list" role="listbox" aria-label={t("ai.models.list")} ref={listRef}>
+            {groups === null && <p className="muted model-picker__message">{t("ai.models.loading")}</p>}
             {groups?.length === 0 && (
-              <p className="muted model-picker__message">No AI provider has an API key. Add one in Settings → AI.</p>
+              <p className="muted model-picker__message">{t("ai.models.noProvider")}</p>
             )}
             {groups?.map((g) => {
               const shown = g.models.filter((m) => matches(g.provider, m));
               const loading = !g.error && g.models.length === 0 && g.note === null;
               return (
-                <div key={g.provider} role="group" aria-label={AI_PROVIDER_LABELS[g.provider]}>
+                <div key={g.provider} role="group" aria-label={aiProviderLabel(g.provider)}>
                   {g.error && (
                     <p className="form-error model-picker__message">
-                      {AI_PROVIDER_LABELS[g.provider]}: {g.error}
+                      {t("ai.models.providerError", { provider: aiProviderLabel(g.provider), error: g.error })}
                     </p>
                   )}
                   {shown.map((m) => {
@@ -172,7 +178,7 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
                         aria-selected={selected}
                         aria-disabled={!m.supported || undefined}
                         className={`model-picker__option${selected ? " model-picker__option--selected" : ""}`}
-                        title={m.supported ? m.id : `${m.id} — not supported yet`}
+                        title={m.supported ? m.id : t("ai.models.unsupported", { id: m.id })}
                         onClick={() => choose(g.provider, m)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -182,12 +188,14 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
                         }}
                       >
                         <span className="model-picker__name">{m.name}</span>
-                        <span className="model-picker__provider">{AI_PROVIDER_LABELS[g.provider]}</span>
+                        <span className="model-picker__provider">{aiProviderLabel(g.provider)}</span>
                       </div>
                     );
                   })}
                   {loading && query === "" && (
-                    <p className="muted model-picker__message">Loading {AI_PROVIDER_LABELS[g.provider]} models…</p>
+                    <p className="muted model-picker__message">
+                      {t("ai.models.loadingProvider", { provider: aiProviderLabel(g.provider) })}
+                    </p>
                   )}
                   {g.note && <p className="muted model-picker__message">{g.note}</p>}
                 </div>

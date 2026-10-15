@@ -3,11 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FileText, Globe, Info, KeyRound, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
-import { LOCALES, useT, type LanguageSetting } from "../../i18n/i18n";
+import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
 import { aiOpenCodeModels, describeAiError, type GoModels } from "../ai/aiClient";
+import { aiProviderLabel } from "../ai/ModelPicker";
 import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
@@ -20,6 +21,7 @@ import {
   cleanFontFamily,
   cleanTextEditor,
   cssFontFamily,
+  AI_PROVIDERS,
   DEFAULT_AI_MODELS,
   isAiProvider,
   MAX_AI_BASE_URL_LENGTH,
@@ -48,11 +50,12 @@ const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as
 
 /** A few lines of a shell session drawn with the scheme's colours. */
 function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFamily: string }) {
+  const tr = useT();
   const t = entry.theme;
   return (
     <div
       className="theme-preview"
-      aria-label={`Preview of ${entry.name}`}
+      aria-label={tr("settings.appearance.preview", { name: entry.name })}
       style={{ background: t.background, color: t.foreground, fontFamily: cssFontFamily(fontFamily) }}
     >
       <div>
@@ -78,22 +81,17 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
 export type SettingsSection = "appearance" | "terminal" | "ssh" | "files" | "ai" | "about";
 type Section = SettingsSection;
 
-const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "terminal", label: "Terminal", icon: SquareTerminal },
-  { id: "ssh", label: "SSH", icon: KeyRound },
-  { id: "files", label: "Files", icon: FileText },
-  { id: "ai", label: "AI", icon: Sparkles },
-  { id: "about", label: "About", icon: Info },
+const SECTIONS: { id: Section; icon: LucideIcon }[] = [
+  { id: "appearance", icon: Palette },
+  { id: "terminal", icon: SquareTerminal },
+  { id: "ssh", icon: KeyRound },
+  { id: "files", icon: FileText },
+  { id: "ai", icon: Sparkles },
+  { id: "about", icon: Info },
 ];
 
-const PROVIDER_LABELS: Record<AiProvider, string> = {
-  anthropic: "Anthropic",
-  gemini: "Gemini",
-  openai: "OpenAI",
-  "openai-compatible": "OpenAI-compatible",
-  "opencode-go": "OpenCode Go",
-};
+/** A section's name in the current language. */
+const sectionLabel = (id: Section) => translate(`settings.sections.${id}`);
 
 /** Where OpenCode publishes its Go model list (public, no key). */
 const OPENCODE_MODELS_URL = "https://opencode.ai/inference/go/v1/models";
@@ -103,6 +101,7 @@ const OPENCODE_MODELS_URL = "https://opencode.ai/inference/go/v1/models";
  * models PlexusTerm cannot talk to yet are shown disabled. Without a list the model is typed.
  */
 function OpenCodeModelField({ value, onChange }: { value: string; onChange: (model: string) => void }) {
+  const t = useT();
   const [list, setList] = useState<GoModels | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -128,17 +127,20 @@ function OpenCodeModelField({ value, onChange }: { value: string; onChange: (mod
   const models = list?.models ?? [];
   return (
     <div className="field">
-      <label htmlFor="settings-ai-model">Model</label>
+      <label htmlFor="settings-ai-model">{t("settings.ai.model")}</label>
       <div className="form-row field__picker">
         {models.length > 0 ? (
           <select id="settings-ai-model" value={value} onChange={(e) => onChange(e.target.value)}>
             <option value="" disabled>
-              Choose a model
+              {t("settings.ai.chooseModel")}
             </option>
             {value && !models.some((m) => m.id === value) && <option value={value}>{value}</option>}
             {models.map((m) => (
               <option key={m.id} value={m.id} disabled={!m.supported}>
-                {`${m.name} (${m.id})${m.supported ? "" : " — not supported yet"}`}
+                {t(m.supported ? "settings.ai.modelOption" : "settings.ai.modelOptionUnsupported", {
+                  name: m.name,
+                  id: m.id,
+                })}
               </option>
             ))}
           </select>
@@ -152,15 +154,13 @@ function OpenCodeModelField({ value, onChange }: { value: string; onChange: (mod
           />
         )}
         <button type="button" className="btn" disabled={busy} onClick={() => load(true)}>
-          Refresh models
+          {t("settings.ai.refreshModels")}
         </button>
       </div>
-      {busy && <span className="muted">Loading the models…</span>}
+      {busy && <span className="muted">{t("settings.ai.loadingModels")}</span>}
       {list?.note && <span className="muted">{list.note}</span>}
       {error && (
-        <span className="form-error">
-          {error} Type a model id from {OPENCODE_MODELS_URL}.
-        </span>
+        <span className="form-error">{t("settings.ai.modelsError", { error, url: OPENCODE_MODELS_URL })}</span>
       )}
     </div>
   );
@@ -173,6 +173,7 @@ type KeyStatus = "checking" | "saved" | "none" | "unavailable";
  * Saving and removing apply at once, not on Save.
  */
 function ApiKeyField({ provider }: { provider: AiProvider }) {
+  const t = useT();
   const [status, setStatus] = useState<KeyStatus>("checking");
   const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +192,7 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
     };
   }, [provider]);
 
-  const run = (action: () => Promise<unknown>, after: KeyStatus, failure: string) => {
+  const run = (action: () => Promise<unknown>, after: KeyStatus, failure: "saveKeyFailed" | "removeKeyFailed") => {
     setBusy(true);
     setError(null);
     Promise.resolve()
@@ -200,38 +201,43 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
         setStatus(after);
         setKey("");
       })
-      .catch((err) => setError(`${failure}: ${err}`))
+      .catch((err) => setError(t(`settings.ai.${failure}`, { error: String(err) })))
       .finally(() => setBusy(false));
   };
 
-  const label = { checking: "Checking the keyring…", saved: "A key is saved", none: "No key saved", unavailable: "Keyring unavailable" };
+  const label = {
+    checking: t("settings.ai.keyChecking"),
+    saved: t("settings.ai.keySaved"),
+    none: t("settings.ai.keyNone"),
+    unavailable: t("settings.ai.keyUnavailable"),
+  };
   return (
     <div className="field">
-      <label htmlFor="settings-ai-key">API key</label>
+      <label htmlFor="settings-ai-key">{t("settings.ai.apiKey")}</label>
       <div className="form-row field__picker">
         <input
           id="settings-ai-key"
           type="password"
           autoComplete="off"
           value={key}
-          placeholder={status === "saved" ? "Type a new key to replace it" : "Paste the key"}
+          placeholder={t(status === "saved" ? "settings.ai.keyReplacePlaceholder" : "settings.ai.keyPastePlaceholder")}
           onChange={(e) => setKey(e.target.value)}
         />
         <button
           type="button"
           className="btn"
           disabled={busy || !key.trim()}
-          onClick={() => run(() => invoke("ai_key_save", { provider, key: key.trim() }), "saved", "Could not save the key")}
+          onClick={() => run(() => invoke("ai_key_save", { provider, key: key.trim() }), "saved", "saveKeyFailed")}
         >
-          Save key
+          {t("settings.ai.saveKey")}
         </button>
         <button
           type="button"
           className="btn"
           disabled={busy || status !== "saved"}
-          onClick={() => run(() => invoke("ai_key_delete", { provider }), "none", "Could not remove the key")}
+          onClick={() => run(() => invoke("ai_key_delete", { provider }), "none", "removeKeyFailed")}
         >
-          Remove key
+          {t("settings.ai.removeKey")}
         </button>
       </div>
       <span className="muted">{label[status]}</span>
@@ -242,6 +248,7 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
 
 /** Press a key combination to set it; Escape cancels; app shortcuts are refused. */
 function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut: string) => void }) {
+  const t = useT();
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -258,8 +265,8 @@ function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut
     }
     const shortcut = shortcutFromEvent(e);
     if (shortcut === null) return;
-    if (!isValidShortcut(shortcut)) setError("Use Ctrl, Alt or Meta with a key.");
-    else if (appShortcutConflict(shortcut)) setError(`${shortcut} is already used by PlexusTerm.`);
+    if (!isValidShortcut(shortcut)) setError(t("settings.ai.shortcutInvalid"));
+    else if (appShortcutConflict(shortcut)) setError(t("settings.ai.shortcutTaken", { shortcut }));
     else {
       setError(null);
       setCapturing(false);
@@ -269,7 +276,7 @@ function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut
 
   return (
     <div className="field">
-      <label htmlFor="settings-assistant-shortcut">Assistant shortcut</label>
+      <label htmlFor="settings-assistant-shortcut">{t("settings.ai.assistantShortcut")}</label>
       <input
         id="settings-assistant-shortcut"
         className={capturing ? "shortcut-capture shortcut-capture--active" : "shortcut-capture"}
@@ -284,7 +291,7 @@ function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut
         onKeyDown={onKeyDown}
       />
       <span className="muted">
-        {capturing ? "Press the new key combination, or Escape to keep it." : "Click the field to change it."}
+        {t(capturing ? "settings.ai.shortcutCapturing" : "settings.ai.shortcutIdle")}
       </span>
       {error && <span className="form-error">{error}</span>}
     </div>
@@ -329,13 +336,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [section, setSection] = useState<Section>(initialSection ?? "appearance");
-  const dark = TERMINAL_THEMES.filter((t) => t.dark);
-  const light = TERMINAL_THEMES.filter((t) => !t.dark);
+  const dark = TERMINAL_THEMES.filter((scheme) => scheme.dark);
+  const light = TERMINAL_THEMES.filter((scheme) => !scheme.dark);
 
   const browseTextEditor = async () => {
     try {
       const program = await open({
-        title: "Choose a text editor",
+        title: t("settings.files.chooseEditor"),
         multiple: false,
         directory: false,
         defaultPath: programsDir(platform),
@@ -357,8 +364,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     setHistoryNote(null);
     commandHistory
       .clear()
-      .then(() => setHistoryNote("History cleared."))
-      .catch((err) => setHistoryNote(`Could not clear the history: ${err}`));
+      .then(() => setHistoryNote(t("settings.ai.historyCleared")))
+      .catch((err) => setHistoryNote(t("settings.ai.historyClearFailed", { error: String(err) })));
   };
 
   const submit = (e: FormEvent) => {
@@ -388,10 +395,14 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     });
   };
 
+  // Sentences with markup inside: the placeholder marks where the code or the link goes.
+  const [editorHelpBefore, editorHelpAfter = ""] = t("settings.files.textEditorHelp").split("{command}");
+  const [creditsBefore, creditsAfter = ""] = t("settings.about.credits").split("{notices}");
+
   const panel = (id: Section) => ({
     role: "tabpanel" as const,
     id: `settings-panel-${id}`,
-    "aria-label": SECTIONS.find((x) => x.id === id)!.label,
+    "aria-label": sectionLabel(id),
     hidden: section !== id,
     className: "settings__panel",
   });
@@ -399,10 +410,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog settings" onSubmit={submit} aria-labelledby="settings-title" noValidate>
-        <h2 id="settings-title">Settings</h2>
+        <h2 id="settings-title">{t("settings.dialog.title")}</h2>
         <div className="settings__body">
-          <nav className="settings__nav" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
+          <nav className="settings__nav" role="tablist" aria-orientation="vertical" aria-label={t("settings.dialog.sections")}>
+            {SECTIONS.map(({ id, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -413,7 +424,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onClick={() => setSection(id)}
               >
                 <Icon size={15} />
-                {label}
+                {sectionLabel(id)}
               </button>
             ))}
           </nav>
@@ -446,19 +457,19 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </div>
             </div>
             <label className="field">
-              Colour scheme
+              {t("settings.appearance.colourScheme")}
               <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-                <optgroup label="Dark">
-                  {dark.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
+                <optgroup label={t("settings.appearance.dark")}>
+                  {dark.map((scheme) => (
+                    <option key={scheme.id} value={scheme.id}>
+                      {scheme.name}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Light">
-                  {light.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
+                <optgroup label={t("settings.appearance.light")}>
+                  {light.map((scheme) => (
+                    <option key={scheme.id} value={scheme.id}>
+                      {scheme.name}
                     </option>
                   ))}
                 </optgroup>
@@ -466,7 +477,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             </label>
             <ThemePreview entry={themeById(theme)} fontFamily={cleanFontFamily(fontFamily)} />
             <label className="field">
-              Font family
+              {t("settings.appearance.fontFamily")}
               <input
                 value={fontFamily}
                 maxLength={MAX_FONT_FAMILY_LENGTH}
@@ -475,7 +486,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </label>
             <label className="field field--port">
-              Font size
+              {t("settings.appearance.fontSize")}
               <input
                 type="number"
                 min={MIN_FONT_SIZE}
@@ -485,32 +496,26 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">
-              Ctrl+= / Ctrl+- / Ctrl+0 change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster,
-              Starship) need a Nerd Font as the font family.
-            </p>
+            <p className="muted">{t("settings.appearance.fontHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
                 checked={sidebarHideWhenCollapsed}
                 onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
               />
-              Hide the sidebar completely when folded
+              {t("settings.appearance.hideSidebar")}
             </label>
-            <p className="muted">
-              Ctrl+Shift+B or the toolbar button folds the sidebar to its tab icons, or hides it completely with this
-              option.
-            </p>
+            <p className="muted">{t("settings.appearance.sidebarHelp")}</p>
           </div>
 
           <div {...panel("terminal")}>
             <label className="check">
               <input type="checkbox" checked={copyOnSelect} onChange={(e) => setCopyOnSelect(e.target.checked)} />
-              Copy on select
+              {t("settings.terminal.copyOnSelect")}
             </label>
             <label className="check">
               <input type="checkbox" checked={rightClickPastes} onChange={(e) => setRightClickPastes(e.target.checked)} />
-              Right click pastes
+              {t("settings.terminal.rightClickPastes")}
             </label>
             <label className="check">
               <input
@@ -518,45 +523,43 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={confirmMultilinePaste}
                 onChange={(e) => setConfirmMultilinePaste(e.target.checked)}
               />
-              Confirm multi-line paste
+              {t("settings.terminal.confirmMultilinePaste")}
             </label>
-            <p className="muted">When right click pastes, Ctrl+right click opens the terminal menu.</p>
+            <p className="muted">{t("settings.terminal.rightClickHelp")}</p>
           </div>
 
           <div {...panel("ssh")}>
             <label className="check">
               <input type="checkbox" checked={remoteMonitor} onChange={(e) => setRemoteMonitor(e.target.checked)} />
-              Remote monitor bar (SSH tabs)
+              {t("settings.ssh.remoteMonitor")}
             </label>
-            <p className="muted">
-              A bar under each SSH pane with the server's CPU, memory, disk, network and users, read over the same
-              connection. Also in Tools.
-            </p>
+            <p className="muted">{t("settings.ssh.remoteMonitorHelp")}</p>
           </div>
 
           <div {...panel("files")}>
             <div className="field">
-              <label htmlFor="settings-text-editor">Text editor</label>
+              <label htmlFor="settings-text-editor">{t("settings.files.textEditor")}</label>
               <div className="form-row field__picker">
                 <input
                   id="settings-text-editor"
                   value={textEditor}
-                  placeholder="System default"
+                  placeholder={t("settings.files.systemDefault")}
                   maxLength={MAX_TEXT_EDITOR_LENGTH}
                   spellCheck={false}
                   onChange={(e) => setTextEditor(e.target.value)}
                 />
                 <button type="button" className="btn" onClick={() => void browseTextEditor()}>
-                  Browse…
+                  {t("common.browse")}
                 </button>
                 <button type="button" className="btn" disabled={!textEditor} onClick={() => setTextEditor("")}>
-                  Use system default
+                  {t("settings.files.useSystemDefault")}
                 </button>
               </div>
             </div>
             <p className="muted">
-              The text editor opens files from the SFTP browser: a program, or a command such as{" "}
-              <code>code --wait</code>; leave it empty to use the system default.
+              {editorHelpBefore}
+              <code>code --wait</code>
+              {editorHelpAfter}
             </p>
           </div>
 
@@ -567,53 +570,41 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={inlineSuggestions}
                 onChange={(e) => setInlineSuggestions(e.target.checked)}
               />
-              Inline suggestions
+              {t("settings.ai.inlineSuggestions")}
             </label>
-            <p className="muted">
-              A grey suggestion of the rest of the command while you type. Right Arrow or End accepts it, Ctrl+Right
-              accepts one word.
-            </p>
+            <p className="muted">{t("settings.ai.inlineSuggestionsHelp")}</p>
             <div className="form-row">
               <label className="check">
                 <input type="checkbox" checked={history} onChange={(e) => setHistory(e.target.checked)} />
-                Command history
+                {t("settings.ai.commandHistory")}
               </label>
               <button type="button" className="btn" onClick={clearHistory}>
-                Clear history
+                {t("settings.ai.clearHistory")}
               </button>
             </div>
             {historyNote && <p className="muted">{historyNote}</p>}
-            <p className="muted">
-              Commands you run are kept on this computer, per host, to suggest them again. Lines starting with a
-              space, passwords and full-screen programs are never recorded.
-            </p>
+            <p className="muted">{t("settings.ai.historyHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={aiSuggestions} onChange={(e) => setAiSuggestions(e.target.checked)} />
-              AI suggestions
+              {t("settings.ai.aiSuggestions")}
             </label>
-            <p className="muted">
-              When the history has nothing, ask the AI provider. Only the typed line, the current folder and the last
-              history commands are sent, never the terminal output.
-            </p>
+            <p className="muted">{t("settings.ai.aiSuggestionsHelp")}</p>
             <label className="field">
-              Provider
+              {t("settings.ai.provider")}
               <select value={aiProvider} onChange={(e) => changeProvider(e.target.value)}>
-                {Object.entries(PROVIDER_LABELS).map(([id, name]) => (
+                {AI_PROVIDERS.map((id) => (
                   <option key={id} value={id}>
-                    {name}
+                    {aiProviderLabel(id)}
                   </option>
                 ))}
               </select>
             </label>
             {aiProvider === "opencode-go" && (
-              <p className="muted">
-                OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short
-                requests.
-              </p>
+              <p className="muted">{t("settings.ai.openCodeGoNote")}</p>
             )}
             {aiProvider === "openai-compatible" && (
               <label className="field">
-                Base URL
+                {t("settings.ai.baseUrl")}
                 <input
                   value={aiBaseUrl}
                   placeholder="http://localhost:11434/v1"
@@ -627,7 +618,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <OpenCodeModelField value={aiModel} onChange={setAiModel} />
             ) : (
               <label className="field">
-                Model
+                {t("settings.ai.model")}
                 <input
                   value={aiModel}
                   maxLength={MAX_AI_MODEL_LENGTH}
@@ -638,7 +629,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             )}
             <ApiKeyField provider={aiProvider} />
             <label className="field field--number">
-              History commands sent as context
+              {t("settings.ai.historyContext")}
               <input
                 type="number"
                 min={0}
@@ -657,32 +648,29 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 src={themeById(settings.theme).dark ? wordmarkUrl : wordmarkLightUrl}
                 alt="PlexusTerm"
               />
-              <p>Version {APP_VERSION}</p>
-              <p className="muted">
-                A terminal and remote-session manager for Linux and Windows: local shells, SSH, SFTP, tunnels, serial,
-                Telnet and Mosh in one window.
-              </p>
+              <p>{t("settings.about.version", { version: APP_VERSION })}</p>
+              <p className="muted">{t("settings.about.description")}</p>
               <p>
                 <a href={REPO_URL} onClick={(e) => openLink(e, REPO_URL)}>
                   github.com/jorgealonsodev/PlexusTerm
                 </a>
               </p>
               <p className="muted">
-                Colour schemes from iTerm2-Color-Schemes (MIT) and their authors; see{" "}
+                {creditsBefore}
                 <a href={NOTICES_URL} onClick={(e) => openLink(e, NOTICES_URL)}>
-                  third-party notices
+                  {t("settings.about.notices")}
                 </a>
-                .
+                {creditsAfter}
               </p>
             </div>
           </div>
         </div>
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Save
+            {t("common.save")}
           </button>
         </div>
       </form>

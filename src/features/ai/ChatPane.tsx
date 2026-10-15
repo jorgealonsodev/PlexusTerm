@@ -1,5 +1,6 @@
 import { Play, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { t as translate, useT } from "../../i18n/i18n";
 import type { TerminalSettings } from "../settings/settings";
 import { writeText } from "../terminal/clipboard";
 import { AnswerText } from "./AnswerText";
@@ -7,13 +8,16 @@ import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiProvider, typ
 import { aiConfigOf, needsApiKey, newAiSessionId, truncateSelection } from "./aiContext";
 import { ModelPicker } from "./ModelPicker";
 
-const PROVIDER_NAMES: Record<TerminalSettings["aiProvider"], string> = {
+const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible">, string> = {
   anthropic: "Anthropic",
   gemini: "Gemini",
   openai: "OpenAI",
-  "openai-compatible": "the OpenAI-compatible endpoint",
   "opencode-go": "OpenCode Go",
 };
+
+/** The provider as the object of a sentence ("No API key is saved for …"). */
+const providerName = (provider: TerminalSettings["aiProvider"]) =>
+  provider === "openai-compatible" ? translate("ai.providers.openaiCompatibleEndpoint") : PROVIDER_NAMES[provider];
 
 /** What the chat knows about its linked terminal. Terminal output is never part of it. */
 export interface ChatContext {
@@ -61,10 +65,11 @@ function CommandBox({
   onInsert: (command: string) => void;
   onRun: (command: string) => void;
 }) {
+  const t = useT();
   const [copied, setCopied] = useState<"no" | "yes" | "failed">("no");
   return (
     <div className="chat__command">
-      <pre className="assistant__command" aria-label="Suggested command">
+      <pre className="assistant__command" aria-label={t("ai.command.label")}>
         {command}
       </pre>
       <div className="chat__command-actions">
@@ -77,24 +82,24 @@ function CommandBox({
               .catch(() => setCopied("failed"))
           }
         >
-          {copied === "yes" ? "Copied" : copied === "failed" ? "Copy failed" : "Copy"}
+          {copied === "yes" ? t("ai.command.copied") : copied === "failed" ? t("ai.command.copyFailed") : t("common.copy")}
         </button>
         <button
           type="button"
           className="btn"
-          title="Types the command into the terminal without running it"
+          title={t("ai.command.insertTitle")}
           onClick={() => onInsert(command)}
         >
-          Insert
+          {t("ai.command.insert")}
         </button>
         <button
           type="button"
           className="btn btn--primary btn--icon"
-          title="Runs the command in the terminal (types it and presses Enter)"
+          title={t("ai.command.runTitle")}
           onClick={() => onRun(command)}
         >
           <Play size={14} />
-          Run
+          {t("ai.command.run")}
         </button>
       </div>
     </div>
@@ -106,6 +111,7 @@ function CommandBox({
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
 export function ChatPane({ settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel }: ChatPaneProps) {
+  const t = useT();
   const [sessionId] = useState(newAiSessionId);
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
@@ -200,15 +206,15 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
   const model = settings.aiModel.trim();
 
   return (
-    <section className="chat" aria-label="AI chat">
+    <section className="chat" aria-label={t("ai.chat.label")}>
       <header className="chat__header">
-        <span className="chat__title">AI</span>
+        <span className="chat__title">{t("ai.chat.title")}</span>
         <ModelPicker provider={provider} model={model} baseUrl={settings.aiBaseUrl} onSelect={onSelectModel} />
         <button
           type="button"
           className="chat__close"
-          aria-label="Close AI chat"
-          title="Close AI chat (Ctrl+Shift+W)"
+          aria-label={t("ai.chat.close")}
+          title={t("ai.chat.closeTitle")}
           onClick={onClose}
         >
           <X size={16} />
@@ -216,15 +222,15 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
       </header>
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (
-          <p className="muted chat__empty">Ask anything. Commands run only when you click Run.</p>
+          <p className="muted chat__empty">{t("ai.chat.empty")}</p>
         )}
         {turns.map((turn) => (
           <div key={turn.id} className="chat__turn">
-            <div className="chat__question" aria-label="Question">
+            <div className="chat__question" aria-label={t("ai.chat.question")}>
               {turn.selection && <pre className="assistant__selection">{turn.selection}</pre>}
               <p className="assistant__text">{turn.question}</p>
             </div>
-            {turn.state === "loading" && <p className="muted">Asking…</p>}
+            {turn.state === "loading" && <p className="muted">{t("ai.chat.asking")}</p>}
             {turn.state === "error" && (
               <p className="form-error" role="alert">
                 {turn.error}
@@ -241,22 +247,22 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
       </div>
       {keyMissing && (
         <div className="assistant__notice" role="alert">
-          <p>No API key is saved for {PROVIDER_NAMES[provider]}. Add one in Settings → AI.</p>
+          <p>{t("ai.chat.noKey", { provider: providerName(provider) })}</p>
           <button type="button" className="btn" onClick={onOpenSettings}>
-            Open AI settings
+            {t("ai.chat.openSettings")}
           </button>
         </div>
       )}
       {chip && (
         <div className="chat__chip">
-          <pre className="assistant__selection" aria-label="Selected text to send">
+          <pre className="assistant__selection" aria-label={t("ai.chat.selectedText")}>
             {chip}
           </pre>
           <button
             type="button"
             className="chat__chip-remove"
-            aria-label="Remove selected text"
-            title="Do not send the selected text"
+            aria-label={t("ai.chat.removeSelection")}
+            title={t("ai.chat.removeSelectionTitle")}
             onClick={() => setChip("")}
           >
             <X size={12} />
@@ -267,8 +273,8 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
         <textarea
           ref={inputRef}
           className="assistant__prompt chat__input"
-          aria-label="Your question"
-          placeholder="Ask anything…"
+          aria-label={t("ai.chat.input")}
+          placeholder={t("ai.chat.placeholder")}
           rows={2}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -276,11 +282,11 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
         />
         {loading ? (
           <button type="button" className="btn" onClick={stop}>
-            Stop
+            {t("common.stop")}
           </button>
         ) : (
           <button type="button" className="btn btn--primary" disabled={!input.trim() || keyMissing} onClick={send}>
-            Send
+            {t("ai.chat.send")}
           </button>
         )}
       </div>
