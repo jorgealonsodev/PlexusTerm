@@ -72,6 +72,13 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S15.5 Save output: the visible scrollback of the focused pane can be saved to a text file (save dialog), and per-tab session logging can be toggled on to append everything received to a file chosen once (ANSI escapes stripped).
   - S15.6 A Settings dialog (toolbar gear) holds: font size, copy on select, right click pastes, confirm multi-line paste; stored in settings.json with the atomic 0600 storage.
 
+- S16 (decided by the parent under "haz lo que te creas mas optimo"): macros, like MobaXterm's macro recorder and player.
+  - S16.1 A macro is a named, ordered list of steps: `send` (text with escapes: \r \n \t \e \xHH and ^X control characters), `wait` (milliseconds) and `waitFor` (until the pane's output contains a string, with a timeout in seconds, default 10).
+  - S16.2 Recording: a toolbar "Record macro" button (and Ctrl+Shift+R) records everything typed into the focused pane until stopped, merging consecutive keystrokes into `send` steps; a red "Recording" indicator is always visible while recording. When stopping, the user names the macro (or discards it). Paste is recorded as a send step.
+  - S16.3 Playing: a sidebar tab "Macros" lists macros (search, play, edit, duplicate, delete with confirmation); playing sends to the focused pane through the normal input path (so multi-execution still applies); a running macro shows its progress and can be stopped (button or Escape); a `waitFor` timeout stops the macro with a message in the pane.
+  - S16.4 Hotkeys: a macro may have a hotkey Ctrl+Alt+1..9 (unique; assigning a used one moves it). The macro editor edits name, hotkey and steps (add, remove, reorder, edit).
+  - S16.5 Storage: macros.json with the atomic 0600 storage (unreadable file disables editing, like sessions). Macros are plain text: the recorder shows a warning while recording ("Everything you type is saved, including passwords"); macros are never masked or filtered automatically.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -97,6 +104,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T10 — S14 (S14.1-S14.6) — delegated (writer trigger: long-session context backstop) — SSH jump hosts. Writer: chain via direct-tcpip + connect_stream per hop, per-hop fingerprint/auth/storage, {kind:"hop",hop,name,error} wrapper, nested jumps expanded ProxyJump-style with cycle/limit checks; cargo 124 (+5 ignored), vitest 236, OpenSSH interop 4/4 (new 1-jump test). Verifier: 0 blockers, S14.1-S14.6 PASS; probes proved fingerprints never cross hops and jump passwords never reach the target. Parent fix A1: the edit dialog now validates the whole chain (indirect cycles) with resolveChain (RED→GREEN). Left: A2 (hop handles dropped rather than disconnected on late errors), A3 (keyring checkbox lost after a second failed jump retry).
 
 - [x] T11 — S15 (S15.1-S15.6) — delegated (writer trigger: long-session context backstop) — Terminal comfort (find, font size, copy/paste, context menu, save/log output, settings). Writer: find bar (addon-search), global font size, copy on select (mouseup), right-click paste / Ctrl+right-click menu, multi-line paste confirmation, save output + per-pane logging (ANSI stripped), settings.json (atomic 0600); vitest 294, cargo 127. Parent Xvfb smoke found a real bug: WebKitGTK denies navigator.clipboard.readText ("Could not read the clipboard.") → switched to tauri-plugin-clipboard-manager with only allow-read-text/allow-write-text (test RED with navigator.clipboard denied → GREEN). After the fix: right-click paste, multi-line confirmation, copy on select, Ctrl+= and find all verified in the app.
+
+- [ ] T12 — S16 (S16.1-S16.5) — delegated (writer trigger: long-session context backstop) — Macros.
 
 ## Log
 
@@ -131,3 +140,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L29 (2026-10-15): "haz lo que te creas mas optimo" — own visual identity: three concepts drawn and compared at 256/32/16 px; chose an "N" drawn as a route between two nodes (distinct from generic prompt icons and from MobaXterm). Icons regenerated with `tauri icon` (mobile sets removed), favicon, toolbar mark. librsvg2-bin installed for rendering.
 - L30 (2026-10-15): "haz lo que te creas mas optimo" — while the release build runs, specified T11 (terminal comfort) as the next unit.
 - L31 (2026-10-15): Packaging: bundle targets deb + appimage with metadata (category Utility, descriptions); template Cargo metadata fixed (authors "Jorge Alonso", no email embedded). `pnpm tauri build` OK: NexusTerm_0.1.0_amd64.deb (4.3 MiB; Depends libwebkit2gtk-4.1-0, libgtk-3-0; desktop entry correct) and AppImage (82 MiB). Release AppImage smoke on Xvfb: starts, terminal runs commands. Note: the user's AppImageLauncher intercepts AppImages and moves them into ~/Applications (it happened inside the scratch HOME only). Installed librsvg2-dev, libayatana-appindicator3-dev.
+- L32 (2026-10-15): "haz lo que te creas mas optimo" — next unit T12 (macros).
