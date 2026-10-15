@@ -217,7 +217,9 @@ fn openai_text(text: &str, finish: &str) -> Value {
     })
 }
 
-const ASSIST_JSON: &str = r#"{"command": "df -h", "explanation": "Shows free disk space."}"#;
+const ASSIST_JSON: &str = r#"{"answer": "Shows free disk space.", "command": "df -h"}"#;
+/// A general answer with no command (S8).
+const ANSWER_ONLY_JSON: &str = r#"{"answer": "¡Hola! ¿En qué te ayudo?", "command": null}"#;
 
 // --- Anthropic ---------------------------------------------------------------------------
 
@@ -304,16 +306,21 @@ async fn anthropic_assist_request_and_answer() {
     assert_eq!(
         got,
         AssistResponse {
-            command: "df -h".into(),
-            explanation: "Shows free disk space.".into()
+            answer: "Shows free disk space.".into(),
+            command: Some("df -h".into()),
         }
     );
     let body = seen.await.unwrap().body;
-    assert_eq!(body["max_tokens"], 8192);
+    assert_eq!(body["max_tokens"], 16000);
     assert_eq!(body["output_config"]["effort"], "medium");
     assert_eq!(body["output_config"]["format"]["type"], "json_schema");
     let schema = &body["output_config"]["format"]["schema"];
-    assert_eq!(schema["required"], json!(["command", "explanation"]));
+    assert_eq!(schema["required"], json!(["answer", "command"]));
+    assert_eq!(schema["properties"]["answer"]["type"], "string");
+    assert_eq!(
+        schema["properties"]["command"]["anyOf"],
+        json!([{"type": "string"}, {"type": "null"}])
+    );
     assert_eq!(schema["additionalProperties"], false);
     assert_eq!(body["system"], text::ASSIST_SYSTEM);
     assert_eq!(body["fallbacks"], "default");
@@ -406,17 +413,18 @@ async fn gemini_assist_asks_for_json() {
         )
         .await
         .unwrap();
-    assert_eq!(got.command, "df -h");
+    assert_eq!(got.command.as_deref(), Some("df -h"));
     let body = seen.await.unwrap().body;
     assert_eq!(body["generationConfig"]["maxOutputTokens"], 8192);
     assert_eq!(
         body["generationConfig"]["responseMimeType"],
         "application/json"
     );
-    assert_eq!(
-        body["generationConfig"]["responseSchema"]["required"],
-        json!(["command", "explanation"])
-    );
+    let schema = &body["generationConfig"]["responseSchema"];
+    assert_eq!(schema["required"], json!(["answer"]));
+    assert_eq!(schema["properties"]["answer"]["type"], "STRING");
+    assert_eq!(schema["properties"]["command"]["type"], "STRING");
+    assert_eq!(schema["properties"]["command"]["nullable"], true);
 }
 
 #[tokio::test]
@@ -522,14 +530,17 @@ async fn openai_assist_uses_a_strict_json_schema() {
         .assist(&store, &config(Provider::OpenAi, "gpt-x"), &ask("disk"))
         .await
         .unwrap();
-    assert_eq!(got.command, "df -h");
+    assert_eq!(got.command.as_deref(), Some("df -h"));
     let body = seen.await.unwrap().body;
     assert_eq!(body["max_completion_tokens"], 8192);
     assert_eq!(body["response_format"]["type"], "json_schema");
     assert_eq!(body["response_format"]["json_schema"]["strict"], true);
+    let schema = &body["response_format"]["json_schema"]["schema"];
+    assert_eq!(schema["additionalProperties"], false);
+    assert_eq!(schema["required"], json!(["answer", "command"]));
     assert_eq!(
-        body["response_format"]["json_schema"]["schema"]["additionalProperties"],
-        false
+        schema["properties"]["command"]["anyOf"],
+        json!([{"type": "string"}, {"type": "null"}])
     );
 }
 
@@ -561,7 +572,7 @@ async fn compatible_server_without_key_sends_no_authorization() {
         .assist(&store, &config, &ask("disk"))
         .await
         .unwrap();
-    assert_eq!(got.command, "df -h");
+    assert_eq!(got.command.as_deref(), Some("df -h"));
     let seen = seen.await.unwrap();
     assert_eq!(seen.path, "/v1/chat/completions");
     assert_eq!(seen.header("authorization"), None);
@@ -676,7 +687,7 @@ async fn opencode_go_assist_reads_the_json_answer() {
         )
         .await
         .unwrap();
-    assert_eq!(got.command, "df -h");
+    assert_eq!(got.command.as_deref(), Some("df -h"));
     let seen = seen.await.unwrap();
     assert_eq!(seen.header("x-opencode-session"), Some(SESSION));
     assert_eq!(seen.body["max_tokens"], 8192);
@@ -951,7 +962,7 @@ async fn opencode_go_responses_models_post_instructions_and_input_to_responses()
         )
         .await
         .unwrap();
-    assert_eq!(got.command, "df -h");
+    assert_eq!(got.command.as_deref(), Some("df -h"));
     let seen = seen.await.unwrap();
     assert_eq!(seen.path, "/inference/go/v1/responses");
     assert_eq!(
@@ -1223,10 +1234,167 @@ async fn redirects_are_not_followed_and_are_a_config_error() {
 }
 
 #[tokio::test]
-async fn an_assistant_command_over_2000_characters_is_a_bad_response() {
+async fn an_assistant_command_over_2000_characters_is_dropped_and_the_answer_kept() {
     let long = "a".repeat(text::MAX_COMMAND + 1);
-    let answer = format!("{{\"command\": \"{long}\", \"explanation\": \"x\"}}");
+    let answer = format!("{{\"answer\": \"x\", \"command\": \"{long}\"}}");
     let (base, _seen) = mock(200, openai_text(&answer, "stop"), Duration::ZERO).await;
+    let store = store_with(Provider::OpenAi, Some(KEY));
+    let got = client(&base)
+        .assist(&store, &config(Provider::OpenAi, "gpt-x"), &ask("x"))
+        .await
+        .unwrap();
+    assert_eq!(
+        got,
+        AssistResponse {
+            answer: "x".into(),
+            command: None
+        }
+    );
+}
+
+#[test]
+fn an_answer_without_a_command_serializes_command_as_null() {
+    let got = AssistResponse {
+        answer: "Hi.".into(),
+        command: None,
+    };
+    assert_eq!(
+        serde_json::to_value(&got).unwrap(),
+        json!({"answer": "Hi.", "command": null})
+    );
+}
+
+// --- General answers (S8) ----------------------------------------------------------------
+
+/// The provider's own success body around `text`, for each assistant API shape.
+fn reply_for(provider: Provider, text: &str) -> Value {
+    match provider {
+        Provider::Anthropic => anthropic_text(text, "end_turn"),
+        Provider::Gemini => gemini_text(text, "STOP"),
+        _ => openai_text(text, "stop"),
+    }
+}
+
+fn compatible_config(base: &str) -> AiConfig {
+    AiConfig {
+        provider: Provider::OpenAiCompatible,
+        base_url: Some(format!("{base}/v1")),
+        model: "llama3.2".into(),
+        session_id: None,
+    }
+}
+
+#[tokio::test]
+async fn every_provider_reads_an_answer_without_a_command() {
+    for (provider, model) in [
+        (Provider::Anthropic, "claude-opus-5-5"),
+        (Provider::Gemini, "gemini-3.5-flash-lite"),
+        (Provider::OpenAi, "gpt-x"),
+        (Provider::OpenCodeGo, "glm-5.3"),
+        (Provider::OpenAiCompatible, "llama3.2"),
+    ] {
+        let (base, _seen) = mock(200, reply_for(provider, ANSWER_ONLY_JSON), Duration::ZERO).await;
+        let store = store_with(provider, Some(KEY));
+        let config = if provider == Provider::OpenAiCompatible {
+            compatible_config(&base)
+        } else {
+            config(provider, model)
+        };
+        let got = client(&base)
+            .assist(&store, &config, &ask("hola"))
+            .await
+            .unwrap();
+        assert_eq!(
+            got,
+            AssistResponse {
+                answer: "¡Hola! ¿En qué te ayudo?".into(),
+                command: None
+            },
+            "{provider:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn every_provider_sends_the_general_assistant_prompt() {
+    for (provider, model) in [
+        (Provider::Anthropic, "claude-opus-5-5"),
+        (Provider::Gemini, "gemini-3.5-flash-lite"),
+        (Provider::OpenAi, "gpt-x"),
+        (Provider::OpenCodeGo, "glm-5.3"),
+        (Provider::OpenAiCompatible, "llama3.2"),
+    ] {
+        let (base, seen) = mock(200, reply_for(provider, ASSIST_JSON), Duration::ZERO).await;
+        let store = store_with(provider, Some(KEY));
+        let config = if provider == Provider::OpenAiCompatible {
+            compatible_config(&base)
+        } else {
+            config(provider, model)
+        };
+        client(&base)
+            .assist(&store, &config, &ask("¿qué es un inodo?"))
+            .await
+            .unwrap();
+        let body = seen.await.unwrap().body;
+        let system = match provider {
+            Provider::Anthropic => &body["system"],
+            Provider::Gemini => &body["systemInstruction"]["parts"][0]["text"],
+            _ => &body["messages"][0]["content"],
+        };
+        assert_eq!(system, text::ASSIST_SYSTEM, "{provider:?}");
+    }
+    let prompt = text::ASSIST_SYSTEM;
+    for needle in [
+        "any question",
+        "language the user wrote",
+        "\"command\": null",
+        "never run",
+    ] {
+        assert!(prompt.contains(needle), "{needle}: {prompt}");
+    }
+}
+
+#[tokio::test]
+async fn plain_text_replies_become_the_answer_with_no_command() {
+    let reply = "Un inodo guarda los datos de un archivo.\n```sh\nls -i\n```";
+    // OpenAI-compatible (chat completions).
+    let (base, _seen) = mock(200, openai_text(reply, "stop"), Duration::ZERO).await;
+    let store = store_with(Provider::OpenAiCompatible, None);
+    let got = client(&base)
+        .assist(&store, &compatible_config(&base), &ask("inodo"))
+        .await
+        .unwrap();
+    assert_eq!(got.answer, reply);
+    assert_eq!(got.command, None);
+    // OpenCode Go messages and responses models.
+    for (model, format, body) in [
+        ("minimax-m3", "messages", anthropic_text(reply, "end_turn")),
+        ("gpt-6-luna", "responses", responses_text(reply)),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = go_cache(&dir, &[(model, format)], 0);
+        let (base, _seen) = mock(200, body, Duration::ZERO).await;
+        let store = store_with(Provider::OpenCodeGo, Some(KEY));
+        let ai = client(&base);
+        ai.set_go_cache(Some(path));
+        let got = ai
+            .assist(&store, &config(Provider::OpenCodeGo, model), &ask("inodo"))
+            .await
+            .unwrap();
+        assert_eq!(
+            got,
+            AssistResponse {
+                answer: reply.into(),
+                command: None
+            },
+            "{format}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_empty_assistant_reply_is_a_bad_response() {
+    let (base, _seen) = mock(200, openai_text("  \n", "stop"), Duration::ZERO).await;
     let store = store_with(Provider::OpenAi, Some(KEY));
     let err = client(&base)
         .assist(&store, &config(Provider::OpenAi, "gpt-x"), &ask("x"))
