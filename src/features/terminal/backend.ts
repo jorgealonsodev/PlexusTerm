@@ -1,6 +1,8 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type { JumpTarget, PasswordStorage, SessionTarget, SshAuth, SshTarget } from "../sessions/types";
+import { moshBackend } from "../mosh/moshBackend";
 import { serialBackend } from "../serial/serialBackend";
+import { telnetBackend } from "../telnet/telnetBackend";
 
 export type TerminalEvent =
   | { event: "output"; data: string }
@@ -9,7 +11,7 @@ export type TerminalEvent =
 export interface StartOptions {
   cols: number;
   rows: number;
-  /** SSH only: fingerprint the user accepted for an unknown host. */
+  /** SSH and Mosh (its SSH login) only: fingerprint the user accepted for an unknown host. */
   trustedFingerprint?: string;
   /** SSH only: replaces the target's auth (e.g. a password typed after the saved one failed). */
   auth?: SshAuth;
@@ -77,5 +79,9 @@ export function backendFor(target: SessionTarget): TerminalBackend {
       return sshBackend(target);
     case "serial":
       return serialBackend(target);
+    case "telnet":
+      return telnetBackend(target);
+    case "mosh":
+      return moshBackend(target);
   }
 }

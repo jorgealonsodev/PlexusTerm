@@ -1,11 +1,11 @@
-import type { SavedSession } from "./library";
+import type { SavedSession, SavedTelnetSession } from "./library";
 import { skippedLabel, type ImportPlan } from "./iniImport";
 
 export type ImportResult = { ok: true; plan: ImportPlan } | { ok: false; error: string };
 
 interface IniImportDialogProps {
   result: ImportResult;
-  onConfirm: (sessions: SavedSession[]) => void;
+  onConfirm: (sessions: (SavedSession | SavedTelnetSession)[]) => void;
   onClose: () => void;
 }
 
@@ -28,7 +28,7 @@ export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogP
         )}
         {plan && (
           <>
-            <p>{count ? `${plural(count, "SSH session")} to import.` : "No SSH sessions to import."}</p>
+            <p>{count ? `${plural(count, "session")} to import.` : "No sessions to import."}</p>
             {plan.duplicates > 0 && (
               <p className="muted">{plural(plan.duplicates, "duplicate")} already saved will be skipped.</p>
             )}

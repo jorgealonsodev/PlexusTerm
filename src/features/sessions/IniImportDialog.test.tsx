@@ -22,15 +22,15 @@ describe("IniImportDialog", () => {
     const onClose = vi.fn();
     render(
       <IniImportDialog
-        result={{ ok: true, plan: { toAdd: [imported], duplicates: 2, skipped: { Telnet: 3, invalid: 1 } } }}
+        result={{ ok: true, plan: { toAdd: [imported], duplicates: 2, skipped: { RDP: 3, invalid: 1 } } }}
         onConfirm={onConfirm}
         onClose={onClose}
       />,
     );
-    expect(screen.getByText("1 SSH session to import.")).toBeTruthy();
+    expect(screen.getByText("1 session to import.")).toBeTruthy();
     expect(screen.getByText("2 duplicates already saved will be skipped.")).toBeTruthy();
-    expect(screen.getByText("Telnet sessions: 3")).toBeTruthy();
-    expect(screen.getByText("SSH without a host: 1")).toBeTruthy();
+    expect(screen.getByText("RDP sessions: 3")).toBeTruthy();
+    expect(screen.getByText("Sessions without a host: 1")).toBeTruthy();
     expect(screen.getByText(/Passwords are not imported/)).toBeTruthy();
     fireEvent.click(screen.getByText("Import 1 session"));
     expect(onConfirm).toHaveBeenCalledWith([imported]);
@@ -46,7 +46,7 @@ describe("IniImportDialog", () => {
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByText("No SSH sessions to import.")).toBeTruthy();
+    expect(screen.getByText("No sessions to import.")).toBeTruthy();
     expect(screen.getByText("Close")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Import/ })).toBeNull();
     expect(screen.queryByText("Cancel")).toBeNull();

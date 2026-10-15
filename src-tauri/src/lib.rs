@@ -1,12 +1,15 @@
+mod mosh;
 mod pty;
 mod secrets;
 mod serial;
 mod sftp;
 mod ssh;
 mod storage;
+mod telnet;
 mod terminal;
 mod tunnels;
 
+use mosh::{MoshLauncher, MoshRequest};
 use pty::{PtyError, PtyManager, SpawnRequest};
 use secrets::{KeyringStore, SecretError, SharedSecrets};
 use serial::{SerialError, SerialManager, SerialRequest};
@@ -15,6 +18,7 @@ use ssh::{ConnectRequest, PasswordStorage, SshError, SshManager, SshTarget};
 use storage::StorageError;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, Manager, State};
+use telnet::{TelnetError, TelnetManager, TelnetRequest};
 use terminal::TerminalSink;
 use tunnels::{StatusUpdate, TunnelDefinition, TunnelError, TunnelManager};
 
@@ -87,6 +91,54 @@ fn serial_write(
 #[tauri::command]
 fn serial_close(id: u32, serial: State<'_, SerialManager>) -> Result<(), SerialError> {
     serial.close(id)
+}
+
+#[tauri::command]
+async fn telnet_connect(
+    request: TelnetRequest,
+    on_event: Channel<TerminalEvent>,
+    telnet: State<'_, TelnetManager>,
+) -> Result<u32, TelnetError> {
+    telnet.connect(request, ChannelSink(on_event)).await
+}
+
+#[tauri::command]
+fn telnet_write(
+    id: u32,
+    data: String,
+    telnet: State<'_, TelnetManager>,
+) -> Result<(), TelnetError> {
+    telnet.write(id, data.as_bytes())
+}
+
+#[tauri::command]
+fn telnet_resize(
+    id: u32,
+    cols: u16,
+    rows: u16,
+    telnet: State<'_, TelnetManager>,
+) -> Result<(), TelnetError> {
+    telnet.resize(id, cols, rows)
+}
+
+#[tauri::command]
+fn telnet_close(id: u32, telnet: State<'_, TelnetManager>) -> Result<(), TelnetError> {
+    telnet.close(id)
+}
+
+/// Starts `mosh-server` over SSH (login rules and `storage` as for `ssh_connect`) and
+/// runs `mosh-client` in a PTY; the returned id is driven with the `pty_*` commands.
+#[tauri::command]
+async fn mosh_connect(
+    request: MoshRequest,
+    storage: Option<PasswordStorage>,
+    on_event: Channel<TerminalEvent>,
+    mosh: State<'_, MoshLauncher>,
+    ssh: State<'_, SshManager>,
+    ptys: State<'_, PtyManager>,
+) -> Result<u32, SshError> {
+    mosh.connect(&ssh, &ptys, request, storage, ChannelSink(on_event))
+        .await
 }
 
 /// `storage` saves the typed password in the keyring (or forgets the saved one) once logged in.
@@ -321,6 +373,8 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(PtyManager::default())
         .manage(SerialManager::default())
+        .manage(TelnetManager::default())
+        .manage(MoshLauncher::default())
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
         .setup(move |app| {
@@ -342,6 +396,11 @@ pub fn run() {
             serial_open,
             serial_write,
             serial_close,
+            telnet_connect,
+            telnet_write,
+            telnet_resize,
+            telnet_close,
+            mosh_connect,
             ssh_connect,
             ssh_write,
             ssh_resize,

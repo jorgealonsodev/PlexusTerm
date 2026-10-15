@@ -731,6 +731,17 @@ impl SshManager {
         self
     }
 
+    /// How this manager reaches servers and saved passwords, for logins made by
+    /// other session kinds (Mosh starts its server over SSH).
+    pub(crate) fn context(&self) -> ConnectContext<'_> {
+        ConnectContext {
+            known_hosts: &self.known_hosts,
+            agent_socket: self.agent_socket.as_deref(),
+            secrets: &self.secrets,
+            storage_timeout: self.storage_timeout,
+        }
+    }
+
     /// Uses the current user's `~/.ssh/known_hosts`, like OpenSSH.
     pub fn for_current_user() -> Self {
         let home = std::env::var_os("HOME")
@@ -764,12 +775,7 @@ impl SshManager {
             auth: req.auth,
             jumps: req.jumps,
         };
-        let ctx = ConnectContext {
-            known_hosts: &self.known_hosts,
-            agent_socket: self.agent_socket.as_deref(),
-            secrets: &self.secrets,
-            storage_timeout: self.storage_timeout,
-        };
+        let ctx = self.context();
         let Chain {
             connection: handle,
             jumps,

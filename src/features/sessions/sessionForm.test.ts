@@ -15,6 +15,8 @@ const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
   passphrase: "",
   kind: "ssh",
   serial: defaultSerialForm,
+  telnet: { host: "", port: "" },
+  mosh: { sshSessionId: "", serverCommand: "" },
   ...overrides,
 });
 
@@ -83,6 +85,73 @@ describe("parseSessionForm (serial)", () => {
     const parsed = parseSessionForm(serialForm({ baud: "custom", customBaud: "250000", parity: "odd" }), "c-2");
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parseSessionForm(formFromSession(parsed.session), "c-2")).toEqual(parsed);
+  });
+});
+
+describe("parseSessionForm (Telnet and Mosh)", () => {
+  const sshSession: SavedSession = {
+    kind: "ssh",
+    id: "s1",
+    name: "web",
+    folder: "",
+    host: "web.example.com",
+    port: 22,
+    username: "deploy",
+    auth: { method: "agent" },
+  };
+  const library = { sessions: [sshSession] };
+
+  it("builds a Telnet session on port 23 by default, named after the host", () => {
+    const result = parseSessionForm(form({ kind: "telnet", name: "", telnet: { host: " switch.lan ", port: "" } }), "t-1");
+    expect(result).toEqual({
+      ok: true,
+      session: { kind: "telnet", id: "t-1", name: "switch.lan", folder: "Prod/Web", host: "switch.lan", port: 23 },
+    });
+  });
+
+  it("reports Telnet validation errors", () => {
+    expect(parseSessionForm(form({ kind: "telnet", telnet: { host: " ", port: "" } }), "t")).toEqual({
+      ok: false,
+      error: "Host is required",
+    });
+    expect(parseSessionForm(form({ kind: "telnet", telnet: { host: "h", port: "99999" } }), "t")).toEqual({
+      ok: false,
+      error: "Port must be a number between 1 and 65535",
+    });
+  });
+
+  it("builds a Mosh session over a saved SSH session, keeping a custom server command", () => {
+    const mosh = { sshSessionId: "s1", serverCommand: " mosh-server new -p 60010 " };
+    expect(parseSessionForm(form({ kind: "mosh", name: "", mosh }), "m-1", library)).toEqual({
+      ok: true,
+      session: {
+        kind: "mosh",
+        id: "m-1",
+        name: "web (mosh)",
+        folder: "Prod/Web",
+        sshSessionId: "s1",
+        serverCommand: "mosh-server new -p 60010",
+      },
+    });
+    const plain = parseSessionForm(form({ kind: "mosh", mosh: { sshSessionId: "s1", serverCommand: "" } }), "m-1", library);
+    expect(plain.ok && plain.session).not.toHaveProperty("serverCommand");
+  });
+
+  it("requires an existing SSH session for Mosh", () => {
+    const error = { ok: false, error: "Choose the saved SSH session Mosh logs in with" };
+    expect(parseSessionForm(form({ kind: "mosh", mosh: { sshSessionId: "", serverCommand: "" } }), "m", library)).toEqual(error);
+    expect(parseSessionForm(form({ kind: "mosh", mosh: { sshSessionId: "gone", serverCommand: "" } }), "m", library)).toEqual(error);
+  });
+
+  it("round-trips Telnet and Mosh sessions", () => {
+    for (const f of [
+      form({ kind: "telnet", telnet: { host: "h", port: "2323" } }),
+      form({ kind: "mosh", mosh: { sshSessionId: "s1", serverCommand: "mosh-server new" } }),
+    ]) {
+      const parsed = parseSessionForm(f, "x", library);
+      if (!parsed.ok) throw new Error(parsed.error);
+      expect(parseSessionForm(formFromSession(parsed.session), "x", library)).toEqual(parsed);
+    }
   });
 });
 
