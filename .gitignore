@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Release assets (scripts/package-release.sh)
+dist-release/

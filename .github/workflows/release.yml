@@ -1,0 +1,152 @@
+name: Release
+
+# Pushing a v<version> tag builds every release asset and creates a DRAFT
+# GitHub Release; publishing the draft is a manual decision.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: linux-${{ matrix.arch }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libssl-dev build-essential nasm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and package
+        run: scripts/package-release.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: dist-release/*
+          if-no-files-found: error
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check versions
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          status=0
+          # Strip CR first: the Windows checkout may use CRLF line endings.
+          for found in \
+            "$(tr -d '\r' <src-tauri/tauri.conf.json | sed -n 's/^  "version": "\(.*\)",$/\1/p' | head -n 1)" \
+            "$(tr -d '\r' <src-tauri/Cargo.toml | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)" \
+            "$(tr -d '\r' <package.json | sed -n 's/^  "version": "\(.*\)",$/\1/p' | head -n 1)"; do
+            if [ "$found" != "$VERSION" ]; then
+              echo "::error::project version '$found' does not match tag version '$VERSION'"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build installers
+        run: pnpm tauri build --bundles nsis,msi
+
+      - name: Rename installers
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUNDLE=src-tauri/target/release/bundle
+          mkdir -p dist-release
+          shopt -s nullglob
+          msi=("$BUNDLE"/msi/*_"$VERSION"_x64_*.msi)
+          exe=("$BUNDLE"/nsis/*_"$VERSION"_x64-setup.exe)
+          if [ "${#msi[@]}" -ne 1 ] || [ "${#exe[@]}" -ne 1 ]; then
+            echo "::error::expected one MSI and one NSIS installer, found ${#msi[@]} and ${#exe[@]}"
+            exit 1
+          fi
+          cp "${msi[0]}" "dist-release/nexusterm_${VERSION}_windows_x86_64.msi"
+          cp "${exe[0]}" "dist-release/nexusterm_${VERSION}_windows_x86_64-setup.exe"
+          ls -l dist-release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-x86_64
+          path: dist-release/*
+          if-no-files-found: error
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist-release
+          merge-multiple: true
+
+      - name: Write checksums
+        run: scripts/checksums.sh dist-release
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "NexusTerm ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            dist-release/*
