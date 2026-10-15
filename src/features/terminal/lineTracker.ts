@@ -83,5 +83,6 @@ export function promptBefore(lineToCursor: string, typed: string): string {
   return typed && lineToCursor.endsWith(typed) ? lineToCursor.slice(0, -typed.length) : lineToCursor;
 }
 
-/** "Password: ", "[sudo] password for u: ", "Enter passphrase for key …: ", "PIN:" */
-export const isSecretPrompt = (prompt: string) => /(pass(word|phrase|code)|\bpin\b)[^\n]*[:?]\s*$/i.test(prompt);
+/** "Password: ", "[sudo] password for u: ", "Enter passphrase for key …: ", "PIN:", "Verification code:", "OTP:", "Enter token:" */
+export const isSecretPrompt = (prompt: string) =>
+  /(pass(word|phrase|code)|\bpin\b|\b(otp|2fa|mfa|token|one[- ]time|(verification|authenticator|security|auth) code)\b)[^\n]*[:?]\s*$/i.test(prompt);

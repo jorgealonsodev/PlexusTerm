@@ -76,3 +76,13 @@ describe("password prompts", () => {
     for (const prompt of ["user@passwords:~$ ", "$ ", "mysql> "]) expect(isSecretPrompt(prompt), prompt).toBe(false);
   });
 });
+
+describe("isSecretPrompt (one-time codes and tokens)", () => {
+  it("also recognises verification codes, OTPs and tokens", () => {
+    for (const prompt of ["Verification code: ", "Enter token: ", "OTP: ", "2FA code: ", "Authenticator code:", "Enter the security key PIN: "]) {
+      expect(isSecretPrompt(prompt), prompt).toBe(true);
+    }
+    expect(isSecretPrompt("user@host:~$ ")).toBe(false);
+  });
+});
+

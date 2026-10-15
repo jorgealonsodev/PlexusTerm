@@ -668,6 +668,19 @@ describe("TerminalView", () => {
         expect(ghost(container)).toBe(" -o wide");
       });
 
+      it("never sends a line typed with a leading space (kept out of history) to the AI", async () => {
+        vi.useFakeTimers();
+        const aiSuggest = vi.fn(async ({ line }: { line: string }) => `${line}x`);
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        render(
+          <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} history={historyWith()} settings={aiOn} aiSuggest={aiSuggest} />,
+        );
+        await act(() => vi.advanceTimersByTimeAsync(10));
+        typeAt("$ ", " export TOKEN=abc");
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+        expect(aiSuggest).not.toHaveBeenCalled();
+      });
+
       it("ignores an answer that arrives after the line changed, and never asks when AI suggestions are off", async () => {
         vi.useFakeTimers();
         let answer: (text: string) => void = () => {};

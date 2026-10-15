@@ -103,12 +103,17 @@ export function recentCommands(data: HistoryData, hostKey: string, count: number
   return (data.hosts[hostKey] ?? []).slice(-count).map((e) => e.command);
 }
 
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+
 const validEntry = (e: unknown): e is HistoryEntry => {
   if (typeof e !== "object" || e === null) return false;
   const { command, count, last } = e as Record<string, unknown>;
   return (
     typeof command === "string" &&
     command.trim() !== "" &&
+    // A command is typed into the terminal when accepted: no control characters.
+    !CONTROL.test(command) &&
     command.length <= MAX_COMMAND_LENGTH &&
     Number.isInteger(count) &&
     (count as number) > 0 &&
@@ -118,6 +123,19 @@ const validEntry = (e: unknown): e is HistoryEntry => {
 };
 
 /** Reads history.json; anything missing or invalid gives an empty history, invalid entries are dropped. */
+/** Whether `json` is a history file (or no file): an unreadable one must never be overwritten. */
+export function isHistoryFile(json: unknown): boolean {
+  if (json === null || json === undefined) return true;
+  if (typeof json !== "string") return false;
+  try {
+    const raw = JSON.parse(json) as { hosts?: unknown } | null;
+    const hosts = raw?.hosts;
+    return typeof raw === "object" && raw !== null && !Array.isArray(raw) && typeof hosts === "object" && hosts !== null && !Array.isArray(hosts);
+  } catch {
+    return false;
+  }
+}
+
 export function parseHistory(json: unknown): HistoryData {
   let raw: unknown = null;
   try {

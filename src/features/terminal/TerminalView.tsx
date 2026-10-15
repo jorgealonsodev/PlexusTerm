@@ -427,7 +427,8 @@ export function TerminalView({
     const askAi = () => {
       const ask = callbacks.current.aiSuggest;
       const s = settingsRef.current;
-      if (!ask || !s.aiSuggestions || !s.inlineSuggestions || line.uncertain || !line.text.trim()) return;
+      // A leading space keeps a line out of history (like HISTCONTROL); it stays private from the AI too.
+      if (!ask || !s.aiSuggestions || !s.inlineSuggestions || line.uncertain || !line.text.trim() || line.text.startsWith(" ")) return;
       const seq = aiSeq;
       const asked = line.text;
       aiTimer = setTimeout(() => {

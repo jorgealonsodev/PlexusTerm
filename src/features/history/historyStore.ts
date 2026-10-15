@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   EMPTY_HISTORY,
+  isHistoryFile,
   parseHistory,
   recentCommands,
   recordCommand,
@@ -64,6 +65,11 @@ export function createHistoryStore(
       .load()
       .then(
         (json) => {
+          // A file that is not valid history is kept as it is, like one that cannot be read.
+          if (!isHistoryFile(json)) {
+            canSave = false;
+            return;
+          }
           if (!loaded) data = parseHistory(json);
         },
         () => {

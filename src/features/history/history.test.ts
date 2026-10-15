@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_HISTORY,
+  isHistoryFile,
   hostKeyOf,
   MAX_HOSTS,
   MAX_PER_HOST,
@@ -119,6 +120,21 @@ describe("recentCommands", () => {
 });
 
 describe("parseHistory / serializeHistory", () => {
+  it("drops entries holding control characters, which would be typed into the terminal", () => {
+    const json = JSON.stringify({
+      version: 1,
+      hosts: { local: [{ command: "ls -la", count: 1, last: 1 }, { command: " \u001b[31mX", count: 1, last: 2 }, { command: "a\u0015b", count: 1, last: 3 }] },
+    });
+    expect(parseHistory(json).hosts.local.map((e) => e.command)).toEqual(["ls -la"]);
+  });
+
+  it("tells an unreadable file apart from an empty one", () => {
+    expect(isHistoryFile('{"version":1,"hosts":{}}')).toBe(true);
+    expect(isHistoryFile(null)).toBe(true);
+    expect(isHistoryFile('{"version":1,"hosts":{"local":[')).toBe(false);
+    expect(isHistoryFile("[1,2]")).toBe(false);
+  });
+
   it("round-trips with a version", () => {
     const data = withCommands("local", [["ls", 1]]);
     const json = serializeHistory(data);
