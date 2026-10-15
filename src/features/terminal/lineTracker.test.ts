@@ -86,3 +86,34 @@ describe("isSecretPrompt (one-time codes and tokens)", () => {
   });
 });
 
+
+describe("isSecretPrompt (other languages)", () => {
+  it("recognises sudo, ssh and PIN prompts in the interface languages, with ASCII or full-width colons", () => {
+    const prompts = [
+      "[sudo] contraseña para jorge: ",
+      "Contraseña: ",
+      "Introduzca la frase de contraseña para la clave '/home/u/.ssh/id': ",
+      "Código de verificación: ",
+      "[sudo] Passwort für jorge: ",
+      "Kennwort: ",
+      "[sudo] Mot de passe de jorge : ",
+      "[sudo] senha para jorge: ",
+      "[sudo] jorge のパスワード: ",
+      "[sudo] jorge 的密码：",
+      "请输入口令：",
+      "[sudo] jorge의 암호: ",
+      "비밀번호: ",
+      "[sudo] كلمة السر لـ jorge: ",
+      "كلمة المرور: ",
+      "[sudo] jorge के लिए पासवर्ड: ",
+      "[sudo] пароль для jorge: ",
+    ];
+    for (const prompt of prompts) expect(isSecretPrompt(prompt), prompt).toBe(true);
+  });
+
+  it("still leaves ordinary prompts and output alone", () => {
+    for (const prompt of ["jorge@contraseñas:~$ ", "~/senha $ ", "PS C:\\Users\\jorge> ", "mot de passe oublié", "密码学 $ "]) {
+      expect(isSecretPrompt(prompt), prompt).toBe(false);
+    }
+  });
+});
