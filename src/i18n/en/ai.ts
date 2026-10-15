@@ -21,6 +21,7 @@ export const ai = {
     rateLimited: "AI: rate limited",
   },
   chat: {
+    newConversation: "New conversation",
     label: "AI chat",
     title: "AI",
     close: "Close AI chat",

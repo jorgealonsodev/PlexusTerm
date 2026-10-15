@@ -10,6 +10,7 @@ import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
+import { forgetChatsExcept } from "./features/ai/chatMemory";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
 import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
@@ -284,7 +285,10 @@ function AppContent() {
       const ids = Object.keys(prev).filter((id) => open.has(id));
       return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
     });
+    forgetChatsExcept(open);
   }, [state.tabs]);
+  // The conversations belong to this window's terminals.
+  useEffect(() => () => forgetChatsExcept(new Set()), []);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
   // SFTP and the followed folder belong to the focused pane of the active tab (S11.5); an AI
@@ -834,6 +838,7 @@ function AppContent() {
                           <div className="pane-stack">
                             <div className="pane-stack__terminal">
                               <ChatPane
+                                conversationKey={link.terminalPaneId}
                                 settings={settings}
                                 context={chatContextOf(tab, link.terminalPaneId)}
                                 selection={link.selection}

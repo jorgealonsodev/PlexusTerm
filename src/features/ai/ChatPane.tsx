@@ -1,4 +1,4 @@
-import { Play, X } from "lucide-react";
+import { MessageSquarePlus, Play, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import type { TerminalSettings } from "../settings/settings";
@@ -6,6 +6,7 @@ import { writeText } from "../terminal/clipboard";
 import { AnswerText } from "./AnswerText";
 import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiProvider, type AiTurn } from "./aiClient";
 import { aiConfigOf, needsApiKey, newAiSessionId, truncateSelection } from "./aiContext";
+import { recallChat, rememberChat, type ChatTurn } from "./chatMemory";
 import { ModelPicker } from "./ModelPicker";
 
 const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible">, string> = {
@@ -28,6 +29,8 @@ export interface ChatContext {
 }
 
 interface ChatPaneProps {
+  /** The linked terminal's pane id: its conversation comes back when the chat opens again. */
+  conversationKey: string;
   settings: TerminalSettings;
   context: ChatContext;
   /** The linked terminal's selection when the chat opened, offered with the first question. */
@@ -44,16 +47,6 @@ interface ChatPaneProps {
   onSelectModel: (provider: AiProvider, model: string) => void;
 }
 
-/** One question and what came back for it. */
-interface ChatTurn {
-  id: number;
-  question: string;
-  selection: string | null;
-  state: "loading" | "answer" | "error";
-  answer: string;
-  command: string | null;
-  error: string;
-}
 
 /** A command from an answer, with Copy, Insert (types it, no Enter) and Run (types it and presses Enter). */
 function CommandBox({
@@ -110,19 +103,30 @@ function CommandBox({
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel }: ChatPaneProps) {
+export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel }: ChatPaneProps) {
   const t = useT();
-  const [sessionId] = useState(newAiSessionId);
+  const [sessionId, setSessionId] = useState(() => recallChat(conversationKey)?.sessionId ?? newAiSessionId());
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
   const [chip, setChip] = useState(() => truncateSelection(selection));
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [turns, setTurns] = useState<ChatTurn[]>(() => recallChat(conversationKey)?.turns ?? []);
   const [keyMissing, setKeyMissing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   /** Bumped by Stop and on unmount: older answers are dropped. */
   const seq = useRef(0);
-  const nextId = useRef(1);
+  const nextId = useRef(Math.max(0, ...turns.map((turn) => turn.id)) + 1);
+
+  // Kept for the terminal, so closing the chat does not end the conversation.
+  useEffect(() => rememberChat(conversationKey, { sessionId, turns }), [conversationKey, sessionId, turns]);
+
+  /** New conversation: no earlier turns and another AI session. */
+  const newConversation = () => {
+    seq.current++;
+    setTurns([]);
+    setSessionId(newAiSessionId());
+    inputRef.current?.focus();
+  };
   const provider = settings.aiProvider;
   const loading = turns.some((t) => t.state === "loading");
 
@@ -210,6 +214,15 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onRu
       <header className="chat__header">
         <span className="chat__title">{t("ai.chat.title")}</span>
         <ModelPicker provider={provider} model={model} baseUrl={settings.aiBaseUrl} onSelect={onSelectModel} />
+        <button
+          type="button"
+          className="chat__close"
+          aria-label={t("ai.chat.newConversation")}
+          title={t("ai.chat.newConversation")}
+          onClick={newConversation}
+        >
+          <MessageSquarePlus size={16} />
+        </button>
         <button
           type="button"
           className="chat__close"

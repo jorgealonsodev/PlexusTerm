@@ -338,6 +338,58 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(chats()).toHaveLength(1);
   });
 
+  it("keeps the conversation when the chat is closed and opened again, in the same AI session", async () => {
+    let n = 0;
+    answers.ai_assist = () => (++n === 1 ? { answer: "Use du.", command: null } : { answer: "Add sort.", command: null });
+    await renderApp();
+    pressShortcut();
+    await ask("what uses space?");
+    press("W"); // closes the chat
+    expect(chats()).toHaveLength(0);
+    pressShortcut();
+    expect(within(chat()).getByLabelText("Question").textContent).toBe("what uses space?");
+    expect(within(chat()).getByLabelText("Answer").textContent).toBe("Use du.");
+    await ask("and sorted?");
+    const [first, second] = calls("ai_assist");
+    const id = (args: Record<string, unknown>) => (args.config as { sessionId: string }).sessionId;
+    expect(id(second)).toBe(id(first));
+    expect((second.request as { conversation: unknown[] }).conversation).toEqual([
+      { question: "what uses space?", selection: null, answer: "Use du.", command: null },
+    ]);
+  });
+
+  it("New conversation clears the chat and starts another AI session", async () => {
+    answers.ai_assist = () => ({ answer: "Hi.", command: null });
+    await renderApp();
+    pressShortcut();
+    await ask("hello");
+    fireEvent.click(within(chat()).getByRole("button", { name: "New conversation" }));
+    expect(within(chat()).queryByLabelText("Question")).toBeNull();
+    expect(document.activeElement).toBe(chatInput());
+    await ask("again");
+    const [first, second] = calls("ai_assist");
+    const id = (args: Record<string, unknown>) => (args.config as { sessionId: string }).sessionId;
+    expect(id(second)).not.toBe(id(first));
+    expect((second.request as { conversation: unknown[] }).conversation).toEqual([]);
+    // A cleared conversation stays cleared after closing and opening the chat.
+    press("W");
+    pressShortcut();
+    expect(within(chat()).getAllByLabelText("Question").map((q) => q.textContent)).toEqual(["again"]);
+  });
+
+  it("forgets a terminal's conversation when the terminal closes", async () => {
+    answers.ai_assist = () => ({ answer: "Hi.", command: null });
+    await renderApp();
+    press("D");
+    pressShortcut(); // chat under terminal 2
+    await ask("hello");
+    fireEvent.click(screen.getByRole("button", { name: "exit 2" }));
+    expect(chats()).toHaveLength(0);
+    press("D"); // a new terminal, with a new pane id
+    pressShortcut();
+    expect(within(chat()).queryByLabelText("Question")).toBeNull();
+  });
+
   it("sends the earlier turns with a follow-up question, in one AI session per chat pane", async () => {
     let n = 0;
     answers.ai_assist = () => (++n === 1 ? { answer: "Use du.", command: "du -sh *" } : { answer: "Add sort.", command: null });

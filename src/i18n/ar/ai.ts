@@ -23,6 +23,7 @@ export const ai: Messages<typeof en> = {
     rateLimited: "الذكاء الاصطناعي: تم تقييد الطلبات",
   },
   chat: {
+    newConversation: "محادثة جديدة",
     label: "دردشة الذكاء الاصطناعي",
     title: "الذكاء الاصطناعي",
     close: "إغلاق دردشة الذكاء الاصطناعي",
