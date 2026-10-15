@@ -1,0 +1,76 @@
+import type { macros as en } from "../en/macros";
+import type { Messages } from "../types";
+
+export const macros: Messages<typeof en> = {
+  recording: {
+    title: "正在录制宏",
+    warning: "输入的所有内容都会被保存，包括密码",
+    stop: "停止录制",
+  },
+  name: {
+    title: "保存录制的宏",
+    recorded: {
+      other: "已录制 {count} 个步骤。宏以纯文本形式保存。",
+    },
+    discard: "放弃",
+  },
+  progress: {
+    running: "正在运行“{name}”：第 {step} 步，共 {total} 步",
+    label: "宏 {name} 的进度",
+  },
+  panel: {
+    title: "宏",
+    new: "新建",
+    search: "搜索宏",
+    readError: "无法读取已保存的宏：{message}。为保护该文件，已禁用编辑。",
+    saveError: "无法保存宏：{error}",
+    empty: "尚无宏。使用 Ctrl+Shift+R 录制，或点击“新建”创建。",
+    noMatch: "没有匹配的宏。",
+    steps: { other: "{count} 个步骤" },
+    editNamed: "编辑 {name}",
+    duplicate: "创建副本",
+    duplicateNamed: "创建 {name} 的副本",
+    deleteNamed: "删除 {name}",
+    playNamed: "播放 {name}",
+    play: "在焦点终端中播放",
+    hint: "宏在焦点终端中播放；Ctrl+Alt+1–9 播放绑定到该键的宏。宏以纯文本形式保存。",
+  },
+  edit: {
+    newTitle: "新建宏",
+    editTitle: "编辑宏",
+    hotkey: "快捷键",
+    none: "无",
+    hotkeyUsed: "{hotkey} ({name})",
+    escapes: "文本中的转义：\\r Enter、\\n、\\t、\\e Escape、\\\\、\\xHH、^C 及其他 ^A–^Z 控制键、^[ 和 ^?。",
+    kindSend: "发送文本",
+    kindWait: "等待",
+    kindWaitFor: "等待文本",
+    stepKind: "步骤 {n} 类型",
+    stepMs: "步骤 {n} 毫秒数",
+    stepText: "步骤 {n} 文本",
+    sendPlaceholder: "例如 ls -la\\r",
+    waitForPlaceholder: "例如 password:",
+    stepTimeout: "步骤 {n} 超时（秒）",
+    moveUp: "上移步骤 {n}",
+    moveDown: "下移步骤 {n}",
+    removeStep: "移除步骤 {n}",
+    noSteps: "尚无步骤。",
+    addStep: "添加步骤",
+  },
+  form: {
+    nameRequired: "请输入名称。",
+    invalidWait: "步骤 {n}：等待时间必须是 0 到 {max} 之间的整数毫秒。",
+    waitForTextRequired: "步骤 {n}：请输入要等待的文本。",
+    invalidTimeout: "步骤 {n}：超时必须是 1 到 {max} 之间的整数秒。",
+  },
+  file: {
+    invalidJson: "宏文件不是有效的 JSON：{error}",
+    unsupportedVersion: "不支持的宏文件版本",
+    invalidMacros: "宏文件包含无效的宏",
+    duplicateHotkey: "宏文件中有两个宏使用 {hotkey}",
+  },
+  copyName: "{name}（副本）",
+  player: {
+    timedOut: "宏“{name}”在第 {step} 步（共 {total} 步）停止：“{text}”未在 {seconds} 秒内出现。",
+  },
+};

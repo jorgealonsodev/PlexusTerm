@@ -1,0 +1,48 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "在终端中查找",
+    placeholder: "查找",
+    noMatches: "无匹配项",
+    matchCase: "区分大小写",
+    regexTitle: "正则表达式",
+    regex: "正则",
+    previous: "上一个匹配项",
+    next: "下一个匹配项",
+    close: "关闭查找",
+  },
+  paste: {
+    title: { other: "粘贴 {count} 行？" },
+    warning: "每一行都可能作为命令运行。",
+    dontAsk: "不再询问",
+    paste: "粘贴",
+  },
+  menu: {
+    paste: "粘贴",
+    selectAll: "全选",
+    clear: "清除回滚缓冲区",
+    find: "查找…",
+    save: "将输出保存到文件…",
+    stopLogging: "停止记录",
+    log: "记录到文件…",
+  },
+  view: {
+    textFiles: "文本",
+    connecting: "正在连接到 {target}...",
+    connectingVia: "正在通过 {jumps} 连接到 {target}...",
+    startingMosh: "正在通过 SSH 在 {target} 上启动 mosh-server...",
+    startingMoshVia: "正在经由 {jumps} 通过 SSH 在 {target} 上启动 mosh-server...",
+    opening: "正在打开 {target}...",
+    telnetUnencrypted: "Telnet 未加密。",
+    serialEnded: "会话已结束。请关闭此标签页或重新打开端口。",
+    moshExited: "mosh-client 已退出。请关闭此标签页或重新打开会话。",
+    moshExitedCode: "mosh-client 已退出，代码 {code}。请关闭此标签页或重新打开会话。",
+    clipboardError: "无法读取剪贴板。",
+    saveError: "无法保存输出：{error}",
+    loggingStopped: "记录已停止：{error}",
+    hostKeyCancelled: "连接已取消：主机密钥未受信任。",
+    cancelled: "连接已取消。",
+  },
+};
