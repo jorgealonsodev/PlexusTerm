@@ -1,0 +1,26 @@
+# PlexusTerm Tools menu
+
+Objective: a **Tools** menu in the toolbar with the MobaXterm-style tools the user chose. Branch `feat/tools` (stacked on `feat/terminal-themes`, PR #2). Delivery strategy: ask-on-risk; one work-unit commit per task. Test runners: Vitest (`pnpm vitest run`), cargo (`cargo test --manifest-path src-tauri/Cargo.toml`).
+
+## Specs
+
+- **S1 — Tools menu.** A **Tools** button in the toolbar (icon + label, follows the compact toolbar rules) opening a menu with the tools below. User: "mobaxterm tiene una menu qeu es tools". Reference (clean-room, captions read statically with REA from MobaXterm 26.5): "MobaKeyGen (SSH key generator)", "Remote monitoring", "Ports scanner", "Network scanner", "Wake On Lan".
+- **S2 — SSH key generator.** User choice: "Generador de claves SSH (Recommended)" — "Genera una clave ed25519, muestra y copia la pública, y opcionalmente la instala en una sesión guardada (como ssh-copy-id)." Acceptance: generate an ed25519 key pair with an optional passphrase and comment; show the public key (OpenSSH format) with a Copy button; save the private key (mode 0600) and public key (`.pub`) to a path chosen with a save dialog, never overwriting without confirmation; optionally install the public key on a saved SSH session (append to `~/.ssh/authorized_keys` only if not already present, creating `~/.ssh` 0700 and the file 0600). The private key never reaches the UI except as the file written.
+- **S3 — Remote monitor.** User choice: "Monitor remoto (Recommended)" — "Barra bajo cada pestaña SSH con CPU, RAM, disco, red y usuarios del servidor, leída por SSH sin instalar nada." Acceptance: toggled from the Tools menu (setting saved); for SSH tabs only, a bar under the terminal shows CPU %, RAM used/total, root disk used/total, network rx/tx rate and logged-in user count, refreshed every few seconds over the tab's existing SSH connection (no new login, nothing installed); reads Linux `/proc` and `df`; a non-Linux server or a failed read shows "Monitoring unavailable" instead of numbers; stops when the tab closes.
+- **S4 — Port scanner.** User choice: "Escáner de puertos (Recommended)" — "Escaneo TCP de un host o rango de IPs y puertos, con resultados en una tabla; sin root." Acceptance: input a host, IPv4 address or range (`192.168.1.10-20`, CIDR `/24` max) and ports (`22,80,8000-8100`, at most 65535 per host); TCP connect scan with a bounded concurrency and timeout; results table (host, port, state open, service name for well-known ports) filled as they arrive; Stop cancels; invalid input gives a clear error; total probes capped.
+- **S5 — Network scanner.** User: "mete el escaner de red tambien". Acceptance (MobaXterm-style): scan an IPv4 range or CIDR (max /24) for live hosts by probing common service ports (SSH 22, Telnet 23, HTTP 80, HTTPS 443, RDP 3389, VNC 5900, SMB 445, FTP 21); show each live host with its reverse-DNS name when available, its MAC from the local ARP table when available, and which of those services are open; offer **New SSH session** for hosts with SSH open. No root, no ICMP.
+- **S6 — Wake On LAN.** User choice: "Wake On LAN" — "Envía el paquete mágico a una MAC para encender un equipo de la red." Acceptance: input a MAC (`aa:bb:cc:dd:ee:ff` or `-` separated), optional broadcast address (default `255.255.255.255`) and port (default 9); send the magic packet over UDP broadcast; invalid MAC gives a clear error; confirmation message after sending.
+
+## Tasks
+
+- [x] T1 — S1, S6 — inline — Tools menu with Wake On LAN. RED→GREEN: cargo tools::wol 4 tests (parse, packet, UDP send to a local socket); Vitest wolForm 3, WakeOnLanDialog 3, App Tools menu 1. Suite: Vitest 426, cargo 187 (+5 ignored), tsc OK. DropdownMenu shared with More.
+- [ ] T2 — S2 — pending route — SSH key generator.
+- [ ] T3 — S4 — pending route — Port scanner (scan engine shared with T4).
+- [ ] T4 — S5 — pending route — Network scanner.
+- [ ] T5 — S3 — pending route — Remote monitor.
+
+## Log
+
+- L1 (2026-10-15): "mobaxterm tiene una menu qeu es tools"
+- L2 (2026-10-15): Selection: "Generador de claves SSH (Recommended), Monitor remoto (Recommended), Escáner de puertos (Recommended), Wake On LAN, mete el escaner de red tambien". Also: "tiene funcionalidades muy interesantes".
+- L3 (2026-10-15): Not taken from MobaXterm's Tools: process list/netstat, text editor, diff tools, packet capture (needs root), local servers (open ports on the user's machine). Engram mirror pending: this session is registered under project `nexusterm` and refuses writes to `plexusterm`.

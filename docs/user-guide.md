@@ -13,6 +13,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
 | [Macros](#macros) | Recording and playing keystroke sequences |
+| [Tools](#tools) | Wake On LAN |
 | [Windows](#windows) | What differs on Windows 10/11 |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
 
@@ -213,6 +214,12 @@ The editor changes the name, the hotkey and the steps (add, remove, move up or d
 Text in send and wait-for steps accepts escapes: `\r` (Enter), `\n`, `\t`, `\e` (Escape), `\\`, `\xHH`, and `^A` to `^Z` (e.g. `^C`), `^[` (Escape) and `^?` (Delete). Anything else is sent as written.
 
 **Macros are saved as plain text** in `macros.json` in the app config directory (readable only by you). Everything you type while recording is saved, including passwords; nothing is masked or filtered. If the file cannot be read, macros cannot be edited until it is fixed, so it is never overwritten.
+
+## Tools
+
+The **Tools** menu in the toolbar holds network and SSH utilities.
+
+**Wake On LAN…** powers on a machine of the local network: enter its MAC address (`aa:bb:cc:dd:ee:ff` or `aa-bb-cc-dd-ee-ff`) and send the magic packet. The broadcast address defaults to `255.255.255.255` and the UDP port to 9; use the subnet's broadcast address (for example `192.168.1.255`) when the machine is on another network segment reachable that way. The machine needs Wake On LAN enabled in its firmware and network card. PlexusTerm confirms that the packet was sent; it cannot tell whether the machine woke up.
 
 ## Windows
 
