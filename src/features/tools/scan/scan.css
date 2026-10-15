@@ -1,6 +1,15 @@
+/*
+ * Sized by its content: it widens to the results table and grows as results arrive, up to
+ * the window; dragging its bottom-right corner resizes it by hand.
+ */
 .scan-dialog {
-  width: min(760px, 100%);
-  max-height: calc(100vh - 48px);
+  width: max-content;
+  min-width: min(440px, 100%);
+  max-width: calc(100vw - 32px);
+  min-height: 280px;
+  max-height: calc(100vh - 32px);
+  resize: both;
+  overflow: hidden;
 }
 
 .scan-dialog__inputs {
@@ -25,8 +34,8 @@
 .scan-results {
   flex: 1 1 auto;
   min-height: 120px;
-  max-height: 50vh;
   overflow: auto;
+  /* Rows show as they arrive; past the window height the table scrolls. */
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
@@ -73,7 +82,7 @@
 
 .scan-services {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
 }
 
@@ -92,4 +101,10 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Texts wrap to the width the table and inputs give the dialog instead of widening it. */
+.scan-dialog > p {
+  width: 0;
+  min-width: 100%;
 }
