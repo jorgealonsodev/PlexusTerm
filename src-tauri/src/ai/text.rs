@@ -2,7 +2,7 @@
 //!
 //! Everything a provider returns is untrusted: commands come back as one line with no
 //! control characters, so typing them into a terminal can never press Enter or send an
-//! escape sequence.
+//! escape sequence; assistant answers keep only their line breaks and tabs.
 
 use super::{AssistRequest, CompleteRequest};
 
@@ -10,12 +10,15 @@ pub const COMPLETE_SYSTEM: &str = "You complete shell commands while the user ty
 Reply with only the complete command line, starting with exactly the text already typed, on a single line. \
 No explanation, no quotes, no markdown. If you have no useful completion, reply with nothing.";
 
-pub const ASSIST_SYSTEM: &str = "You help a terminal user by suggesting one shell command for what they describe. \
-Reply with only a JSON object {\"command\": \"...\", \"explanation\": \"...\"}. \
-\"command\" is a single command line for the given OS and shell (combine steps with && or pipes); \
-\"explanation\" is one or two short sentences saying what it does and any risk. \
-You never run anything: the user reviews the command first. \
-If no command fits the request, leave \"command\" empty and explain why.";
+pub const ASSIST_SYSTEM: &str = "You are the assistant inside PlexusTerm, a terminal app. \
+Answer any question or request: explanations, steps, diagnosing an error or selected text, general help, any topic. \
+Reply in the language the user wrote in. Keep the answer clear and reasonably short, in plain text \
+(no markdown except fenced code blocks for code). \
+When, and only when, a single shell command for the given OS and shell directly does what the user asks, \
+also give that command as one line (combine steps with && or pipes); otherwise give no command. \
+You never run anything and must not claim to have run anything: the user reviews any command before running it. \
+Reply with only a JSON object {\"answer\": \"...\", \"command\": \"...\"}, \
+or {\"answer\": \"...\", \"command\": null} when no command fits.";
 
 /// History commands sent as context at most (the settings allow 0-20).
 const MAX_HISTORY: usize = 20;
@@ -25,8 +28,11 @@ const MAX_PROMPT: usize = 4000;
 const MAX_SELECTION: usize = 8000;
 const MAX_DETAIL: usize = 200;
 const MAX_COMPLETION: usize = 300;
-/// Longest assistant command accepted; a longer one is refused rather than cut.
+/// Longest assistant command accepted; a longer one is dropped (never cut), the answer kept.
 pub const MAX_COMMAND: usize = 2000;
+/// Longest assistant answer shown; a longer one is cut and ends with `ANSWER_CUT_NOTE`.
+pub const MAX_ANSWER: usize = 8000;
+pub const ANSWER_CUT_NOTE: &str = "\n… (answer shortened)";
 
 /// Cuts `s` to at most `max` characters.
 fn cap(s: &str, max: usize) -> &str {
@@ -237,39 +243,64 @@ pub fn clean_completion(line: &str, reply: &str) -> String {
 #[derive(serde::Deserialize)]
 struct Suggestion {
     #[serde(default)]
-    command: String,
+    answer: Option<String>,
+    /// The older `{command, explanation}` shape, read as the answer.
     #[serde(default)]
-    explanation: String,
+    explanation: Option<String>,
+    #[serde(default)]
+    command: Option<String>,
 }
 
+/// The JSON answer in `text`, if any; an object without any of its fields (such as the
+/// `{}` of `find -exec`) is ordinary text.
 fn json_object(text: &str) -> Option<Suggestion> {
     let start = text.find('{')?;
     let end = text.rfind('}')?;
-    serde_json::from_str(text.get(start..=end)?).ok()
+    serde_json::from_str::<Suggestion>(text.get(start..=end)?)
+        .ok()
+        .filter(|s| s.answer.is_some() || s.explanation.is_some() || s.command.is_some())
 }
 
-/// Reads `(command, explanation)` from the assistant's answer: JSON (bare, fenced or
-/// inside text), else the first code block.
-pub fn parse_assist(reply: &str) -> Option<(String, String)> {
+/// Reads `(answer, command)` from the assistant's reply: JSON (bare, fenced or inside
+/// text), else the whole reply as the answer with no command. `None` when nothing is left.
+/// A command that is empty, or longer than `MAX_COMMAND` once on one line, is dropped.
+pub fn parse_assist(reply: &str) -> Option<(String, Option<String>)> {
     let reply = strip_reasoning(reply);
-    let fence = split_fence(&reply);
     let parsed = json_object(&reply)
-        .or_else(|| fence.as_ref().and_then(|(code, _)| json_object(code)))
-        .map(|s| (s.command, s.explanation))
-        .or(fence)?;
-    let command = single_line(&parsed.0);
-    if command.chars().count() > MAX_COMMAND {
+        .or_else(|| split_fence(&reply).and_then(|(code, _)| json_object(&code)));
+    let (answer, command) = match parsed {
+        Some(s) => (s.answer.or(s.explanation).unwrap_or_default(), s.command),
+        None => (reply, None),
+    };
+    let command = command
+        .map(|c| single_line(&c))
+        .filter(|c| !c.is_empty() && c.chars().count() <= MAX_COMMAND);
+    let answer = clean_answer(&answer);
+    if answer.is_empty() && command.is_none() {
         return None;
     }
-    let explanation = strip_controls_keep_lines(parsed.1.trim());
-    if command.is_empty() && explanation.is_empty() {
-        return None;
-    }
-    Some((command, explanation))
+    Some((answer, command))
 }
 
-fn strip_controls_keep_lines(s: &str) -> String {
-    s.chars().filter(|&c| c == '\n' || !is_unsafe(c)).collect()
+/// An answer for display: CRLF/CR become LF; newlines and tabs stay, every other control,
+/// format or separator character goes; at most `MAX_ANSWER` characters plus a note.
+fn clean_answer(s: &str) -> String {
+    let unified = s.replace("\r\n", "\n");
+    let kept: String = unified
+        .chars()
+        .filter_map(|c| match c {
+            '\n' | '\t' => Some(c),
+            '\r' => Some('\n'),
+            c if is_unsafe(c) => None,
+            c => Some(c),
+        })
+        .collect();
+    let kept = kept.trim();
+    if kept.chars().count() > MAX_ANSWER {
+        format!("{}{ANSWER_CUT_NOTE}", cap(kept, MAX_ANSWER).trim_end())
+    } else {
+        kept.to_string()
+    }
 }
 
 /// The provider's own error message (`error.message`), with the key masked and shortened.
@@ -398,52 +429,105 @@ mod tests {
         );
     }
 
+    fn some(answer: &str, command: Option<&str>) -> Option<(String, Option<String>)> {
+        Some((answer.into(), command.map(Into::into)))
+    }
+
     #[test]
-    fn assist_parses_plain_json() {
-        let reply = r#"{"command": "du -sh * | sort -h", "explanation": "Sizes, sorted."}"#;
+    fn assist_parses_an_answer_with_a_command_and_one_without() {
+        let reply = r#"{"answer": "Sizes, sorted.", "command": "du -sh * | sort -h"}"#;
         assert_eq!(
             parse_assist(reply),
-            Some(("du -sh * | sort -h".into(), "Sizes, sorted.".into()))
+            some("Sizes, sorted.", Some("du -sh * | sort -h"))
         );
+        let reply = r#"{"answer": "Hola, ¿en qué te ayudo?", "command": null}"#;
+        assert_eq!(parse_assist(reply), some("Hola, ¿en qué te ayudo?", None));
+        let reply = r#"{"answer": "Hi.", "command": ""}"#;
+        assert_eq!(parse_assist(reply), some("Hi.", None));
+        let reply = r#"{"answer": "Hi."}"#;
+        assert_eq!(parse_assist(reply), some("Hi.", None));
     }
 
     #[test]
     fn assist_parses_json_wrapped_in_fences_or_text() {
-        let fenced = "```json\n{\"command\": \"ls -la\", \"explanation\": \"Lists all.\"}\n```";
-        assert_eq!(
-            parse_assist(fenced),
-            Some(("ls -la".into(), "Lists all.".into()))
-        );
+        let fenced = "```json\n{\"answer\": \"Lists all.\", \"command\": \"ls -la\"}\n```";
+        assert_eq!(parse_assist(fenced), some("Lists all.", Some("ls -la")));
         let chatty =
-            "Sure! {\"command\": \"pwd\", \"explanation\": \"Prints the folder.\"} Hope it helps.";
+            "Sure! {\"answer\": \"Prints the folder.\", \"command\": \"pwd\"} Hope it helps.";
         assert_eq!(
             parse_assist(chatty),
-            Some(("pwd".into(), "Prints the folder.".into()))
+            some("Prints the folder.", Some("pwd"))
         );
     }
 
     #[test]
-    fn assist_falls_back_to_a_code_block_when_there_is_no_json() {
-        let reply = "Use this:\n```sh\nfree -h\n```\nIt shows memory.";
+    fn assist_reads_the_older_explanation_field_as_the_answer() {
+        let reply = r#"{"command": "pwd", "explanation": "Prints the folder."}"#;
+        assert_eq!(parse_assist(reply), some("Prints the folder.", Some("pwd")));
+    }
+
+    #[test]
+    fn a_plain_text_reply_is_the_answer_without_a_command() {
         assert_eq!(
-            parse_assist(reply),
-            Some(("free -h".into(), "Use this:\nIt shows memory.".into()))
+            parse_assist("Hola. Puedo ayudarte con lo que necesites."),
+            some("Hola. Puedo ayudarte con lo que necesites.", None)
         );
+        let reply = "Use this:\n```sh\nfree -h\n```\nIt shows memory.";
+        assert_eq!(parse_assist(reply), some(reply, None));
+        let braces = "Run find . -exec rm {} \\; with care.";
+        assert_eq!(parse_assist(braces), some(braces, None));
     }
 
     #[test]
     fn assist_commands_are_one_line_without_control_characters() {
-        let reply = r#"{"command": "cd /tmp\nls \\\n  -la\u001b[A\r", "explanation": "x"}"#;
+        let reply = r#"{"answer": "x", "command": "cd /tmp\nls \\\n  -la\u001b[A\r"}"#;
+        assert_eq!(parse_assist(reply), some("x", Some("cd /tmp && ls -la[A")));
+    }
+
+    #[test]
+    fn answers_keep_lines_and_tabs_but_drop_other_control_and_format_characters() {
+        let reply = "{\"answer\": \"Step 1:\\tcd\\r\\nStep 2\\u001b[2J\\u0007\u{202E}\u{200B}\u{FEFF} done\u{2028}\", \"command\": null}";
         assert_eq!(
             parse_assist(reply),
-            Some(("cd /tmp && ls -la[A".into(), "x".into()))
+            some("Step 1:\tcd\nStep 2[2J done", None)
+        );
+        let plain = "a\r\nb\u{1b}]0;title\u{7}c";
+        assert_eq!(parse_assist(plain), some("a\nb]0;titlec", None));
+    }
+
+    #[test]
+    fn long_answers_are_cut_with_a_note() {
+        let at_cap = "a".repeat(MAX_ANSWER);
+        assert_eq!(parse_assist(&at_cap), some(&at_cap, None));
+        let over = format!("{at_cap}bcd");
+        let (answer, command) = parse_assist(&over).unwrap();
+        assert_eq!(command, None);
+        assert!(answer.starts_with(&at_cap), "{}", &answer[MAX_ANSWER - 5..]);
+        assert!(
+            answer.ends_with(ANSWER_CUT_NOTE),
+            "{}",
+            &answer[MAX_ANSWER - 5..]
+        );
+        assert!(!answer.contains('b'));
+    }
+
+    #[test]
+    fn assist_rejects_empty_answers() {
+        assert_eq!(parse_assist(""), None);
+        assert_eq!(parse_assist("  \n "), None);
+        assert_eq!(parse_assist(r#"{"answer": "", "command": null}"#), None);
+        assert_eq!(
+            parse_assist(r#"{"answer": "\u001b", "command": "\u0007"}"#),
+            None
         );
     }
 
     #[test]
-    fn assist_rejects_unreadable_answers() {
-        assert_eq!(parse_assist("I cannot help with that."), None);
-        assert_eq!(parse_assist(r#"{"command": "", "explanation": ""}"#), None);
+    fn a_command_without_an_answer_is_kept() {
+        assert_eq!(
+            parse_assist(r#"{"answer": "", "command": "ls"}"#),
+            some("", Some("ls"))
+        );
     }
 
     #[test]
@@ -465,23 +549,22 @@ mod tests {
     }
 
     #[test]
-    fn assist_drops_format_and_separator_characters_from_command_and_explanation() {
-        let reply = "{\"command\": \"rm\u{202E}\u{2066} -i a\u{2028}b\", \"explanation\": \"Asks\u{200F} first.\u{2029}\\nOk\u{00AD}.\"}";
+    fn assist_drops_format_and_separator_characters_from_command_and_answer() {
+        let reply = "{\"command\": \"rm\u{202E}\u{2066} -i a\u{2028}b\", \"answer\": \"Asks\u{200F} first.\u{2029}\\nOk\u{00AD}.\"}";
         assert_eq!(
             parse_assist(reply),
-            Some(("rm -i ab".into(), "Asks first.\nOk.".into()))
+            some("Asks first.\nOk.", Some("rm -i ab"))
         );
     }
 
     #[test]
-    fn assist_refuses_commands_longer_than_the_cap() {
+    fn commands_longer_than_the_cap_are_dropped_and_the_answer_kept() {
         let at_cap = "a".repeat(MAX_COMMAND);
-        let reply = format!("{{\"command\": \"{at_cap}\", \"explanation\": \"x\"}}");
-        assert_eq!(
-            parse_assist(&reply).map(|(c, _)| c.len()),
-            Some(MAX_COMMAND)
-        );
-        let over = format!("{{\"command\": \"{at_cap}b\", \"explanation\": \"x\"}}");
-        assert_eq!(parse_assist(&over), None);
+        let reply = format!("{{\"answer\": \"x\", \"command\": \"{at_cap}\"}}");
+        assert_eq!(parse_assist(&reply), some("x", Some(&at_cap)));
+        let over = format!("{{\"answer\": \"x\", \"command\": \"{at_cap}b\"}}");
+        assert_eq!(parse_assist(&over), some("x", None));
+        let only = format!("{{\"answer\": \"\", \"command\": \"{at_cap}b\"}}");
+        assert_eq!(parse_assist(&only), None);
     }
 }

@@ -3,8 +3,8 @@
 //! The frontend passes the provider settings on every call; API keys live only in the
 //! system keyring (account `ai:<provider>`) and never go back to the frontend, into
 //! errors, or into `Debug` output. Nothing returned here is ever executed: the frontend
-//! only shows or types it, and every command text is reduced to one line without control
-//! characters first.
+//! only shows or types it, every command text is reduced to one line without control
+//! characters first, and assistant answers keep only line breaks and tabs.
 
 mod opencode;
 mod providers;
@@ -136,9 +136,10 @@ pub struct AssistRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistResponse {
-    /// One single-line command (may be empty when the request has no command answer).
-    pub command: String,
-    pub explanation: String,
+    /// The answer to any question, as plain text (line breaks and tabs kept).
+    pub answer: String,
+    /// One single-line command when one fits the request; `null` otherwise.
+    pub command: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -303,7 +304,7 @@ impl AiClient {
             http,
             endpoints,
             complete_timeout: Duration::from_secs(8),
-            assist_timeout: Duration::from_secs(60),
+            assist_timeout: Duration::from_secs(120),
             go_models: opencode::Catalog::default(),
         }
     }
@@ -372,10 +373,7 @@ impl AiClient {
             .await?
         {
             providers::Reply::Text(reply) => text::parse_assist(&reply)
-                .map(|(command, explanation)| AssistResponse {
-                    command,
-                    explanation,
-                })
+                .map(|(answer, command)| AssistResponse { answer, command })
                 .ok_or_else(|| AiError::bad_response(config.provider)),
             providers::Reply::Truncated => Err(AiError::new(
                 AiErrorKind::BadResponse,
@@ -600,7 +598,7 @@ pub async fn ai_complete(
     ai.complete(secrets.inner(), &config, &request).await
 }
 
-/// Suggests one command for a natural-language request; never runs anything.
+/// Answers any request, with one optional command; never runs anything.
 #[tauri::command]
 pub async fn ai_assist(
     config: AiConfig,

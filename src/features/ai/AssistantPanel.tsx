@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TerminalSettings } from "../settings/settings";
 import { writeText } from "../terminal/clipboard";
-import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiSuggestion } from "./aiClient";
+import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiAnswer } from "./aiClient";
 import { aiConfigOf, needsApiKey, truncateSelection } from "./aiContext";
 
 const PROVIDER_NAMES: Record<TerminalSettings["aiProvider"], string> = {
@@ -38,10 +38,59 @@ interface AssistantPanelProps {
 type Phase =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "answer"; suggestion: AiSuggestion }
+  | { kind: "answer"; reply: AiAnswer }
   | { kind: "error"; message: string };
 
-/** The on-demand assistant (S3): a question in plain words, a command back, never run. */
+/** A piece of an answer: plain text, or the inside of a fenced code block. */
+type AnswerPart = { code: boolean; text: string };
+
+/** Splits an answer on ``` fence lines; an unclosed fence runs to the end. */
+function answerParts(answer: string): AnswerPart[] {
+  const parts: AnswerPart[] = [];
+  let code = false;
+  let lines: string[] = [];
+  const flush = () => {
+    const text = code ? lines.join("\n") : lines.join("\n").replace(/^\n+|\n+$/g, "");
+    if (text.trim()) parts.push({ code, text });
+    lines = [];
+  };
+  for (const line of answer.split("\n")) {
+    if (line.trimStart().startsWith("```")) {
+      flush();
+      code = !code;
+    } else {
+      lines.push(line);
+    }
+  }
+  flush();
+  return parts;
+}
+
+/** The answer as React text nodes only (never HTML): line breaks kept, code in monospace blocks. */
+function AnswerText({ answer }: { answer: string }) {
+  return (
+    <div className="assistant__reply" aria-label="Answer">
+      {answerParts(answer).map((part, i) =>
+        part.code ? (
+          <pre key={i} className="assistant__command">
+            {part.text}
+          </pre>
+        ) : (
+          <p key={i} className="assistant__text">
+            {part.text.split("\n").map((line, j) => (
+              <span key={j}>
+                {j > 0 && <br />}
+                {line}
+              </span>
+            ))}
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
+
+/** The on-demand assistant (S3, S8): any question in plain words, an answer back, and a command only when one fits; never run. */
 export function AssistantPanel({ settings, context, canInsert, onInsert, onClose, onOpenSettings }: AssistantPanelProps) {
   const [prompt, setPrompt] = useState("");
   const selection = truncateSelection(context.selection);
@@ -80,7 +129,7 @@ export function AssistantPanel({ settings, context, canInsert, onInsert, onClose
       history: context.history(),
       selection: includeSelection && selection ? selection : null,
     })
-      .then((suggestion) => mine === seq.current && setPhase({ kind: "answer", suggestion }))
+      .then((reply) => mine === seq.current && setPhase({ kind: "answer", reply }))
       .catch((err) => {
         if (mine !== seq.current) return;
         if (isAiError(err) && err.kind === "noKey") setKeyMissing(true);
@@ -109,7 +158,7 @@ export function AssistantPanel({ settings, context, canInsert, onInsert, onClose
     }
   };
 
-  const command = phase.kind === "answer" ? phase.suggestion.command : "";
+  const command = phase.kind === "answer" ? (phase.reply.command ?? "") : "";
 
   return (
     <div className="overlay" onKeyDown={onKeyDown}>
@@ -125,8 +174,8 @@ export function AssistantPanel({ settings, context, canInsert, onInsert, onClose
         )}
         <textarea
           className="assistant__prompt"
-          aria-label="What you want to do"
-          placeholder="Describe what you want…"
+          aria-label="Your question"
+          placeholder="Ask anything…"
           rows={3}
           autoFocus
           value={prompt}
@@ -150,12 +199,12 @@ export function AssistantPanel({ settings, context, canInsert, onInsert, onClose
         {phase.kind === "error" && <p className="form-error">{phase.message}</p>}
         {phase.kind === "answer" && (
           <div className="assistant__answer">
-            {command ? (
-              <pre className="assistant__command">{command}</pre>
-            ) : (
-              <p className="muted">No command for this request.</p>
+            {phase.reply.answer && <AnswerText answer={phase.reply.answer} />}
+            {command && (
+              <pre className="assistant__command" aria-label="Suggested command">
+                {command}
+              </pre>
             )}
-            {phase.suggestion.explanation && <p>{phase.suggestion.explanation}</p>}
           </div>
         )}
         <div className="dialog__actions">

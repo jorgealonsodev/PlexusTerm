@@ -74,11 +74,13 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Beta that enables `fallbacks: "default"` (server-side retry on a recommended model).
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 
-/// Output budgets. Thinking counts toward Anthropic's `max_tokens`, so it gets more room.
+/// Output budgets. Thinking counts toward Anthropic's `max_tokens`, so it gets more room
+/// (assistant answers can be several paragraphs long).
 fn max_tokens(provider: Provider, task: Task) -> u32 {
     match (task, provider) {
         (Task::Complete, Provider::Anthropic) => 2048,
         (Task::Complete, _) => 1024,
+        (Task::Assist, Provider::Anthropic) => 16000,
         (Task::Assist, _) => 8192,
     }
 }
@@ -102,14 +104,19 @@ fn anthropic_uses_default_fallbacks(model: &str) -> bool {
     model == "claude-opus-5-5" || model.starts_with("claude-opus-5-5-")
 }
 
+/// The assistant's answer (Anthropic structured outputs and OpenAI strict mode): every
+/// property required, so the optional command is a nullable string.
 fn assist_schema() -> Value {
     json!({
         "type": "object",
         "properties": {
-            "command": {"type": "string", "description": "One shell command line, or empty."},
-            "explanation": {"type": "string", "description": "One or two short sentences."}
+            "answer": {"type": "string", "description": "The answer, in the user's language."},
+            "command": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "description": "One shell command line that does what was asked, or null."
+            }
         },
-        "required": ["command", "explanation"],
+        "required": ["answer", "command"],
         "additionalProperties": false
     })
 }
@@ -207,8 +214,11 @@ pub fn build(
                 generation["responseMimeType"] = json!("application/json");
                 generation["responseSchema"] = json!({
                     "type": "OBJECT",
-                    "properties": {"command": {"type": "STRING"}, "explanation": {"type": "STRING"}},
-                    "required": ["command", "explanation"]
+                    "properties": {
+                        "answer": {"type": "STRING"},
+                        "command": {"type": "STRING", "nullable": true}
+                    },
+                    "required": ["answer"]
                 });
             }
             Call {
@@ -251,7 +261,7 @@ pub fn build(
                 if task == Task::Assist {
                     body["response_format"] = json!({
                         "type": "json_schema",
-                        "json_schema": {"name": "command_suggestion", "strict": true, "schema": assist_schema()}
+                        "json_schema": {"name": "assistant_answer", "strict": true, "schema": assist_schema()}
                     });
                 }
             } else {

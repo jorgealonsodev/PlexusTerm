@@ -114,8 +114,8 @@ describe("AI assistant (S3, S5)", () => {
     expect(assistant()).toBeNull();
     pressShortcut();
     expect(assistant()).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByPlaceholderText("Describe what you want…"));
-    fireEvent.keyDown(screen.getByPlaceholderText("Describe what you want…"), { key: "Escape" });
+    expect(document.activeElement).toBe(screen.getByPlaceholderText("Ask anything…"));
+    fireEvent.keyDown(screen.getByPlaceholderText("Ask anything…"), { key: "Escape" });
     expect(assistant()).toBeNull();
   });
 
@@ -143,7 +143,7 @@ describe("AI assistant (S3, S5)", () => {
     pressShortcut();
     const first = brandImg();
     expect(first.classList.contains("brand--spin")).toBe(true);
-    fireEvent.keyDown(screen.getByPlaceholderText("Describe what you want…"), { key: "Escape" });
+    fireEvent.keyDown(screen.getByPlaceholderText("Ask anything…"), { key: "Escape" });
     fireEvent.click(screen.getByRole("button", { name: "AI assistant" }));
     // A new element: the animation starts over instead of continuing.
     expect(brandImg()).not.toBe(first);
@@ -164,10 +164,10 @@ describe("AI assistant (S3, S5)", () => {
 
   it("asks with the context and inserts the answer into the focused pane without Enter", async () => {
     withSettings({ aiProvider: "openai-compatible", aiBaseUrl: "http://localhost:11434/v1", aiModel: "llama3.2", aiHistoryContext: 2 });
-    answers.ai_assist = () => ({ command: "du -sh * | sort -h", explanation: "Sizes of the entries, smallest first." });
+    answers.ai_assist = () => ({ answer: "Sizes of the entries, smallest first.", command: "du -sh * | sort -h" });
     await renderApp();
     pressShortcut();
-    const input = screen.getByPlaceholderText("Describe what you want…");
+    const input = screen.getByPlaceholderText("Ask anything…");
     fireEvent.change(input, { target: { value: "what uses the most space here" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await settle();
@@ -187,12 +187,62 @@ describe("AI assistant (S3, S5)", () => {
     expect(pane.focus).toHaveBeenCalled();
   });
 
+  const askAssistant = async (question: string) => {
+    pressShortcut();
+    const input = screen.getByPlaceholderText("Ask anything…");
+    fireEvent.change(input, { target: { value: question } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await settle();
+  };
+
+  it("shows a general answer with no command box, Insert or Copy when no command fits (S8)", async () => {
+    answers.ai_assist = () => ({ answer: "¡Hola! ¿En qué te ayudo?\nPuedo explicar errores.", command: null });
+    await renderApp();
+    await askAssistant("hola");
+    const answer = screen.getByLabelText("Answer");
+    expect(answer.textContent).toContain("¡Hola! ¿En qué te ayudo?");
+    expect(answer.textContent).toContain("Puedo explicar errores.");
+    expect(answer.querySelectorAll("br")).toHaveLength(1);
+    expect(screen.queryByLabelText("Suggested command")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Insert" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
+    expect(screen.queryByText(/No command/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Ask" })).toBeTruthy();
+  });
+
+  it("shows the answer above the command box with Insert and Copy when a command fits", async () => {
+    answers.ai_assist = () => ({ answer: "Muestra el espacio libre.", command: "df -h" });
+    await renderApp();
+    await askAssistant("¿cuánto disco queda?");
+    expect(screen.getByLabelText("Answer").textContent).toBe("Muestra el espacio libre.");
+    expect(screen.getByLabelText("Suggested command").textContent).toBe("df -h");
+    expect(screen.getByRole("button", { name: "Copy" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+    expect(pane.written).toEqual(["df -h"]);
+  });
+
+  it("renders fenced code in an answer as monospace blocks and never as HTML", async () => {
+    answers.ai_assist = () => ({
+      answer: "Lista con inodos:\n```sh\nls -i\nstat a.txt\n```\nY <b>esto</b> es texto.",
+      command: null,
+    });
+    await renderApp();
+    await askAssistant("inodos");
+    const answer = screen.getByLabelText("Answer");
+    const blocks = answer.querySelectorAll("pre");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].textContent).toBe("ls -i\nstat a.txt");
+    expect(answer.querySelector("b")).toBeNull();
+    expect(answer.textContent).toContain("Y <b>esto</b> es texto.");
+    expect(answer.textContent).not.toContain("```");
+  });
+
   it("starts a new AI session for every assistant opening", async () => {
-    answers.ai_assist = () => ({ command: "ls", explanation: "" });
+    answers.ai_assist = () => ({ answer: "", command: "ls" });
     await renderApp();
     const askOnce = async () => {
       pressShortcut();
-      const input = screen.getByPlaceholderText("Describe what you want…");
+      const input = screen.getByPlaceholderText("Ask anything…");
       fireEvent.change(input, { target: { value: "list" } });
       fireEvent.keyDown(input, { key: "Enter" });
       await settle();
@@ -213,10 +263,10 @@ describe("AI assistant (S3, S5)", () => {
 
   it("sends no history when command history is off, and Shift+Enter does not ask", async () => {
     withSettings({ commandHistory: false });
-    answers.ai_assist = () => ({ command: "ls", explanation: "" });
+    answers.ai_assist = () => ({ answer: "", command: "ls" });
     await renderApp();
     pressShortcut();
-    const input = screen.getByPlaceholderText("Describe what you want…");
+    const input = screen.getByPlaceholderText("Ask anything…");
     fireEvent.change(input, { target: { value: "list" } });
     fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
     await settle();
@@ -229,7 +279,7 @@ describe("AI assistant (S3, S5)", () => {
   });
 
   it("starts with the selected text ticked and shown, sends it with Ask, and not once unticked", async () => {
-    answers.ai_assist = () => ({ command: "sudo chown me file", explanation: "" });
+    answers.ai_assist = () => ({ answer: "", command: "sudo chown me file" });
     await renderApp();
     pane.selection = "error: permission denied";
     pressShortcut();
@@ -237,7 +287,7 @@ describe("AI assistant (S3, S5)", () => {
     expect(box.disabled).toBe(false);
     expect(box.checked).toBe(true);
     expect(screen.getByLabelText("Selected text to send").textContent).toBe("error: permission denied");
-    const input = screen.getByPlaceholderText("Describe what you want…");
+    const input = screen.getByPlaceholderText("Ask anything…");
     fireEvent.change(input, { target: { value: "fix this" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await settle();
@@ -261,14 +311,14 @@ describe("AI assistant (S3, S5)", () => {
   });
 
   it("leaves Include selected text unticked and disabled without a selection", async () => {
-    answers.ai_assist = () => ({ command: "ls", explanation: "" });
+    answers.ai_assist = () => ({ answer: "", command: "ls" });
     await renderApp();
     pressShortcut();
     const box = screen.getByLabelText("Include selected text") as HTMLInputElement;
     expect(box.disabled).toBe(true);
     expect(box.checked).toBe(false);
     expect(screen.queryByLabelText("Selected text to send")).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("Describe what you want…"), { target: { value: "list" } });
+    fireEvent.change(screen.getByPlaceholderText("Ask anything…"), { target: { value: "list" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await settle();
     expect((calls("ai_assist")[0].request as { selection: string | null }).selection).toBeNull();
@@ -292,7 +342,7 @@ describe("AI assistant (S3, S5)", () => {
     answers.ai_assist = () => new Promise((_, reject) => (fail = reject));
     await renderApp();
     pressShortcut();
-    fireEvent.change(screen.getByPlaceholderText("Describe what you want…"), { target: { value: "x" } });
+    fireEvent.change(screen.getByPlaceholderText("Ask anything…"), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await settle();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));

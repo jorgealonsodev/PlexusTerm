@@ -53,10 +53,10 @@ export interface AiAssistRequest {
   history: string[];
 }
 
-/** One single-line command (possibly empty) and a short explanation; never executed by the backend. */
-export interface AiSuggestion {
-  command: string;
-  explanation: string;
+/** The assistant's plain-text answer (line breaks kept) and, when one fits, one single-line command; nothing is ever executed. */
+export interface AiAnswer {
+  answer: string;
+  command: string | null;
 }
 
 export type AiErrorKind =
@@ -116,4 +116,4 @@ export const aiComplete = async (config: AiConfig, request: AiCompleteRequest) =
   (await invoke<{ completion: string }>("ai_complete", { config, request })).completion;
 
 export const aiAssist = (config: AiConfig, request: AiAssistRequest) =>
-  invoke<AiSuggestion>("ai_assist", { config, request });
+  invoke<AiAnswer>("ai_assist", { config, request });

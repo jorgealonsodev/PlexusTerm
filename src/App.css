@@ -1494,3 +1494,18 @@ textarea::placeholder {
   border-radius: 4px;
   pointer-events: auto;
 }
+
+/* The assistant's answer: plain text with its line breaks, scrolling when long. */
+.assistant__reply {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.assistant__text {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text);
+}

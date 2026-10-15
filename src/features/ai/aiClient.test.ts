@@ -40,10 +40,10 @@ describe("aiClient commands", () => {
     expect(invoke).toHaveBeenCalledWith("ai_complete", { config, request });
   });
 
-  it("requests an assistant suggestion", async () => {
-    vi.mocked(invoke).mockResolvedValueOnce({ command: "df -h", explanation: "Free space." });
+  it("requests an assistant answer with an optional command", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({ answer: "Free space.", command: "df -h" });
     const request = { prompt: "free space?", selection: "x", os: "linux", history: [] };
-    await expect(aiAssist(config, request)).resolves.toEqual({ command: "df -h", explanation: "Free space." });
+    await expect(aiAssist(config, request)).resolves.toEqual({ answer: "Free space.", command: "df -h" });
     expect(invoke).toHaveBeenCalledWith("ai_assist", { config, request });
   });
 
