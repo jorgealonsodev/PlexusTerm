@@ -23,6 +23,8 @@
   },
   "bundle": {
     "active": true,
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
     "targets": [
       "deb",
       "appimage"
