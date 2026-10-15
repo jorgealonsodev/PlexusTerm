@@ -94,3 +94,4 @@ def render(text, base, accent, green, mask_id, label="NexusTerm"):
 out = sys.argv[2]
 open(f"{out}/nexusterm-wordmark.svg", "w").write(render("", "#e6edf3", "#5ec4ff", "#8bd49c", "nt-wm-gap"))
 open(f"{out}/nexusterm-wordmark-light.svg", "w").write(render("", "#0f1419", "#1769aa", "#2f7d45", "nt-wml-gap"))
+open(f"{out}/nexusterm-wordmark-black.svg", "w").write(render("", "#111111", "#111111", "#111111", "nt-wmb-gap"))
