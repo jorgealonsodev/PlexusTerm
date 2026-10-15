@@ -666,6 +666,27 @@ textarea::placeholder {
   width: 340px;
 }
 
+/* Folded: a narrow strip of the tab icons, stacked. */
+.sidebar--collapsed {
+  width: 44px;
+  padding: 8px 0;
+}
+
+.sidebar--collapsed .sidebar__tabs {
+  flex-direction: column;
+  margin: -8px 0 0;
+  border-bottom: none;
+}
+
+.sidebar--collapsed .sidebar__tab {
+  flex: none;
+  padding: 10px 0;
+}
+
+.sidebar--collapsed .sidebar__tab--active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
 .sidebar__tabs {
   display: flex;
   gap: 2px;

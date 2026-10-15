@@ -66,3 +66,11 @@ describe("shortcutFor", () => {
     expect(shortcutFor(key("D", { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull();
   });
 });
+
+describe("sidebar shortcut", () => {
+  it("Ctrl+Shift+B folds or opens the sidebar", () => {
+    expect(shortcutFor(key("B", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "toggleSidebar" });
+    expect(shortcutFor(key("b", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "toggleSidebar" });
+    expect(shortcutFor(key("b", { ctrlKey: true }))).toBeNull();
+  });
+});

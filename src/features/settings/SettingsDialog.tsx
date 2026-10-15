@@ -308,6 +308,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
+  const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [inlineSuggestions, setInlineSuggestions] = useState(settings.inlineSuggestions);
   const [history, setHistory] = useState(settings.commandHistory);
@@ -372,6 +373,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
       aiModel: cleanAiModel(aiModel, aiProvider),
       aiHistoryContext: Number.isFinite(context) ? clampAiHistoryContext(context) : settings.aiHistoryContext,
       assistantShortcut,
+      sidebarCollapsed: settings.sidebarCollapsed,
+      sidebarHideWhenCollapsed,
     });
   };
 
@@ -449,6 +452,18 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
             <p className="muted">
               Ctrl+= / Ctrl+- / Ctrl+0 change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster,
               Starship) need a Nerd Font as the font family.
+            </p>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={sidebarHideWhenCollapsed}
+                onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
+              />
+              Hide the sidebar completely when folded
+            </label>
+            <p className="muted">
+              Ctrl+Shift+B or the toolbar button folds the sidebar to its tab icons, or hides it completely with this
+              option.
             </p>
           </div>
 

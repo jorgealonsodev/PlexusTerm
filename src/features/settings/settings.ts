@@ -50,6 +50,10 @@ export interface TerminalSettings {
   aiHistoryContext: number;
   /** Opens the on-demand assistant (S3), e.g. "Ctrl+Shift+Space". */
   assistantShortcut: string;
+  /** The sidebar is folded (Ctrl+Shift+B or the toolbar button). */
+  sidebarCollapsed: boolean;
+  /** Folding hides the sidebar completely instead of leaving its tab icons. */
+  sidebarHideWhenCollapsed: boolean;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -79,6 +83,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   aiModel: DEFAULT_AI_MODELS.anthropic,
   aiHistoryContext: 5,
   assistantShortcut: DEFAULT_ASSISTANT_SHORTCUT,
+  sidebarCollapsed: false,
+  sidebarHideWhenCollapsed: false,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -160,6 +166,8 @@ export function parseSettings(json: string | null): TerminalSettings {
         ? clampAiHistoryContext(value.aiHistoryContext)
         : d.aiHistoryContext,
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
+    sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
+    sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
   };
 }
 

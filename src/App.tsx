@@ -77,6 +77,8 @@ import {
   ScanSearch,
   Wrench,
   KeyRound,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radio,
   Rows2,
   Settings as SettingsIcon,
@@ -540,6 +542,8 @@ function AppContent() {
           return updateSettingsWith((s) => ({ fontSize: stepFontSize(s.fontSize, shortcut.step) }));
         case "recordMacro":
           return macroKeys.current.toggleRecording();
+        case "toggleSidebar":
+          return updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }));
         case "playMacro":
           return macroKeys.current.playHotkey(shortcut.hotkey);
         // Handled by the focused terminal itself.
@@ -582,6 +586,15 @@ function AppContent() {
             alt="PlexusTerm"
             onAnimationEnd={() => setSpin(0)}
           />
+        </button>
+        <button
+          type="button"
+          className="btn btn--icon toolbar__sidebar"
+          aria-label={settings.sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+          title={`${settings.sidebarCollapsed ? "Show" : "Hide"} sidebar (Ctrl+Shift+B)`}
+          onClick={() => updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))}
+        >
+          {settings.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
         <button className="btn btn--icon" title="Terminal (Ctrl+Shift+T)" onClick={openLocal}>
           <SquareTerminal size={16} />
@@ -659,88 +672,92 @@ function AppContent() {
         <MultiExecBanner count={multiExecGroup(allPanes).length} onTurnOff={() => setMultiExec(false)} />
       )}
       <div className="body">
-        <Sidebar
-          view={sidebarView}
-          onViewChange={setSidebarView}
-          sftpAvailable={sftpSessionId !== null}
-          sftp={
-            activeTab &&
-            sftpSessionId !== null && (
-              <SftpPanel
-                key={`${activePane}:${sftpSessionId}`}
-                sessionId={sftpSessionId}
-                cwd={activeSession.cwd}
-                follow={followCwd}
-                onFollowChange={setFollowCwd}
-                onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
-                textEditor={terminalSettings.settings.textEditor}
+        {!(settings.sidebarCollapsed && settings.sidebarHideWhenCollapsed) && (
+          <Sidebar
+            view={sidebarView}
+            onViewChange={setSidebarView}
+            collapsed={settings.sidebarCollapsed}
+            onExpand={() => terminalSettings.update({ sidebarCollapsed: false })}
+            sftpAvailable={sftpSessionId !== null}
+            sftp={
+              activeTab &&
+              sftpSessionId !== null && (
+                <SftpPanel
+                  key={`${activePane}:${sftpSessionId}`}
+                  sessionId={sftpSessionId}
+                  cwd={activeSession.cwd}
+                  follow={followCwd}
+                  onFollowChange={setFollowCwd}
+                  onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
+                  textEditor={terminalSettings.settings.textEditor}
+                />
+              )
+            }
+            tunnels={
+              <TunnelsPanel
+                list={tunnels.list}
+                status={tunnels.status}
+                saveError={tunnels.saveError}
+                sessions={sshSessions}
+                statusOf={tunnels.statusOf}
+                onToggle={(tunnel) => {
+                  if (launcher.isActive(tunnels.statusOf(tunnel.id))) void launcher.stop(tunnel.id);
+                  else void launcher.start(tunnel);
+                }}
+                onNew={() => setModal({ kind: "editTunnel", tunnel: draftTunnel(), isNew: true })}
+                onEdit={(tunnel) => setModal({ kind: "editTunnel", tunnel, isNew: false })}
+                onDelete={async (tunnel) => {
+                  if (await dialogs.confirm({ message: `Delete tunnel "${tunnel.name}"?`, confirmLabel: "Delete", danger: true })) {
+                    void launcher.stop(tunnel.id);
+                    tunnels.dispatch({ type: "delete", id: tunnel.id });
+                  }
+                }}
+                onStartAll={() => void launcher.startAll(tunnels.list.tunnels)}
+                onStopAll={() => void launcher.stopAll(tunnels.list.tunnels)}
               />
-            )
-          }
-          tunnels={
-            <TunnelsPanel
-              list={tunnels.list}
-              status={tunnels.status}
-              saveError={tunnels.saveError}
-              sessions={sshSessions}
-              statusOf={tunnels.statusOf}
-              onToggle={(tunnel) => {
-                if (launcher.isActive(tunnels.statusOf(tunnel.id))) void launcher.stop(tunnel.id);
-                else void launcher.start(tunnel);
-              }}
-              onNew={() => setModal({ kind: "editTunnel", tunnel: draftTunnel(), isNew: true })}
-              onEdit={(tunnel) => setModal({ kind: "editTunnel", tunnel, isNew: false })}
-              onDelete={async (tunnel) => {
-                if (await dialogs.confirm({ message: `Delete tunnel "${tunnel.name}"?`, confirmLabel: "Delete", danger: true })) {
-                  void launcher.stop(tunnel.id);
-                  tunnels.dispatch({ type: "delete", id: tunnel.id });
+            }
+            macros={
+              <MacrosPanel
+                list={macros.list}
+                status={macros.status}
+                saveError={macros.saveError}
+                canPlay={activeTab !== null && running === null}
+                onPlay={startMacro}
+                onNew={() =>
+                  setModal({ kind: "editMacro", macro: { id: crypto.randomUUID(), name: "", steps: [] }, isNew: true })
                 }
-              }}
-              onStartAll={() => void launcher.startAll(tunnels.list.tunnels)}
-              onStopAll={() => void launcher.stopAll(tunnels.list.tunnels)}
-            />
-          }
-          macros={
-            <MacrosPanel
-              list={macros.list}
-              status={macros.status}
-              saveError={macros.saveError}
-              canPlay={activeTab !== null && running === null}
-              onPlay={startMacro}
-              onNew={() =>
-                setModal({ kind: "editMacro", macro: { id: crypto.randomUUID(), name: "", steps: [] }, isNew: true })
-              }
-              onEdit={(macro) => setModal({ kind: "editMacro", macro, isNew: false })}
-              onDuplicate={(macro) => macros.dispatch({ type: "duplicate", id: macro.id, newId: crypto.randomUUID() })}
-              onDelete={async (macro) => {
-                if (await dialogs.confirm({ message: `Delete macro "${macro.name}"?`, confirmLabel: "Delete", danger: true })) {
-                  macros.dispatch({ type: "delete", id: macro.id });
+                onEdit={(macro) => setModal({ kind: "editMacro", macro, isNew: false })}
+                onDuplicate={(macro) => macros.dispatch({ type: "duplicate", id: macro.id, newId: crypto.randomUUID() })}
+                onDelete={async (macro) => {
+                  if (await dialogs.confirm({ message: `Delete macro "${macro.name}"?`, confirmLabel: "Delete", danger: true })) {
+                    macros.dispatch({ type: "delete", id: macro.id });
+                  }
+                }}
+              />
+            }
+            sessions={
+              <SessionsPanel
+                library={sessions.library}
+                status={sessions.status}
+                saveError={sessions.saveError}
+                onOpen={(session) => void openSaved(session)}
+                onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
+                onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
+                onDelete={(session) =>
+                  void confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
                 }
-              }}
-            />
-          }
-          sessions={
-            <SessionsPanel
-              library={sessions.library}
-              status={sessions.status}
-              saveError={sessions.saveError}
-              onOpen={(session) => void openSaved(session)}
-              onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
-              onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
-              onDelete={(session) =>
-                void confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
-              }
-              onNewFolder={(parent) => void newFolder(parent)}
-              onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
-              onDuplicate={(session) =>
-                sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
-              }
-              onDeleteFolder={(path) =>
-                void confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
-              }
-            />
-          }
-        />
+                onNewFolder={(parent) => void newFolder(parent)}
+                onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
+                onDuplicate={(session) =>
+                  sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
+                }
+                onDeleteFolder={(path) =>
+                  void confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
+                }
+              />
+            }
+          />
+        )}
         <section className="main">
           <TabBar
             tabs={state.tabs}
