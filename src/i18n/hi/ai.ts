@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "OpenAI-संगत",
+    openaiCompatibleEndpoint: "OpenAI-संगत एंडपॉइंट",
+  },
+  errors: {
+    noKey: "इस प्रदाता के लिए कोई API कुंजी सहेजी नहीं गई है।",
+    auth: "API कुंजी अस्वीकार कर दी गई।",
+    rateLimit: "AI प्रदाता अनुरोधों को सीमित कर रहा है; थोड़ी देर में फिर से प्रयास करें।",
+    network: "AI प्रदाता तक पहुँचा नहीं जा सका।",
+    timeout: "AI प्रदाता ने समय पर उत्तर नहीं दिया।",
+    refused: "AI प्रदाता ने इस अनुरोध का उत्तर देने से मना कर दिया।",
+    badResponse: "AI प्रदाता ने ऐसा उत्तर भेजा जिसे PlexusTerm पढ़ नहीं सका।",
+    config: "AI सेटिंग्स जाँचें।",
+  },
+  hint: {
+    unavailable: "AI: उपलब्ध नहीं",
+    noKey: "AI: कोई API कुंजी नहीं",
+    keyRejected: "AI: कुंजी अस्वीकृत",
+    rateLimited: "AI: अनुरोध सीमित",
+  },
+  chat: {
+    label: "AI चैट",
+    title: "AI",
+    close: "AI चैट बंद करें",
+    closeTitle: "AI चैट बंद करें (Ctrl+Shift+W)",
+    empty: "कुछ भी पूछें। कमांड केवल तभी चलते हैं जब आप \"चलाएँ\" पर क्लिक करते हैं।",
+    question: "प्रश्न",
+    asking: "पूछा जा रहा है…",
+    noKey: "{provider} के लिए कोई API कुंजी सहेजी नहीं गई है। सेटिंग्स → AI में एक जोड़ें।",
+    openSettings: "AI सेटिंग्स खोलें",
+    selectedText: "भेजने के लिए चुना गया टेक्स्ट",
+    removeSelection: "चुना गया टेक्स्ट निकालें",
+    removeSelectionTitle: "चुना गया टेक्स्ट न भेजें",
+    input: "आपका प्रश्न",
+    placeholder: "कुछ भी पूछें…",
+    send: "भेजें",
+  },
+  command: {
+    label: "सुझाया गया कमांड",
+    copied: "कॉपी किया गया",
+    copyFailed: "कॉपी विफल",
+    insert: "डालें",
+    insertTitle: "कमांड को चलाए बिना टर्मिनल में टाइप करता है",
+    run: "चलाएँ",
+    runTitle: "टर्मिनल में कमांड चलाता है (टाइप करके Enter दबाता है)",
+  },
+  answer: {
+    label: "उत्तर",
+  },
+  models: {
+    chooseAnother: "{label} — कोई दूसरा मॉडल चुनें",
+    filter: "मॉडल फ़िल्टर करें",
+    filterPlaceholder: "मॉडल फ़िल्टर करें…",
+    list: "AI मॉडल",
+    loading: "मॉडल लोड हो रहे हैं…",
+    noProvider: "किसी भी AI प्रदाता के पास API कुंजी नहीं है। सेटिंग्स → AI में एक जोड़ें।",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} — अभी समर्थित नहीं",
+    loadingProvider: "{provider} मॉडल लोड हो रहे हैं…",
+  },
+};

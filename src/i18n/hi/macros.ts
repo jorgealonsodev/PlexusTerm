@@ -1,0 +1,77 @@
+import type { macros as en } from "../en/macros";
+import type { Messages } from "../types";
+
+export const macros: Messages<typeof en> = {
+  recording: {
+    title: "मैक्रो रिकॉर्ड हो रहा है",
+    warning: "आप जो कुछ भी टाइप करते हैं, पासवर्ड सहित, सब सहेजा जाता है",
+    stop: "रिकॉर्डिंग रोकें",
+  },
+  name: {
+    title: "रिकॉर्ड किया गया मैक्रो सहेजें",
+    recorded: {
+      one: "{count} चरण रिकॉर्ड हुआ। मैक्रो सादे टेक्स्ट के रूप में सहेजे जाते हैं।",
+      other: "{count} चरण रिकॉर्ड हुए। मैक्रो सादे टेक्स्ट के रूप में सहेजे जाते हैं।",
+    },
+    discard: "त्यागें",
+  },
+  progress: {
+    running: '"{name}" चल रहा है: चरण {step} / {total}',
+    label: "मैक्रो {name} की प्रगति",
+  },
+  panel: {
+    title: "मैक्रो",
+    new: "नया",
+    search: "मैक्रो खोजें",
+    readError: "सहेजे गए मैक्रो पढ़े नहीं जा सके: {message}। फ़ाइल की सुरक्षा के लिए संपादन अक्षम है।",
+    saveError: "मैक्रो सहेजे नहीं जा सके: {error}",
+    empty: "अभी तक कोई मैक्रो नहीं। Ctrl+Shift+R से एक रिकॉर्ड करें या \"नया\" से बनाएँ।",
+    noMatch: "कोई मैक्रो मेल नहीं खाता।",
+    steps: { one: "{count} चरण", other: "{count} चरण" },
+    editNamed: "{name} संपादित करें",
+    duplicate: "प्रतिलिपि बनाएँ",
+    duplicateNamed: "{name} की प्रतिलिपि बनाएँ",
+    deleteNamed: "{name} हटाएँ",
+    playNamed: "{name} चलाएँ",
+    play: "फ़ोकस वाले टर्मिनल में चलाएँ",
+    hint: "मैक्रो फ़ोकस वाले टर्मिनल में चलते हैं; Ctrl+Alt+1–9 उस कुंजी से जुड़ा मैक्रो चलाता है। मैक्रो सादे टेक्स्ट के रूप में सहेजे जाते हैं।",
+  },
+  edit: {
+    newTitle: "नया मैक्रो",
+    editTitle: "मैक्रो संपादित करें",
+    hotkey: "हॉटकी",
+    none: "कोई नहीं",
+    hotkeyUsed: "{hotkey} ({name})",
+    escapes: "टेक्स्ट में एस्केप: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C और अन्य ^A–^Z कंट्रोल कुंजियाँ, ^[ और ^?।",
+    kindSend: "टेक्स्ट भेजें",
+    kindWait: "प्रतीक्षा करें",
+    kindWaitFor: "टेक्स्ट की प्रतीक्षा करें",
+    stepKind: "चरण {n} का प्रकार",
+    stepMs: "चरण {n} मिलीसेकंड",
+    stepText: "चरण {n} का टेक्स्ट",
+    sendPlaceholder: "उदा. ls -la\\r",
+    waitForPlaceholder: "उदा. password:",
+    stepTimeout: "चरण {n} का टाइमआउट (सेकंड में)",
+    moveUp: "चरण {n} को ऊपर ले जाएँ",
+    moveDown: "चरण {n} को नीचे ले जाएँ",
+    removeStep: "चरण {n} निकालें",
+    noSteps: "अभी तक कोई चरण नहीं।",
+    addStep: "चरण जोड़ें",
+  },
+  form: {
+    nameRequired: "एक नाम दर्ज करें।",
+    invalidWait: "चरण {n}: प्रतीक्षा 0 से {max} तक मिलीसेकंड की पूर्ण संख्या होनी चाहिए।",
+    waitForTextRequired: "चरण {n}: जिस टेक्स्ट की प्रतीक्षा करनी है उसे दर्ज करें।",
+    invalidTimeout: "चरण {n}: टाइमआउट 1 से {max} तक सेकंड की पूर्ण संख्या होना चाहिए।",
+  },
+  file: {
+    invalidJson: "मैक्रो फ़ाइल मान्य JSON नहीं है: {error}",
+    unsupportedVersion: "असमर्थित मैक्रो फ़ाइल संस्करण",
+    invalidMacros: "मैक्रो फ़ाइल में अमान्य मैक्रो हैं",
+    duplicateHotkey: "मैक्रो फ़ाइल में {hotkey} पर दो मैक्रो हैं",
+  },
+  copyName: "{name} (प्रतिलिपि)",
+  player: {
+    timedOut: 'मैक्रो "{name}" चरण {step} / {total} पर रुका: "{text}" {seconds} s के भीतर दिखाई नहीं दिया।',
+  },
+};

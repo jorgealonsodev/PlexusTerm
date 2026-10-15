@@ -1,0 +1,102 @@
+import type { settings as en } from "../en/settings";
+import type { Messages } from "../types";
+
+export const settings: Messages<typeof en> = {
+  language: {
+    label: "भाषा",
+    system: "सिस्टम",
+  },
+  dialog: {
+    title: "सेटिंग्स",
+    sections: "सेटिंग्स अनुभाग",
+  },
+  sections: {
+    appearance: "दिखावट",
+    terminal: "टर्मिनल",
+    ssh: "SSH",
+    files: "फ़ाइलें",
+    ai: "AI",
+    about: "परिचय",
+  },
+  appearance: {
+    colourScheme: "रंग योजना",
+    dark: "गहरा",
+    light: "हल्का",
+    preview: "{name} का पूर्वावलोकन",
+    fontFamily: "फ़ॉन्ट फ़ैमिली",
+    fontSize: "फ़ॉन्ट आकार",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0 फ़ॉन्ट आकार बदलते हैं। आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
+    hideSidebar: "फ़ोल्ड करने पर साइडबार को पूरी तरह छिपाएँ",
+    sidebarHelp:
+      "Ctrl+Shift+B या टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
+  },
+  terminal: {
+    copyOnSelect: "चुनने पर कॉपी करें",
+    rightClickPastes: "राइट-क्लिक से पेस्ट करें",
+    confirmMultilinePaste: "कई पंक्तियाँ पेस्ट करने की पुष्टि करें",
+    rightClickHelp: "जब राइट-क्लिक पेस्ट करता है, तब Ctrl+राइट-क्लिक टर्मिनल मेनू खोलता है।",
+  },
+  ssh: {
+    remoteMonitor: "रिमोट मॉनिटर बार (SSH टैब)",
+    remoteMonitorHelp:
+      "हर SSH पेन के नीचे एक बार, जिसमें सर्वर का CPU, मेमोरी, डिस्क, नेटवर्क और उपयोगकर्ता उसी कनेक्शन से पढ़कर दिखाए जाते हैं। टूल में भी उपलब्ध।",
+  },
+  files: {
+    textEditor: "टेक्स्ट एडिटर",
+    systemDefault: "सिस्टम डिफ़ॉल्ट",
+    useSystemDefault: "सिस्टम डिफ़ॉल्ट का उपयोग करें",
+    chooseEditor: "एक टेक्स्ट एडिटर चुनें",
+    textEditorHelp:
+      "टेक्स्ट एडिटर SFTP ब्राउज़र से फ़ाइलें खोलता है: कोई प्रोग्राम, या {command} जैसी कमांड; सिस्टम डिफ़ॉल्ट उपयोग करने के लिए इसे खाली छोड़ें।",
+  },
+  ai: {
+    inlineSuggestions: "इनलाइन सुझाव",
+    inlineSuggestionsHelp:
+      "टाइप करते समय कमांड के बाकी हिस्से का धूसर सुझाव। दायाँ तीर या End इसे स्वीकार करता है, Ctrl+दायाँ तीर एक शब्द स्वीकार करता है।",
+    commandHistory: "कमांड इतिहास",
+    clearHistory: "इतिहास साफ़ करें",
+    historyCleared: "इतिहास साफ़ किया गया।",
+    historyClearFailed: "इतिहास साफ़ नहीं किया जा सका: {error}",
+    historyHelp:
+      "आपके चलाए गए कमांड फिर से सुझाने के लिए इसी कंप्यूटर पर, हर होस्ट के अनुसार रखे जाते हैं। स्पेस से शुरू होने वाली पंक्तियाँ, पासवर्ड और फ़ुल-स्क्रीन प्रोग्राम कभी रिकॉर्ड नहीं होते।",
+    aiSuggestions: "AI सुझाव",
+    aiSuggestionsHelp:
+      "जब इतिहास में कुछ न मिले, तो AI प्रदाता से पूछा जाता है। केवल टाइप की गई पंक्ति, वर्तमान फ़ोल्डर और इतिहास के अंतिम कमांड भेजे जाते हैं, टर्मिनल आउटपुट कभी नहीं।",
+    provider: "प्रदाता",
+    openCodeGoNote:
+      "OpenCode Go कोडिंग एजेंट के लिए है और ट्रैफ़िक की निगरानी करता है; इनलाइन AI सुझाव कई छोटे अनुरोध भेजते हैं।",
+    baseUrl: "बेस URL",
+    model: "मॉडल",
+    historyContext: "संदर्भ के रूप में भेजे जाने वाले इतिहास कमांड",
+    chooseModel: "एक मॉडल चुनें",
+    modelOption: "{name} ({id})",
+    modelOptionUnsupported: "{name} ({id}) — अभी समर्थित नहीं",
+    refreshModels: "मॉडल रीफ़्रेश करें",
+    loadingModels: "मॉडल लोड हो रहे हैं…",
+    modelsError: "{error} {url} से कोई मॉडल id टाइप करें।",
+    apiKey: "API कुंजी",
+    keyChecking: "कीरिंग जाँची जा रही है…",
+    keySaved: "एक कुंजी सहेजी गई है",
+    keyNone: "कोई कुंजी सहेजी नहीं गई",
+    keyUnavailable: "कीरिंग उपलब्ध नहीं",
+    keyReplacePlaceholder: "बदलने के लिए नई कुंजी टाइप करें",
+    keyPastePlaceholder: "कुंजी पेस्ट करें",
+    saveKey: "कुंजी सहेजें",
+    removeKey: "कुंजी निकालें",
+    saveKeyFailed: "कुंजी सहेजी नहीं जा सकी: {error}",
+    removeKeyFailed: "कुंजी निकाली नहीं जा सकी: {error}",
+    assistantShortcut: "सहायक शॉर्टकट",
+    shortcutInvalid: "किसी कुंजी के साथ Ctrl, Alt या Meta का उपयोग करें।",
+    shortcutTaken: "{shortcut} पहले से PlexusTerm द्वारा उपयोग किया जा रहा है।",
+    shortcutCapturing: "नया कुंजी संयोजन दबाएँ, या इसे रखने के लिए Esc दबाएँ।",
+    shortcutIdle: "इसे बदलने के लिए फ़ील्ड पर क्लिक करें।",
+  },
+  about: {
+    version: "संस्करण {version}",
+    description:
+      "Linux और Windows के लिए एक टर्मिनल और रिमोट-सेशन मैनेजर: लोकल शेल, SSH, SFTP, टनल, सीरियल, Telnet और Mosh एक ही विंडो में।",
+    credits: "रंग योजनाएँ iTerm2-Color-Schemes (MIT) और उनके लेखकों से; {notices} देखें।",
+    notices: "तृतीय-पक्ष सूचनाएँ",
+  },
+};
