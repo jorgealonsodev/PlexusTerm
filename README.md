@@ -51,6 +51,55 @@ pnpm tauri build --bundles nsis,msi   # installers under src-tauri\target\releas
 
 Windows support is developed on Linux, where it is only cross-compiled (`cargo check --target x86_64-pc-windows-gnu`); it is built, tested and packaged on a real Windows machine by the CI workflow (`.github/workflows/ci.yml`, Linux and Windows jobs on every push), whose artifacts hold the `.deb`, AppImage, NSIS and MSI installers.
 
+## Releases
+
+Every GitHub Release carries these assets (`<version>` without the leading `v`):
+
+| Asset | Contents |
+| --- | --- |
+| `nexusterm_<version>_linux_amd64.tar.gz`, `nexusterm_<version>_linux_arm64.tar.gz` | Portable folder `nexusterm_<version>_linux_<arch>/` with the `nexusterm` binary, `nexusterm.desktop`, `icons/`, `README.md` and `install.sh` |
+| `nexusterm_<version>_linux_amd64.deb`, `nexusterm_<version>_linux_arm64.deb` | Debian/Ubuntu packages |
+| `nexusterm_<version>_linux_x86_64.rpm`, `nexusterm_<version>_linux_aarch64.rpm` | Fedora/openSUSE/RHEL packages |
+| `nexusterm_<version>_windows_x86_64.msi`, `nexusterm_<version>_windows_x86_64-setup.exe` | Windows installers (MSI and NSIS) |
+| `checksums.txt` | SHA-256 of every other asset, in `sha256sum` format |
+
+**Producing a release.** Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json` (all three must match), commit, then push a tag `v<version>`:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+The `Release` workflow (`.github/workflows/release.yml`) builds amd64 on `ubuntu-24.04`, arm64 natively on `ubuntu-24.04-arm` and the installers on `windows-latest`, writes `checksums.txt` and creates a **draft** release; review it and publish it by hand on GitHub. The workflow fails if the tag does not match the project version.
+
+The Linux assets are built the same way locally (native architecture only; the Linux build dependencies above are required):
+
+```bash
+scripts/package-release.sh 1.2.0 amd64   # writes dist-release/nexusterm_1.2.0_linux_*
+scripts/checksums.sh dist-release        # writes and verifies dist-release/checksums.txt
+```
+
+**Verifying a download.** Put the downloaded assets next to `checksums.txt` and run:
+
+```bash
+sha256sum --ignore-missing -c checksums.txt
+```
+
+**Installing.**
+
+```bash
+# Portable tarball, per user (~/.local/bin, ~/.local/share/applications, ~/.local/share/icons)
+tar -xzf nexusterm_1.2.0_linux_amd64.tar.gz
+nexusterm_1.2.0_linux_amd64/install.sh               # remove later with: install.sh --uninstall
+
+# Debian/Ubuntu
+sudo apt install ./nexusterm_1.2.0_linux_amd64.deb
+
+# Fedora/RHEL (zypper install on openSUSE)
+sudo dnf install ./nexusterm_1.2.0_linux_x86_64.rpm
+```
+
+The tarball binary needs the same system libraries as the `.deb` (`libwebkit2gtk-4.1-0`, `libgtk-3-0`).
+
 ## SSH sessions
 
 Open **SSH** (or Ctrl+Shift+S) and enter a host; the field also accepts `user@host:port`.
