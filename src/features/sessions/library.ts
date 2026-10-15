@@ -76,6 +76,8 @@ export type LibraryAction =
   /** Saves several sessions with a single write (e.g. an import). */
   | { type: "saveSessions"; sessions: LibrarySession[] }
   | { type: "deleteSession"; id: string }
+  /** Copies a session next to it, named "<name> (copy)"; saved passwords are not copied. */
+  | { type: "duplicateSession"; id: string; newId: string }
   | { type: "addFolder"; path: string }
   | { type: "deleteFolder"; path: string };
 
@@ -209,6 +211,13 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
           ? lib.sessions.map((s) => (s.id === session.id ? session : s))
           : [...lib.sessions, session],
       };
+    }
+    case "duplicateSession": {
+      const index = lib.sessions.findIndex((s) => s.id === action.id);
+      if (index === -1) return lib;
+      const original = lib.sessions[index];
+      const copy = { ...original, id: action.newId, name: `${original.name} (copy)` };
+      return { ...lib, sessions: [...lib.sessions.slice(0, index + 1), copy, ...lib.sessions.slice(index + 1)] };
     }
     case "saveSessions":
       return action.sessions.reduce(

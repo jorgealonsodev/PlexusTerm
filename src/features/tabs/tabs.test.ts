@@ -136,4 +136,31 @@ describe("tabsReducer panes", () => {
     const resized = tabsReducer(state, { type: "resizeSplit", key, splitId: state.tabs[0].layout.id, ratio: 0.95 });
     expect(resized.tabs[0].layout).toMatchObject({ kind: "split", ratio: 0.85 });
   });
+
+  it("closes every tab but one, keeping it active", () => {
+    const state = open(open(open(initialTabs)));
+    const [a, b, c] = state.tabs.map((t) => t.key);
+    const next = tabsReducer(state, { type: "closeOthers", key: b });
+    expect(next.tabs.map((t) => t.key)).toEqual([b]);
+    expect(next.activeKey).toBe(b);
+    expect(tabsReducer(state, { type: "closeOthers", key: "nope" })).toBe(state);
+    expect([a, c]).not.toContain(b);
+  });
+
+  it("closes the tabs to the right of one, activating it when the active tab closed", () => {
+    const state = open(open(open(initialTabs)));
+    const [a, b] = state.tabs.map((t) => t.key);
+    const next = tabsReducer(state, { type: "closeRight", key: a });
+    expect(next.tabs.map((t) => t.key)).toEqual([a]);
+    expect(next.activeKey).toBe(a);
+    const keepActive = tabsReducer({ ...state, activeKey: a }, { type: "closeRight", key: b });
+    expect(keepActive.tabs).toHaveLength(2);
+    expect(keepActive.activeKey).toBe(a);
+  });
+
+  it("closes every tab", () => {
+    const next = tabsReducer(open(open(initialTabs)), { type: "closeAll" });
+    expect(next.tabs).toEqual([]);
+    expect(next.activeKey).toBeNull();
+  });
 });

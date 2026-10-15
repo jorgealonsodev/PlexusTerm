@@ -77,6 +77,18 @@ describe("libraryReducer", () => {
     expect(lib.folders).toEqual(["Prod", "Prod/DB"]);
   });
 
+  it("duplicates a session next to it with a new id and a (copy) name", () => {
+    const lib = save(save(emptyLibrary, session({ id: "1", name: "web" })), session({ id: "2", name: "db" }));
+    const next = libraryReducer(lib, { type: "duplicateSession", id: "1", newId: "9" });
+    expect(next.sessions.map((s) => [s.id, s.name])).toEqual([
+      ["1", "web"],
+      ["9", "web (copy)"],
+      ["2", "db"],
+    ]);
+    expect({ ...next.sessions[1], id: "1", name: "web" }).toEqual(next.sessions[0]);
+    expect(libraryReducer(lib, { type: "duplicateSession", id: "nope", newId: "9" })).toBe(lib);
+  });
+
   it("updates an existing session in place by id", () => {
     let lib = save(emptyLibrary, session());
     lib = save(lib, session({ name: "web-1" }));

@@ -32,6 +32,7 @@ function renderPanel(overrides: Partial<Parameters<typeof SessionsPanel>[0]> = {
     onNewFolder: vi.fn(),
     onDeleteFolder: vi.fn(),
     onImport: vi.fn(),
+    onDuplicate: vi.fn(),
     ...overrides,
   };
   render(<SessionsPanel {...props} />);
@@ -88,6 +89,7 @@ describe("SessionsPanel", () => {
         onNewFolder={vi.fn()}
         onDeleteFolder={vi.fn()}
         onImport={vi.fn()}
+        onDuplicate={vi.fn()}
       />,
     );
     const iconOf = (name: string) =>
@@ -96,6 +98,51 @@ describe("SessionsPanel", () => {
     expect(iconOf("switch")).toBe("serial");
     expect(iconOf("router")).toBe("telnet");
     expect(container.querySelector(".tree-row--folder svg.tree-row__icon")?.getAttribute("data-kind")).toBe("folder");
+  });
+
+  it("opens a session menu on right click: connect, edit, duplicate, delete", () => {
+    const props = renderPanel();
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect", "Edit…", "Duplicate", "Delete"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Duplicate" }));
+    expect(props.onDuplicate).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Connect" }));
+    expect(props.onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit…" }));
+    expect(props.onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    expect(props.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
+  });
+
+  it("opens a folder menu on right click: new session, new folder, connect all, delete", () => {
+    const props = renderPanel();
+    fireEvent.contextMenu(screen.getByText("Prod"), { clientX: 5, clientY: 5 });
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "New session here…",
+      "New folder here…",
+      "Connect all (1)",
+      "Delete folder",
+    ]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "New session here…" }));
+    expect(props.onNewSession).toHaveBeenCalledWith("Prod");
+    fireEvent.contextMenu(screen.getByText("Prod"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "New folder here…" }));
+    expect(props.onNewFolder).toHaveBeenCalledWith("Prod");
+    fireEvent.contextMenu(screen.getByText("Prod"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Connect all (1)" }));
+    expect(props.onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
+    fireEvent.contextMenu(screen.getByText("Prod"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete folder" }));
+    expect(props.onDeleteFolder).toHaveBeenCalledWith("Prod");
+  });
+
+  it("offers only Connect in the session menu while the library cannot be edited", () => {
+    renderPanel({ status: { state: "error", message: "broken" } });
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect"]);
   });
 
   it("collapses a folder when its row is clicked", () => {

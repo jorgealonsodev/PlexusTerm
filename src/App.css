@@ -954,6 +954,22 @@ body,
   background: var(--surface-2);
 }
 
+.context-menu__item:disabled {
+  color: var(--muted);
+  background: none;
+  cursor: default;
+}
+
+.context-menu__item--danger {
+  color: var(--danger);
+}
+
+.context-menu__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
 .paste-preview {
   max-height: 140px;
   margin: 0;
