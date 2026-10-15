@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "Compatível com OpenAI",
+    openaiCompatibleEndpoint: "o endpoint compatível com OpenAI",
+  },
+  errors: {
+    noKey: "Nenhuma chave de API está salva para este provedor.",
+    auth: "A chave de API foi rejeitada.",
+    rateLimit: "O provedor de IA está limitando as solicitações; tente novamente em instantes.",
+    network: "Não foi possível acessar o provedor de IA.",
+    timeout: "O provedor de IA não respondeu a tempo.",
+    refused: "O provedor de IA se recusou a responder a esta solicitação.",
+    badResponse: "O provedor de IA enviou uma resposta que o PlexusTerm não conseguiu ler.",
+    config: "Verifique as configurações de IA.",
+  },
+  hint: {
+    unavailable: "IA: indisponível",
+    noKey: "IA: sem chave de API",
+    keyRejected: "IA: chave rejeitada",
+    rateLimited: "IA: limite de solicitações",
+  },
+  chat: {
+    label: "Chat de IA",
+    title: "IA",
+    close: "Fechar o chat de IA",
+    closeTitle: "Fechar o chat de IA (Ctrl+Shift+W)",
+    empty: "Pergunte o que quiser. Os comandos só são executados quando você clica em Executar.",
+    question: "Pergunta",
+    asking: "Perguntando…",
+    noKey: "Nenhuma chave de API está salva para {provider}. Adicione uma em Configurações → IA.",
+    openSettings: "Abrir as configurações de IA",
+    selectedText: "Texto selecionado para enviar",
+    removeSelection: "Remover o texto selecionado",
+    removeSelectionTitle: "Não enviar o texto selecionado",
+    input: "Sua pergunta",
+    placeholder: "Pergunte o que quiser…",
+    send: "Enviar",
+  },
+  command: {
+    label: "Comando sugerido",
+    copied: "Copiado",
+    copyFailed: "Falha ao copiar",
+    insert: "Inserir",
+    insertTitle: "Digita o comando no terminal sem executá-lo",
+    run: "Executar",
+    runTitle: "Executa o comando no terminal (digita-o e pressiona Enter)",
+  },
+  answer: {
+    label: "Resposta",
+  },
+  models: {
+    chooseAnother: "{label} — escolha outro modelo",
+    filter: "Filtrar modelos",
+    filterPlaceholder: "Filtrar modelos…",
+    list: "Modelos de IA",
+    loading: "Carregando modelos…",
+    noProvider: "Nenhum provedor de IA tem chave de API. Adicione uma em Configurações → IA.",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} — ainda não suportado",
+    loadingProvider: "Carregando os modelos de {provider}…",
+  },
+};
