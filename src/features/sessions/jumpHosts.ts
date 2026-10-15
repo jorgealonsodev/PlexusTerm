@@ -28,10 +28,14 @@ export function hopLabel(hops: SavedSession[], index: number): string {
  * Collects how every hop logs in, in order: password sessions use the password
  * saved in the keyring when there is one, otherwise `askPassword(index)` asks for it
  * (one prompt at a time). Resolves to null when a prompt is cancelled.
+ *
+ * Without `deps`, every password hop gets its saved-password login and nothing is asked:
+ * the backend tries the SSH agent and default keys first and reports `secretMissing`
+ * when the password is needed, so callers that handle it prompt after connecting.
  */
 export async function collectLogins(
   hops: SavedSession[],
-  deps: {
+  deps?: {
     secretExists: (sessionId: string) => Promise<boolean>;
     askPassword: (index: number) => Promise<PasswordAnswer | null>;
   },
@@ -40,7 +44,7 @@ export async function collectLogins(
   for (const [index, hop] of hops.entries()) {
     if (hop.auth.method !== "password") {
       logins.push({ auth: toTarget(hop).auth });
-    } else if (await deps.secretExists(hop.id)) {
+    } else if (!deps || (await deps.secretExists(hop.id))) {
       logins.push({ auth: { method: "storedPassword", sessionId: hop.id } });
     } else {
       const answer = await deps.askPassword(index);

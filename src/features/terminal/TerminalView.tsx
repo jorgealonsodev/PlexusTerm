@@ -8,7 +8,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { patchJump } from "../sessions/jumpHosts";
-import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
+import { savedPasswordRejected, shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
 import {
   sshLoginOf,
@@ -68,8 +68,11 @@ interface PendingHost {
   jump?: { index: number; label: string };
 }
 
-/** Which login the password prompt is for: the target, or jump host `index`. */
-type PasswordFor = { jump: null } | { jump: { index: number; label: string } };
+/**
+ * Which login the password prompt is for (the target, or jump host `index`), and whether
+ * its saved password was rejected (see `savedPasswordRejected`).
+ */
+type PasswordFor = { rejected: boolean } & ({ jump: null } | { jump: { index: number; label: string } });
 
 /** "bastion — jump host 1 of 2" */
 const jumpLabel = (jumps: JumpTarget[], index: number) =>
@@ -220,7 +223,9 @@ export function TerminalView({
       if (err.error.kind === "unknownHost") setPendingHost({ ...err.error, jump: { index, label } });
       else {
         term.write(red(describeSshError(err)));
-        if (shouldAskAgain(jump.auth, err.error)) setAskPassword({ jump: { index, label } });
+        if (shouldAskAgain(jump.auth, err.error)) {
+          setAskPassword({ jump: { index, label }, rejected: savedPasswordRejected(err.error) });
+        }
       }
     };
 
@@ -272,7 +277,7 @@ export function TerminalView({
           const auth = typedLogin.current?.auth ?? sshLoginOf(target)?.auth ?? null;
           if (auth && shouldAskAgain(auth, err)) {
             term.write(red(describeSshError(err)));
-            setAskPassword({ jump: null });
+            setAskPassword({ jump: null, rejected: savedPasswordRejected(err) });
           } else if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));
         });
@@ -557,10 +562,11 @@ export function TerminalView({
       {askPassword && savedLogin && (
         <PasswordPrompt
           label={askPassword.jump?.label ?? targetTitle(sshLogin ?? target)}
-          remember={{ initial: true }}
+          remember={{ initial: askPassword.rejected }}
           onSubmit={(password, remember) => {
             setAskPassword(null);
-            const login = { auth: { method: "password" as const, password }, storage: storageFor(savedLogin, remember, true) };
+            const storage = storageFor(savedLogin, remember, askPassword.rejected);
+            const login = { auth: { method: "password" as const, password }, storage };
             if (askPassword.jump) jumpsRef.current = patchJump(jumpsRef.current, askPassword.jump.index, login);
             else typedLogin.current = login;
             startRef.current();

@@ -1,7 +1,9 @@
 //! Minimal in-process SSH server used by the SSH client tests.
 //!
 //! Behaviour: accepts password `secret` or the configured public key, opens a
-//! shell channel and echoes data back. `size?` replies with the last window
+//! shell channel and echoes data back. Servers started with [`start_limited`]
+//! disconnect after that many rejected authentication attempts (like OpenSSH's
+//! `MaxAuthTries`). `size?` replies with the last window
 //! size, and `exit` ends the channel with exit status 7.
 //!
 //! Servers started with [`start_with_sftp`] also serve the `sftp` subsystem
@@ -45,6 +47,8 @@ pub struct TestServer {
     pub host_key: PublicKey,
     /// Password authentication attempts received, over every connection.
     pub password_attempts: Arc<AtomicUsize>,
+    /// Public-key authentication requests received, over every connection.
+    publickey_attempts: Arc<AtomicUsize>,
     /// Client connections currently open.
     open_connections: Arc<AtomicUsize>,
     /// Commands received in exec requests, over every connection (read by the Unix-only
@@ -56,6 +60,10 @@ pub struct TestServer {
 impl TestServer {
     pub fn password_attempts(&self) -> usize {
         self.password_attempts.load(Ordering::SeqCst)
+    }
+
+    pub fn publickey_attempts(&self) -> usize {
+        self.publickey_attempts.load(Ordering::SeqCst)
     }
 
     pub fn open_connections(&self) -> usize {
@@ -90,6 +98,7 @@ struct Handler {
     /// Remote forward listeners of this connection, by requested address and port.
     forwards: Arc<Mutex<HashMap<(String, u32), tokio::task::AbortHandle>>>,
     password_attempts: Arc<AtomicUsize>,
+    publickey_attempts: Arc<AtomicUsize>,
     open_connections: Arc<AtomicUsize>,
     exec_commands: Arc<Mutex<Vec<String>>>,
     _connection: Option<Arc<ConnectionGuard>>,
@@ -97,18 +106,28 @@ struct Handler {
 
 /// Starts a server with the given host key seed; `allowed_key` enables public-key auth.
 pub async fn start(host_seed: u8, allowed_key: Option<PublicKey>) -> TestServer {
-    start_inner(host_seed, allowed_key, None).await
+    start_inner(host_seed, allowed_key, None, 10).await
+}
+
+/// Like [`start`], but disconnects once `max_auth_attempts` attempts were rejected.
+pub async fn start_limited(
+    host_seed: u8,
+    allowed_key: Option<PublicKey>,
+    max_auth_attempts: usize,
+) -> TestServer {
+    start_inner(host_seed, allowed_key, None, max_auth_attempts).await
 }
 
 /// Starts a password-auth server (host key seed 1) that also serves SFTP from `root`.
 pub async fn start_with_sftp(root: &Path) -> TestServer {
-    start_inner(1, None, Some(Arc::new(root.to_path_buf()))).await
+    start_inner(1, None, Some(Arc::new(root.to_path_buf())), 10).await
 }
 
 async fn start_inner(
     host_seed: u8,
     allowed_key: Option<PublicKey>,
     sftp_root: Option<Arc<PathBuf>>,
+    max_auth_attempts: usize,
 ) -> TestServer {
     let host = key_from_seed(host_seed);
     let host_key = host.public_key().clone();
@@ -116,6 +135,7 @@ async fn start_inner(
         keys: vec![host],
         auth_rejection_time: std::time::Duration::from_millis(0),
         auth_rejection_time_initial: Some(std::time::Duration::from_millis(0)),
+        max_auth_attempts,
         ..Default::default()
     });
     let socket = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -128,11 +148,13 @@ async fn start_inner(
         stream_channels: Arc::default(),
         forwards: Arc::default(),
         password_attempts: Arc::default(),
+        publickey_attempts: Arc::default(),
         open_connections: Arc::default(),
         exec_commands: Arc::default(),
         _connection: None,
     };
     let password_attempts = server.password_attempts.clone();
+    let publickey_attempts = server.publickey_attempts.clone();
     let open_connections = server.open_connections.clone();
     let exec_commands = server.exec_commands.clone();
     tokio::spawn(async move {
@@ -142,6 +164,7 @@ async fn start_inner(
         addr,
         host_key,
         password_attempts,
+        publickey_attempts,
         open_connections,
         exec_commands,
     }
@@ -174,6 +197,7 @@ impl russh::server::Handler for Handler {
     }
 
     async fn auth_publickey(&mut self, _user: &str, key: &PublicKey) -> Result<Auth, Self::Error> {
+        self.publickey_attempts.fetch_add(1, Ordering::SeqCst);
         Ok(match &self.allowed_key {
             Some(allowed) if allowed.key_data() == key.key_data() => Auth::Accept,
             _ => Auth::reject(),
@@ -571,6 +595,24 @@ impl russh_sftp::server::Handler for SftpFs {
             id,
             attrs: FileAttributes::from(&meta),
         })
+    }
+
+    async fn setstat(
+        &mut self,
+        id: u32,
+        path: String,
+        attrs: FileAttributes,
+    ) -> Result<Status, Self::Error> {
+        let path = self.real_path(&path)?;
+        #[cfg(unix)]
+        if let Some(mode) = attrs.permissions {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode & 0o7777))
+                .map_err(io_status)?;
+        }
+        #[cfg(not(unix))]
+        let _ = (path, attrs);
+        Ok(ok(id))
     }
 
     async fn fstat(&mut self, id: u32, handle: String) -> Result<Attrs, Self::Error> {
