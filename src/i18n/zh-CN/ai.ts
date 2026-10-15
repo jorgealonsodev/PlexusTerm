@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "OpenAI 兼容",
+    openaiCompatibleEndpoint: "OpenAI 兼容端点",
+  },
+  errors: {
+    noKey: "未为此提供商保存 API 密钥。",
+    auth: "API 密钥被拒绝。",
+    rateLimit: "AI 提供商正在限制请求；请稍后重试。",
+    network: "无法连接到 AI 提供商。",
+    timeout: "AI 提供商未及时响应。",
+    refused: "AI 提供商拒绝回答此请求。",
+    badResponse: "AI 提供商返回了 PlexusTerm 无法读取的响应。",
+    config: "请检查 AI 设置。",
+  },
+  hint: {
+    unavailable: "AI：不可用",
+    noKey: "AI：无 API 密钥",
+    keyRejected: "AI：密钥被拒绝",
+    rateLimited: "AI：请求受限",
+  },
+  chat: {
+    label: "AI 聊天",
+    title: "AI",
+    close: "关闭 AI 聊天",
+    closeTitle: "关闭 AI 聊天 (Ctrl+Shift+W)",
+    empty: "随便问。只有点击“运行”时才会执行命令。",
+    question: "问题",
+    asking: "正在提问…",
+    noKey: "未为{provider}保存 API 密钥。请在“设置 → AI”中添加。",
+    openSettings: "打开 AI 设置",
+    selectedText: "要发送的选中文本",
+    removeSelection: "移除选中文本",
+    removeSelectionTitle: "不发送选中文本",
+    input: "您的问题",
+    placeholder: "随便问…",
+    send: "发送",
+  },
+  command: {
+    label: "建议的命令",
+    copied: "已复制",
+    copyFailed: "复制失败",
+    insert: "插入",
+    insertTitle: "将命令输入到终端但不运行",
+    run: "运行",
+    runTitle: "在终端中运行命令（输入并按 Enter）",
+  },
+  answer: {
+    label: "回答",
+  },
+  models: {
+    chooseAnother: "{label} — 选择其他模型",
+    filter: "筛选模型",
+    filterPlaceholder: "筛选模型…",
+    list: "AI 模型",
+    loading: "正在加载模型…",
+    noProvider: "没有任何 AI 提供商设置了 API 密钥。请在“设置 → AI”中添加。",
+    providerError: "{provider}：{error}",
+    unsupported: "{id} — 暂不支持",
+    loadingProvider: "正在加载 {provider} 模型…",
+  },
+};

@@ -1,0 +1,98 @@
+import type { settings as en } from "../en/settings";
+import type { Messages } from "../types";
+
+export const settings: Messages<typeof en> = {
+  language: {
+    label: "语言",
+    system: "跟随系统",
+  },
+  dialog: {
+    title: "设置",
+    sections: "设置分区",
+  },
+  sections: {
+    appearance: "外观",
+    terminal: "终端",
+    ssh: "SSH",
+    files: "文件",
+    ai: "AI",
+    about: "关于",
+  },
+  appearance: {
+    colourScheme: "配色方案",
+    dark: "深色",
+    light: "浅色",
+    preview: "{name} 预览",
+    fontFamily: "字体",
+    fontSize: "字号",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0 可调整字号。会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
+    hideSidebar: "折叠时完全隐藏侧边栏",
+    sidebarHelp: "Ctrl+Shift+B 或工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
+  },
+  terminal: {
+    copyOnSelect: "选中即复制",
+    rightClickPastes: "右键粘贴",
+    confirmMultilinePaste: "确认多行粘贴",
+    rightClickHelp: "启用右键粘贴时，按住 Ctrl 右键单击可打开终端菜单。",
+  },
+  ssh: {
+    remoteMonitor: "远程监视栏（SSH 标签页）",
+    remoteMonitorHelp:
+      "在每个 SSH 窗格下方显示服务器的 CPU、内存、磁盘、网络和用户信息，通过同一连接读取。也可在“工具”中打开。",
+  },
+  files: {
+    textEditor: "文本编辑器",
+    systemDefault: "系统默认",
+    useSystemDefault: "使用系统默认",
+    chooseEditor: "选择文本编辑器",
+    textEditorHelp: "用于打开 SFTP 浏览器中文件的文本编辑器：可以是程序，也可以是 {command} 这样的命令；留空则使用系统默认。",
+  },
+  ai: {
+    inlineSuggestions: "内联建议",
+    inlineSuggestionsHelp: "输入时以灰色显示命令其余部分的建议。按右方向键或 End 接受，按 Ctrl+右方向键接受一个单词。",
+    commandHistory: "命令历史",
+    clearHistory: "清除历史",
+    historyCleared: "历史已清除。",
+    historyClearFailed: "无法清除历史：{error}",
+    historyHelp:
+      "运行过的命令会按主机保存在本机，以便再次建议。以空格开头的行、密码和全屏程序永远不会被记录。",
+    aiSuggestions: "AI 建议",
+    aiSuggestionsHelp:
+      "当历史中没有匹配项时，向 AI 提供商请求建议。仅发送当前输入的行、当前文件夹和最近的历史命令，绝不发送终端输出。",
+    provider: "提供商",
+    openCodeGoNote: "OpenCode Go 面向编程智能体并会监控流量；内联 AI 建议会发送大量短请求。",
+    baseUrl: "基础 URL",
+    model: "模型",
+    historyContext: "作为上下文发送的历史命令数",
+    chooseModel: "选择模型",
+    modelOption: "{name} ({id})",
+    modelOptionUnsupported: "{name} ({id}) — 暂不支持",
+    refreshModels: "刷新模型",
+    loadingModels: "正在加载模型…",
+    modelsError: "{error} 请输入 {url} 中的模型 ID。",
+    apiKey: "API 密钥",
+    keyChecking: "正在检查密钥环…",
+    keySaved: "已保存密钥",
+    keyNone: "未保存密钥",
+    keyUnavailable: "密钥环不可用",
+    keyReplacePlaceholder: "输入新密钥以替换",
+    keyPastePlaceholder: "粘贴密钥",
+    saveKey: "保存密钥",
+    removeKey: "移除密钥",
+    saveKeyFailed: "无法保存密钥：{error}",
+    removeKeyFailed: "无法移除密钥：{error}",
+    assistantShortcut: "助手快捷键",
+    shortcutInvalid: "请将 Ctrl、Alt 或 Meta 与一个键组合使用。",
+    shortcutTaken: "{shortcut} 已被 PlexusTerm 占用。",
+    shortcutCapturing: "请按下新的组合键，或按 Escape 保留当前设置。",
+    shortcutIdle: "单击该字段以更改。",
+  },
+  about: {
+    version: "版本 {version}",
+    description:
+      "适用于 Linux 和 Windows 的终端与远程会话管理器：在一个窗口中使用本地 Shell、SSH、SFTP、隧道、串口、Telnet 和 Mosh。",
+    credits: "配色方案来自 iTerm2-Color-Schemes (MIT) 及其作者；请参阅{notices}。",
+    notices: "第三方声明",
+  },
+};
