@@ -5,7 +5,7 @@ export type SidebarView = "sessions" | "sftp" | "tunnels";
 interface SidebarProps {
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
-  /** True while the active tab is a connected SSH session. */
+  /** True while the focused pane of the active tab is a connected SSH session. */
   sftpAvailable: boolean;
   sessions: ReactNode;
   sftp: ReactNode;
@@ -21,7 +21,7 @@ export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tun
       aria-selected={shown === id}
       className={`sidebar__tab${shown === id ? " sidebar__tab--active" : ""}`}
       disabled={disabled}
-      title={disabled ? "Available when the active tab is a connected SSH session" : undefined}
+      title={disabled ? "Available when the focused pane of the active tab is a connected SSH session" : undefined}
       onClick={() => onViewChange(id)}
     >
       {label}

@@ -7,18 +7,26 @@ import { targetTitle, type SessionTarget } from "../sessions/types";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
+import { shortcutFor } from "../panes/shortcuts";
 import { backendFor } from "./backend";
 import { terminalTheme } from "./theme";
 
 interface TerminalViewProps {
   target: SessionTarget;
+  /** True while the view is visible (its tab is the active one). */
   active: boolean;
+  /** True when this pane should hold the keyboard focus while visible; defaults to true. */
+  focused?: boolean;
   onTitle: (title: string) => void;
   onExit: (code: number | null) => void;
   /** Working directory reported by the shell through OSC 7. */
   onCwd?: (path: string) => void;
   /** Backend session id once connected, null when the session ends. */
   onSession?: (id: number | null) => void;
+  /** Called with everything the user types into this terminal. */
+  onInput?: (data: string) => void;
+  /** Hands out a function that writes to this session as if typed; returns its unregister function. */
+  registerWriter?: (write: (data: string) => void) => () => void;
 }
 
 interface PendingHost {
@@ -30,15 +38,25 @@ interface PendingHost {
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
 
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
-export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession }: TerminalViewProps) {
+export function TerminalView({
+  target,
+  active,
+  focused = true,
+  onTitle,
+  onExit,
+  onCwd,
+  onSession,
+  onInput,
+  registerWriter,
+}: TerminalViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession });
-  callbacks.current = { onTitle, onExit, onCwd, onSession };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -55,6 +73,9 @@ export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon());
+    // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
+    // returning false lets the event bubble to the window listener without xterm handling it.
+    term.attachCustomKeyEventHandler((e) => shortcutFor(e) === null);
     term.open(host);
     fit.fit();
     termRef.current = term;
@@ -93,8 +114,16 @@ export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession
     startRef.current = start;
     start();
 
+    const write = (data: string) => {
+      if (sessionId !== null) void backend.write(sessionId, data);
+    };
+    const unregisterWriter = callbacks.current.registerWriter?.(write);
+
     const subs = [
-      term.onData((data) => sessionId !== null && void backend.write(sessionId, data)),
+      term.onData((data) => {
+        write(data);
+        callbacks.current.onInput?.(data);
+      }),
       term.onResize(({ cols, rows }) => sessionId !== null && void backend.resize(sessionId, cols, rows)),
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
       term.parser.registerOscHandler(7, (data) => {
@@ -111,6 +140,7 @@ export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession
 
     return () => {
       disposed = true;
+      unregisterWriter?.();
       observer.disconnect();
       subs.forEach((s) => s.dispose());
       if (sessionId !== null) void backend.close(sessionId);
@@ -123,8 +153,8 @@ export function TerminalView({ target, active, onTitle, onExit, onCwd, onSession
   useEffect(() => {
     if (!active) return;
     fitRef.current?.fit();
-    termRef.current?.focus();
-  }, [active]);
+    if (focused) termRef.current?.focus();
+  }, [active, focused]);
 
   return (
     <div className="terminal-pane" hidden={!active}>
