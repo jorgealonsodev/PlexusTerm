@@ -32,6 +32,9 @@ export function useCompactToolbar(ref: RefObject<HTMLElement | null>): boolean {
       if (!el.classList.contains("toolbar--compact")) {
         for (const label of el.querySelectorAll<HTMLElement>(".btn__label")) {
           const button = label.closest<HTMLElement>(".btn")!;
+          // Measured at its natural width: with the previous minimum applied, a short label's
+          // button would grow by a pixel on every resize.
+          button.style.removeProperty("--btn-min");
           const chrome = button.offsetWidth - label.clientWidth;
           // +1: scrollWidth rounds the text width down, and a fraction of a pixel short shows "…".
           button.style.setProperty("--btn-min", `${chrome + Math.min(label.scrollWidth + 1, MIN_LABEL_WIDTH)}px`);
