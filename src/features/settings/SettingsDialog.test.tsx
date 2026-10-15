@@ -17,9 +17,36 @@ const setup = () => {
 };
 
 describe("SettingsDialog", () => {
-  it("shows the PlexusTerm logo in its header, light for light schemes", () => {
+  it("shows one section at a time from the side menu, starting with Appearance", () => {
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
+    const sections = screen.getAllByRole("tab").map((t) => t.textContent);
+    expect(sections).toEqual(["Appearance", "Terminal", "SSH", "Files", "About"]);
+    const visible = () => screen.getAllByRole("tabpanel").filter((p) => !p.hidden).map((p) => p.getAttribute("aria-label"));
+    expect(visible()).toEqual(["Appearance"]);
+    expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+    expect(visible()).toEqual(["Files"]);
+    expect(screen.getByRole("tab", { name: "Files" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("keeps the edits of every section when saving", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+    fireEvent.click(screen.getByLabelText("Copy on select"));
+    fireEvent.click(screen.getByRole("tab", { name: "SSH" }));
+    fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fontSize: 18, copyOnSelect: false, remoteMonitor: false }));
+  });
+
+  it("shows the logo, the version and the project in About, light for light schemes", async () => {
     const { unmount } = render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("tab", { name: "About" }));
     expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).not.toContain("light");
+    expect(await screen.findByText("Version 0.1.0")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "github.com/jorgealonsodev/PlexusTerm" })).toBeTruthy();
     unmount();
     render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, theme: "solarized-light" }} onSave={vi.fn()} onCancel={vi.fn()} />);
     expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).toContain("light");
@@ -42,6 +69,7 @@ describe("SettingsDialog", () => {
   it("chooses the text editor with Browse…, resets it to the system default and saves it", async () => {
     vi.mocked(open).mockResolvedValueOnce("/opt/My Editor/editor").mockResolvedValueOnce(null);
     const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Files" }));
     fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await waitFor(() => expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("/opt/My Editor/editor"));
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, directory: false, defaultPath: "/usr/bin" }));
