@@ -52,11 +52,19 @@ import { applyUiTheme } from "./features/settings/uiTheme";
 import { useCompactToolbar } from "./features/toolbar/compact";
 import { DropdownMenu } from "./features/menu/DropdownMenu";
 import { WakeOnLanDialog } from "./features/tools/WakeOnLanDialog";
+import { KeyGenDialog } from "./features/tools/keygen/KeyGenDialog";
+import { NetworkScannerDialog } from "./features/tools/scan/NetworkScannerDialog";
+import { PortScannerDialog } from "./features/tools/scan/PortScannerDialog";
+import { RemoteMonitorBar } from "./features/tools/monitor/RemoteMonitorBar";
 import {
   ChevronDown,
   Circle,
+  Activity,
   Columns2,
+  KeySquare,
+  Network,
   Power,
+  ScanSearch,
   Wrench,
   KeyRound,
   Radio,
@@ -81,6 +89,9 @@ type Modal =
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | { kind: "settings" }
   | { kind: "wakeOnLan" }
+  | { kind: "keyGen" }
+  | { kind: "portScan" }
+  | { kind: "networkScan" }
   | { kind: "editMacro"; macro: Macro; isNew: boolean }
   /** A recording just stopped: name it or discard it (S16.2). */
   | { kind: "nameMacro"; steps: Step[] }
@@ -146,12 +157,29 @@ function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => vo
   );
 }
 
-/** Tools menu: network and SSH utilities (Wake On LAN, ...). */
-function ToolsMenu({ onWakeOnLan }: { onWakeOnLan: () => void }) {
+/** Tools menu: network and SSH utilities (S1). */
+function ToolsMenu(props: {
+  monitorOn: boolean;
+  onKeyGen: () => void;
+  onPortScan: () => void;
+  onNetworkScan: () => void;
+  onWakeOnLan: () => void;
+  onToggleMonitor: () => void;
+}) {
   return (
     <DropdownMenu
       title="Tools"
-      items={[{ label: "Wake On LAN…", icon: <Power size={15} />, onSelect: onWakeOnLan }]}
+      items={[
+        { label: "SSH key generator…", icon: <KeySquare size={15} />, onSelect: props.onKeyGen },
+        { label: "Port scanner…", icon: <ScanSearch size={15} />, onSelect: props.onPortScan },
+        { label: "Network scanner…", icon: <Network size={15} />, onSelect: props.onNetworkScan },
+        { label: "Wake On LAN…", icon: <Power size={15} />, onSelect: props.onWakeOnLan },
+        {
+          label: props.monitorOn ? "Hide remote monitor" : "Show remote monitor",
+          icon: <Activity size={15} />,
+          onSelect: props.onToggleMonitor,
+        },
+      ]}
       button={
         <>
           <Wrench size={16} />
@@ -447,7 +475,14 @@ function AppContent() {
           onTelnet={() => setModal({ kind: "telnet" })}
           onMosh={() => setModal({ kind: "mosh" })}
         />
-        <ToolsMenu onWakeOnLan={() => setModal({ kind: "wakeOnLan" })} />
+        <ToolsMenu
+          monitorOn={terminalSettings.settings.remoteMonitor}
+          onKeyGen={() => setModal({ kind: "keyGen" })}
+          onPortScan={() => setModal({ kind: "portScan" })}
+          onNetworkScan={() => setModal({ kind: "networkScan" })}
+          onWakeOnLan={() => setModal({ kind: "wakeOnLan" })}
+          onToggleMonitor={() => terminalSettings.update({ remoteMonitor: !terminalSettings.settings.remoteMonitor })}
+        />
         <button className="btn btn--icon" disabled={!canSplit} title="Split right (Ctrl+Shift+D)" onClick={() => split("row")}>
           <Columns2 size={16} />
           <span className="btn__label">Split right</span>
@@ -606,7 +641,8 @@ function AppContent() {
                     renderPane={(paneId) => {
                       const excluded = paneMeta[paneId]?.excluded ?? false;
                       return (
-                        <>
+                        <div className="pane-stack">
+                          <div className="pane-stack__terminal">
                           <TerminalView
                             target={tab.target}
                             active={active}
@@ -647,7 +683,11 @@ function AppContent() {
                               {excluded ? "excluded" : "exclude"}
                             </button>
                           )}
-                        </>
+                          </div>
+                          {tab.target.type === "ssh" && terminalSettings.settings.remoteMonitor && (
+                            <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />
+                          )}
+                        </div>
                       );
                     }}
                   />
@@ -740,6 +780,18 @@ function AppContent() {
         />
       )}
       {modal?.kind === "wakeOnLan" && <WakeOnLanDialog onClose={() => setModal(null)} />}
+      {modal?.kind === "keyGen" && (
+        <KeyGenDialog sessions={sessions.library.sessions.filter(isSshSession)} onClose={() => setModal(null)} />
+      )}
+      {modal?.kind === "portScan" && <PortScannerDialog onClose={() => setModal(null)} />}
+      {modal?.kind === "networkScan" && (
+        <NetworkScannerDialog
+          onClose={() => setModal(null)}
+          onNewSshSession={(host) =>
+            setModal({ kind: "editSession", session: { ...draftSession(""), name: host, host }, isNew: true })
+          }
+        />
+      )}
       {modal?.kind === "settings" && (
         <SettingsDialog
           settings={terminalSettings.settings}

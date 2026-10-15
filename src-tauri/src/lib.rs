@@ -403,6 +403,7 @@ pub fn run() {
         .manage(SerialManager::default())
         .manage(TelnetManager::default())
         .manage(MoshLauncher::default())
+        .manage(tools::scan::ScanManager::default())
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
         .setup(move |app| {
@@ -458,7 +459,15 @@ pub fn run() {
             macros_save,
             save_text_file,
             append_text_file,
-            wol_send
+            wol_send,
+            tools::keygen::keygen_generate,
+            tools::keygen::keygen_save,
+            tools::keygen::keygen_install,
+            tools::keygen::keygen_discard,
+            tools::scan::scan_ports,
+            tools::scan::scan_network,
+            tools::scan::scan_stop,
+            tools::monitor::monitor_sample
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
