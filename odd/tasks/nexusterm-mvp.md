@@ -79,6 +79,12 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S16.4 Hotkeys: a macro may have a hotkey Ctrl+Alt+1..9 (unique; assigning a used one moves it). The macro editor edits name, hotkey and steps (add, remove, reorder, edit).
   - S16.5 Storage: macros.json with the atomic 0600 storage (unreadable file disables editing, like sessions). Macros are plain text: the recorder shows a warning while recording ("Everything you type is saved, including passwords"); macros are never masked or filtered automatically.
 
+- S17 (decided by the parent under "haz lo que te creas mas optimo"): Telnet and Mosh session types, like MobaXterm.
+  - S17.1 Telnet: a built-in client in Rust over TCP (host, port default 23) with RFC 854 option negotiation: accept ECHO and SUPPRESS-GO-AHEAD from the server, offer TERMINAL-TYPE ("xterm-256color") and NAWS (window size, re-sent on resize), refuse everything else; IAC bytes are escaped in user input and stripped from output; connect timeout 15 s. The tab shows a one-line warning that Telnet is unencrypted.
+  - S17.2 Mosh: host + the SSH settings of an existing saved SSH session (S6/S13/S14 rules apply to that SSH login, including jump hosts and stored passwords). NexusTerm logs in over SSH, runs `mosh-server new -s -c 256 -l LANG=en_US.UTF-8` (server command overridable per session), parses `MOSH CONNECT <port> <key>`, closes the SSH session and starts the local `mosh-client` in a PTY with `MOSH_KEY` in its environment (never on the command line, never logged). Missing local `mosh-client` or remote `mosh-server` gives a clear error with the install hint.
+  - S17.3 Both are available from a toolbar "More" menu (quick connect dialogs) and as saved session kinds ("telnet", "mosh") in the session manager, with the same backward-compatible `kind` handling as S12.3; MobaXterm import maps type 98 (Telnet) to telnet sessions instead of skipping them.
+  - S17.4 Tests: Telnet against an in-process test server that negotiates options (NAWS sent with the right size and re-sent on resize, TTYPE answered, IAC escaping both ways); Mosh with a fake `mosh-server` (the in-process SSH test server answering the exec request with a MOSH CONNECT line) and a fake `mosh-client` script that records its environment, proving MOSH_KEY is passed by environment only. Real mosh interop is optional.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -106,6 +112,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T11 — S15 (S15.1-S15.6) — delegated (writer trigger: long-session context backstop) — Terminal comfort (find, font size, copy/paste, context menu, save/log output, settings). Writer: find bar (addon-search), global font size, copy on select (mouseup), right-click paste / Ctrl+right-click menu, multi-line paste confirmation, save output + per-pane logging (ANSI stripped), settings.json (atomic 0600); vitest 294, cargo 127. Parent Xvfb smoke found a real bug: WebKitGTK denies navigator.clipboard.readText ("Could not read the clipboard.") → switched to tauri-plugin-clipboard-manager with only allow-read-text/allow-write-text (test RED with navigator.clipboard denied → GREEN). After the fix: right-click paste, multi-line confirmation, copy on select, Ctrl+= and find all verified in the app.
 
 - [x] T12 — S16 (S16.1-S16.5) — delegated (writer trigger: long-session context backstop) — Macros. Writer: escapes/parse/reducer/recorder/player (fake timers) RED→GREEN, Macros tab + editor + recording banner, Ctrl+Alt+1..9 (AltGr characters still reach the shell), Escape stops a running macro; vitest 341, cargo 127. Parent Xvfb smoke: Ctrl+Shift+R shows the red warning banner, stop asks for a name, macros.json saved 0600 in escaped form, Macros tab play re-sends the command. Not exercised in the GUI: hotkeys and waitFor (covered by unit tests).
+
+- [ ] T13 — S17 (S17.1-S17.4) — delegated (writer trigger: long-session context backstop) — Telnet and Mosh sessions.
 
 ## Log
 
@@ -141,3 +149,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L30 (2026-10-15): "haz lo que te creas mas optimo" — while the release build runs, specified T11 (terminal comfort) as the next unit.
 - L31 (2026-10-15): Packaging: bundle targets deb + appimage with metadata (category Utility, descriptions); template Cargo metadata fixed (authors "Jorge Alonso", no email embedded). `pnpm tauri build` OK: NexusTerm_0.1.0_amd64.deb (4.3 MiB; Depends libwebkit2gtk-4.1-0, libgtk-3-0; desktop entry correct) and AppImage (82 MiB). Release AppImage smoke on Xvfb: starts, terminal runs commands. Note: the user's AppImageLauncher intercepts AppImages and moves them into ~/Applications (it happened inside the scratch HOME only). Installed librsvg2-dev, libayatana-appindicator3-dev.
 - L32 (2026-10-15): "haz lo que te creas mas optimo" — next unit T12 (macros).
+- L33 (2026-10-15): "haz lo que te creas mas optimo" — next unit T13 (Telnet + Mosh). Installed mosh 1.4.0 locally (mosh-client).
