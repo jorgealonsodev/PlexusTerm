@@ -1,0 +1,55 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "البحث في الطرفية",
+    placeholder: "بحث",
+    noMatches: "لا توجد نتائج",
+    matchCase: "مطابقة حالة الأحرف",
+    regexTitle: "تعبير نمطي",
+    regex: "Regex",
+    previous: "النتيجة السابقة",
+    next: "النتيجة التالية",
+    close: "إغلاق البحث",
+  },
+  paste: {
+    title: {
+      zero: "هل تريد لصق {count} سطر؟",
+      one: "هل تريد لصق سطر واحد؟",
+      two: "هل تريد لصق سطرين؟",
+      few: "هل تريد لصق {count} أسطر؟",
+      many: "هل تريد لصق {count} سطرًا؟",
+      other: "هل تريد لصق {count} سطر؟",
+    },
+    warning: "قد يُنفَّذ كل سطر كأمر.",
+    dontAsk: "عدم السؤال مرة أخرى",
+    paste: "لصق",
+  },
+  menu: {
+    paste: "لصق",
+    selectAll: "تحديد الكل",
+    clear: "مسح سجل التمرير",
+    find: "بحث…",
+    save: "حفظ المخرجات في ملف…",
+    stopLogging: "إيقاف التسجيل",
+    log: "التسجيل في ملف…",
+  },
+  view: {
+    textFiles: "نص",
+    connecting: "جارٍ الاتصال بـ {target}...",
+    connectingVia: "جارٍ الاتصال بـ {target} عبر {jumps}...",
+    startingMosh: "جارٍ بدء mosh-server على {target} عبر SSH...",
+    startingMoshVia: "جارٍ بدء mosh-server على {target} عبر {jumps} باستخدام SSH...",
+    opening: "جارٍ فتح {target}...",
+    telnetUnencrypted: "Telnet غير مشفّر.",
+    serialEnded: "انتهت الجلسة. أغلق علامة التبويب هذه أو افتح المنفذ مجددًا.",
+    moshExited: "خرج mosh-client. أغلق علامة التبويب هذه أو افتح الجلسة مجددًا.",
+    moshExitedCode: "خرج mosh-client بالرمز {code}. أغلق علامة التبويب هذه أو افتح الجلسة مجددًا.",
+    clipboardError: "تعذّرت قراءة الحافظة.",
+    saveError: "تعذّر حفظ المخرجات: {error}",
+    loggingStopped: "توقف التسجيل: {error}",
+    hostKeyCancelled: "أُلغي الاتصال: لم يتم الوثوق بمفتاح المضيف.",
+    cancelled: "أُلغي الاتصال.",
+  },
+};
