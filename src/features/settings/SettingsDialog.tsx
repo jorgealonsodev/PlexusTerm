@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type M
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FileText, Info, KeyRound, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { FileText, Globe, Info, KeyRound, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { LOCALES, useT, type LanguageSetting } from "../../i18n/i18n";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
@@ -39,6 +40,8 @@ interface SettingsDialogProps {
   onCancel: () => void;
   /** Section shown first (Appearance when omitted). */
   initialSection?: SettingsSection;
+  /** Applies and saves a language at once (the rescue buttons, S3). */
+  onLanguageNow?: (language: LanguageSetting) => void;
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -299,8 +302,14 @@ function openLink(e: MouseEvent, url: string) {
 }
 
 /** Terminal settings shared by every tab (S15.6), in sections chosen from a side menu. */
-export function SettingsDialog({ settings, onSave, onCancel, initialSection }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow }: SettingsDialogProps) {
+  const t = useT();
   const platform = usePlatform();
+  const [language, setLanguage] = useState<LanguageSetting>(settings.language);
+  const languageNow = (next: LanguageSetting) => {
+    setLanguage(next);
+    onLanguageNow?.(next);
+  };
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
@@ -375,6 +384,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
       assistantShortcut,
       sidebarCollapsed: settings.sidebarCollapsed,
       sidebarHideWhenCollapsed,
+      language,
     });
   };
 
@@ -409,6 +419,32 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
           </nav>
 
           <div {...panel("appearance")}>
+            <div className="field">
+              <label htmlFor="settings-language">{t("settings.language.label")}</label>
+              <div className="form-row">
+                <select
+                  id="settings-language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as LanguageSetting)}
+                >
+                  <option value="system">{t("settings.language.system")}</option>
+                  {LOCALES.map((l) => (
+                    <option key={l.code} value={l.code} lang={l.code} dir={l.dir}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+                {/* Never translated and applied at once: a way back from a language you cannot read. */}
+                <button type="button" className="btn btn--icon" lang="en" dir="ltr" onClick={() => languageNow("system")}>
+                  <Globe size={14} />
+                  System language
+                </button>
+                <button type="button" className="btn btn--icon" lang="en" dir="ltr" onClick={() => languageNow("en")}>
+                  <Globe size={14} />
+                  English
+                </button>
+              </div>
+            </div>
             <label className="field">
               Colour scheme
               <select value={theme} onChange={(e) => setTheme(e.target.value)}>

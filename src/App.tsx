@@ -9,6 +9,7 @@ import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo }
 import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
+import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
 import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
@@ -220,6 +221,10 @@ function AppContent() {
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
+  // The interface language (S3): the chosen one, or the system's, English when unsupported.
+  const language = terminalSettings.settings.language;
+  useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
+  useT();
   const sessions = useSessionLibrary();
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
@@ -1011,6 +1016,7 @@ function AppContent() {
             terminalSettings.update(next);
             setModal(null);
           }}
+          onLanguageNow={(language) => terminalSettings.update({ language })}
         />
       )}
       {modal?.kind === "editMacro" && (
