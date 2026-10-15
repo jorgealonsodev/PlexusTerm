@@ -1,12 +1,14 @@
 import { useRef, type ClipboardEvent, type KeyboardEvent } from "react";
+import type { AppKey } from "../../../i18n/catalogs";
+import { useT } from "../../../i18n/i18n";
 import { parsePastedRange, type IpRange } from "./ipRange";
 
-const FIELDS: { key: keyof IpRange; label: string }[] = [
-  { key: "a", label: "First octet" },
-  { key: "b", label: "Second octet" },
-  { key: "c", label: "Third octet" },
-  { key: "start", label: "Range start" },
-  { key: "end", label: "Range end" },
+const FIELDS: { key: keyof IpRange; label: AppKey }[] = [
+  { key: "a", label: "tools.ipRange.firstOctet" },
+  { key: "b", label: "tools.ipRange.secondOctet" },
+  { key: "c", label: "tools.ipRange.thirdOctet" },
+  { key: "start", label: "tools.ipRange.rangeStart" },
+  { key: "end", label: "tools.ipRange.rangeEnd" },
 ];
 
 interface IpRangeInputProps {
@@ -20,6 +22,7 @@ interface IpRangeInputProps {
  * third digit moves to the next field; pasting an address, a range or a /24 fills them all.
  */
 export function IpRangeInput({ value, onChange, disabled }: IpRangeInputProps) {
+  const t = useT();
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const focus = (index: number) => {
     const next = refs.current[index];
@@ -52,7 +55,7 @@ export function IpRangeInput({ value, onChange, disabled }: IpRangeInputProps) {
   };
 
   return (
-    <div className="ip-range" role="group" aria-label="IP address range">
+    <div className="ip-range" role="group" aria-label={t("tools.ipRange.label")}>
       {FIELDS.map(({ key, label }, index) => (
         <span key={key} className="ip-range__part">
           {index > 0 && <span className="ip-range__sep">{index === 4 ? "→" : "."}</span>}
@@ -61,7 +64,7 @@ export function IpRangeInput({ value, onChange, disabled }: IpRangeInputProps) {
               refs.current[index] = el;
             }}
             className="ip-range__field"
-            aria-label={label}
+            aria-label={t(label)}
             inputMode="numeric"
             maxLength={3}
             autoFocus={index === 0}

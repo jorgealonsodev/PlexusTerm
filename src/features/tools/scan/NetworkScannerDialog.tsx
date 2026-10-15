@@ -3,6 +3,7 @@ import { compareHosts, NETWORK_SERVICES, networkScan } from "./scanBackend";
 import { DEFAULT_RANGE, rangeTarget } from "./ipRange";
 import { IpRangeInput } from "./IpRangeInput";
 import { progressText, useScan } from "./useScan";
+import { useT } from "../../../i18n/i18n";
 import "./scan.css";
 
 type LiveHost = { host: string; name: string | null; mac: string | null; ports: number[] };
@@ -11,6 +12,7 @@ type Props = { onClose: () => void; onNewSshSession: (host: string) => void };
 
 /** Tools > Network scanner: live hosts of an IPv4 range or CIDR, found by probing common service ports. */
 export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
+  const t = useT();
   const [range, setRange] = useState(DEFAULT_RANGE);
   const [inputError, setInputError] = useState<string | null>(null);
   const [hosts, setHosts] = useState<LiveHost[]>([]);
@@ -30,19 +32,18 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
   };
 
   const rows = [...hosts].sort((a, b) => compareHosts(a.host, b.host));
-  const found = `${hosts.length} live host${hosts.length === 1 ? "" : "s"}`;
+  const found = t("tools.networkScan.liveHosts", { count: hosts.length });
 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <form className="dialog scan-dialog" role="dialog" onSubmit={submit} aria-labelledby="network-scan-title" noValidate>
-        <h2 id="network-scan-title">Network scanner</h2>
+        <h2 id="network-scan-title">{t("tools.networkScan.title")}</h2>
         <div className="field">
-          <span>IP address range</span>
+          <span>{t("tools.ipRange.label")}</span>
           <IpRangeInput value={range} onChange={setRange} disabled={running} />
         </div>
         <p className="muted">
-          Finds hosts by probing {NETWORK_SERVICES.map(([, label]) => label).join(", ")} over TCP (no root, no ping). Only
-          scan networks you are allowed to.
+          {t("tools.networkScan.hint", { services: NETWORK_SERVICES.map(([, label]) => label).join(", ") })}
         </p>
         {(inputError ?? scan.error) && (
           <p className="form-error" role="alert">
@@ -54,12 +55,12 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
           <table className="scan-table">
             <thead>
               <tr>
-                <th scope="col">Host</th>
-                <th scope="col">Name</th>
-                <th scope="col">MAC</th>
-                <th scope="col">Services</th>
+                <th scope="col">{t("tools.scan.host")}</th>
+                <th scope="col">{t("common.name")}</th>
+                <th scope="col">{t("tools.networkScan.mac")}</th>
+                <th scope="col">{t("tools.networkScan.services")}</th>
                 <th scope="col">
-                  <span className="visually-hidden">Actions</span>
+                  <span className="visually-hidden">{t("tools.networkScan.actions")}</span>
                 </th>
               </tr>
             </thead>
@@ -83,10 +84,10 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
                       <button
                         type="button"
                         className="btn scan-table__action"
-                        aria-label={`New SSH session to ${row.host}`}
+                        aria-label={t("tools.networkScan.newSshSessionTo", { host: row.host })}
                         onClick={() => onNewSshSession(row.host)}
                       >
-                        New SSH session
+                        {t("tools.networkScan.newSshSession")}
                       </button>
                     )}
                   </td>
@@ -95,7 +96,7 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="muted scan-table__empty">
-                    {running ? "No live hosts yet." : "No results."}
+                    {running ? t("tools.networkScan.noHostsYet") : t("tools.scan.noResults")}
                   </td>
                 </tr>
               )}
@@ -104,10 +105,10 @@ export function NetworkScannerDialog({ onClose, onNewSshSession }: Props) {
         </div>
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onClose}>
-            Close
+            {t("common.close")}
           </button>
           <button type="submit" className="btn btn--primary">
-            {running ? "Stop" : "Start"}
+            {running ? t("common.stop") : t("common.start")}
           </button>
         </div>
       </form>

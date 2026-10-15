@@ -1,3 +1,5 @@
+import { t } from "../../../i18n/i18n";
+
 /** The well-known ports scanned by default. */
 export const DEFAULT_PORTS = "21,22,23,25,53,80,110,143,443,445,3306,3389,5432,5900,8080";
 
@@ -22,7 +24,7 @@ export function portsFor(choice: PortChoice): { ok: true; ports: string } | { ok
   if (choice.mode === "custom") return { ok: true, ports: choice.list.trim() || DEFAULT_PORTS };
   const [from, to] = [choice.from.trim(), choice.to.trim()];
   const valid = (p: string) => PORT.test(p) && Number(p) >= 1 && Number(p) <= 65535;
-  if (!valid(from) || !valid(to)) return { ok: false, error: "Ports must be numbers from 1 to 65535" };
-  if (Number(from) > Number(to)) return { ok: false, error: "The first port must not be greater than the last one" };
+  if (!valid(from) || !valid(to)) return { ok: false, error: t("tools.scan.invalidPorts") };
+  if (Number(from) > Number(to)) return { ok: false, error: t("tools.scan.invalidPortOrder") };
   return { ok: true, ports: from === to ? from : `${from}-${to}` };
 }

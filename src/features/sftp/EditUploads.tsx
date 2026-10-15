@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { useDialogs } from "../dialogs/DialogProvider";
+import { t } from "../../i18n/i18n";
 import { basename } from "./remotePath";
 import { describeSftpError, EDIT_SAVED_EVENT, sftp, type EditSaved } from "./sftpClient";
 
@@ -20,17 +21,17 @@ export function EditUploads({ onNotice }: { onNotice: (text: string) => void }) 
       const key = `${id}:${remote}`;
       if (!confirmed.current.has(key)) {
         const upload = await dialogs.current.confirm({
-          message: `${name} was saved. Upload it to ${remote}?`,
-          confirmLabel: "Upload",
+          message: t("sftp.editUploads.question", { name, remote }),
+          confirmLabel: t("sftp.editUploads.upload"),
         });
         if (!upload) return;
         confirmed.current.add(key);
       }
       try {
         await sftp.editUpload(id, remote);
-        notice.current(`Uploaded ${name} to ${remote}.`);
+        notice.current(t("sftp.editUploads.uploaded", { name, remote }));
       } catch (err) {
-        notice.current(`Could not upload ${name}: ${describeSftpError(err)}`);
+        notice.current(t("sftp.editUploads.failed", { name, error: describeSftpError(err) }));
       }
     };
     let unlisten: (() => void) | undefined;

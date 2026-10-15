@@ -1,6 +1,8 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { Check, Copy, FolderOpen, KeyRound, Save, Upload } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
+import type { AppKey } from "../../../i18n/catalogs";
+import { useT } from "../../../i18n/i18n";
 import { chainTarget, collectLogins, hopLabel, patchJump, type PasswordAnswer } from "../../sessions/jumpHosts";
 import { resolveChain, type SavedSession } from "../../sessions/library";
 import { PasswordPrompt } from "../../sessions/PasswordPrompt";
@@ -52,16 +54,16 @@ function defaultName(publicKey: string): string {
 
 const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
-const SAVE_TITLES: Record<SaveKind, string> = {
-  public: "Save the public key",
-  private: "Save the private key",
-  ppk: "Save as a PuTTY key",
+const SAVE_TITLES: Record<SaveKind, AppKey> = {
+  public: "tools.keygen.saveTitlePublic",
+  private: "tools.keygen.saveTitlePrivate",
+  ppk: "tools.keygen.saveTitlePpk",
 };
 
-const SAVED: Record<SaveKind, string> = {
-  public: "the public key",
-  private: "the private key",
-  ppk: "the PuTTY key",
+const SAVED: Record<SaveKind, AppKey> = {
+  public: "tools.keygen.savedPublic",
+  private: "tools.keygen.savedPrivate",
+  ppk: "tools.keygen.savedPpk",
 };
 
 /** An install waiting for the user to trust a host key. */
@@ -85,6 +87,7 @@ interface PendingTrust {
  * exists in the backend and the files.
  */
 export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
+  const t = useT();
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [comment, setComment] = useState("");
@@ -129,13 +132,13 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
 
   const generate = async (e: FormEvent) => {
     e.preventDefault();
-    if (passphrase !== confirm) return report(null, "The passphrases do not match.");
+    if (passphrase !== confirm) return report(null, t("tools.keygen.passphraseMismatch"));
     setBusy(true);
     try {
       const generated = await generateKey(keyTypeOf(family, rsaBits, ecdsaBits), passphrase || null, comment.trim());
       adopt(generated, passphrase);
       setLoadedPath(null);
-      report(passphrase ? "Key generated (protected by its passphrase)." : "Key generated (no passphrase).");
+      report(passphrase ? t("tools.keygen.generatedProtected") : t("tools.keygen.generatedPlain"));
     } catch (err) {
       report(null, describeKeygenError(err));
     } finally {
@@ -155,7 +158,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
       setComment(loaded.comment);
       setPassphrase(kept);
       setConfirm(kept);
-      report(`Loaded ${path} (${loaded.encrypted ? "protected by its passphrase" : "no passphrase"}).`);
+      report(t(loaded.encrypted ? "tools.keygen.loadedProtected" : "tools.keygen.loadedPlain", { path }));
     } catch (err) {
       if (isKeygenError(err) && (err.kind === "passphraseRequired" || err.kind === "wrongPassphrase")) {
         setUnlocking(path);
@@ -169,7 +172,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
   };
 
   const pickKeyFile = async () => {
-    const path = await open({ title: "Load a private key", multiple: false, directory: false });
+    const path = await open({ title: t("tools.keygen.loadTitle"), multiple: false, directory: false });
     if (typeof path === "string") await loadFrom(path, null);
   };
 
@@ -180,7 +183,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     if (!key) return null;
     if (!dirty) return key;
     if (passphrase !== confirm) {
-      report(null, "The passphrases do not match.");
+      report(null, t("tools.keygen.passphraseMismatch"));
       return null;
     }
     try {
@@ -195,19 +198,16 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
 
   const apply = async () => {
     const updated = await applyChanges();
-    if (updated)
-      report(
-        `Key updated (${updated.encrypted ? "protected by its passphrase" : "no passphrase"}). Save it again to keep the change.`,
-      );
+    if (updated) report(t(updated.encrypted ? "tools.keygen.updatedProtected" : "tools.keygen.updatedPlain"));
   };
 
   const copy = async () => {
     if (!key) return;
     try {
       await writeText(key.publicKey);
-      report("Public key copied to the clipboard.");
+      report(t("tools.keygen.copied"));
     } catch (err) {
-      report(null, `Cannot copy: ${String(err)}`);
+      report(null, t("tools.keygen.cannotCopy", { error: String(err) }));
     }
   };
 
@@ -216,11 +216,11 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     setBusy(true);
     try {
       await saveKeyFile(kind, target.id, path, replace);
-      report(`Saved ${SAVED[kind]} to ${path}.`);
+      report(t(SAVED[kind], { path }));
     } catch (err) {
       if (isKeygenError(err) && err.kind === "exists") {
         setOverwrite({ kind, path });
-        report(null, `${err.path} already exists. Overwrite it?`);
+        report(null, t("tools.keygen.existsOverwrite", { path: err.path }));
       } else {
         report(null, describeKeygenError(err));
       }
@@ -239,7 +239,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
   const saveAs = async (kind: SaveKind) => {
     const target = await applyChanges();
     if (!target) return;
-    const path = await save({ title: SAVE_TITLES[kind], defaultPath: defaultPath(target, kind) });
+    const path = await save({ title: t(SAVE_TITLES[kind]), defaultPath: defaultPath(target, kind) });
     if (path) await write(target, kind, path, false);
   };
 
@@ -250,13 +250,13 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     const key = await applyChanges();
     if (!key) return;
     setBusy(true);
-    report(`Installing the key on ${session.name}…`);
+    report(t("tools.keygen.installing", { name: session.name }));
     try {
       const outcome = await installKey(key.id, target, trusted);
       report(
         outcome === "added"
-          ? `The key was added to ~/.ssh/authorized_keys on ${session.name}.`
-          : `The key was already installed on ${session.name}.`,
+          ? t("tools.keygen.installed", { name: session.name })
+          : t("tools.keygen.alreadyInstalled", { name: session.name }),
       );
     } catch (raw) {
       const err = toSshError(raw);
@@ -277,7 +277,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
 
   const install = async () => {
     const session = sessions.find((s) => s.id === sessionId);
-    if (!session) return report(null, "Choose a saved SSH session.");
+    if (!session) return report(null, t("tools.keygen.chooseSession"));
     const chain = resolveChain({ sessions }, session);
     if (!chain.ok) return report(null, chain.error);
     const hops = [...chain.jumps, session];
@@ -302,14 +302,11 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
     <>
       <div className="overlay" onKeyDown={(e) => e.key === "Escape" && close()}>
         <form className="dialog keygen" role="dialog" onSubmit={generate} aria-labelledby="keygen-title" noValidate>
-          <h2 id="keygen-title">SSH key generator</h2>
-          <p className="muted">
-            Generates a key pair or loads a private key (OpenSSH or PuTTY .ppk). The private key is only written to the
-            files you choose.
-          </p>
+          <h2 id="keygen-title">{t("tools.keygen.title")}</h2>
+          <p className="muted">{t("tools.keygen.intro")}</p>
           <div className="form-row">
             <label className="field field--grow">
-              Type
+              {t("tools.keygen.type")}
               <select value={family} onChange={(e) => setFamily(e.target.value as Family)}>
                 <option value="ed25519">Ed25519</option>
                 <option value="rsa">RSA</option>
@@ -318,14 +315,14 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
             </label>
             {family !== "ed25519" && (
               <label className="field field--grow">
-                Size
+                {t("tools.keygen.size")}
                 <select
                   value={family === "rsa" ? rsaBits : ecdsaBits}
                   onChange={(e) => (family === "rsa" ? setRsaBits : setEcdsaBits)(e.target.value)}
                 >
                   {SIZES[family].map((bits) => (
                     <option key={bits} value={bits}>
-                      {bits} bits
+                      {t("tools.keygen.bits", { bits })}
                     </option>
                   ))}
                 </select>
@@ -334,7 +331,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
           </div>
           <div className="form-row">
             <label className="field field--grow">
-              Passphrase
+              {t("tools.keygen.passphrase")}
               <input
                 type="password"
                 autoFocus
@@ -344,7 +341,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
               />
             </label>
             <label className="field field--grow">
-              Confirm passphrase
+              {t("tools.keygen.confirmPassphrase")}
               <input
                 type="password"
                 autoComplete="new-password"
@@ -354,7 +351,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
             </label>
           </div>
           <label className="field">
-            Comment
+            {t("tools.keygen.comment")}
             <input
               spellCheck={false}
               placeholder="user@host"
@@ -365,18 +362,18 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
           <div className="keygen__row">
             <button type="submit" className="btn btn--primary btn--icon" disabled={busy}>
               <KeyRound size={14} aria-hidden />
-              {key ? "Generate again" : "Generate"}
+              {key ? t("tools.keygen.generateAgain") : t("tools.keygen.generate")}
             </button>
             <button type="button" className="btn btn--icon" onClick={pickKeyFile} disabled={busy}>
               <FolderOpen size={14} aria-hidden />
-              Load…
+              {t("tools.keygen.load")}
             </button>
           </div>
 
           {unlocking && (
             <div className="form-row keygen__install">
               <label className="field field--grow">
-                Passphrase of {baseName(unlocking)}
+                {t("tools.keygen.passphraseOf", { name: baseName(unlocking) })}
                 <input
                   type="password"
                   autoFocus
@@ -397,10 +394,10 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
                 onClick={() => loadFrom(unlocking, unlockPassphrase)}
                 disabled={busy}
               >
-                Unlock
+                {t("tools.keygen.unlock")}
               </button>
               <button type="button" className="btn" onClick={() => (setUnlocking(null), setUnlockPassphrase(""), report(null))}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -408,34 +405,34 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
           {key && (
             <>
               <label className="field">
-                Public key
+                {t("tools.keygen.publicKey")}
                 <textarea className="keygen__public" readOnly rows={3} value={key.publicKey} spellCheck={false} />
               </label>
               <p className="muted">
-                <span className="keygen__type">{key.keyType}</span> Fingerprint:{" "}
+                <span className="keygen__type">{key.keyType}</span> {t("tools.keygen.fingerprint")}{" "}
                 <code className="keygen__fingerprint">{key.fingerprint}</code>
               </p>
               <div className="keygen__row">
                 <button type="button" className="btn btn--icon" onClick={copy}>
                   <Copy size={14} aria-hidden />
-                  Copy
+                  {t("common.copy")}
                 </button>
                 <button type="button" className="btn btn--icon" onClick={() => saveAs("public")} disabled={busy}>
                   <Save size={14} aria-hidden />
-                  Save public key…
+                  {t("tools.keygen.savePublic")}
                 </button>
                 <button type="button" className="btn btn--icon" onClick={() => saveAs("private")} disabled={busy}>
                   <Save size={14} aria-hidden />
-                  Save private key…
+                  {t("tools.keygen.savePrivate")}
                 </button>
                 <button type="button" className="btn btn--icon" onClick={() => saveAs("ppk")} disabled={busy}>
                   <Save size={14} aria-hidden />
-                  Save as PuTTY key (.ppk)…
+                  {t("tools.keygen.savePpk")}
                 </button>
                 {dirty && (
                   <button type="button" className="btn btn--icon" onClick={apply} disabled={busy}>
                     <Check size={14} aria-hidden />
-                    Apply changes
+                    {t("tools.keygen.applyChanges")}
                   </button>
                 )}
               </div>
@@ -446,17 +443,17 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
                     className="btn keygen__danger"
                     onClick={() => key && write(key, overwrite.kind, overwrite.path, true)}
                   >
-                    Overwrite
+                    {t("tools.keygen.overwrite")}
                   </button>
                   <button type="button" className="btn" onClick={() => (setOverwrite(null), report(null))}>
-                    Keep the file
+                    {t("tools.keygen.keepFile")}
                   </button>
                 </div>
               )}
               {sessions.length > 0 && (
                 <div className="form-row keygen__install">
                   <label className="field field--grow">
-                    Saved session
+                    {t("tools.keygen.savedSession")}
                     <select value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
                       {sessions.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -467,7 +464,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
                   </label>
                   <button type="button" className="btn btn--icon" onClick={install} disabled={busy}>
                     <Upload size={14} aria-hidden />
-                  Install
+                    {t("tools.keygen.install")}
                   </button>
                 </div>
               )}
@@ -482,7 +479,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
           {status && <p role="status">{status}</p>}
           <div className="dialog__actions">
             <button type="button" className="btn" onClick={close}>
-              Close
+              {t("common.close")}
             </button>
           </div>
         </form>
@@ -505,7 +502,7 @@ export function KeyGenDialog({ sessions, onClose }: KeyGenDialogProps) {
           host={trust.host}
           fingerprint={trust.fingerprint}
           otherKnownKeys={trust.otherKnownKeys}
-          via={trust.via ? `${trust.via} — jump host ${trust.hop}` : undefined}
+          via={trust.via ? t("tools.keygen.viaJumpHost", { name: trust.via, hop: trust.hop ?? "" }) : undefined}
           onTrust={trustHost}
           onCancel={() => setTrust(null)}
         />

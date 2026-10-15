@@ -1,3 +1,5 @@
+import type { AppKey } from "../../i18n/catalogs";
+import { useT } from "../../i18n/i18n";
 import type { SavedSession } from "../sessions/library";
 import type { LibraryStatus } from "../sessions/useSessionLibrary";
 import { describeTunnel, type Tunnel, type TunnelList, type TunnelStatus } from "./tunnels";
@@ -16,26 +18,27 @@ interface TunnelsPanelProps {
   onStopAll: () => void;
 }
 
-const STATE_LABEL: Record<TunnelStatus["state"], string> = {
-  stopped: "Stopped",
-  starting: "Starting…",
-  running: "Running",
-  error: "Error",
+const STATE_LABEL: Record<TunnelStatus["state"], AppKey> = {
+  stopped: "tunnels.state.stopped",
+  starting: "tunnels.state.starting",
+  running: "tunnels.state.running",
+  error: "tunnels.state.error",
 };
 
 export function TunnelsPanel(props: TunnelsPanelProps) {
+  const t = useT();
   const { list, status, saveError, sessions, statusOf } = props;
   const editable = status.state === "ready";
-  const sessionName = (id: string) => sessions.find((s) => s.id === id)?.name ?? "missing session";
+  const sessionName = (id: string) => sessions.find((s) => s.id === id)?.name ?? t("tunnels.panel.missingSession");
 
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>SSH tunnels</span>
+        <span>{t("tunnels.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={props.onNew}>
-              New
+              {t("tunnels.panel.new")}
             </button>
           </span>
         )}
@@ -43,42 +46,40 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
       {list.tunnels.length > 0 && (
         <div className="sidebar__actions">
           <button className="btn btn--small" onClick={props.onStartAll}>
-            Start all
+            {t("tunnels.panel.startAll")}
           </button>
           <button className="btn btn--small" onClick={props.onStopAll}>
-            Stop all
+            {t("tunnels.panel.stopAll")}
           </button>
         </div>
       )}
-      {status.state === "loading" && <p className="sidebar__note">Loading…</p>}
+      {status.state === "loading" && <p className="sidebar__note">{t("common.loading")}</p>}
       {status.state === "error" && (
-        <p className="sidebar__note form-error">
-          Could not read saved tunnels: {status.message}. Editing is disabled to protect the file.
-        </p>
+        <p className="sidebar__note form-error">{t("tunnels.panel.readError", { message: status.message })}</p>
       )}
-      {saveError && <p className="sidebar__note form-error">Could not save tunnels: {saveError}</p>}
-      {status.state === "ready" && list.tunnels.length === 0 && <p className="sidebar__note">No tunnels yet.</p>}
+      {saveError && <p className="sidebar__note form-error">{t("tunnels.panel.saveError", { error: saveError })}</p>}
+      {status.state === "ready" && list.tunnels.length === 0 && <p className="sidebar__note">{t("tunnels.panel.empty")}</p>}
       <ul className="tree">
         {list.tunnels.map((tunnel) => {
           const current = statusOf(tunnel.id);
           const active = current.state === "starting" || current.state === "running";
           return (
             <li key={tunnel.id} className="tunnel">
-              <div className="tree-row" title={`${describeTunnel(tunnel)} via ${sessionName(tunnel.sessionId)}`}>
+              <div className="tree-row" title={t("tunnels.panel.via", { tunnel: describeTunnel(tunnel), session: sessionName(tunnel.sessionId) })}>
                 <span
                   className={`tunnel__dot tunnel__dot--${current.state}`}
                   role="img"
-                  aria-label={STATE_LABEL[current.state]}
+                  aria-label={t(STATE_LABEL[current.state])}
                 />
                 <span className="tree-row__label">{tunnel.name}</span>
                 {editable && (
                   <span className="tree-row__actions">
-                    <button title="Edit" onClick={() => props.onEdit(tunnel)}>✎</button>
-                    <button title="Delete" onClick={() => props.onDelete(tunnel)}>🗑</button>
+                    <button title={t("common.edit")} onClick={() => props.onEdit(tunnel)}>✎</button>
+                    <button title={t("common.delete")} onClick={() => props.onDelete(tunnel)}>🗑</button>
                   </span>
                 )}
                 <button className="btn btn--small" onClick={() => props.onToggle(tunnel)}>
-                  {active ? "Stop" : "Start"}
+                  {active ? t("common.stop") : t("common.start")}
                 </button>
               </div>
               <div className="tunnel__detail">
@@ -98,7 +99,7 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
           );
         })}
       </ul>
-      <p className="sidebar__hint">Tunnels listen on 127.0.0.1 unless you choose another address.</p>
+      <p className="sidebar__hint">{t("tunnels.panel.hint")}</p>
     </div>
   );
 }

@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
+import { useT } from "../../i18n/i18n";
 
 /** Always visible while recording (S16.2): what is typed ends up in a plain-text file (S16.5). */
 export function RecordingIndicator({ onStop }: { onStop: () => void }) {
+  const t = useT();
   return (
     <div className="recording-banner" role="status">
       <span className="recording-banner__dot" aria-hidden="true" />
       <span>
-        <strong>Recording macro</strong> — Everything you type is saved, including passwords
+        <strong>{t("macros.recording.title")}</strong> — {t("macros.recording.warning")}
       </span>
       <button className="btn" onClick={onStop}>
-        Stop recording
+        {t("macros.recording.stop")}
       </button>
     </div>
   );
@@ -23,22 +25,21 @@ interface NameMacroDialogProps {
 
 /** Asked when a recording stops: keep it under a name, or throw it away. */
 export function NameMacroDialog({ stepCount, onSave, onDiscard }: NameMacroDialogProps) {
+  const t = useT();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (name.trim()) onSave(name.trim());
-    else setError("Enter a name.");
+    else setError(t("macros.form.nameRequired"));
   };
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onDiscard()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="nm-title">
-        <h2 id="nm-title">Save recorded macro</h2>
-        <p className="muted">
-          {stepCount} {stepCount === 1 ? "step" : "steps"} recorded. Macros are saved as plain text.
-        </p>
+        <h2 id="nm-title">{t("macros.name.title")}</h2>
+        <p className="muted">{t("macros.name.recorded", { count: stepCount })}</p>
         <label className="field">
-          Name
+          {t("common.name")}
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         {error && (
@@ -48,10 +49,10 @@ export function NameMacroDialog({ stepCount, onSave, onDiscard }: NameMacroDialo
         )}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onDiscard}>
-            Discard
+            {t("macros.name.discard")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Save
+            {t("common.save")}
           </button>
         </div>
       </form>
@@ -69,14 +70,13 @@ interface MacroProgressProps {
 
 /** Shown while a macro plays (S16.3); Escape stops it too. */
 export function MacroProgress({ name, step, total, onStop }: MacroProgressProps) {
+  const t = useT();
   return (
     <div className="macro-progress">
-      <span>
-        Running "{name}": step {step + 1} of {total}
-      </span>
-      <progress value={step + 1} max={total} aria-label={`Macro ${name} progress`} />
+      <span>{t("macros.progress.running", { name, step: step + 1, total })}</span>
+      <progress value={step + 1} max={total} aria-label={t("macros.progress.label", { name })} />
       <button className="btn" title="Escape" onClick={onStop}>
-        Stop
+        {t("common.stop")}
       </button>
     </div>
   );

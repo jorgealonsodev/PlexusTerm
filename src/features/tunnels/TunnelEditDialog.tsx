@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import type { SavedSession } from "../sessions/library";
+import { useT } from "../../i18n/i18n";
 import { formFromTunnel, parseTunnelForm, type TunnelForm } from "./tunnelForm";
 import { isLoopback, tunnelTypes, type Tunnel } from "./tunnels";
 
@@ -13,6 +14,7 @@ interface TunnelEditDialogProps {
 }
 
 export function TunnelEditDialog({ tunnel, isNew, sessions, onSave, onCancel }: TunnelEditDialogProps) {
+  const t = useT();
   const [form, setForm] = useState<TunnelForm>(() => formFromTunnel(tunnel));
   const [error, setError] = useState<string | null>(null);
   const set =
@@ -36,27 +38,27 @@ export function TunnelEditDialog({ tunnel, isNew, sessions, onSave, onCancel }: 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="te-title">
-        <h2 id="te-title">{isNew ? "New SSH tunnel" : "Edit tunnel"}</h2>
+        <h2 id="te-title">{isNew ? t("tunnels.edit.newTitle") : t("tunnels.edit.editTitle")}</h2>
         <div className="form-row">
           <label className="field field--grow">
-            Name
-            <input autoFocus value={form.name} onChange={set("name")} placeholder="Generated from the ports" />
+            {t("common.name")}
+            <input autoFocus value={form.name} onChange={set("name")} placeholder={t("tunnels.edit.namePlaceholder")} />
           </label>
           <label className="field">
-            Type
+            {t("tunnels.edit.type")}
             <select value={form.type} onChange={set("type")}>
-              {tunnelTypes.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              {tunnelTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {t(type.label)}
                 </option>
               ))}
             </select>
           </label>
         </div>
         <label className="field">
-          SSH session
+          {t("tunnels.edit.sshSession")}
           <select value={form.sessionId} onChange={set("sessionId")}>
-            <option value="">Choose a saved session…</option>
+            <option value="">{t("tunnels.edit.chooseSession")}</option>
             {sessions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} ({s.username}@{s.host})
@@ -64,37 +66,36 @@ export function TunnelEditDialog({ tunnel, isNew, sessions, onSave, onCancel }: 
             ))}
           </select>
         </label>
-        {sessions.length === 0 && <p className="muted">Save an SSH session first; tunnels use its connection.</p>}
+        {sessions.length === 0 && <p className="muted">{t("tunnels.edit.noSessions")}</p>}
         <div className="form-row">
           <label className="field field--grow">
-            {remote ? "Listen address on the server" : "Listen address"}
+            {remote ? t("tunnels.edit.listenAddressServer") : t("tunnels.edit.listenAddress")}
             <input value={form.listenHost} onChange={set("listenHost")} placeholder="127.0.0.1" />
           </label>
           <label className="field field--port">
-            Port
+            {t("common.port")}
             <input value={form.listenPort} onChange={set("listenPort")} inputMode="numeric" />
           </label>
         </div>
         {exposed && (
           <p className="form-error" role="alert">
-            Listening on {form.listenHost.trim()} lets other machines {remote ? "reach the server port" : "use this tunnel"}.
-            Use 127.0.0.1 to keep it private.
+            {t(remote ? "tunnels.edit.exposedRemote" : "tunnels.edit.exposedLocal", { host: form.listenHost.trim() })}
           </p>
         )}
         {form.type !== "dynamic" && (
           <div className="form-row">
             <label className="field field--grow">
-              {remote ? "Destination (from this machine)" : "Destination (from the server)"}
+              {remote ? t("tunnels.edit.destinationFromHere") : t("tunnels.edit.destinationFromServer")}
               <input value={form.destHost} onChange={set("destHost")} placeholder="localhost" />
             </label>
             <label className="field field--port">
-              Port
+              {t("common.port")}
               <input value={form.destPort} onChange={set("destPort")} inputMode="numeric" />
             </label>
           </div>
         )}
         {form.type === "dynamic" && (
-          <p className="muted">Applications use this port as a SOCKS5 proxy; the server opens the connections.</p>
+          <p className="muted">{t("tunnels.edit.dynamicHint")}</p>
         )}
         {error && (
           <p className="form-error" role="alert">
@@ -103,10 +104,10 @@ export function TunnelEditDialog({ tunnel, isNew, sessions, onSave, onCancel }: 
         )}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Save
+            {t("common.save")}
           </button>
         </div>
       </form>

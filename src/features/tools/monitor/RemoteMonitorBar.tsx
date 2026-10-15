@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowDown, ArrowUp, Cpu, HardDrive, MemoryStick, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useT } from "../../../i18n/i18n";
 import {
   computeStats,
   formatBytes,
@@ -38,6 +39,7 @@ function Item({ icon: Icon, title, value }: { icon: LucideIcon; title: string; v
  * an SSH pane, sampled over its existing connection every few seconds.
  */
 export function RemoteMonitorBar({ sessionId, active }: RemoteMonitorBarProps) {
+  const t = useT();
   const [view, setView] = useState<View>({ kind: "loading" });
 
   // A new or ended session must not keep showing the previous server's numbers.
@@ -77,27 +79,27 @@ export function RemoteMonitorBar({ sessionId, active }: RemoteMonitorBarProps) {
   }, [sessionId, active]);
 
   return (
-    <div className="remote-monitor" role="status" aria-label="Remote monitor">
-      {view.kind === "loading" && <span className="remote-monitor__note">Monitoring…</span>}
+    <div className="remote-monitor" role="status" aria-label={t("tools.monitor.label")}>
+      {view.kind === "loading" && <span className="remote-monitor__note">{t("tools.monitor.loading")}</span>}
       {view.kind === "unavailable" && (
-        <span className="remote-monitor__note remote-monitor__note--warn">Monitoring unavailable</span>
+        <span className="remote-monitor__note remote-monitor__note--warn">{t("tools.monitor.unavailable")}</span>
       )}
       {view.kind === "stats" && (
         <>
-          <Item icon={Cpu} title="CPU usage" value={formatPercent(view.stats.cpuPercent)} />
+          <Item icon={Cpu} title={t("tools.monitor.cpu")} value={formatPercent(view.stats.cpuPercent)} />
           <Item
             icon={MemoryStick}
-            title="Memory used / total"
+            title={t("tools.monitor.memory")}
             value={`${formatBytes(view.stats.memUsed)} / ${formatBytes(view.stats.memTotal)}`}
           />
           <Item
             icon={HardDrive}
-            title="Root disk used / total"
+            title={t("tools.monitor.disk")}
             value={`${formatBytes(view.stats.diskUsed)} / ${formatBytes(view.stats.diskTotal)}`}
           />
-          <Item icon={ArrowDown} title="Network received" value={formatRate(view.stats.rxRate)} />
-          <Item icon={ArrowUp} title="Network sent" value={formatRate(view.stats.txRate)} />
-          <Item icon={Users} title="Logged-in users" value={String(view.stats.users)} />
+          <Item icon={ArrowDown} title={t("tools.monitor.received")} value={formatRate(view.stats.rxRate)} />
+          <Item icon={ArrowUp} title={t("tools.monitor.sent")} value={formatRate(view.stats.txRate)} />
+          <Item icon={Users} title={t("tools.monitor.users")} value={String(view.stats.users)} />
         </>
       )}
     </div>

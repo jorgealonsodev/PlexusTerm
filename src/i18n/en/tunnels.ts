@@ -1,1 +1,57 @@
-export const tunnels = {};
+/** SSH tunnels: the sidebar panel, the editor and starting them. */
+export const tunnels = {
+  types: {
+    local: "Local (-L)",
+    remote: "Remote (-R)",
+    dynamic: "Dynamic SOCKS5 (-D)",
+  },
+  panel: {
+    title: "SSH tunnels",
+    new: "New",
+    startAll: "Start all",
+    stopAll: "Stop all",
+    readError: "Could not read saved tunnels: {message}. Editing is disabled to protect the file.",
+    saveError: "Could not save tunnels: {error}",
+    empty: "No tunnels yet.",
+    missingSession: "missing session",
+    via: "{tunnel} via {session}",
+    hint: "Tunnels listen on 127.0.0.1 unless you choose another address.",
+  },
+  state: {
+    stopped: "Stopped",
+    starting: "Starting…",
+    running: "Running",
+    error: "Error",
+  },
+  edit: {
+    newTitle: "New SSH tunnel",
+    editTitle: "Edit tunnel",
+    namePlaceholder: "Generated from the ports",
+    type: "Type",
+    sshSession: "SSH session",
+    chooseSession: "Choose a saved session…",
+    noSessions: "Save an SSH session first; tunnels use its connection.",
+    listenAddressServer: "Listen address on the server",
+    listenAddress: "Listen address",
+    exposedRemote: "Listening on {host} lets other machines reach the server port. Use 127.0.0.1 to keep it private.",
+    exposedLocal: "Listening on {host} lets other machines use this tunnel. Use 127.0.0.1 to keep it private.",
+    destinationFromHere: "Destination (from this machine)",
+    destinationFromServer: "Destination (from the server)",
+    dynamicHint: "Applications use this port as a SOCKS5 proxy; the server opens the connections.",
+  },
+  form: {
+    chooseSession: "Choose a saved SSH session",
+    invalidListenPort: "Listen port must be a number between 1 and 65535",
+    destHostRequired: "Destination host is required",
+    invalidDestPort: "Destination port must be a number between 1 and 65535",
+  },
+  file: {
+    invalidJson: "tunnels file is not valid JSON: {error}",
+    unsupportedVersion: "unsupported tunnels file version",
+    invalidTunnels: "tunnels file has invalid tunnels",
+  },
+  launcher: {
+    sessionGone: "Its saved session no longer exists; edit the tunnel to choose another one.",
+    startFailed: "Could not start the tunnel: {error}",
+  },
+};
