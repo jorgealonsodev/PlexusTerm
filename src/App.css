@@ -1308,14 +1308,18 @@ textarea::placeholder {
 }
 
 /* Settings: a side menu of sections, the chosen section's options on the right. */
+/* Never taller than the window: the section scrolls, Cancel and Save stay visible. */
 .dialog.settings {
   width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
 }
 
 .settings__body {
   display: flex;
+  flex: 1 1 auto;
   gap: 16px;
-  min-height: 340px;
+  min-height: min(340px, 50vh);
+  overflow: hidden;
 }
 
 .settings__nav {
@@ -1359,6 +1363,8 @@ textarea::placeholder {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .settings__panel[hidden] {
