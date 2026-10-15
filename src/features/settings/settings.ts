@@ -8,7 +8,7 @@ export type AiProvider = (typeof AI_PROVIDERS)[number];
 /** The model a provider starts with; OpenAI and compatible endpoints leave it to the user. */
 export const DEFAULT_AI_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-opus-5-5",
-  gemini: "gemini-2.5-flash",
+  gemini: "gemini-3.5-flash-lite",
   openai: "",
   "openai-compatible": "",
 };

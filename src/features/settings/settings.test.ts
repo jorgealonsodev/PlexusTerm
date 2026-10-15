@@ -100,7 +100,7 @@ describe("parseSettings", () => {
   });
 
   it("knows Anthropic, Gemini, OpenAI and OpenAI-compatible providers, each with its default model", () => {
-    expect(parseSettings('{"aiProvider":"gemini"}')).toMatchObject({ aiProvider: "gemini", aiModel: "gemini-2.5-flash" });
+    expect(parseSettings('{"aiProvider":"gemini"}')).toMatchObject({ aiProvider: "gemini", aiModel: "gemini-3.5-flash-lite" });
     expect(parseSettings('{"aiProvider":"openai"}')).toMatchObject({ aiProvider: "openai", aiModel: "" });
     expect(parseSettings('{"aiProvider":"opencode"}')).toMatchObject({ aiProvider: "anthropic", aiModel: "claude-opus-5-5" });
     expect(parseSettings('{"aiProvider":"gemini","aiModel":"  gemini-2.5-pro "}').aiModel).toBe("gemini-2.5-pro");

@@ -227,7 +227,7 @@ The **AI** section of Settings holds:
 - **Command history** (on by default): records commands and suggests from them. **Clear history** empties `history.json` at once.
 - **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider after a short pause in typing. Only the typed line, the current folder (when the shell reports it) and the host's last history commands are sent, never the terminal output, and nothing typed at a password prompt.
 - **Provider**: Anthropic, Gemini, OpenAI or OpenAI-compatible; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
-- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-2.5-flash`, OpenAI and compatible: fill in your model). Changing the provider while the model is still a provider default switches it to the new provider's default.
+- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model). Changing the provider while the model is still a provider default switches it to the new provider's default.
 - **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once.
 - **History commands sent as context** (0-20, default 5).
 - **Assistant shortcut** (default Ctrl+Shift+Space): click the field and press the new combination; Escape keeps the current one. It needs Ctrl, Alt or Meta, and combinations PlexusTerm already uses are refused.
