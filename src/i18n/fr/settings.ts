@@ -1,0 +1,102 @@
+import type { settings as en } from "../en/settings";
+import type { Messages } from "../types";
+
+export const settings: Messages<typeof en> = {
+  language: {
+    label: "Langue",
+    system: "Système",
+  },
+  dialog: {
+    title: "Paramètres",
+    sections: "Sections des paramètres",
+  },
+  sections: {
+    appearance: "Apparence",
+    terminal: "Terminal",
+    ssh: "SSH",
+    files: "Fichiers",
+    ai: "IA",
+    about: "À propos",
+  },
+  appearance: {
+    colourScheme: "Jeu de couleurs",
+    dark: "Sombre",
+    light: "Clair",
+    preview: "Aperçu de {name}",
+    fontFamily: "Police",
+    fontSize: "Taille de police",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0 modifient la taille de police. Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
+    hideSidebar: "Masquer complètement la barre latérale une fois repliée",
+    sidebarHelp:
+      "Ctrl+Shift+B ou le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
+  },
+  terminal: {
+    copyOnSelect: "Copier à la sélection",
+    rightClickPastes: "Le clic droit colle",
+    confirmMultilinePaste: "Confirmer le collage de plusieurs lignes",
+    rightClickHelp: "Lorsque le clic droit colle, Ctrl+clic droit ouvre le menu du terminal.",
+  },
+  ssh: {
+    remoteMonitor: "Barre du moniteur distant (onglets SSH)",
+    remoteMonitorHelp:
+      "Une barre sous chaque volet SSH avec le CPU, la mémoire, le disque, le réseau et les utilisateurs du serveur, lus par la même connexion. Également dans Outils.",
+  },
+  files: {
+    textEditor: "Éditeur de texte",
+    systemDefault: "Valeur par défaut du système",
+    useSystemDefault: "Utiliser la valeur par défaut du système",
+    chooseEditor: "Choisir un éditeur de texte",
+    textEditorHelp:
+      "L'éditeur de texte ouvre les fichiers du navigateur SFTP : un programme, ou une commande comme {command} ; laissez vide pour utiliser la valeur par défaut du système.",
+  },
+  ai: {
+    inlineSuggestions: "Suggestions en ligne",
+    inlineSuggestionsHelp:
+      "Une suggestion grisée de la suite de la commande pendant la saisie. Flèche droite ou End l'accepte, Ctrl+Flèche droite accepte un mot.",
+    commandHistory: "Historique des commandes",
+    clearHistory: "Effacer l'historique",
+    historyCleared: "Historique effacé.",
+    historyClearFailed: "Impossible d'effacer l'historique : {error}",
+    historyHelp:
+      "Les commandes que vous exécutez sont conservées sur cet ordinateur, par hôte, pour vous être suggérées à nouveau. Les lignes commençant par une espace, les mots de passe et les programmes en plein écran ne sont jamais enregistrés.",
+    aiSuggestions: "Suggestions de l'IA",
+    aiSuggestionsHelp:
+      "Lorsque l'historique ne propose rien, le fournisseur d'IA est interrogé. Seuls la ligne saisie, le dossier courant et les dernières commandes de l'historique sont envoyés, jamais la sortie du terminal.",
+    provider: "Fournisseur",
+    openCodeGoNote:
+      "OpenCode Go est destiné aux agents de programmation et surveille le trafic ; les suggestions IA en ligne envoient de nombreuses requêtes courtes.",
+    baseUrl: "URL de base",
+    model: "Modèle",
+    historyContext: "Commandes de l'historique envoyées comme contexte",
+    chooseModel: "Choisir un modèle",
+    modelOption: "{name} ({id})",
+    modelOptionUnsupported: "{name} ({id}) — pas encore pris en charge",
+    refreshModels: "Actualiser les modèles",
+    loadingModels: "Chargement des modèles…",
+    modelsError: "{error} Saisissez un identifiant de modèle provenant de {url}.",
+    apiKey: "Clé d'API",
+    keyChecking: "Vérification du trousseau…",
+    keySaved: "Une clé est enregistrée",
+    keyNone: "Aucune clé enregistrée",
+    keyUnavailable: "Trousseau indisponible",
+    keyReplacePlaceholder: "Saisissez une nouvelle clé pour la remplacer",
+    keyPastePlaceholder: "Collez la clé",
+    saveKey: "Enregistrer la clé",
+    removeKey: "Retirer la clé",
+    saveKeyFailed: "Impossible d'enregistrer la clé : {error}",
+    removeKeyFailed: "Impossible de retirer la clé : {error}",
+    assistantShortcut: "Raccourci de l'assistant",
+    shortcutInvalid: "Utilisez Ctrl, Alt ou Meta avec une touche.",
+    shortcutTaken: "{shortcut} est déjà utilisé par PlexusTerm.",
+    shortcutCapturing: "Appuyez sur la nouvelle combinaison de touches, ou sur Esc pour la conserver.",
+    shortcutIdle: "Cliquez sur le champ pour le modifier.",
+  },
+  about: {
+    version: "Version {version}",
+    description:
+      "Un gestionnaire de terminaux et de sessions distantes pour Linux et Windows : shells locaux, SSH, SFTP, tunnels, série, Telnet et Mosh dans une seule fenêtre.",
+    credits: "Jeux de couleurs issus d'iTerm2-Color-Schemes (MIT) et de leurs auteurs ; voir les {notices}.",
+    notices: "mentions de tiers",
+  },
+};

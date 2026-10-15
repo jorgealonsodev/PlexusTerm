@@ -1,0 +1,52 @@
+import type { terminal as en } from "../en/terminal";
+import type { Messages } from "../types";
+
+export const terminal: Messages<typeof en> = {
+  find: {
+    label: "Rechercher dans le terminal",
+    placeholder: "Rechercher",
+    noMatches: "Aucun résultat",
+    matchCase: "Respecter la casse",
+    regexTitle: "Expression régulière",
+    regex: "Regex",
+    previous: "Résultat précédent",
+    next: "Résultat suivant",
+    close: "Fermer la recherche",
+  },
+  paste: {
+    title: {
+      one: "Coller {count} ligne ?",
+      many: "Coller {count} lignes ?",
+      other: "Coller {count} lignes ?",
+    },
+    warning: "Chaque ligne peut être exécutée comme une commande.",
+    dontAsk: "Ne plus demander",
+    paste: "Coller",
+  },
+  menu: {
+    paste: "Coller",
+    selectAll: "Tout sélectionner",
+    clear: "Effacer l'historique de défilement",
+    find: "Rechercher…",
+    save: "Enregistrer la sortie dans un fichier…",
+    stopLogging: "Arrêter la journalisation",
+    log: "Journaliser dans un fichier…",
+  },
+  view: {
+    textFiles: "Texte",
+    connecting: "Connexion à {target}...",
+    connectingVia: "Connexion à {target} via {jumps}...",
+    startingMosh: "Démarrage de mosh-server sur {target} via SSH...",
+    startingMoshVia: "Démarrage de mosh-server sur {target} via {jumps} par SSH...",
+    opening: "Ouverture de {target}...",
+    telnetUnencrypted: "Telnet n'est pas chiffré.",
+    serialEnded: "Session terminée. Fermez cet onglet ou rouvrez le port.",
+    moshExited: "mosh-client s'est arrêté. Fermez cet onglet ou rouvrez la session.",
+    moshExitedCode: "mosh-client s'est arrêté avec le code {code}. Fermez cet onglet ou rouvrez la session.",
+    clipboardError: "Impossible de lire le presse-papiers.",
+    saveError: "Impossible d'enregistrer la sortie : {error}",
+    loggingStopped: "Journalisation arrêtée : {error}",
+    hostKeyCancelled: "Connexion annulée : clé d'hôte non approuvée.",
+    cancelled: "Connexion annulée.",
+  },
+};
