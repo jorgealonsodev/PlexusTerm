@@ -74,6 +74,22 @@ describe("ModelPicker (S10)", () => {
     expect(invoke).toHaveBeenCalledWith("ai_models", { provider: "openai-compatible", baseUrl: "http://localhost:11434/v1" });
   });
 
+  it("leaves out an OpenAI-compatible server on opencode.ai that has no key of its own", async () => {
+    backend(["opencode-go"], { ...lists, "openai-compatible": [{ id: "deepseek-v4.1-flash", name: "deepseek-v4.1-flash", supported: true }] });
+    renderPicker("https://opencode.ai/zen/go/v1");
+    open();
+    await screen.findByRole("option", { name: /GLM 5.3 Flash/ });
+    expect(screen.queryByRole("option", { name: /deepseek/ })).toBeNull();
+    expect(invoke).not.toHaveBeenCalledWith("ai_models", expect.objectContaining({ provider: "openai-compatible" }));
+  });
+
+  it("lists an OpenAI-compatible server on opencode.ai once it has its own key", async () => {
+    backend(["openai-compatible"], { "openai-compatible": [{ id: "deepseek-v4.1-flash", name: "deepseek-v4.1-flash", supported: true }] });
+    renderPicker("https://opencode.ai/zen/go/v1");
+    open();
+    expect(await screen.findByRole("option", { name: /deepseek/ })).toBeTruthy();
+  });
+
   it("choosing a model selects it with its provider and closes", async () => {
     backend(["anthropic", "opencode-go"], lists);
     const onSelect = renderPicker();

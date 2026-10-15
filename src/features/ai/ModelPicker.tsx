@@ -28,12 +28,28 @@ interface ModelPickerProps {
   onSelect: (provider: AiProvider, model: string) => void;
 }
 
-/** Providers worth asking: those with a saved key, and the OpenAI-compatible server when configured. */
+/** Whether `baseUrl` is on opencode.ai, which lists its models publicly but answers only with a key. */
+function isOpenCodeHost(baseUrl: string): boolean {
+  try {
+    const host = new URL(baseUrl.trim()).hostname.toLowerCase();
+    return host === "opencode.ai" || host.endsWith(".opencode.ai");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Providers worth asking: those with a saved key, and the OpenAI-compatible server when its base URL
+ * is set (a key is optional there, except on opencode.ai).
+ */
 async function usableProviders(baseUrl: string): Promise<AiProvider[]> {
+  const hasKey = (p: AiProvider) => aiKeyStatus(p).catch(() => false);
   const usable = await Promise.all(
-    ORDER.map((p) =>
-      p === "openai-compatible" ? Promise.resolve(baseUrl.trim() !== "") : aiKeyStatus(p).catch(() => false),
-    ),
+    ORDER.map((p) => {
+      if (p !== "openai-compatible") return hasKey(p);
+      if (baseUrl.trim() === "") return Promise.resolve(false);
+      return isOpenCodeHost(baseUrl) ? hasKey(p) : Promise.resolve(true);
+    }),
   );
   return ORDER.filter((_, i) => usable[i]);
 }
