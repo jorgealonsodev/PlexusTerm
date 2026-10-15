@@ -158,7 +158,7 @@ pub async fn download(sftp: &SftpSession, remote: &str, local: &Path) -> Result<
     // Write next to the target and rename at the end, so a failed transfer never
     // destroys a file the user chose to replace.
     let mut partial_name = local.file_name().unwrap_or_default().to_os_string();
-    partial_name.push(".oxyterm-partial");
+    partial_name.push(".plexusterm-partial");
     let partial = local.with_file_name(partial_name);
     let target = tokio::fs::File::create(&partial)
         .await

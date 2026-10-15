@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="81 71 350 370" role="img" aria-label="OxyTerm">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="81 71 350 370" role="img" aria-label="PlexusTerm">
   <!-- One-colour black mark; the gap is a mask so any background shows through. -->
   <mask id="nt-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
     <rect width="512" height="512" fill="#fff"/>

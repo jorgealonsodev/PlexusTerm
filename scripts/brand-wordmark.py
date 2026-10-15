@@ -1,4 +1,4 @@
-"""Outline the OxyTerm wordmark (Manrope 800) with the crossing-routes x."""
+"""Outline the PlexusTerm wordmark (Manrope 800) with the crossing-routes x."""
 import sys
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
@@ -82,8 +82,8 @@ def symbol(x0, blue, green, mask_id):
     )
 
 
-def render(text, base, accent, green, mask_id, label="OxyTerm"):
-    paths, (x0, y0, x1, y1) = build([("O", base), ("X", None), ("y", base), ("Term", accent)])
+def render(text, base, accent, green, mask_id, label="PlexusTerm"):
+    paths, (x0, y0, x1, y1) = build([("Ple", base), ("X", None), ("us", base), ("Term", accent)])
     body = []
     for fill, d in paths:
         if fill == "X":
@@ -100,7 +100,7 @@ def render(text, base, accent, green, mask_id, label="OxyTerm"):
 
 
 out = sys.argv[2]
-open(f"{out}/oxyterm-wordmark.svg", "w").write(render("", "#e6edf3", "#5ec4ff", "#8bd49c", "nt-wm-gap"))
-open(f"{out}/oxyterm-wordmark-light.svg", "w").write(render("", "#0f1419", "#1769aa", "#2f7d45", "nt-wml-gap"))
-open(f"{out}/oxyterm-wordmark-black.svg", "w").write(render("", "#111111", "#111111", "#111111", "nt-wmb-gap"))
-open(f"{out}/oxyterm-wordmark-white.svg", "w").write(render("", "#ffffff", "#ffffff", "#ffffff", "nt-wmw-gap"))
+open(f"{out}/plexusterm-wordmark.svg", "w").write(render("", "#e6edf3", "#5ec4ff", "#8bd49c", "nt-wm-gap"))
+open(f"{out}/plexusterm-wordmark-light.svg", "w").write(render("", "#0f1419", "#1769aa", "#2f7d45", "nt-wml-gap"))
+open(f"{out}/plexusterm-wordmark-black.svg", "w").write(render("", "#111111", "#111111", "#111111", "nt-wmb-gap"))
+open(f"{out}/plexusterm-wordmark-white.svg", "w").write(render("", "#ffffff", "#ffffff", "#ffffff", "nt-wmw-gap"))

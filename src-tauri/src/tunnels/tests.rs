@@ -558,7 +558,7 @@ async fn a_tunnel_start_can_remember_the_typed_password() {
     let (echo, listen) = (echo_server().await, free_port().await);
     let remember = PasswordStorage::Remember {
         session_id: "s1".into(),
-        label: "OxyTerm: tester@127.0.0.1:22".into(),
+        label: "PlexusTerm: tester@127.0.0.1:22".into(),
     };
 
     mgr.start_with(
@@ -605,7 +605,7 @@ async fn a_stored_password_for_another_endpoint_is_never_sent() {
 fn remember_s1() -> Option<PasswordStorage> {
     Some(PasswordStorage::Remember {
         session_id: "s1".into(),
-        label: "OxyTerm: tester@127.0.0.1:22".into(),
+        label: "PlexusTerm: tester@127.0.0.1:22".into(),
     })
 }
 

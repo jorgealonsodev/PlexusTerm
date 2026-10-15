@@ -1,6 +1,6 @@
 import type { ITheme } from "@xterm/xterm";
 
-/** OxyTerm's own dark palette. */
+/** PlexusTerm's own dark palette. */
 export const terminalTheme: ITheme = {
   background: "#0f1419",
   foreground: "#d8dee9",
