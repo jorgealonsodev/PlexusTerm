@@ -71,6 +71,11 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | Terminal comfort | Find, font size, copy on select, paste confirmation, save and log output, foldable sidebar (**Ctrl+Shift+B**) | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Languages | English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic (right to left) and Hindi; follows the system language | [Interface language](docs/user-guide.md#interface-language) |
 
+<p align="center">
+  <img src="assets/screenshots/plexusterm-theme.png" alt="PlexusTerm with the Catppuccin Mocha colour scheme applied to the whole window" width="720"><br>
+  <em>The colour scheme dresses the whole window, not only the terminal.</em>
+</p>
+
 On Windows everything works as on Linux except Mosh; see [Windows](docs/user-guide.md#windows) for the other differences (shell, home folder, SSH agent, COM ports).
 
 ## Install
