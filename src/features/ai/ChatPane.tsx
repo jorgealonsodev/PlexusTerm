@@ -3,8 +3,9 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { TerminalSettings } from "../settings/settings";
 import { writeText } from "../terminal/clipboard";
 import { AnswerText } from "./AnswerText";
-import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiTurn } from "./aiClient";
+import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiProvider, type AiTurn } from "./aiClient";
 import { aiConfigOf, needsApiKey, newAiSessionId, truncateSelection } from "./aiContext";
+import { ModelPicker } from "./ModelPicker";
 
 const PROVIDER_NAMES: Record<TerminalSettings["aiProvider"], string> = {
   anthropic: "Anthropic",
@@ -32,6 +33,8 @@ interface ChatPaneProps {
   /** Types a command into the linked terminal without Enter. */
   onInsert: (command: string) => void;
   onOpenSettings: () => void;
+  /** Makes `model` of `provider` the AI provider and model (S10). */
+  onSelectModel: (provider: AiProvider, model: string) => void;
 }
 
 /** One question and what came back for it. */
@@ -82,7 +85,7 @@ function CommandBox({ command, onInsert }: { command: string; onInsert: (command
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. Nothing is ever run.
  */
-export function ChatPane({ settings, context, selection, focused, onInsert, onOpenSettings }: ChatPaneProps) {
+export function ChatPane({ settings, context, selection, focused, onInsert, onOpenSettings, onSelectModel }: ChatPaneProps) {
   const [sessionId] = useState(newAiSessionId);
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
@@ -180,10 +183,7 @@ export function ChatPane({ settings, context, selection, focused, onInsert, onOp
     <section className="chat" aria-label="AI chat">
       <header className="chat__header">
         <span className="chat__title">AI</span>
-        <span className="chat__model muted" title={model}>
-          {PROVIDER_NAMES[provider]}
-          {model && ` · ${model}`}
-        </span>
+        <ModelPicker provider={provider} model={model} baseUrl={settings.aiBaseUrl} onSelect={onSelectModel} />
       </header>
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (

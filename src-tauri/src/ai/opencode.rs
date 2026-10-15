@@ -234,13 +234,13 @@ async fn models_dev(http: &reqwest::Client, url: &str) -> Option<BTreeMap<String
 }
 
 /// Model ids end up in request bodies and the UI: short, no whitespace or control characters.
-fn valid_id(id: &str) -> bool {
+pub(super) fn valid_id(id: &str) -> bool {
     !id.is_empty()
         && id.chars().count() <= MAX_ID
         && !id.chars().any(|c| c.is_control() || c.is_whitespace())
 }
 
-fn clean_name(name: &str) -> String {
+pub(super) fn clean_name(name: &str) -> String {
     name.chars()
         .filter(|c| !c.is_control())
         .take(MAX_ID)

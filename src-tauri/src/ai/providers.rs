@@ -73,7 +73,7 @@ pub enum Reply {
 }
 
 /// Anthropic Messages API version header value.
-const ANTHROPIC_VERSION: &str = "2023-06-01";
+pub(super) const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// Beta that enables `fallbacks: "default"` (server-side retry on a recommended model).
 const FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 
@@ -125,7 +125,7 @@ fn assist_schema() -> Value {
 }
 
 /// `base_url` of an OpenAI-compatible server (`http(s)://host[:port]/path`), without trailing `/`.
-fn compatible_url(base_url: Option<&str>) -> Result<String, AiError> {
+pub(super) fn compatible_url(base_url: Option<&str>) -> Result<String, AiError> {
     let base = base_url.map(str::trim).unwrap_or_default();
     if base.is_empty() {
         return Err(AiError::config(
