@@ -72,7 +72,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | Languages | English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic (right to left) and Hindi; follows the system language | [Interface language](docs/user-guide.md#interface-language) |
 
 <p align="center">
-  <img src="assets/screenshots/plexusterm-theme.png" alt="PlexusTerm with the Catppuccin Mocha colour scheme applied to the whole window" width="720"><br>
+  <img src="assets/screenshots/plexusterm-colour-scheme.png" alt="PlexusTerm with another colour scheme applied to the whole window" width="720"><br>
   <em>The colour scheme dresses the whole window, not only the terminal.</em>
 </p>
 
