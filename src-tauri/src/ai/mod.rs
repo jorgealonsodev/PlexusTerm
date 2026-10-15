@@ -517,11 +517,11 @@ fn status_error(provider: Provider, status: u16, body: &str, key: Option<&ApiKey
         && status == 400
         && (body.contains("API_KEY_INVALID") || body.contains("API key not valid"));
     match status {
-        401 | 403 => auth_error(name),
+        401 | 403 => auth_error(provider),
         300..=399 => AiError::config(format!(
             "{name} redirected the request (HTTP {status}); PlexusTerm does not follow redirects. Check the base URL."
         )),
-        _ if gemini_bad_key => auth_error(name),
+        _ if gemini_bad_key => auth_error(provider),
         429 => AiError::new(
             AiErrorKind::RateLimit,
             format!("{name} is limiting requests; try again in a moment."),
@@ -541,11 +541,19 @@ fn status_error(provider: Provider, status: u16, body: &str, key: Option<&ApiKey
     }
 }
 
-fn auth_error(name: &str) -> AiError {
-    AiError::new(
-        AiErrorKind::Auth,
-        format!("The {name} API key was rejected. Check it in Settings > AI."),
-    )
+fn auth_error(provider: Provider) -> AiError {
+    let message = match provider {
+        // Its display name already reads "The OpenAI-compatible server", and a key is optional there.
+        Provider::OpenAiCompatible => format!(
+            "{} rejected the request: its API key is missing or wrong. Check it in Settings > AI.",
+            provider.display_name()
+        ),
+        _ => format!(
+            "The {} API key was rejected. Check it in Settings > AI.",
+            provider.display_name()
+        ),
+    };
+    AiError::new(AiErrorKind::Auth, message)
 }
 
 pub async fn key_status(secrets: &SharedSecrets, provider: &str) -> Result<bool, AiError> {

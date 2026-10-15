@@ -2004,3 +2004,20 @@ async fn opencode_go_models_come_from_its_catalogue() {
         )
     );
 }
+
+#[tokio::test]
+async fn a_rejected_key_message_names_each_provider_once() {
+    for provider in [Provider::OpenAiCompatible, Provider::OpenAi] {
+        let err = status_error(provider, 401, "{}", None);
+        assert_eq!(err.kind, AiErrorKind::Auth);
+        assert!(!err.message.contains("The The"), "{}", err.message);
+    }
+    assert_eq!(
+        status_error(Provider::OpenAiCompatible, 401, "{}", None).message,
+        "The OpenAI-compatible server rejected the request: its API key is missing or wrong. Check it in Settings > AI."
+    );
+    assert_eq!(
+        status_error(Provider::OpenAi, 403, "{}", None).message,
+        "The OpenAI API key was rejected. Check it in Settings > AI."
+    );
+}
