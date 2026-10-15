@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "OpenAI 互換",
+    openaiCompatibleEndpoint: "OpenAI 互換エンドポイント",
+  },
+  errors: {
+    noKey: "このプロバイダーの API キーは保存されていません。",
+    auth: "API キーが拒否されました。",
+    rateLimit: "AI プロバイダーがリクエストを制限しています。しばらくしてから再試行してください。",
+    network: "AI プロバイダーに接続できませんでした。",
+    timeout: "AI プロバイダーから時間内に応答がありませんでした。",
+    refused: "AI プロバイダーがこのリクエストへの回答を拒否しました。",
+    badResponse: "AI プロバイダーから PlexusTerm が読み取れない応答が返されました。",
+    config: "AI の設定を確認してください。",
+  },
+  hint: {
+    unavailable: "AI: 利用不可",
+    noKey: "AI: API キーなし",
+    keyRejected: "AI: キーが拒否されました",
+    rateLimited: "AI: レート制限中",
+  },
+  chat: {
+    label: "AI チャット",
+    title: "AI",
+    close: "AI チャットを閉じる",
+    closeTitle: "AI チャットを閉じる (Ctrl+Shift+W)",
+    empty: "何でも質問してください。コマンドは［実行］をクリックしたときにのみ実行されます。",
+    question: "質問",
+    asking: "問い合わせ中…",
+    noKey: "{provider} の API キーは保存されていません。［設定］→［AI］で追加してください。",
+    openSettings: "AI 設定を開く",
+    selectedText: "送信する選択テキスト",
+    removeSelection: "選択テキストを削除",
+    removeSelectionTitle: "選択テキストを送信しない",
+    input: "質問",
+    placeholder: "何でも質問…",
+    send: "送信",
+  },
+  command: {
+    label: "提案されたコマンド",
+    copied: "コピーしました",
+    copyFailed: "コピーに失敗しました",
+    insert: "挿入",
+    insertTitle: "コマンドを実行せずにターミナルに入力します",
+    run: "実行",
+    runTitle: "コマンドをターミナルで実行します (入力して Enter を押します)",
+  },
+  answer: {
+    label: "回答",
+  },
+  models: {
+    chooseAnother: "{label} — 別のモデルを選択",
+    filter: "モデルを絞り込み",
+    filterPlaceholder: "モデルを絞り込み…",
+    list: "AI モデル",
+    loading: "モデルを読み込んでいます…",
+    noProvider: "API キーが設定された AI プロバイダーがありません。［設定］→［AI］で追加してください。",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} — 未対応",
+    loadingProvider: "{provider} のモデルを読み込んでいます…",
+  },
+};
