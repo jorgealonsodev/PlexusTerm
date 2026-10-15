@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="nt-title">
+  <title id="nt-title">NexusTerm</title>
+  <!-- An "N" drawn as a route between two nodes: a terminal that connects places. -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#0f1419" stroke="#26313c" stroke-width="8"/>
+  <path d="M150 370 L150 142 L362 370 L362 142" fill="none" stroke="#5ec4ff" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="370" r="40" fill="#0f1419" stroke="#8bd49c" stroke-width="26"/>
+  <circle cx="362" cy="142" r="40" fill="#0f1419" stroke="#8bd49c" stroke-width="26"/>
+</svg>
