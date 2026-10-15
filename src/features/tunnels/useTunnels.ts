@@ -42,8 +42,18 @@ export function useTunnels() {
       .catch((err) => setStatus({ state: "error", message: String(err) }));
   }, []);
 
+  // Tunnels whose status changed since mount; the startup snapshot must not overwrite them.
+  const updated = useRef(new Set<string>());
+
   const applyStatus = useCallback((update: StatusUpdate) => {
+    updated.current.add(update.id);
     setStatuses((prev) => ({ ...prev, [update.id]: update.status }));
+  }, []);
+
+  /** Applies the startup snapshot only to tunnels that have no newer live status. */
+  const applySnapshot = useCallback((all: StatusUpdate[]) => {
+    const fresh = all.filter((update) => !updated.current.has(update.id));
+    setStatuses((prev) => Object.fromEntries([...Object.entries(prev), ...fresh.map((u) => [u.id, u.status])]));
   }, []);
 
   useEffect(() => {
@@ -53,14 +63,15 @@ export function useTunnels() {
       .then((stop) => (disposed ? stop() : (unlisten = stop)))
       .catch(() => {});
     // Tunnels keep running while the window reloads: pick up their current state.
+    // Events are emitted in order, so a tunnel that already got one has a status newer than the snapshot.
     invoke<StatusUpdate[]>("tunnel_statuses")
-      .then((all) => all.forEach(applyStatus))
+      .then(applySnapshot)
       .catch(() => {});
     return () => {
       disposed = true;
       unlisten?.();
     };
-  }, [applyStatus]);
+  }, [applyStatus, applySnapshot]);
 
   const dispatch = useCallback(
     (action: TunnelAction) => {

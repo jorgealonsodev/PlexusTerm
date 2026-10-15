@@ -395,3 +395,115 @@ fn definitions_and_statuses_use_the_frontend_field_names() {
         serde_json::json!({"kind": "listen", "message": err.to_string()})
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_stop_racing_the_running_notification_is_reported_last() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("known_hosts");
+    russh::keys::known_hosts::learn_known_hosts_path(
+        "127.0.0.1",
+        server.addr.port(),
+        &server.host_key,
+        &path,
+    )
+    .unwrap();
+    let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let (running_tx, running_rx) = std::sync::mpsc::channel();
+    let mgr = {
+        let seen = seen.clone();
+        Arc::new(TunnelManager::new(path, move |update| {
+            if update.status == TunnelStatus::Running {
+                // Let the test start a stop while this notification is in flight.
+                let _ = running_tx.send(());
+                std::thread::sleep(Duration::from_millis(300));
+            }
+            seen.lock().unwrap().push(update.status);
+        }))
+    };
+    let (echo, listen) = (echo_server().await, free_port().await);
+
+    let starting = {
+        let (mgr, target) = (mgr.clone(), target(&server));
+        tokio::spawn(async move {
+            mgr.start(tunnel(TunnelKind::Local, listen, echo), target, None)
+                .await
+        })
+    };
+    tokio::task::spawn_blocking(move || running_rx.recv_timeout(Duration::from_secs(10)))
+        .await
+        .unwrap()
+        .expect("the tunnel never reported Running");
+    tokio::time::timeout(Duration::from_secs(10), mgr.stop("t1"))
+        .await
+        .expect("stop hung");
+    tokio::time::timeout(Duration::from_secs(10), starting)
+        .await
+        .expect("start hung")
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(mgr.status("t1"), TunnelStatus::Stopped);
+    let seen = seen.lock().unwrap().clone();
+    assert_eq!(
+        seen.last(),
+        Some(&TunnelStatus::Stopped),
+        "updates: {seen:?}"
+    );
+}
+
+/// TCP proxy to `upstream`; aborting the returned task cuts every proxied connection.
+async fn cuttable_proxy(upstream: std::net::SocketAddr) -> (u16, tokio::task::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let task = tokio::spawn(async move {
+        let mut links = tokio::task::JoinSet::new();
+        while let Ok((mut client, _)) = listener.accept().await {
+            links.spawn(async move {
+                let mut server = TcpStream::connect(upstream).await.unwrap();
+                let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+            });
+        }
+    });
+    (port, task)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_dropped_ssh_connection_sets_the_error_status_and_releases_the_listener() {
+    let server = test_server::start(1, None).await;
+    let (proxy, cut) = cuttable_proxy(server.addr).await;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("known_hosts");
+    russh::keys::known_hosts::learn_known_hosts_path("127.0.0.1", proxy, &server.host_key, &path)
+        .unwrap();
+    let (tx, mut updates) = unbounded_channel();
+    let mgr = TunnelManager::new(path, move |update| {
+        let _ = tx.send(update);
+    });
+    let (echo, listen) = (echo_server().await, free_port().await);
+    let mut via_proxy = target(&server);
+    via_proxy.port = proxy;
+    mgr.start(tunnel(TunnelKind::Local, listen, echo), via_proxy, None)
+        .await
+        .unwrap();
+    let mut tcp = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"up").await, b"up");
+
+    cut.abort();
+    let failed = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let update = updates.recv().await.unwrap();
+            if let TunnelStatus::Error { message } = update.status {
+                return message;
+            }
+        }
+    })
+    .await
+    .expect("no error status after the SSH connection dropped");
+    assert!(failed.contains("closed"), "message: {failed}");
+    assert!(matches!(mgr.status("t1"), TunnelStatus::Error { .. }));
+    assert!(
+        TcpStream::connect(("127.0.0.1", listen)).await.is_err(),
+        "the listener must be released after the connection dropped"
+    );
+}

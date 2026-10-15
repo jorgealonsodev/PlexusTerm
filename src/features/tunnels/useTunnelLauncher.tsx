@@ -18,18 +18,42 @@ type Prompt =
 
 const isActive = (status: TunnelStatus) => status.state === "starting" || status.state === "running";
 
+/** True when both describe the same forward through the same session (the name does not matter). */
+const sameForward = (a: Tunnel, b: Tunnel) =>
+  a.type === b.type &&
+  a.sessionId === b.sessionId &&
+  a.listenHost === b.listenHost &&
+  a.listenPort === b.listenPort &&
+  a.destHost === b.destHost &&
+  a.destPort === b.destPort;
+
+/** Errors the tunnel manager returns after recording them as the tunnel's error status. */
+const isRecordedByBackend = (raw: unknown) =>
+  typeof raw === "object" && raw !== null && typeof (raw as { kind?: unknown }).kind === "string";
+
 /**
  * Starts and stops tunnels through the backend. Password sessions ask for the
  * password (never stored) and unknown hosts ask for trust, like terminal tabs.
+ * `tunnels` is the current saved list: a tunnel deleted or changed while a
+ * prompt was open is not started.
  */
 export function useTunnelLauncher(
   sessions: SavedSession[],
   statusOf: (id: string) => TunnelStatus,
   reportError: (id: string, message: string) => void,
+  tunnels: Tunnel[],
 ) {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
+  const tunnelsRef = useRef(tunnels);
+  tunnelsRef.current = tunnels;
+
+  /** Whether `tunnel` is still saved as it was when the start began. */
+  const stillWanted = (tunnel: Tunnel) => {
+    const current = tunnelsRef.current.find((t) => t.id === tunnel.id);
+    return current !== undefined && sameForward(current, tunnel);
+  };
 
   const askPassword = (label: string) =>
     new Promise<string | null>((resolve) => setPrompt({ kind: "password", label, resolve }));
@@ -44,7 +68,7 @@ export function useTunnelLauncher(
       let password: string | undefined;
       if (session.auth.method === "password") {
         const answer = await askPassword(`${session.username}@${session.host}`);
-        if (answer === null) return;
+        if (answer === null || !stillWanted(tunnel)) return;
         password = answer;
       }
       const { type: _local, ...target } = toTarget(session, password);
@@ -54,8 +78,15 @@ export function useTunnelLauncher(
           await invoke("tunnel_start", { tunnel, target, trustedFingerprint });
           return;
         } catch (raw) {
+          // A rejection without a `kind` (IPC or argument errors) never reached the
+          // tunnel manager, so nothing else will show it.
+          if (!isRecordedByBackend(raw)) {
+            reportError(tunnel.id, `Could not start the tunnel: ${String(raw)}`);
+            return;
+          }
           const err = toSshError(raw);
-          // Every other failure is already shown as the tunnel's error status.
+          // Every other failure is already shown as the tunnel's error status;
+          // `alreadyRunning` means the backend already reported it starting or running.
           if (err.kind !== "unknownHost" || trustedFingerprint !== null) return;
           const trust = await new Promise<boolean>((resolve) =>
             setPrompt({
@@ -66,7 +97,7 @@ export function useTunnelLauncher(
               resolve,
             }),
           );
-          if (!trust) return;
+          if (!trust || !stillWanted(tunnel)) return;
           trustedFingerprint = err.fingerprint;
         }
       }

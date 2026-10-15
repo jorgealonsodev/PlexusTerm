@@ -4,6 +4,8 @@
 //! Parsing is pure: each parser takes the bytes received so far and reports
 //! whether a complete message is available, so it is tested without sockets.
 
+use std::time::Duration;
+
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 const VERSION: u8 = 5;
@@ -40,6 +42,8 @@ pub enum SocksError {
     AddressTypeNotSupported(u8),
     #[error("invalid domain name in SOCKS request")]
     InvalidDomain,
+    #[error("the SOCKS client did not finish the handshake in time")]
+    Timeout,
     #[error("{0}")]
     Io(String),
 }
@@ -159,7 +163,19 @@ where
 ///
 /// Rejections are answered on the stream before returning the error; on
 /// success the caller must send [`reply`] once the target is reached or not.
-pub async fn handshake<S>(stream: &mut S) -> Result<ConnectTarget, SocksError>
+/// A client that does not send its greeting and request within `limit` gets
+/// [`SocksError::Timeout`] and no reply, so a stalled client cannot hold a
+/// connection forever.
+pub async fn handshake<S>(stream: &mut S, limit: Duration) -> Result<ConnectTarget, SocksError>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    tokio::time::timeout(limit, negotiate(stream))
+        .await
+        .unwrap_or(Err(SocksError::Timeout))
+}
+
+async fn negotiate<S>(stream: &mut S) -> Result<ConnectTarget, SocksError>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -274,6 +290,47 @@ mod tests {
             parse_request(&[5, 1, 0, 3, 2, 0xFF, 0xFE, 0, 80]),
             Err(SocksError::InvalidDomain)
         );
+    }
+
+    /// Runs the handshake with a 200 ms limit against a client that sent `sent`;
+    /// returns the result and every byte the client received before the server closed.
+    async fn stalled_handshake(sent: &[u8]) -> (Result<ConnectTarget, SocksError>, Vec<u8>) {
+        let (mut server, mut client) = tokio::io::duplex(64);
+        client.write_all(sent).await.unwrap();
+        let started = std::time::Instant::now();
+        let result = tokio::time::timeout(
+            Duration::from_secs(2),
+            handshake(&mut server, Duration::from_millis(200)),
+        )
+        .await
+        .expect("handshake still waiting after 2 s");
+        assert!(started.elapsed() >= Duration::from_millis(200));
+        drop(server);
+        let mut received = Vec::new();
+        client.read_to_end(&mut received).await.unwrap();
+        (result, received)
+    }
+
+    #[tokio::test]
+    async fn handshake_closes_a_silent_client_without_a_reply() {
+        let (result, received) = stalled_handshake(&[]).await;
+        assert_eq!(result, Err(SocksError::Timeout));
+        assert!(received.is_empty(), "unexpected reply {received:?}");
+    }
+
+    #[tokio::test]
+    async fn handshake_closes_a_client_that_stops_mid_greeting() {
+        let (result, received) = stalled_handshake(&[5, 2, 0]).await;
+        assert_eq!(result, Err(SocksError::Timeout));
+        assert!(received.is_empty(), "unexpected reply {received:?}");
+    }
+
+    #[tokio::test]
+    async fn handshake_limit_covers_greeting_and_request_together() {
+        // The greeting is answered, then the request never comes.
+        let (result, received) = stalled_handshake(&[5, 1, 0, 5, 1]).await;
+        assert_eq!(result, Err(SocksError::Timeout));
+        assert_eq!(received, [5, 0]);
     }
 
     #[test]
