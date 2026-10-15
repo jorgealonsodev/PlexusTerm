@@ -21,7 +21,10 @@ export interface ChatLink {
 
 export interface Tab {
   key: string;
+  /** The title the shell or the user gave the tab; until then the target's title is shown. */
   title: string;
+  /** False while `title` is still the target's default title (shown in the current language). */
+  renamed?: boolean;
   target: SessionTarget;
   /**
    * Split panes of the tab; every pane runs its own terminal for `target`, except the
@@ -92,6 +95,9 @@ function updateTab(state: TabsState, key: string, fn: (tab: Tab) => Tab): TabsSt
   return next === tab ? state : { ...state, tabs: state.tabs.map((t) => (t === tab ? next : t)) };
 }
 
+/** What the tab bar shows: the given title, or the target's title in the current language. */
+export const tabTitle = (tab: Tab) => (tab.renamed === false ? targetTitle(tab.target) : tab.title);
+
 export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
   switch (action.type) {
     case "open": {
@@ -99,6 +105,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       const tab: Tab = {
         key: `tab-${state.nextSeq}`,
         title: targetTitle(action.target),
+        renamed: false,
         target: action.target,
         layout: leaf(pane),
         focusedPane: pane,
@@ -133,7 +140,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     case "rename":
       return {
         ...state,
-        tabs: state.tabs.map((t) => (t.key === action.key ? { ...t, title: action.title } : t)),
+        tabs: state.tabs.map((t) => (t.key === action.key ? { ...t, title: action.title, renamed: true } : t)),
       };
     case "split": {
       const pane = `pane-${state.nextPaneSeq}`;

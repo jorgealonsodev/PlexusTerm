@@ -74,6 +74,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: '"{name}" pasa por más de {max} hosts de salto.',
   },
   library: {
+    copyName: "{name} (copia)",
     invalidJson: "el archivo de sesiones no es JSON válido: {error}",
     unsupportedVersion: "versión del archivo de sesiones no admitida",
     invalidFolders: "el archivo de sesiones tiene carpetas no válidas",

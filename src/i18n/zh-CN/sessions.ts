@@ -73,6 +73,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: "“{name}”经由的跳板机超过 {max} 个。",
   },
   library: {
+    copyName: "{name}（副本）",
     invalidJson: "会话文件不是有效的 JSON：{error}",
     unsupportedVersion: "不支持的会话文件版本",
     invalidFolders: "会话文件包含无效的文件夹",

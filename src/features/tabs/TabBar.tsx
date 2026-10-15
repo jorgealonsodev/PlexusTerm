@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
-import type { Tab } from "./tabs";
+import { tabTitle, type Tab } from "./tabs";
 
 interface TabBarProps {
   tabs: Tab[];
@@ -64,7 +64,7 @@ export function TabBar(props: TabBarProps) {
             if (e.button === 1) onClose(tab.key);
             else if (e.button === 0) onActivate(tab.key);
           }}
-          title={tab.title}
+          title={tabTitle(tab)}
           onContextMenu={(e) => {
             e.preventDefault();
             setMenu({ key: tab.key, x: e.clientX, y: e.clientY });
@@ -75,10 +75,10 @@ export function TabBar(props: TabBarProps) {
               ●
             </span>
           )}
-          <span className="tab__title" dir="auto">{tab.title}</span>
+          <span className="tab__title" dir="auto">{tabTitle(tab)}</span>
           <button
             className="tab__close"
-            aria-label={t("app.tabs.closeNamed", { title: tab.title })}
+            aria-label={t("app.tabs.closeNamed", { title: tabTitle(tab) })}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onClose(tab.key)}
           >

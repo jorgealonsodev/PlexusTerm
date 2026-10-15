@@ -73,6 +73,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: 'يمر "{name}" عبر أكثر من {max} مضيفات وسيطة.',
   },
   library: {
+    copyName: "{name} (نسخة)",
     invalidJson: "ملف الجلسات ليس JSON صالحًا: {error}",
     unsupportedVersion: "إصدار ملف الجلسات غير مدعوم",
     invalidFolders: "ملف الجلسات يحتوي على مجلدات غير صالحة",

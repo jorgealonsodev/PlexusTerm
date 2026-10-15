@@ -74,6 +74,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: "「{name}」は {max} 個を超えるジャンプホストを経由しています。",
   },
   library: {
+    copyName: "{name} (コピー)",
     invalidJson: "セッションファイルが有効な JSON ではありません: {error}",
     unsupportedVersion: "サポートされていないセッションファイルのバージョンです",
     invalidFolders: "セッションファイルに無効なフォルダーがあります",

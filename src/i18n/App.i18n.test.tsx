@@ -50,6 +50,15 @@ describe("Interface language (S3, S4)", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
+  it("names the first tab in the chosen language and renames default tab titles when the language changes", async () => {
+    await renderApp({ language: "es" });
+    expect(screen.getByText("Shell local")).toBeTruthy();
+    fireEvent.click(document.querySelector(".toolbar__settings")!);
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    expect(screen.getByText("Local shell")).toBeTruthy();
+    expect(screen.queryByText("Shell local")).toBeNull();
+  });
+
   it("uses the language chosen in Settings, right to left for Arabic", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));

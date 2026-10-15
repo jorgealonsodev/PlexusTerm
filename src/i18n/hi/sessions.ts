@@ -73,6 +73,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: '"{name}" {max} से अधिक जंप होस्ट से होकर जाता है।',
   },
   library: {
+    copyName: "{name} (प्रतिलिपि)",
     invalidJson: "सेशन फ़ाइल मान्य JSON नहीं है: {error}",
     unsupportedVersion: "असमर्थित सेशन फ़ाइल संस्करण",
     invalidFolders: "सेशन फ़ाइल में अमान्य फ़ोल्डर हैं",

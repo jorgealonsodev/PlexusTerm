@@ -73,6 +73,7 @@ export const sessions: Messages<typeof en> = {
     tooMany: '"{name}"이(가) 거치는 점프 호스트가 {max}개를 초과합니다.',
   },
   library: {
+    copyName: "{name}(사본)",
     invalidJson: "세션 파일이 올바른 JSON이 아닙니다: {error}",
     unsupportedVersion: "지원되지 않는 세션 파일 버전입니다",
     invalidFolders: "세션 파일에 잘못된 폴더가 있습니다",
