@@ -38,11 +38,26 @@ pub struct TestServer {
     pub host_key: PublicKey,
     /// Password authentication attempts received, over every connection.
     pub password_attempts: Arc<AtomicUsize>,
+    /// Client connections currently open.
+    open_connections: Arc<AtomicUsize>,
 }
 
 impl TestServer {
     pub fn password_attempts(&self) -> usize {
         self.password_attempts.load(Ordering::SeqCst)
+    }
+
+    pub fn open_connections(&self) -> usize {
+        self.open_connections.load(Ordering::SeqCst)
+    }
+}
+
+/// Counts a client connection as open until its handler is dropped.
+struct ConnectionGuard(Arc<AtomicUsize>);
+
+impl Drop for ConnectionGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
@@ -59,6 +74,8 @@ struct Handler {
     /// Remote forward listeners of this connection, by requested address and port.
     forwards: Arc<Mutex<HashMap<(String, u32), tokio::task::AbortHandle>>>,
     password_attempts: Arc<AtomicUsize>,
+    open_connections: Arc<AtomicUsize>,
+    _connection: Option<Arc<ConnectionGuard>>,
 }
 
 /// Starts a server with the given host key seed; `allowed_key` enables public-key auth.
@@ -94,8 +111,11 @@ async fn start_inner(
         stream_channels: Arc::default(),
         forwards: Arc::default(),
         password_attempts: Arc::default(),
+        open_connections: Arc::default(),
+        _connection: None,
     };
     let password_attempts = server.password_attempts.clone();
+    let open_connections = server.open_connections.clone();
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
     });
@@ -103,16 +123,19 @@ async fn start_inner(
         addr,
         host_key,
         password_attempts,
+        open_connections,
     }
 }
 
 impl russh::server::Server for Handler {
     type Handler = Self;
     fn new_client(&mut self, _: Option<SocketAddr>) -> Self {
+        self.open_connections.fetch_add(1, Ordering::SeqCst);
         Self {
             channels: Arc::default(),
             stream_channels: Arc::default(),
             forwards: Arc::default(),
+            _connection: Some(Arc::new(ConnectionGuard(self.open_connections.clone()))),
             ..self.clone()
         }
     }

@@ -49,6 +49,7 @@ fn target(server: &TestServer) -> SshTarget {
         auth: SshAuth::Password {
             password: PASSWORD.into(),
         },
+        jumps: vec![],
     }
 }
 
@@ -262,6 +263,7 @@ async fn stop_while_starting_releases_the_listener_at_once() {
         port: ssh_port,
         username: "tester".into(),
         auth: SshAuth::Agent,
+        jumps: vec![],
     };
 
     let starting = {
@@ -675,4 +677,116 @@ fn running_without_a_warning_serializes_like_before() {
         serde_json::to_value(TunnelStatus::Running { warning: None }).unwrap(),
         serde_json::json!({"state": "running"})
     );
+}
+
+/// `target(server)` reached through `bastion` (password login).
+fn through(server: &TestServer, bastion: &TestServer, bastion_password: &str) -> SshTarget {
+    SshTarget {
+        jumps: vec![crate::ssh::JumpHost {
+            name: "bastion".into(),
+            host: "127.0.0.1".into(),
+            port: bastion.addr.port(),
+            username: "tester".into(),
+            auth: SshAuth::Password {
+                password: bastion_password.into(),
+            },
+            trusted_fingerprint: None,
+            storage: None,
+        }],
+        ..target(server)
+    }
+}
+
+/// Like `manager`, trusting `bastion` too.
+fn chained_manager(
+    dir: &tempfile::TempDir,
+    server: &TestServer,
+    bastion: &TestServer,
+) -> TunnelManager {
+    let (mgr, _updates) = manager(dir, server);
+    russh::keys::known_hosts::learn_known_hosts_path(
+        "127.0.0.1",
+        bastion.addr.port(),
+        &bastion.host_key,
+        dir.path().join("known_hosts"),
+    )
+    .unwrap();
+    mgr
+}
+
+async fn wait_connections(server: &TestServer, expected: usize) -> usize {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    while server.open_connections() != expected && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    server.open_connections()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_local_forward_through_a_jump_host_round_trips_and_stop_closes_every_hop() {
+    let server = test_server::start(1, None).await;
+    let bastion = test_server::start(2, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let mgr = chained_manager(&dir, &server, &bastion);
+    let (echo, listen) = (echo_server().await, free_port().await);
+
+    mgr.start(
+        tunnel(TunnelKind::Local, listen, echo),
+        through(&server, &bastion, PASSWORD),
+        None,
+    )
+    .await
+    .unwrap();
+    let mut tcp = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"via jump").await, b"via jump");
+    assert_eq!(bastion.open_connections(), 1);
+
+    mgr.stop("t1").await;
+    assert_eq!(wait_connections(&server, 0).await, 0, "target still open");
+    assert_eq!(wait_connections(&bastion, 0).await, 0, "jump still open");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_remote_forward_through_a_jump_host_reaches_a_local_service() {
+    let server = test_server::start(1, None).await;
+    let bastion = test_server::start(2, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let mgr = chained_manager(&dir, &server, &bastion);
+    let (echo, remote) = (echo_server().await, free_port().await);
+
+    mgr.start(
+        tunnel(TunnelKind::Remote, remote, echo),
+        through(&server, &bastion, PASSWORD),
+        None,
+    )
+    .await
+    .unwrap();
+    let mut tcp = TcpStream::connect(("127.0.0.1", remote)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"back").await, b"back");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failing_jump_host_is_named_in_the_tunnel_error() {
+    let server = test_server::start(1, None).await;
+    let bastion = test_server::start(2, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let mgr = chained_manager(&dir, &server, &bastion);
+    let listen = free_port().await;
+
+    let err = mgr
+        .start(
+            tunnel(TunnelKind::Local, listen, 9),
+            through(&server, &bastion, "nope"),
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        mgr.status("t1"),
+        TunnelStatus::Error {
+            message: "via bastion (jump host 1): authentication failed".into()
+        }
+    );
+    assert_eq!(serde_json::to_value(&err).unwrap()["kind"], "hop");
+    assert_eq!(server.password_attempts(), 0);
 }

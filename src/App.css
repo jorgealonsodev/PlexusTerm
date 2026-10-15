@@ -719,3 +719,44 @@ body,
   color: var(--bg);
   background: #f0b45e;
 }
+
+/* Jump hosts of a saved SSH session (session edit dialog). */
+.jump-hosts {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jump-hosts legend {
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.jump-hosts__list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jump-hosts__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jump-hosts__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jump-hosts__add {
+  align-self: flex-end;
+}

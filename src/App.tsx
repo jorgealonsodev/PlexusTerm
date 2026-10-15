@@ -5,20 +5,17 @@ import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
+import { chainTarget, collectLogins, hopLabel, type PasswordAnswer } from "./features/sessions/jumpHosts";
 import {
   isSshSession,
+  jumpUsers,
+  resolveChain,
   toTarget,
   type LibraryAction,
   type LibrarySession,
   type SavedSession,
 } from "./features/sessions/library";
-import {
-  removedSshSessions,
-  secretToForgetOnEdit,
-  storageFor,
-  storedPasswordTarget,
-  typedPasswordTarget,
-} from "./features/sessions/passwordFlow";
+import { removedSshSessions, secretToForgetOnEdit } from "./features/sessions/passwordFlow";
 import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
 import { forgetSecrets, secretExists } from "./features/sessions/secrets";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
@@ -44,7 +41,8 @@ type Modal =
   | { kind: "quickConnect" }
   | { kind: "serial" }
   | { kind: "editSession"; session: LibrarySession; isNew: boolean }
-  | { kind: "password"; session: SavedSession }
+  /** Password of one hop of a saved session (jump hosts first, then the target). */
+  | { kind: "password"; label: string; resolve: (answer: PasswordAnswer | null) => void }
   | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | null;
 
@@ -90,7 +88,7 @@ export default function App() {
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
   const tunnels = useTunnels();
   const launcher = useTunnelLauncher(
-    sshSessions,
+    sessions.library.sessions,
     tunnels.statusOf,
     tunnels.reportError,
     tunnels.list.tunnels,
@@ -147,11 +145,21 @@ export default function App() {
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
 
-  /** Password sessions use the password saved in the keyring when there is one, otherwise ask. */
+  /**
+   * SSH sessions go through their jump hosts (S14). Every password hop uses the password
+   * saved in the keyring when there is one, otherwise it is asked, one hop at a time.
+   */
   const openSaved = async (session: LibrarySession) => {
-    if (!isSshSession(session) || session.auth.method !== "password") return open(toTarget(session));
-    if (await secretExists(session.id)) open(storedPasswordTarget(session));
-    else setModal({ kind: "password", session });
+    if (!isSshSession(session)) return open(toTarget(session));
+    const chain = resolveChain(sessions.library, session);
+    if (!chain.ok) return setNotice(chain.error);
+    const hops = [...chain.jumps, session];
+    const logins = await collectLogins(hops, {
+      secretExists,
+      askPassword: (index) =>
+        new Promise((resolve) => setModal({ kind: "password", label: hopLabel(hops, index), resolve })),
+    });
+    if (logins) open(chainTarget(hops, logins));
   };
 
   /** Deletes sessions and the passwords saved for them; a keyring failure only shows a notice. */
@@ -159,6 +167,16 @@ export default function App() {
     const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
     sessions.dispatch(action);
     void forgetSecrets(ids).then((error) => error && setNotice(error));
+  };
+
+  /** Asks before deleting, naming the sessions that use the deleted ones as jump hosts (S14.5). */
+  const confirmDelete = (question: string, action: LibraryAction) => {
+    const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
+    const users = jumpUsers(sessions.library, ids).map((s) => `"${s.name}"`);
+    const note = users.length
+      ? `\n\nUsed as a jump host by ${users.join(", ")}; it will be removed from their jump hosts.`
+      : "";
+    if (window.confirm(question + note)) deleteSessions(action);
   };
 
   const newFolder = (parent: string) => {
@@ -281,18 +299,14 @@ export default function App() {
               onOpen={(session) => void openSaved(session)}
               onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
               onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
-              onDelete={(session) => {
-                if (window.confirm(`Delete session "${session.name}"?`)) {
-                  deleteSessions({ type: "deleteSession", id: session.id });
-                }
-              }}
+              onDelete={(session) =>
+                confirmDelete(`Delete session "${session.name}"?`, { type: "deleteSession", id: session.id })
+              }
               onNewFolder={newFolder}
               onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
-              onDeleteFolder={(path) => {
-                if (window.confirm(`Delete folder "${path}" and every session inside it?`)) {
-                  deleteSessions({ type: "deleteFolder", path });
-                }
-              }}
+              onDeleteFolder={(path) =>
+                confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
+              }
             />
           }
         />
@@ -398,6 +412,7 @@ export default function App() {
           session={modal.session}
           isNew={modal.isNew}
           folders={sessions.library.folders}
+          jumpCandidates={sshSessions}
           onCancel={() => setModal(null)}
           onSave={(session) => {
             const before = modal.session;
@@ -426,13 +441,15 @@ export default function App() {
       {launcher.dialog}
       {modal?.kind === "password" && (
         <PasswordPrompt
-          label={`${modal.session.username}@${modal.session.host}`}
+          label={modal.label}
           remember={{ initial: false }}
-          onCancel={() => setModal(null)}
-          onSubmit={(password, remember) => {
-            const session = modal.session;
+          onCancel={() => {
             setModal(null);
-            open(typedPasswordTarget(session, password, storageFor(session, remember, false)));
+            modal.resolve(null);
+          }}
+          onSubmit={(password, remember) => {
+            setModal(null);
+            modal.resolve({ password, remember });
           }}
         />
       )}

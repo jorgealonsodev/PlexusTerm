@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { SerialFields } from "../serial/SerialFields";
 import { fieldSetter, SshFields } from "../ssh/SshFields";
-import type { LibrarySession } from "./library";
+import { JumpHostsField } from "./JumpHostsField";
+import type { LibrarySession, SavedSession } from "./library";
 import { secretDelete, secretExists } from "./secrets";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
@@ -10,11 +11,20 @@ interface SessionEditDialogProps {
   session: LibrarySession;
   isNew: boolean;
   folders: string[];
+  /** Saved SSH sessions that can be used as jump hosts. */
+  jumpCandidates?: SavedSession[];
   onSave: (session: LibrarySession) => void;
   onCancel: () => void;
 }
 
-export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }: SessionEditDialogProps) {
+export function SessionEditDialog({
+  session,
+  isNew,
+  folders,
+  jumpCandidates = [],
+  onSave,
+  onCancel,
+}: SessionEditDialogProps) {
   const [form, setForm] = useState<SessionForm>(() => formFromSession(session));
   const [error, setError] = useState<string | null>(null);
   const set = fieldSetter(setForm);
@@ -45,7 +55,7 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const result = parseSessionForm(form, session.id);
+    const result = parseSessionForm(form, session.id, { sessions: jumpCandidates ?? [] });
     if (result.ok) onSave(result.session);
     else setError(result.error);
   };
@@ -97,6 +107,11 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
               </button>
             )}
             {secretNote && <p className="muted" role="status">{secretNote}</p>}
+            <JumpHostsField
+              value={form.jumpIds ?? []}
+              onChange={(jumpIds) => setForm((f) => ({ ...f, jumpIds }))}
+              candidates={jumpCandidates.filter((c) => c.id !== session.id)}
+            />
           </>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}

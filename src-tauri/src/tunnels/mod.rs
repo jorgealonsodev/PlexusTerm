@@ -22,8 +22,8 @@ use crate::secrets::{NoStore, SharedSecrets};
 #[cfg(test)]
 use crate::ssh::SshAuth;
 use crate::ssh::{
-    ConnectContext, Connection, ForwardedChannel, PasswordStorage, STORAGE_TIMEOUT, SshError,
-    SshTarget, connect_authenticated,
+    Chain, ConnectContext, Connection, ForwardedChannel, PasswordStorage, STORAGE_TIMEOUT,
+    SshError, SshTarget, connect_authenticated, disconnect_jumps,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -96,6 +96,8 @@ const SOCKS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 struct Running {
     tasks: JoinSet<()>,
     connection: Arc<Connection>,
+    /// Jump host connections the tunnel goes through, outermost first.
+    jumps: Vec<Connection>,
     /// Address and port the server listens on for a remote forward.
     remote_forward: Option<(String, u32)>,
     /// Keyring problem after the login, reported in the running status.
@@ -114,6 +116,7 @@ impl Running {
             let _ = connection
                 .disconnect(russh::Disconnect::ByApplication, "", "en")
                 .await;
+            disconnect_jumps(&self.jumps).await;
         };
         let _ = tokio::time::timeout(STOP_TIMEOUT, polite).await;
     }
@@ -341,7 +344,11 @@ impl TunnelManager {
             }
             _ => (None, None),
         };
-        let (connection, warning) = connect_authenticated(
+        let Chain {
+            connection,
+            jumps,
+            warnings,
+        } = connect_authenticated(
             target,
             trusted_fingerprint,
             storage,
@@ -355,6 +362,7 @@ impl TunnelManager {
         )
         .await?;
         let connection = Arc::new(connection);
+        let warning = (!warnings.is_empty()).then(|| warnings.join("; "));
 
         let mut tasks = JoinSet::new();
         let mut remote_forward = None;
@@ -397,6 +405,7 @@ impl TunnelManager {
         Ok(Running {
             tasks,
             connection,
+            jumps,
             remote_forward,
             warning,
         })

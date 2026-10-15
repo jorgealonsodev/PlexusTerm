@@ -114,4 +114,58 @@ describe("TerminalView", () => {
       expect(screen.queryByLabelText("Password")).toBeNull();
     });
   });
+
+  describe("through a jump host", () => {
+    const fingerprint = "SHA256:jump";
+    const target = (auth: { method: "agent" } | { method: "storedPassword"; sessionId: string }) => ({
+      type: "ssh" as const,
+      host: "10.0.0.1",
+      port: 22,
+      username: "u",
+      auth: { method: "agent" as const },
+      jumps: [{ name: "bastion", host: "10.0.0.9", port: 22, username: "j", auth }],
+    });
+
+    it("asks to trust an unknown jump host, naming it, and retries with that hop's fingerprint", async () => {
+      backend.start.mockImplementationOnce(() =>
+        Promise.reject({
+          kind: "hop",
+          hop: 1,
+          name: "bastion",
+          error: { kind: "unknownHost", host: "10.0.0.9", fingerprint, otherKnownKeys: [] },
+        }),
+      );
+      render(<TerminalView target={target({ method: "agent" })} active onTitle={() => {}} onExit={() => {}} />);
+      await screen.findByText("Unknown jump host");
+      expect(screen.getByText(/bastion — jump host 1 of 1/)).toBeTruthy();
+      fireEvent.click(screen.getByText("Trust and connect"));
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
+      const options = backend.start.mock.calls[1][0] as { trustedFingerprint?: string; jumps: unknown[] };
+      expect(options.trustedFingerprint).toBeUndefined();
+      expect(options.jumps).toEqual([{ ...target({ method: "agent" }).jumps[0], trustedFingerprint: fingerprint }]);
+    });
+
+    it("asks for a jump host password its saved one failed, and retries with it for that hop only", async () => {
+      backend.start.mockImplementationOnce(() =>
+        Promise.reject({ kind: "hop", hop: 1, name: "bastion", error: { kind: "authFailed" } }),
+      );
+      const t = target({ method: "storedPassword", sessionId: "j1" });
+      render(<TerminalView target={t} active onTitle={() => {}} onExit={() => {}} />);
+      await screen.findByText("Password for bastion — jump host 1 of 1");
+      const box = screen.getByLabelText<HTMLInputElement>("Save password in the system keyring");
+      await vi.waitFor(() => expect(box.disabled).toBe(false));
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "jpw" } });
+      fireEvent.click(screen.getByText("Connect"));
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
+      const options = backend.start.mock.calls[1][0] as { auth?: unknown; jumps: unknown[] };
+      expect(options.auth).toBeUndefined();
+      expect(options.jumps).toEqual([
+        {
+          ...t.jumps[0],
+          auth: { method: "password", password: "jpw" },
+          storage: { action: "remember", sessionId: "j1", label: "NexusTerm: j@10.0.0.9:22" },
+        },
+      ]);
+    });
+  });
 });

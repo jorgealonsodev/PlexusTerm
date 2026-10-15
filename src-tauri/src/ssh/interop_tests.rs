@@ -1,6 +1,6 @@
 //! Interoperability tests against a real OpenSSH server.
 //!
-//! Ignored by default (shell, SFTP and local tunnels); `scripts/openssh-interop.sh` starts a disposable
+//! Ignored by default (shell, SFTP, local tunnels and a jump host); `scripts/openssh-interop.sh` starts a disposable
 //! OpenSSH container and runs them with:
 //! - `NEXUSTERM_INTEROP_PORT`: sshd port on 127.0.0.1
 //! - `NEXUSTERM_INTEROP_USER`: login user
@@ -49,6 +49,7 @@ fn request(t: &Target, trusted_fingerprint: Option<String>) -> ConnectRequest {
         cols: 80,
         rows: 24,
         trusted_fingerprint,
+        jumps: vec![],
     }
 }
 
@@ -188,6 +189,7 @@ async fn openssh_local_tunnel_reaches_a_service_behind_the_server() {
             path: t.key.clone(),
             passphrase: None,
         },
+        jumps: vec![],
     };
     tunnels
         .start(tunnel, session, None)
@@ -211,4 +213,66 @@ async fn openssh_local_tunnel_reaches_a_service_behind_the_server() {
             .await
             .is_err()
     );
+}
+
+// Multi-threaded: `wait_for` blocks while the session tasks keep running.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs scripts/openssh-interop.sh"]
+async fn openssh_through_a_jump_host() {
+    // The container is its own jump host: from inside it, `localhost:22` is the same sshd,
+    // reached through a real OpenSSH `direct-tcpip` channel.
+    let t = target();
+    let dir = tempfile::tempdir().unwrap();
+    let mgr = SshManager::new(dir.path().join("known_hosts"));
+    let auth = SshAuth::Key {
+        path: t.key.clone(),
+        passphrase: None,
+    };
+    let mut req = request(&t, None);
+    req.host = "localhost".into();
+    req.port = 22;
+    req.jumps = vec![super::JumpHost {
+        name: "bastion".into(),
+        host: "127.0.0.1".into(),
+        port: t.port,
+        username: t.user.clone(),
+        auth,
+        trusted_fingerprint: None,
+        storage: None,
+    }];
+
+    // First the jump host, then the target behind it, are unknown.
+    let (tx, _rx) = channel();
+    let jump_fingerprint = match mgr.connect(req.clone(), TestSink(tx)).await {
+        Err(SshError::Hop { hop: 1, error, .. }) => match *error {
+            SshError::UnknownHost { fingerprint, .. } => fingerprint,
+            other => panic!("expected UnknownHost on the jump host, got {other:?}"),
+        },
+        other => panic!("expected a jump host error, got {:?}", other.map(|_| ())),
+    };
+    req.jumps[0].trusted_fingerprint = Some(jump_fingerprint);
+    let (tx, _rx) = channel();
+    let target_fingerprint = match mgr.connect(req.clone(), TestSink(tx)).await {
+        Err(SshError::UnknownHost {
+            host, fingerprint, ..
+        }) => {
+            assert_eq!(host, "localhost");
+            fingerprint
+        }
+        other => panic!(
+            "expected UnknownHost on the target, got {:?}",
+            other.map(|_| ())
+        ),
+    };
+    req.trusted_fingerprint = Some(target_fingerprint);
+    let (tx, rx) = channel();
+    let id = mgr
+        .connect(req, TestSink(tx))
+        .await
+        .expect("connect through the jump host");
+
+    mgr.write(id, b"echo jump-$((40+2))\n").unwrap();
+    let out = wait_for(&rx, "jump-42");
+    assert!(out.contains("jump-42"), "shell output: {out:?}");
+    mgr.close(id).unwrap();
 }
