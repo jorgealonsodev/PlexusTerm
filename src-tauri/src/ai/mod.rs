@@ -6,15 +6,17 @@
 //! only shows or types it, and every command text is reduced to one line without control
 //! characters first.
 
+mod opencode;
 mod providers;
 #[cfg(test)]
 mod tests;
 mod text;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::secrets::{self, SecretError, SharedSecrets};
 
@@ -30,6 +32,9 @@ pub enum Provider {
     /// Any server implementing OpenAI Chat Completions (Ollama, LM Studio, OpenRouter...).
     #[serde(rename = "openai-compatible")]
     OpenAiCompatible,
+    /// OpenCode Go: one key, models served over several API formats (see `opencode`).
+    #[serde(rename = "opencode-go")]
+    OpenCodeGo,
 }
 
 impl Provider {
@@ -39,6 +44,7 @@ impl Provider {
             "gemini" => Ok(Self::Gemini),
             "openai" => Ok(Self::OpenAi),
             "openai-compatible" => Ok(Self::OpenAiCompatible),
+            "opencode-go" => Ok(Self::OpenCodeGo),
             other => Err(AiError::config(format!("Unknown AI provider \"{other}\"."))),
         }
     }
@@ -49,6 +55,7 @@ impl Provider {
             Self::Gemini => "gemini",
             Self::OpenAi => "openai",
             Self::OpenAiCompatible => "openai-compatible",
+            Self::OpenCodeGo => "opencode-go",
         }
     }
 
@@ -59,6 +66,7 @@ impl Provider {
             Self::Gemini => "Gemini",
             Self::OpenAi => "OpenAI",
             Self::OpenAiCompatible => "The OpenAI-compatible server",
+            Self::OpenCodeGo => "OpenCode Go",
         }
     }
 
@@ -82,6 +90,10 @@ pub struct AiConfig {
     #[serde(default)]
     pub base_url: Option<String>,
     pub model: String,
+    /// One stable ID per conversation (terminal pane or assistant opening), sent to OpenCode
+    /// as `x-opencode-session`: 1-128 characters of `A-Z a-z 0-9 . _ -`.
+    #[serde(default)]
+    pub session_id: Option<String>,
 }
 
 /// Context for completing the line being typed. Terminal output is never sent.
@@ -224,6 +236,10 @@ pub struct Endpoints {
     pub gemini: String,
     /// Full Chat Completions URL.
     pub openai: String,
+    /// OpenCode Go API root; `/chat/completions`, `/messages`, `/responses` and `/models` hang off it.
+    pub opencode_go: String,
+    /// models.dev catalogue, which says which API format each OpenCode Go model uses.
+    pub models_dev: String,
 }
 
 impl Default for Endpoints {
@@ -232,6 +248,8 @@ impl Default for Endpoints {
             anthropic: "https://api.anthropic.com/v1/messages".into(),
             gemini: "https://generativelanguage.googleapis.com/v1beta".into(),
             openai: "https://api.openai.com/v1/chat/completions".into(),
+            opencode_go: "https://opencode.ai/inference/go/v1".into(),
+            models_dev: "https://models.dev/api.json".into(),
         }
     }
 }
@@ -242,6 +260,8 @@ pub struct AiClient {
     endpoints: Endpoints,
     complete_timeout: Duration,
     assist_timeout: Duration,
+    /// OpenCode Go model list (memory copy of the cache file).
+    go_models: opencode::Catalog,
 }
 
 impl Default for AiClient {
@@ -251,11 +271,23 @@ impl Default for AiClient {
     }
 }
 
+/// How PlexusTerm identifies itself to every provider (OpenCode asks clients to).
+pub(crate) const USER_AGENT: &str = concat!("PlexusTerm/", env!("CARGO_PKG_VERSION"));
+
+/// Redirects are never followed, so key headers are never re-sent to another host.
 fn build_http() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
-        .user_agent(concat!("PlexusTerm/", env!("CARGO_PKG_VERSION")))
+        .user_agent(USER_AGENT)
+        .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(5))
         .build()
+}
+
+/// The app config file that caches the OpenCode Go model list.
+const GO_MODELS_FILE: &str = "opencode-go-models.json";
+
+fn go_cache_path(app: &AppHandle) -> Option<PathBuf> {
+    crate::config_path(app, GO_MODELS_FILE).ok()
 }
 
 /// Which of the two features a request serves; it picks budgets and timeouts.
@@ -272,7 +304,21 @@ impl AiClient {
             endpoints,
             complete_timeout: Duration::from_secs(8),
             assist_timeout: Duration::from_secs(60),
+            go_models: opencode::Catalog::default(),
         }
+    }
+
+    /// Where the OpenCode Go model list is cached (set once the app paths are known).
+    pub fn set_go_cache(&self, path: Option<PathBuf>) {
+        self.go_models.set_path(path);
+    }
+
+    /// OpenCode Go models with their names and API formats, from the 24 h cache unless
+    /// `refresh` (or the cache is missing or old).
+    pub async fn opencode_models(&self, refresh: bool) -> Result<opencode::GoModels, AiError> {
+        self.go_models
+            .list(&self.http, &self.endpoints, refresh)
+            .await
     }
 
     #[cfg(test)]
@@ -361,12 +407,36 @@ impl AiClient {
                 ),
             ));
         }
-        let call = providers::build(&self.endpoints, config, key.as_ref(), task, system, user)?;
+        let format = match provider {
+            Provider::OpenCodeGo => {
+                let format = self.go_models.format_of(config.model.trim()).await;
+                if !format.supported() {
+                    return Err(AiError::config(format!(
+                        "PlexusTerm does not support the API of the OpenCode Go model \"{}\" yet; choose another model in Settings > AI.",
+                        config.model.trim()
+                    )));
+                }
+                format
+            }
+            _ => opencode::GoFormat::Chat,
+        };
+        let call = providers::build(
+            &self.endpoints,
+            config,
+            key.as_ref(),
+            providers::Prompt { task, system, user },
+            format,
+        )?;
         let timeout = match task {
             Task::Complete => self.complete_timeout,
             Task::Assist => self.assist_timeout,
         };
-        let mut builder = self.http.post(&call.url).timeout(timeout).json(&call.body);
+        let mut builder = self
+            .http
+            .post(&call.url)
+            .timeout(timeout)
+            .header(reqwest::header::USER_AGENT, USER_AGENT)
+            .json(&call.body);
         for (name, value) in &call.headers {
             builder = builder.header(*name, value);
         }
@@ -384,7 +454,7 @@ impl AiClient {
         }
         let value: serde_json::Value =
             serde_json::from_str(&body).map_err(|_| AiError::bad_response(provider))?;
-        providers::parse(provider, &value)
+        providers::parse(call.shape, provider, &value)
     }
 }
 
@@ -432,6 +502,9 @@ fn status_error(provider: Provider, status: u16, body: &str, key: Option<&ApiKey
         && (body.contains("API_KEY_INVALID") || body.contains("API key not valid"));
     match status {
         401 | 403 => auth_error(name),
+        300..=399 => AiError::config(format!(
+            "{name} redirected the request (HTTP {status}); PlexusTerm does not follow redirects. Check the base URL."
+        )),
         _ if gemini_bad_key => auth_error(name),
         429 => AiError::new(
             AiErrorKind::RateLimit,
@@ -519,9 +592,11 @@ pub async fn ai_key_delete(
 pub async fn ai_complete(
     config: AiConfig,
     request: CompleteRequest,
+    app: AppHandle,
     ai: State<'_, AiClient>,
     secrets: State<'_, SharedSecrets>,
 ) -> Result<CompleteResponse, AiError> {
+    ai.set_go_cache(go_cache_path(&app));
     ai.complete(secrets.inner(), &config, &request).await
 }
 
@@ -530,8 +605,21 @@ pub async fn ai_complete(
 pub async fn ai_assist(
     config: AiConfig,
     request: AssistRequest,
+    app: AppHandle,
     ai: State<'_, AiClient>,
     secrets: State<'_, SharedSecrets>,
 ) -> Result<AssistResponse, AiError> {
+    ai.set_go_cache(go_cache_path(&app));
     ai.assist(secrets.inner(), &config, &request).await
+}
+
+/// The OpenCode Go models (public list + per-model API format from models.dev), cached 24 h.
+#[tauri::command]
+pub async fn ai_opencode_models(
+    refresh: Option<bool>,
+    app: AppHandle,
+    ai: State<'_, AiClient>,
+) -> Result<opencode::GoModels, AiError> {
+    ai.set_go_cache(go_cache_path(&app));
+    ai.opencode_models(refresh.unwrap_or(false)).await
 }

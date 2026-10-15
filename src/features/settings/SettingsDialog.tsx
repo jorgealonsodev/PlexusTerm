@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -6,6 +6,7 @@ import { FileText, Info, KeyRound, Palette, Sparkles, SquareTerminal, type Lucid
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
+import { aiOpenCodeModels, describeAiError, type GoModels } from "../ai/aiClient";
 import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
@@ -88,7 +89,79 @@ const PROVIDER_LABELS: Record<AiProvider, string> = {
   gemini: "Gemini",
   openai: "OpenAI",
   "openai-compatible": "OpenAI-compatible",
+  "opencode-go": "OpenCode Go",
 };
+
+/** Where OpenCode publishes its Go model list (public, no key). */
+const OPENCODE_MODELS_URL = "https://opencode.ai/inference/go/v1/models";
+
+/**
+ * The OpenCode Go model picker (S7): the backend's list (24 h cache, Refresh asks again);
+ * models PlexusTerm cannot talk to yet are shown disabled. Without a list the model is typed.
+ */
+function OpenCodeModelField({ value, onChange }: { value: string; onChange: (model: string) => void }) {
+  const [list, setList] = useState<GoModels | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const live = useRef(true);
+
+  const load = (refresh: boolean) => {
+    setBusy(true);
+    setError(null);
+    aiOpenCodeModels(refresh)
+      .then((models) => live.current && setList(models))
+      .catch((err) => live.current && setError(describeAiError(err)))
+      .finally(() => live.current && setBusy(false));
+  };
+
+  useEffect(() => {
+    live.current = true;
+    load(false);
+    return () => {
+      live.current = false;
+    };
+  }, []);
+
+  const models = list?.models ?? [];
+  return (
+    <div className="field">
+      <label htmlFor="settings-ai-model">Model</label>
+      <div className="form-row field__picker">
+        {models.length > 0 ? (
+          <select id="settings-ai-model" value={value} onChange={(e) => onChange(e.target.value)}>
+            <option value="" disabled>
+              Choose a model
+            </option>
+            {value && !models.some((m) => m.id === value) && <option value={value}>{value}</option>}
+            {models.map((m) => (
+              <option key={m.id} value={m.id} disabled={!m.supported}>
+                {`${m.name} (${m.id})${m.supported ? "" : " — not supported yet"}`}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id="settings-ai-model"
+            value={value}
+            maxLength={MAX_AI_MODEL_LENGTH}
+            spellCheck={false}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+        <button type="button" className="btn" disabled={busy} onClick={() => load(true)}>
+          Refresh models
+        </button>
+      </div>
+      {busy && <span className="muted">Loading the models…</span>}
+      {list?.note && <span className="muted">{list.note}</span>}
+      {error && (
+        <span className="form-error">
+          {error} Type a model id from {OPENCODE_MODELS_URL}.
+        </span>
+      )}
+    </div>
+  );
+}
 
 type KeyStatus = "checking" | "saved" | "none" | "unavailable";
 
@@ -481,6 +554,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
                 ))}
               </select>
             </label>
+            {aiProvider === "opencode-go" && (
+              <p className="muted">
+                OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short
+                requests.
+              </p>
+            )}
             {aiProvider === "openai-compatible" && (
               <label className="field">
                 Base URL
@@ -493,15 +572,19 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection }: S
                 />
               </label>
             )}
-            <label className="field">
-              Model
-              <input
-                value={aiModel}
-                maxLength={MAX_AI_MODEL_LENGTH}
-                spellCheck={false}
-                onChange={(e) => setAiModel(e.target.value)}
-              />
-            </label>
+            {aiProvider === "opencode-go" ? (
+              <OpenCodeModelField value={aiModel} onChange={setAiModel} />
+            ) : (
+              <label className="field">
+                Model
+                <input
+                  value={aiModel}
+                  maxLength={MAX_AI_MODEL_LENGTH}
+                  spellCheck={false}
+                  onChange={(e) => setAiModel(e.target.value)}
+                />
+              </label>
+            )}
             <ApiKeyField provider={aiProvider} />
             <label className="field field--port">
               History commands sent as context

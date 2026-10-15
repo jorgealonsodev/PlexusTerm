@@ -2,13 +2,61 @@
 
 use serde_json::{Value, json};
 
+use super::opencode::GoFormat;
 use super::{AiConfig, AiError, ApiKey, Endpoints, Provider, Task};
+
+/// The answer format of a request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shape {
+    Anthropic,
+    Gemini,
+    OpenAiChat,
+    OpenAiResponses,
+}
 
 /// One HTTP request ready to send.
 pub struct Call {
     pub url: String,
     pub headers: Vec<(&'static str, String)>,
     pub body: Value,
+    pub shape: Shape,
+}
+
+/// What to ask: the feature, its system prompt and the user's part.
+#[derive(Clone, Copy)]
+pub struct Prompt<'a> {
+    pub task: Task,
+    pub system: &'a str,
+    pub user: &'a str,
+}
+
+/// OpenCode's session header (one stable ID per conversation).
+pub const SESSION_HEADER: &str = "x-opencode-session";
+const MAX_SESSION_ID: usize = 128;
+
+/// A session ID of 1-128 characters of `A-Z a-z 0-9 . _ -`, or a config error.
+fn session_id(config: &AiConfig) -> Result<&str, AiError> {
+    let id = config.session_id.as_deref().unwrap_or_default();
+    let valid = !id.is_empty()
+        && id.len() <= MAX_SESSION_ID
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if valid {
+        Ok(id)
+    } else {
+        Err(AiError::config(
+            "OpenCode needs a session ID of 1-128 letters, digits, '.', '_' or '-'.",
+        ))
+    }
+}
+
+/// Whether an OpenAI-compatible base URL points at OpenCode (`opencode.ai` or a subdomain).
+fn is_opencode_host(base_url: &str) -> bool {
+    reqwest::Url::parse(base_url.trim())
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
+        .is_some_and(|host| host == "opencode.ai" || host.ends_with(".opencode.ai"))
 }
 
 /// What a successful (2xx) answer contained.
@@ -97,22 +145,27 @@ fn gemini_model(model: &str) -> Result<&str, AiError> {
     }
 }
 
+/// Builds the request; `go_format` only matters to OpenCode Go.
 pub fn build(
     endpoints: &Endpoints,
     config: &AiConfig,
     key: Option<&ApiKey>,
-    task: Task,
-    system: &str,
-    user: &str,
+    prompt: Prompt<'_>,
+    go_format: GoFormat,
 ) -> Result<Call, AiError> {
+    let Prompt { task, system, user } = prompt;
     let model = config.model.trim();
     if model.is_empty() {
         return Err(AiError::config("Choose a model in Settings > AI."));
     }
     let provider = config.provider;
+    if provider == Provider::OpenCodeGo {
+        return opencode_go(endpoints, config, key, prompt, go_format);
+    }
     let limit = max_tokens(provider, task);
     let mut headers: Vec<(&'static str, String)> = Vec::new();
     let call = match provider {
+        Provider::OpenCodeGo => unreachable!("handled above"),
         Provider::Anthropic => {
             if let Some(key) = key {
                 headers.push(("x-api-key", key.expose().to_string()));
@@ -141,6 +194,7 @@ pub fn build(
                 url: endpoints.anthropic.clone(),
                 headers,
                 body,
+                shape: Shape::Anthropic,
             }
         }
         Provider::Gemini => {
@@ -168,6 +222,7 @@ pub fn build(
                     "contents": [{"role": "user", "parts": [{"text": user}]}],
                     "generationConfig": generation,
                 }),
+                shape: Shape::Gemini,
             }
         }
         Provider::OpenAi | Provider::OpenAiCompatible => {
@@ -178,6 +233,10 @@ pub fn build(
             };
             if let Some(key) = key {
                 headers.push(("authorization", format!("Bearer {}", key.expose())));
+            }
+            let base = config.base_url.as_deref().unwrap_or_default();
+            if provider == Provider::OpenAiCompatible && is_opencode_host(base) {
+                headers.push((SESSION_HEADER, session_id(config)?.to_string()));
             }
             let mut body = json!({
                 "model": model,
@@ -199,7 +258,83 @@ pub fn build(
                 // Ollama and LM Studio implement `max_tokens`; JSON is asked for in the prompt.
                 body["max_tokens"] = json!(limit);
             }
-            Call { url, headers, body }
+            Call {
+                url,
+                headers,
+                body,
+                shape: Shape::OpenAiChat,
+            }
+        }
+    };
+    Ok(call)
+}
+
+/// OpenCode Go: one Bearer key and a session header, the body in the model's own API format.
+/// Only portable fields are sent (no Claude-only `output_config`/`fallbacks`, no JSON schema).
+fn opencode_go(
+    endpoints: &Endpoints,
+    config: &AiConfig,
+    key: Option<&ApiKey>,
+    prompt: Prompt<'_>,
+    format: GoFormat,
+) -> Result<Call, AiError> {
+    let Prompt { task, system, user } = prompt;
+    let model = config.model.trim();
+    let limit = max_tokens(Provider::OpenCodeGo, task);
+    let base = endpoints.opencode_go.trim_end_matches('/');
+    let mut headers: Vec<(&'static str, String)> =
+        vec![(SESSION_HEADER, session_id(config)?.to_string())];
+    if let Some(key) = key {
+        headers.push(("authorization", format!("Bearer {}", key.expose())));
+    }
+    let call = match format {
+        GoFormat::Chat => Call {
+            url: format!("{base}/chat/completions"),
+            headers,
+            body: json!({
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "max_tokens": limit,
+            }),
+            shape: Shape::OpenAiChat,
+        },
+        GoFormat::Messages => {
+            // OpenCode's own Anthropic client sends the key as `x-api-key` on `/messages`.
+            if let Some(key) = key {
+                headers.push(("x-api-key", key.expose().to_string()));
+            }
+            headers.push(("anthropic-version", ANTHROPIC_VERSION.to_string()));
+            Call {
+                url: format!("{base}/messages"),
+                headers,
+                body: json!({
+                    "model": model,
+                    "max_tokens": limit,
+                    "system": system,
+                    "messages": [{"role": "user", "content": user}],
+                }),
+                shape: Shape::Anthropic,
+            }
+        }
+        GoFormat::Responses => Call {
+            url: format!("{base}/responses"),
+            headers,
+            body: json!({
+                "model": model,
+                "instructions": system,
+                "input": user,
+                "max_output_tokens": limit,
+                "store": false,
+            }),
+            shape: Shape::OpenAiResponses,
+        },
+        GoFormat::Google | GoFormat::Unknown => {
+            return Err(AiError::config(format!(
+                "PlexusTerm does not support the API of the OpenCode Go model \"{model}\" yet."
+            )));
         }
     };
     Ok(call)
@@ -270,11 +405,38 @@ fn openai_reply(body: &Value) -> Option<Reply> {
     Some(Reply::Text(text))
 }
 
-pub fn parse(provider: Provider, body: &Value) -> Result<Reply, AiError> {
-    let reply = match provider {
-        Provider::Anthropic => anthropic_reply(body),
-        Provider::Gemini => gemini_reply(body),
-        Provider::OpenAi | Provider::OpenAiCompatible => openai_reply(body),
+/// OpenAI Responses: `output[]` message items with `output_text` / `refusal` parts.
+fn responses_reply(body: &Value) -> Option<Reply> {
+    if body["status"] == "incomplete" {
+        return Some(match body["incomplete_details"]["reason"].as_str() {
+            Some("content_filter") => Reply::Refused,
+            _ => Reply::Truncated,
+        });
+    }
+    let Some(items) = body["output"].as_array() else {
+        return body["output_text"]
+            .as_str()
+            .map(|t| Reply::Text(t.to_string()));
+    };
+    let mut text = String::new();
+    for item in items.iter().filter(|item| item["type"] == "message") {
+        for part in item["content"].as_array()? {
+            match part["type"].as_str() {
+                Some("refusal") => return Some(Reply::Refused),
+                Some("output_text") => text.push_str(part["text"].as_str().unwrap_or_default()),
+                _ => {}
+            }
+        }
+    }
+    Some(Reply::Text(text))
+}
+
+pub fn parse(shape: Shape, provider: Provider, body: &Value) -> Result<Reply, AiError> {
+    let reply = match shape {
+        Shape::Anthropic => anthropic_reply(body),
+        Shape::Gemini => gemini_reply(body),
+        Shape::OpenAiChat => openai_reply(body),
+        Shape::OpenAiResponses => responses_reply(body),
     };
     reply.ok_or_else(|| AiError::bad_response(provider))
 }

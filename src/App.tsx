@@ -46,7 +46,7 @@ import { initialTabs, tabsReducer } from "./features/tabs/tabs";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { AssistantPanel, type AssistContext } from "./features/ai/AssistantPanel";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
-import { aiConfigOf, aiHint } from "./features/ai/aiContext";
+import { aiConfigOf, aiHint, newAiSessionId } from "./features/ai/aiContext";
 import { createAiLimiter } from "./features/ai/aiLimiter";
 import { matchesShortcut } from "./features/settings/shortcutCapture";
 import { hostKeyOf } from "./features/history/history";
@@ -444,9 +444,20 @@ function AppContent() {
   const { updateWith: updateSettingsWith } = terminalSettings;
   const settings = terminalSettings.settings;
 
+  /** One AI conversation ID per pane for its inline suggestions, kept while the app runs (S6). */
+  const aiSessions = useRef(new Map<string, string>());
+  const aiSessionOf = (paneId: string) => {
+    let id = aiSessions.current.get(paneId);
+    if (!id) {
+      id = newAiSessionId();
+      aiSessions.current.set(paneId, id);
+    }
+    return id;
+  };
+
   /** Completes the typed line of `paneId` with the AI provider (S2); errors only leave a hint. */
   const aiSuggestFor = (paneId: string) => async (context: AiSuggestContext) => {
-    const config = aiConfigOf(settings);
+    const config = aiConfigOf(settings, aiSessionOf(paneId));
     const request = { line: context.line, os: platform, cwd: context.cwd, history: context.history };
     try {
       const completion = await aiLimit(paneId, () => aiComplete(config, request));
@@ -476,6 +487,7 @@ function AppContent() {
         cwd: (paneId && paneMeta[paneId]?.cwd) || null,
         history: () => (historyOn && hostKey ? commandHistory.recent(hostKey, aiHistoryContext) : []),
         selection: (paneId && assistTargets.get(paneId)?.selection()) || "",
+        sessionId: newAiSessionId(),
       },
     });
     if (!prefersReducedMotion()) setSpin((n) => n + 1);

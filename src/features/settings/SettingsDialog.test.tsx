@@ -9,8 +9,22 @@ import { DEFAULT_SETTINGS } from "./settings";
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 /** The keyring of the AI key commands, by provider. */
 const keys = vi.hoisted(() => new Map<string, string>());
+/** What `ai_opencode_models` answers (a function so a test can make it fail). */
+const go = vi.hoisted(() => {
+  const models = async (_refresh: boolean): Promise<unknown> => ({
+    models: [
+      { id: "gemini-4-argon-contributor", name: "Gemini 4 Argon Contributor", format: "google", supported: false },
+      { id: "kimi-k3", name: "Kimi K3", format: "chat", supported: true },
+      { id: "minimax-m3", name: "MiniMax-M3", format: "messages", supported: true },
+    ],
+    note: null,
+    fetchedAt: 1,
+  });
+  return { models, initial: models };
+});
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string }) => {
+  invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string; refresh?: boolean }) => {
+    if (cmd === "ai_opencode_models") return go.models(args!.refresh!);
     if (cmd === "ai_key_status") return keys.has(args!.provider!);
     if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
     if (cmd === "ai_key_delete") keys.delete(args!.provider!);
@@ -22,6 +36,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 afterEach(() => {
   cleanup();
   keys.clear();
+  go.models = go.initial;
   vi.mocked(invoke).mockClear();
 });
 
@@ -177,6 +192,7 @@ describe("SettingsDialog", () => {
         "Gemini",
         "OpenAI",
         "OpenAI-compatible",
+        "OpenCode Go",
       ]);
       expect(field("Model").value).toBe("claude-opus-5-5");
       expect(field("History commands sent as context").value).toBe("5");
@@ -238,6 +254,76 @@ describe("SettingsDialog", () => {
       fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
       expect(await screen.findByText("A key is saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "anthropic" });
+    });
+
+    it("offers OpenCode Go models in a list fetched by the backend, with a refresh and a usage note", async () => {
+      const { onSave } = openAi();
+      expect(screen.queryByText(/OpenCode Go is meant for coding agents/)).toBeNull();
+      fireEvent.change(field("Provider"), { target: { value: "opencode-go" } });
+      expect(
+        screen.getByText(
+          "OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short requests.",
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByLabelText("Base URL")).toBeNull();
+      await screen.findByRole("option", { name: "Kimi K3 (kimi-k3)" });
+      expect(invoke).toHaveBeenCalledWith("ai_opencode_models", { refresh: false });
+      const model = field<HTMLSelectElement>("Model");
+      expect(model.tagName).toBe("SELECT");
+      expect(model.value).toBe("");
+      const options = [...model.options].map((o) => [o.text, o.value, o.disabled]);
+      expect(options).toEqual([
+        ["Choose a model", "", true],
+        ["Gemini 4 Argon Contributor (gemini-4-argon-contributor) — not supported yet", "gemini-4-argon-contributor", true],
+        ["Kimi K3 (kimi-k3)", "kimi-k3", false],
+        ["MiniMax-M3 (minimax-m3)", "minimax-m3", false],
+      ]);
+      fireEvent.change(model, { target: { value: "minimax-m3" } });
+      fireEvent.click(screen.getByRole("button", { name: "Refresh models" }));
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("ai_opencode_models", { refresh: true }));
+      expect(field<HTMLSelectElement>("Model").value).toBe("minimax-m3");
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiProvider: "opencode-go", aiModel: "minimax-m3", aiBaseUrl: "" }));
+    });
+
+    it("keeps a saved OpenCode Go model that is not in the list, and shows the list's note", async () => {
+      go.models = async () => ({ models: [{ id: "kimi-k3", name: "Kimi K3", format: "chat", supported: true }], note: "Saved list.", fetchedAt: 1 });
+      render(
+        <SettingsDialog
+          settings={{ ...DEFAULT_SETTINGS, aiProvider: "opencode-go", aiModel: "retired-model" }}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+          initialSection="ai"
+        />,
+      );
+      await screen.findByRole("option", { name: "Kimi K3 (kimi-k3)" });
+      const model = field<HTMLSelectElement>("Model");
+      expect(model.value).toBe("retired-model");
+      expect([...model.options].map((o) => o.value)).toContain("retired-model");
+      expect(screen.getByText("Saved list.")).toBeTruthy();
+    });
+
+    it("falls back to typing the OpenCode Go model when the list cannot be fetched", async () => {
+      go.models = async () => Promise.reject({ kind: "network", message: "Could not fetch the OpenCode Go model list." });
+      openAi();
+      fireEvent.change(field("Provider"), { target: { value: "opencode-go" } });
+      expect(await screen.findByText(/Could not fetch the OpenCode Go model list\./)).toBeTruthy();
+      expect(screen.getByText(/https:\/\/opencode\.ai\/inference\/go\/v1\/models/)).toBeTruthy();
+      const model = field("Model");
+      expect(model.tagName).toBe("INPUT");
+      fireEvent.change(model, { target: { value: "kimi-k3" } });
+      expect(field("Model").value).toBe("kimi-k3");
+    });
+
+    it("saves the OpenCode Go key under its own provider", async () => {
+      openAi();
+      fireEvent.change(field("Provider"), { target: { value: "opencode-go" } });
+      expect(await screen.findByText("No key saved")).toBeTruthy();
+      fireEvent.change(field("API key"), { target: { value: "oc-secret" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
+      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      expect(invoke).toHaveBeenCalledWith("ai_key_save", { provider: "opencode-go", key: "oc-secret" });
+      expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "opencode-go" });
     });
 
     it("clears the command history at once", async () => {

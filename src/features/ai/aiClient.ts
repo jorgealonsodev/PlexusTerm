@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 /** Provider ids (Rust `ai::Provider`). */
-export type AiProvider = "anthropic" | "gemini" | "openai" | "openai-compatible";
+export type AiProvider = "anthropic" | "gemini" | "openai" | "openai-compatible" | "opencode-go";
 
 /** Provider settings sent with every request; API keys stay in the backend keyring. */
 export interface AiConfig {
@@ -9,6 +9,28 @@ export interface AiConfig {
   /** Only used (and required) by `openai-compatible`, e.g. `http://localhost:11434/v1`. */
   baseUrl?: string | null;
   model: string;
+  /** One stable ID per conversation (pane or assistant opening), sent to OpenCode as `x-opencode-session`. */
+  sessionId?: string;
+}
+
+/** The API an OpenCode Go model is served with (Rust `ai::opencode::GoFormat`). */
+export type GoFormat = "chat" | "messages" | "responses" | "google" | "unknown";
+
+export interface GoModel {
+  id: string;
+  name: string;
+  format: GoFormat;
+  /** False for APIs PlexusTerm cannot talk to yet. */
+  supported: boolean;
+}
+
+/** The OpenCode Go model list, cached 24 h by the backend. */
+export interface GoModels {
+  models: GoModel[];
+  /** Shown under the list, e.g. when the formats or a fresh list could not be fetched. */
+  note: string | null;
+  /** Unix seconds. */
+  fetchedAt: number;
 }
 
 /** Context for completing the typed line. Terminal output is never sent. */
@@ -85,6 +107,9 @@ export const aiKeyStatus = (provider: AiProvider) => invoke<boolean>("ai_key_sta
 export const aiKeySave = (provider: AiProvider, key: string) => invoke<void>("ai_key_save", { provider, key });
 
 export const aiKeyDelete = (provider: AiProvider) => invoke<void>("ai_key_delete", { provider });
+
+/** OpenCode Go models with names and API formats; `refresh` skips the 24 h cache. */
+export const aiOpenCodeModels = (refresh: boolean) => invoke<GoModels>("ai_opencode_models", { refresh });
 
 /** Text to append after `request.line` ("" when there is no useful completion). */
 export const aiComplete = async (config: AiConfig, request: AiCompleteRequest) =>

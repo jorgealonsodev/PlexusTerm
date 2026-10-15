@@ -108,6 +108,11 @@ describe("parseSettings", () => {
     expect(parseSettings('{"aiProvider":"openai","aiModel":7}').aiModel).toBe("");
   });
 
+  it("knows OpenCode Go, whose model is left for the user to pick", () => {
+    expect(parseSettings('{"aiProvider":"opencode-go"}')).toMatchObject({ aiProvider: "opencode-go", aiModel: "" });
+    expect(parseSettings('{"aiProvider":"opencode-go","aiModel":" kimi-k3 "}').aiModel).toBe("kimi-k3");
+  });
+
   it("accepts only http(s) base URLs", () => {
     expect(parseSettings('{"aiBaseUrl":" https://openrouter.ai/api/v1 "}').aiBaseUrl).toBe("https://openrouter.ai/api/v1");
     expect(parseSettings('{"aiBaseUrl":"file:///etc/passwd"}').aiBaseUrl).toBe("");

@@ -25,6 +25,8 @@ const MAX_PROMPT: usize = 4000;
 const MAX_SELECTION: usize = 8000;
 const MAX_DETAIL: usize = 200;
 const MAX_COMPLETION: usize = 300;
+/// Longest assistant command accepted; a longer one is refused rather than cut.
+pub const MAX_COMMAND: usize = 2000;
 
 /// Cuts `s` to at most `max` characters.
 fn cap(s: &str, max: usize) -> &str {
@@ -120,12 +122,46 @@ fn split_fence(reply: &str) -> Option<(String, String)> {
     Some((body[..end].to_string(), outside))
 }
 
-/// Removes control characters (tabs become spaces).
+/// Unicode format characters (category Cf: bidi overrides, zero-width marks, BOM...) and
+/// the line/paragraph separators (Zl, Zp); they could hide or reorder what a command shows.
+fn is_format_or_separator(c: char) -> bool {
+    matches!(
+        c as u32,
+        0x00AD
+            | 0x0600..=0x0605
+            | 0x061C
+            | 0x06DD
+            | 0x070F
+            | 0x0890..=0x0891
+            | 0x08E2
+            | 0x180E
+            | 0x200B..=0x200F
+            | 0x2028..=0x202E
+            | 0x2060..=0x2064
+            | 0x2066..=0x206F
+            | 0xFEFF
+            | 0xFFF9..=0xFFFB
+            | 0x110BD
+            | 0x110CD
+            | 0x13430..=0x1343F
+            | 0x1BCA0..=0x1BCA3
+            | 0x1D173..=0x1D17A
+            | 0xE0001
+            | 0xE0020..=0xE007F
+    )
+}
+
+/// Characters never kept in a provider's answer: controls (Cc), format (Cf) and separators (Zl, Zp).
+fn is_unsafe(c: char) -> bool {
+    c.is_control() || is_format_or_separator(c)
+}
+
+/// Removes control, format and separator characters (tabs become spaces).
 fn strip_controls(s: &str) -> String {
     s.chars()
         .filter_map(|c| match c {
             '\t' => Some(' '),
-            c if c.is_control() => None,
+            c if is_unsafe(c) => None,
             c => Some(c),
         })
         .collect()
@@ -222,6 +258,9 @@ pub fn parse_assist(reply: &str) -> Option<(String, String)> {
         .map(|s| (s.command, s.explanation))
         .or(fence)?;
     let command = single_line(&parsed.0);
+    if command.chars().count() > MAX_COMMAND {
+        return None;
+    }
     let explanation = strip_controls_keep_lines(parsed.1.trim());
     if command.is_empty() && explanation.is_empty() {
         return None;
@@ -230,9 +269,7 @@ pub fn parse_assist(reply: &str) -> Option<(String, String)> {
 }
 
 fn strip_controls_keep_lines(s: &str) -> String {
-    s.chars()
-        .filter(|&c| c == '\n' || !c.is_control())
-        .collect()
+    s.chars().filter(|&c| c == '\n' || !is_unsafe(c)).collect()
 }
 
 /// The provider's own error message (`error.message`), with the key masked and shortened.
@@ -419,5 +456,32 @@ mod tests {
         assert_eq!(error_detail("<html>oops</html>", None), None);
         let long = format!(r#"{{"error":{{"message":"{}"}}}}"#, "x".repeat(500));
         assert_eq!(error_detail(&long, None).unwrap().chars().count(), 201);
+    }
+
+    #[test]
+    fn completions_drop_format_and_separator_characters() {
+        let reply = "git status\u{202E}\u{200B} --short\u{2028}\u{2029}\u{FEFF}";
+        assert_eq!(clean_completion("git st", reply), "atus --short");
+    }
+
+    #[test]
+    fn assist_drops_format_and_separator_characters_from_command_and_explanation() {
+        let reply = "{\"command\": \"rm\u{202E}\u{2066} -i a\u{2028}b\", \"explanation\": \"Asks\u{200F} first.\u{2029}\\nOk\u{00AD}.\"}";
+        assert_eq!(
+            parse_assist(reply),
+            Some(("rm -i ab".into(), "Asks first.\nOk.".into()))
+        );
+    }
+
+    #[test]
+    fn assist_refuses_commands_longer_than_the_cap() {
+        let at_cap = "a".repeat(MAX_COMMAND);
+        let reply = format!("{{\"command\": \"{at_cap}\", \"explanation\": \"x\"}}");
+        assert_eq!(
+            parse_assist(&reply).map(|(c, _)| c.len()),
+            Some(MAX_COMMAND)
+        );
+        let over = format!("{{\"command\": \"{at_cap}b\", \"explanation\": \"x\"}}");
+        assert_eq!(parse_assist(&over), None);
     }
 }
