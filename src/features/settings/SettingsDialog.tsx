@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { programsDir } from "../platform/programsDir";
+import { usePlatform } from "../platform/usePlatform";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
 import {
   clampFontSize,
@@ -52,6 +54,7 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
 
 /** Terminal settings shared by every tab (S15.6). */
 export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogProps) {
+  const platform = usePlatform();
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
@@ -65,7 +68,12 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
 
   const browseTextEditor = async () => {
     try {
-      const program = await open({ title: "Choose a text editor", multiple: false, directory: false });
+      const program = await open({
+        title: "Choose a text editor",
+        multiple: false,
+        directory: false,
+        defaultPath: programsDir(platform),
+      });
       if (typeof program === "string") setTextEditor(program);
     } catch {
       // No file picker (e.g. outside Tauri): the field can still be typed.

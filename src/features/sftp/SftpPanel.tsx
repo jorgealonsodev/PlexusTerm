@@ -5,6 +5,8 @@ import { useDialogs } from "../dialogs/DialogProvider";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
 import { formatDate, formatSize } from "./format";
+import { programsDir } from "../platform/programsDir";
+import { usePlatform } from "../platform/usePlatform";
 import { PermissionsDialog } from "./PermissionsDialog";
 import { PropertiesDialog } from "./PropertiesDialog";
 import { basename, joinPath, parentPath, terminalPath } from "./remotePath";
@@ -30,6 +32,7 @@ const validName = (name: string) => name !== "" && name !== "." && name !== ".."
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
 export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor }: SftpPanelProps) {
   const dialogs = useDialogs();
+  const platform = usePlatform();
   const [path, setPath] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<SftpEntry[]>([]);
@@ -198,7 +201,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const openWithProgram = async (entry: SftpEntry) => {
     try {
-      const program = await open({ title: `Open ${entry.name} with`, multiple: false, directory: false });
+      const program = await open({
+        title: `Open ${entry.name} with`,
+        multiple: false,
+        directory: false,
+        defaultPath: programsDir(platform),
+      });
       if (typeof program === "string") editWith(entry, { kind: "program", path: program });
     } catch (err) {
       setError(describeSftpError(err));

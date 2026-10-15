@@ -36,7 +36,7 @@ describe("SettingsDialog", () => {
     const { onSave } = setup();
     fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await waitFor(() => expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("/opt/My Editor/editor"));
-    expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, directory: false }));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, directory: false, defaultPath: "/usr/bin" }));
     // Cancelling the file picker keeps the program.
     fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await waitFor(() => expect(open).toHaveBeenCalledTimes(2));

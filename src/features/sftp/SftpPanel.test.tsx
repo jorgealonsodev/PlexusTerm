@@ -360,6 +360,7 @@ describe("SftpPanel open and compare", () => {
     await waitFor(() =>
       expect(mocked.edit).toHaveBeenCalledWith(1, "/home/u/notes.txt", { kind: "program", path: "/usr/bin/vim" }),
     );
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "/usr/bin" }));
     await rightClick("notes.txt");
     fireEvent.click(menuItem("Open with…"));
     await new Promise((r) => setTimeout(r, 0));
