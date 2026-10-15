@@ -56,6 +56,14 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S13.5 The session edit dialog shows "Forget saved password" when a secret exists; deleting a session (or a folder containing it) deletes its secret.
   - S13.6 When no Secret Service is available, the checkbox is disabled with a short explanation and everything else works as before.
 
+- S14 (decided by the parent under "haz lo que te creas mas optimo"): SSH jump hosts (like `ssh -J` / MobaXterm's "Connect through SSH gateway").
+  - S14.1 A saved SSH session can list up to 3 jump hosts, in order, each one another saved SSH session chosen by id (session edit dialog: ordered list with add/remove/move). Quick connect has no jump hosts.
+  - S14.2 Connection chain: connect to jump 1, open a direct-tcpip channel to the next hop's host:port, run the next SSH handshake over that channel, and so on until the final target. Every hop applies the full known_hosts policy of S5 to its own host:port (unknown host prompt names the hop) and authenticates with its own saved session's method (key/agent/password; stored passwords per S13 with the endpoint binding).
+  - S14.3 Password hops without a usable stored password are prompted one by one before connecting, each prompt naming the hop ("Password for bastion — jump host 1 of 2"); the keyring checkbox of S13 applies per hop session.
+  - S14.4 The chain is used by terminal tabs, the SFTP browser of that tab (same final connection) and SSH tunnels whose session has jump hosts.
+  - S14.5 A session cannot be its own jump host and chains cannot contain cycles or repeated sessions; a deleted or non-SSH jump session makes the session invalid with a clear error. Deleting a session that others use as a jump host asks for confirmation and removes it from those chains.
+  - S14.6 Errors say which hop failed (e.g. "via bastion (jump host 1): authentication failed"). Closing the tab closes every hop connection.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -77,6 +85,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T9 — S13 (S13.1-S13.6) — delegated (writer trigger: long-session context backstop) — Passwords in the system keyring. Writer: keyring 4.2 (zbus Secret Service) behind SecretStore + MemoryStore tests; storedPassword auth resolved in Rust; remember/forget as an optional `storage` command argument (ConnectRequest/SshTarget unchanged); module is src-tauri/src/secrets.rs (a deny rule blocks secrets/ directories). cargo 94 (+4 ignored), vitest 198. Verifier: 0 blockers, S13.1-S13.6 PASS (probed no-D-Bus degradation). Parent fixes for advisories A1 (unknown keyring state no longer sends forget; RED→GREEN), A2 (replace the keyring item so the label follows the session), A3 (switching away from password auth forgets the secret; RED→GREEN). A4 (split pane after a forget re-prompts) left as is. vitest 201/201. OpenSSH interop 3/3. Real-keyring ignored test not run (could prompt to unlock the user keyring).
 
 - [x] T9b — S13.2-S13.4 — delegated (context backstop) — Native review warnings for T9 (review-1daafe9e0d9a5ac8): bind the stored secret to its endpoint in Rust (R1-stored-secret-not-bound-to-target) and forget it when host/port/username change (R1-saved-password-follows-host-edit); keyring set updates in place again instead of delete-then-set (R4/R3 non-atomic); keyring storage after login bounded by a timeout (R4-keyring-write-blocks-connect); storage failures surfaced to the user (R4/R3 silent failure). Done: keyring value {"v":1,"endpoint","password"} checked against the real connection target before use (mismatch/legacy → secretMissing, 0 password attempts at the server); endpoint edits forget the secret; set updates in place again; post-login storage bounded by 10 s; storage failures shown in the terminal (yellow line) and in the tunnel status; stderr logging removed. RED→GREEN (8 Rust + 2 Vitest before the fix). cargo 107 (+4 ignored), vitest 203, OpenSSH interop 3/3. Parent read the binding code (endpoint computed from the request target).
+
+- [ ] T10 — S14 (S14.1-S14.6) — delegated (writer trigger: long-session context backstop) — SSH jump hosts.
 
 ## Log
 
@@ -106,3 +116,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L24 (2026-10-15): libudev-dev was installed (L23) but is not used: the sysfs enumeration keeps the app free of a libudev runtime dependency, which is better for packaging. socat installed for serial tests. Known limitation: splitting a serial tab opens the same device again and reports busy.
 - L25 (2026-10-15): "haz lo que te creas mas optimo" — next unit T9 (keyring). Environment: gnome-keyring-daemon provides org.freedesktop.secrets; libdbus-1-dev 1.14.10 present; keyring crate latest 4.2.0.
 - L26 (2026-10-15): T9 native review (user granted): slice 9ff6104..9087a4e approved with 7 warnings, acknowledged review-1daafe9e0d9a5ac8. Follow-up T9b created; the most important finding is that a stored password could be sent to a new endpoint after editing the session.
+- L27 (2026-10-15): "haz lo que te creas mas optimo" — next unit T10 (jump hosts), common in corporate networks.
