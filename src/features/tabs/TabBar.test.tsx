@@ -73,4 +73,22 @@ describe("TabBar", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Close all tabs" }));
     expect(handlers.onCloseAll).toHaveBeenCalledTimes(1);
   });
+
+  it("copies the host address of SSH, Telnet and Mosh tabs, and offers nothing to copy for others", () => {
+    const onCopyHost = vi.fn();
+    const ssh = { ...tab("t1", "web"), target: { type: "ssh" as const, host: "10.244.208.224", port: 22, username: "u", auth: { method: "agent" as const } } };
+    const telnet = { ...tab("t2", "router"), target: { type: "telnet" as const, host: "192.168.1.1", port: 23 } };
+    render(
+      <TabBar tabs={[ssh, telnet, tab("t3", "local")]} activeKey="t1" onActivate={() => {}} onClose={() => {}} onNew={() => {}} onCopyHost={onCopyHost} />,
+    );
+    fireEvent.contextMenu(screen.getByTitle("web"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy host address (10.244.208.224)" }));
+    expect(onCopyHost).toHaveBeenCalledWith("10.244.208.224");
+    fireEvent.contextMenu(screen.getByTitle("router"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy host address (192.168.1.1)" }));
+    expect(onCopyHost).toHaveBeenLastCalledWith("192.168.1.1");
+    fireEvent.contextMenu(screen.getByTitle("local"), { clientX: 5, clientY: 5 });
+    expect(screen.queryByRole("menuitem", { name: /Copy host address/ })).toBeNull();
+  });
 });
+

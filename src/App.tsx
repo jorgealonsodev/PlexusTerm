@@ -12,6 +12,7 @@ import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
 import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
+import { writeText } from "./features/terminal/clipboard";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
@@ -633,6 +634,9 @@ function AppContent() {
             onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
             onCloseRight={(key) => dispatch({ type: "closeRight", key })}
             onCloseAll={() => dispatch({ type: "closeAll" })}
+            onCopyHost={(host) =>
+              void writeText(host).catch(() => setNotice("Could not copy to the clipboard."))
+            }
           />
           <main className="workspace">
             {state.tabs.map((tab) => {
