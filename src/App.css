@@ -1,0 +1,135 @@
+:root {
+  --bg: #0f1419;
+  --surface: #161d24;
+  --surface-2: #1d262f;
+  --border: #26313c;
+  --text: #d8dee9;
+  --muted: #7a8794;
+  --accent: #5ec4ff;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.toolbar__btn {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.toolbar__btn:hover {
+  border-color: var(--accent);
+}
+
+.tabbar {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  padding: 6px 8px 6px 12px;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tab--active {
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tab__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab__close,
+.tabbar__new {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.tab__close:hover,
+.tabbar__new:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-host {
+  position: absolute;
+  inset: 0;
+  padding: 6px;
+  background: var(--bg);
+}
+
+.terminal-host[hidden] {
+  display: none;
+}
+
+.empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  height: 100%;
+  color: var(--muted);
+}
