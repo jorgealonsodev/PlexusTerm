@@ -1,7 +1,7 @@
 import { Folder, FolderOpen, Globe, KeyRound, Usb, Waypoints } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   buildTree,
   isMoshSession,
@@ -12,6 +12,7 @@ import {
   type TreeNode,
 } from "./library";
 import { IniImportDialog, type ImportResult } from "./IniImportDialog";
+import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { decodeIni, parseSessionsIni, planImport } from "./iniImport";
 import type { LibraryStatus } from "./useSessionLibrary";
 
@@ -27,6 +28,17 @@ interface SessionsPanelProps {
   onDeleteFolder: (path: string) => void;
   /** Saves the sessions confirmed in the another app import preview. */
   onImport: (sessions: LibrarySession[]) => void;
+  /** Saves a copy of the session next to it. */
+  onDuplicate: (session: LibrarySession) => void;
+}
+
+type Menu =
+  | { kind: "session"; session: LibrarySession; x: number; y: number }
+  | { kind: "folder"; path: string; x: number; y: number };
+
+/** Every session inside a folder, subfolders included, in tree order. */
+function sessionsUnder(node: TreeNode): LibrarySession[] {
+  return node.kind === "session" ? [node.session] : node.children.flatMap(sessionsUnder);
 }
 
 /** Tooltip of a session row: where it connects. */
@@ -49,6 +61,17 @@ function SessionIcon({ session }: { session: LibrarySession }) {
   return <Icon size={15} className={`tree-row__icon tree-row__icon--${kind}`} data-kind={kind} />;
 }
 
+/** The folder node at `path`, searching the whole tree. */
+function findFolder(nodes: TreeNode[], path: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.kind !== "folder") continue;
+    if (node.path === path) return node;
+    const inner = findFolder(node.children, path);
+    if (inner) return inner;
+  }
+  return null;
+}
+
 export function SessionsPanel(props: SessionsPanelProps) {
   const { library, status, saveError } = props;
   const [filter, setFilter] = useState("");
@@ -56,6 +79,45 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const tree = useMemo(() => buildTree(library, filter), [library, filter]);
   const editable = status.state === "ready";
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const openMenu = (
+    e: ReactMouseEvent,
+    target: { kind: "session"; session: LibrarySession } | { kind: "folder"; path: string },
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenu({ ...target, x: e.clientX, y: e.clientY });
+  };
+
+  const menuItems = (m: Menu): ContextMenuItem[] => {
+    if (m.kind === "session") {
+      const { session } = m;
+      const connect = { label: "Connect", onSelect: () => props.onOpen(session) };
+      if (!editable) return [connect];
+      return [
+        connect,
+        { label: "Edit…", onSelect: () => props.onEdit(session) },
+        { label: "Duplicate", onSelect: () => props.onDuplicate(session) },
+        { separator: true },
+        { label: "Delete", onSelect: () => props.onDelete(session), danger: true },
+      ];
+    }
+    const folder = findFolder(tree, m.path);
+    const inside = folder ? sessionsUnder(folder) : [];
+    const connectAll = {
+      label: `Connect all (${inside.length})`,
+      onSelect: () => inside.forEach((session) => props.onOpen(session)),
+      disabled: inside.length === 0,
+    };
+    if (!editable) return [connectAll];
+    return [
+      { label: "New session here…", onSelect: () => props.onNewSession(m.path) },
+      { label: "New folder here…", onSelect: () => props.onNewFolder(m.path) },
+      connectAll,
+      { separator: true },
+      { label: "Delete folder", onSelect: () => props.onDeleteFolder(m.path), danger: true },
+    ];
+  };
 
   // Native dialog + bounded backend read: the same path as SFTP uploads, which works in WebKitGTK.
   const importFile = async () => {
@@ -90,7 +152,12 @@ export function SessionsPanel(props: SessionsPanelProps) {
       const open = filter.trim() !== "" || !collapsed.has(node.path);
       return (
         <li key={`f:${node.path}`}>
-          <div className="tree-row tree-row--folder" style={indent} onClick={() => toggle(node.path)}>
+          <div
+            className="tree-row tree-row--folder"
+            style={indent}
+            onClick={() => toggle(node.path)}
+            onContextMenu={(e) => openMenu(e, { kind: "folder", path: node.path })}
+          >
             <span className="tree-row__chevron">{open ? "▾" : "▸"}</span>
             {open ? (
               <FolderOpen size={15} className="tree-row__icon" data-kind="folder" />
@@ -120,6 +187,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
           title={sessionTooltip(session, props.library)}
           onDoubleClick={() => props.onOpen(session)}
           onKeyDown={(e) => e.key === "Enter" && props.onOpen(session)}
+          onContextMenu={(e) => openMenu(e, { kind: "session", session })}
         >
           <SessionIcon session={session} />
           <span className="tree-row__label">{session.name}</span>
@@ -165,6 +233,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
         <p className="sidebar__note">{filter ? "No matches." : "No saved sessions yet."}</p>
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
       <p className="sidebar__hint">Double-click a session to connect.</p>
       {importResult && (
         <IniImportDialog

@@ -30,6 +30,9 @@ export interface TabsState {
 export type TabsAction =
   | { type: "open"; target: SessionTarget }
   | { type: "close"; key: string }
+  | { type: "closeOthers"; key: string }
+  | { type: "closeRight"; key: string }
+  | { type: "closeAll" }
   | { type: "activate"; key: string }
   | { type: "rename"; key: string; title: string }
   | { type: "split"; key: string; direction: SplitDirection }
@@ -77,6 +80,19 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     }
     case "close":
       return closeTab(state, action.key);
+    case "closeOthers": {
+      const tab = state.tabs.find((t) => t.key === action.key);
+      return tab ? { ...state, tabs: [tab], activeKey: tab.key } : state;
+    }
+    case "closeRight": {
+      const index = state.tabs.findIndex((t) => t.key === action.key);
+      if (index === -1) return state;
+      const tabs = state.tabs.slice(0, index + 1);
+      const activeKey = tabs.some((t) => t.key === state.activeKey) ? state.activeKey : action.key;
+      return { ...state, tabs, activeKey };
+    }
+    case "closeAll":
+      return { ...state, tabs: [], activeKey: null };
     case "activate":
       return state.tabs.some((t) => t.key === action.key)
         ? { ...state, activeKey: action.key }

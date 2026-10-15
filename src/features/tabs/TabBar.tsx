@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ContextMenu } from "../menu/ContextMenu";
 import type { Tab } from "./tabs";
 
 interface TabBarProps {
@@ -8,9 +10,33 @@ interface TabBarProps {
   onActivate: (key: string) => void;
   onClose: (key: string) => void;
   onNew: () => void;
+  /** Right-click menu actions (the menu leaves out the ones not given). */
+  onDuplicate?: (key: string) => void;
+  onCloseOthers?: (key: string) => void;
+  onCloseRight?: (key: string) => void;
+  onCloseAll?: () => void;
 }
 
-export function TabBar({ tabs, activeKey, logging, onActivate, onClose, onNew }: TabBarProps) {
+export function TabBar(props: TabBarProps) {
+  const { tabs, activeKey, logging, onActivate, onClose, onNew } = props;
+  const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
+  const menuIndex = menu ? tabs.findIndex((t) => t.key === menu.key) : -1;
+  const menuItems = (key: string) =>
+    [
+      props.onDuplicate && { label: "Duplicate tab", onSelect: () => props.onDuplicate!(key) },
+      { label: "Close tab", onSelect: () => onClose(key) },
+      props.onCloseOthers && {
+        label: "Close other tabs",
+        onSelect: () => props.onCloseOthers!(key),
+        disabled: tabs.length < 2,
+      },
+      props.onCloseRight && {
+        label: "Close tabs to the right",
+        onSelect: () => props.onCloseRight!(key),
+        disabled: menuIndex === tabs.length - 1,
+      },
+      props.onCloseAll && { label: "Close all tabs", onSelect: props.onCloseAll },
+    ].filter((item) => !!item);
   return (
     <div className="tabbar" role="tablist">
       {tabs.map((tab) => (
@@ -24,6 +50,10 @@ export function TabBar({ tabs, activeKey, logging, onActivate, onClose, onNew }:
             else if (e.button === 0) onActivate(tab.key);
           }}
           title={tab.title}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu({ key: tab.key, x: e.clientX, y: e.clientY });
+          }}
         >
           {logging?.has(tab.key) && (
             <span className="tab__log" role="img" aria-label="Logging to file" title="Logging to file">
@@ -44,6 +74,9 @@ export function TabBar({ tabs, activeKey, logging, onActivate, onClose, onNew }:
       <button className="tabbar__new" aria-label="New local terminal" onClick={onNew}>
         +
       </button>
+      {menu && menuIndex !== -1 && (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.key)} onClose={() => setMenu(null)} />
+      )}
     </div>
   );
 }

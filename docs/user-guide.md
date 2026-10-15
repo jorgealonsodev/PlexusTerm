@@ -72,6 +72,7 @@ The toolbar **More** menu opens **Telnet…** and **Mosh…** quick-connect dial
 
 The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions in folders (`Prod/DB` style paths).
 Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
+Right-click a session for **Connect**, **Edit…**, **Duplicate** (a copy named "<name> (copy)" next to it; a saved keyring password is not copied) and **Delete**. Right-click a folder for **New session here…**, **New folder here…**, **Connect all** (every session in it and its subfolders, each in its own tab) and **Delete folder**. While the sessions file cannot be read, the menus only offer connecting.
 The edit dialog has a **Session type** selector (SSH, Serial, Telnet or Mosh) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command.
 
 Sessions are stored in `~/.config/dev.plexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet` or `mosh`), and entries written by earlier versions without it load as SSH sessions.
@@ -243,5 +244,6 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Ctrl+Alt+1 … Ctrl+Alt+9 | Play the macro bound to that key in the focused terminal |
 | Escape (while a macro plays) | Stop the macro |
 | Middle click on a tab | Close that tab |
+| Right click on a tab | Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 
 These shortcuts are handled by the app and never reach the shell.

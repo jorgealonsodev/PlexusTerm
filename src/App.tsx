@@ -575,6 +575,9 @@ function AppContent() {
               }
               onNewFolder={newFolder}
               onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
+              onDuplicate={(session) =>
+                sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
+              }
               onDeleteFolder={(path) =>
                 confirmDelete(`Delete folder "${path}" and every session inside it?`, { type: "deleteFolder", path })
               }
@@ -589,6 +592,13 @@ function AppContent() {
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
             onNew={openLocal}
+            onDuplicate={(key) => {
+              const tab = state.tabs.find((t) => t.key === key);
+              if (tab) dispatch({ type: "open", target: tab.target });
+            }}
+            onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
+            onCloseRight={(key) => dispatch({ type: "closeRight", key })}
+            onCloseAll={() => dispatch({ type: "closeAll" })}
           />
           <main className="workspace">
             {state.tabs.map((tab) => {
