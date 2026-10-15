@@ -19,7 +19,7 @@ Objective: a **Tools** menu in the toolbar with the MobaXterm-style tools the us
 - [x] T3 — S4 — delegated (same writer as T4, shared engine) — commit 90b1d39 — Port scanner. Writer: cargo scan 16, Vitest 8 (RED not observed: blocked by a concurrent compile error; mutation checks instead). Verifier: PASS.
 - [x] T4 — S5 — delegated (with T3) — commit 90b1d39 — Network scanner (reverse DNS via getent, MAC from /proc/net/arp; Linux only). Verifier: PASS.
 - [x] T5 — S3 — delegated (writer trigger: parallel units + long-session backstop) — commit ede8992 — Remote monitor (SshManager::exec over the existing connection, remoteMonitor setting default on). Writer: RED→GREEN cargo monitor 6 + ssh exec 3, Vitest 40. Verifier: PASS.
-- [ ] T6 — S7 — delegated (writer trigger: long-session backstop) — Key generator: RSA/ECDSA, load existing key, separate saves, PuTTY .ppk import/export.
+- [x] T6 — S7 — delegated (writer trigger: long-session backstop) — commit 4936b96 — Key generator: RSA/ECDSA, load existing key, separate saves, PuTTY .ppk import/export. Writer: cargo keygen 25, Vitest 11; deps argon2 0.6.0, hmac 0.13.0 (already in Cargo.lock). Independent verifier: S7 PASS, S2 regression PASS, no blockers (6 probes incl. .ppk round trips, CRLF, ssh-keygen interop, install under 5 shells).
 
 ## Log
 
@@ -31,4 +31,5 @@ Objective: a **Tools** menu in the toolbar with the MobaXterm-style tools the us
 - L6 (2026-10-15): Independent verifier over 71f7c9f..9e99fd6: S1, S3, S4, S5, S6 PASS; S2 FAIL on B1 (see T2), fixed in a95b419 and rechecked. Advisories left open: a commented-out copy of the key counts as already installed (same as ssh-copy-id); parse_mac accepts a leading "+" (UI blocks it); a failed .pub write after the private key leaves the private file alone; csh/tcsh servers show "Monitoring unavailable"; no App test for the monitor toggle / other menu items; the passphrase String is not zeroized. Suites after the fix: Vitest 451, cargo 224 passed + 5 ignored, clippy clean.
 - L7 (2026-10-15): User: "si pincho en la esquina no puedo  ampliar para ver todos los datos" and "si es posible que se adapte cuando comience la busqueda". Scanner dialogs now size to their content (wider for the table, taller as rows arrive, up to the window) and resize from the corner (c13991c).
 - L8 (2026-10-15): User asked to widen the Tools menu (c156702) and to match MobaKeyGen's options; S7/T6 added from the user's choices quoted in S7.
+- L9 (2026-10-15): T6 verified (no blockers). Advisories: best-effort memory wiping (String reallocations, HMAC state, generate passphrase), Overwrite prompt saves the last applied comment/passphrase, untrimmed loaded comments mark the key as edited, empty Unlock shows no message, puttygen not run (byte-for-byte PuTTYgen vectors instead), symlinked save targets are written through.
 
