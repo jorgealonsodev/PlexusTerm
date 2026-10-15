@@ -1,0 +1,95 @@
+.scan-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+}
+
+.scan-dialog__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .scan-dialog__inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scan-dialog__status {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-results {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 50vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.scan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-table th,
+.scan-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.scan-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.scan-table__open {
+  color: var(--success);
+}
+
+.scan-table__mono {
+  font-family: ui-monospace, monospace;
+}
+
+.scan-table__empty {
+  text-align: center;
+}
+
+.scan-table__action {
+  padding: 2px 8px;
+}
+
+.scan-services {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.scan-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
