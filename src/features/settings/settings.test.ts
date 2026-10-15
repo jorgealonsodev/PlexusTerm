@@ -10,6 +10,7 @@ describe("parseSettings", () => {
       confirmMultilinePaste: true,
       theme: "catppuccin-mocha",
       fontFamily: DEFAULT_FONT_FAMILY,
+      remoteMonitor: true,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -22,7 +23,7 @@ describe("parseSettings", () => {
 
   it("reads saved values", () => {
     const json =
-      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code"}';
+      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -30,6 +31,7 @@ describe("parseSettings", () => {
       confirmMultilinePaste: false,
       theme: "nord",
       fontFamily: "Fira Code",
+      remoteMonitor: false,
     });
   });
 
@@ -59,6 +61,11 @@ describe("parseSettings", () => {
     expect(parseSettings('{"fontFamily":"  Hack Nerd Font  "}').fontFamily).toBe("Hack Nerd Font");
   });
 
+  it("uses the default for an invalid remote monitor value", () => {
+    expect(parseSettings('{"remoteMonitor":"off"}').remoteMonitor).toBe(true);
+    expect(parseSettings('{"remoteMonitor":false}').remoteMonitor).toBe(false);
+  });
+
   it("keeps valid values next to invalid ones", () => {
     expect(parseSettings('{"fontSize":20,"copyOnSelect":"no"}')).toEqual({ ...DEFAULT_SETTINGS, fontSize: 20 });
   });
@@ -73,6 +80,7 @@ describe("serializeSettings", () => {
       confirmMultilinePaste: false,
       theme: "gruvbox-dark",
       fontFamily: "Iosevka",
+      remoteMonitor: false,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });

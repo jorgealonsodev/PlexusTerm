@@ -911,6 +911,62 @@ impl SshManager {
         *slot = Some(sftp.clone());
         Ok(sftp)
     }
+
+    /// Runs `command` on session `id` over a new exec channel of its existing
+    /// connection (no new login) and returns its stdout. Output beyond
+    /// [`MAX_EXEC_OUTPUT`] is dropped; a non-zero exit status or no answer within
+    /// [`EXEC_TIMEOUT`] is an error.
+    pub async fn exec(&self, id: u32, command: &str) -> Result<String, SshError> {
+        let handle = {
+            let sessions = self.sessions.lock().unwrap();
+            let entry = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
+            entry.handle.clone()
+        };
+        let run = async {
+            let mut channel = handle.channel_open_session().await.map_err(connection)?;
+            channel.exec(true, command).await.map_err(connection)?;
+            let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+            let mut exit_status = None;
+            while let Some(message) = channel.wait().await {
+                match message {
+                    ChannelMsg::Data { data } => append_capped(&mut stdout, &data),
+                    ChannelMsg::ExtendedData { data, .. } => append_capped(&mut stderr, &data),
+                    ChannelMsg::ExitStatus { exit_status: s } => exit_status = Some(s),
+                    ChannelMsg::Close => break,
+                    _ => {}
+                }
+            }
+            match exit_status {
+                Some(0) | None => Ok(String::from_utf8_lossy(&stdout).into_owned()),
+                Some(status) => Err(SshError::Connection {
+                    message: format!(
+                        "remote command failed (exit status {status}): {}",
+                        String::from_utf8_lossy(&stderr).trim()
+                    ),
+                }),
+            }
+        };
+        tokio::time::timeout(EXEC_TIMEOUT, run)
+            .await
+            .unwrap_or_else(|_| {
+                Err(SshError::Connection {
+                    message: format!(
+                        "remote command did not finish within {} s",
+                        EXEC_TIMEOUT.as_secs()
+                    ),
+                })
+            })
+    }
+}
+
+/// How long [`SshManager::exec`] waits for a command to finish.
+const EXEC_TIMEOUT: Duration = Duration::from_secs(10);
+/// Bytes of stdout (and, separately, stderr) [`SshManager::exec`] keeps.
+const MAX_EXEC_OUTPUT: usize = 256 * 1024;
+
+fn append_capped(buffer: &mut Vec<u8>, data: &[u8]) {
+    let room = MAX_EXEC_OUTPUT.saturating_sub(buffer.len());
+    buffer.extend_from_slice(&data[..data.len().min(room)]);
 }
 
 #[cfg(test)]
@@ -2052,6 +2108,59 @@ mod tests {
         assert!(
             !dbg.contains("jumpsecret") && !dbg.contains("hunter2"),
             "{dbg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn exec_returns_the_stdout_of_a_command_over_the_existing_connection() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+
+        let out = mgr.exec(id, "mosh-server new").await.unwrap();
+
+        assert_eq!(out, test_server::MOSH_CONNECT_REPLY);
+        assert_eq!(server.exec_commands(), vec!["mosh-server new".to_string()]);
+        // No second login: the command ran on the shell's connection.
+        assert_eq!(server.open_connections(), 1);
+        // The shell keeps working afterwards.
+        mgr.write(id, b"ping").unwrap();
+        assert!(wait_for(&mut rx, "ping").await.0.contains("ping"));
+    }
+
+    #[tokio::test]
+    async fn exec_reports_a_failing_command_with_its_stderr() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+
+        let err = mgr.exec(id, "nope").await.unwrap_err();
+
+        let message = err.to_string();
+        assert!(message.contains("exit status 127"), "{message}");
+        assert!(message.contains("nope: not found"), "{message}");
+    }
+
+    #[tokio::test]
+    async fn exec_on_an_unknown_session_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(dir.path().join("known_hosts"));
+        let err = mgr.exec(42, "true").await.unwrap_err();
+        assert!(
+            matches!(err, SshError::UnknownSession { id: 42 }),
+            "{err:?}"
         );
     }
 }

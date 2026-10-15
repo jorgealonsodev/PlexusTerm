@@ -55,6 +55,7 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
+  const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const dark = TERMINAL_THEMES.filter((t) => t.dark);
   const light = TERMINAL_THEMES.filter((t) => !t.dark);
 
@@ -68,6 +69,7 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
       confirmMultilinePaste,
       theme,
       fontFamily: cleanFontFamily(fontFamily),
+      remoteMonitor,
     });
   };
 
@@ -130,6 +132,10 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
             onChange={(e) => setConfirmMultilinePaste(e.target.checked)}
           />
           Confirm multi-line paste
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={remoteMonitor} onChange={(e) => setRemoteMonitor(e.target.checked)} />
+          Remote monitor bar (SSH tabs)
         </label>
         <p className="muted">
           When right click pastes, Ctrl+right click opens the terminal menu. Ctrl+= / Ctrl+- / Ctrl+0 change the font size.
