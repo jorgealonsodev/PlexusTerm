@@ -13,7 +13,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
 | [Macros](#macros) | Recording and playing keystroke sequences |
-| [Tools](#tools) | Wake On LAN |
+| [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
 | [Windows](#windows) | What differs on Windows 10/11 |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
 
@@ -219,7 +219,15 @@ Text in send and wait-for steps accepts escapes: `\r` (Enter), `\n`, `\t`, `\e` 
 
 The **Tools** menu in the toolbar holds network and SSH utilities.
 
+**SSH key generator…** creates an Ed25519 key pair, with an optional passphrase (which encrypts the private key) and comment. The dialog shows the public key in OpenSSH format and its `SHA256:` fingerprint, with **Copy**; **Save…** writes the private key (mode `0600`) and `<file>.pub` (`0644`) and asks before replacing existing files. **Install** adds the public key to a saved SSH session's `~/.ssh/authorized_keys`, like `ssh-copy-id`: it logs in like a terminal tab (trust prompt, saved or typed password, jump hosts), creates `~/.ssh` (`0700`) and `authorized_keys` (`0600`) when missing, and adds the key only once. The private key stays in PlexusTerm until it is saved and is discarded when the dialog closes.
+
+**Port scanner…** checks which TCP ports are open on a host name, an IPv4 address, a range (`192.168.1.10-20`) or a CIDR block (`192.168.1.0/24`, at most 256 hosts), for a port list such as `22,80,8000-8100`. It only opens TCP connections (no root needed): 1 second per port, at most 256 at a time and 65536 per scan. Open ports appear as they are found, with the usual service name; **Stop** (or closing the dialog) cancels the scan.
+
+**Network scanner…** finds the machines of a range or `/24` block by trying the common service ports (FTP 21, SSH 22, Telnet 23, HTTP 80, HTTPS 443, SMB 445, RDP 3389, VNC 5900). A machine is listed when one of them is open or actively refuses the connection, with its name (reverse DNS through `getent`, Linux), its MAC address (local ARP table, Linux, same subnet only) and its open services. **New SSH session** opens the session editor for a machine with SSH open. No ICMP is used, so machines that drop every connection are not found. Scan only networks you are allowed to scan.
+
 **Wake On LAN…** powers on a machine of the local network: enter its MAC address (`aa:bb:cc:dd:ee:ff` or `aa-bb-cc-dd-ee-ff`) and send the magic packet. The broadcast address defaults to `255.255.255.255` and the UDP port to 9; use the subnet's broadcast address (for example `192.168.1.255`) when the machine is on another network segment reachable that way. The machine needs Wake On LAN enabled in its firmware and network card. PlexusTerm confirms that the packet was sent; it cannot tell whether the machine woke up.
+
+**Show / Hide remote monitor** toggles a bar under every SSH pane (also **Remote monitor bar (SSH tabs)** in Settings; on by default) with the server's CPU use, used/total memory, used/total space of `/`, network download/upload rate and number of logged-in users, refreshed every 3 seconds. It runs one read-only command over the tab's existing SSH connection (`/proc`, `df`, `who`; nothing is installed or left running) and needs a Linux server; anything else shows "Monitoring unavailable".
 
 ## Windows
 

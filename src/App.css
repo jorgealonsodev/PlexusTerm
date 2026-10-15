@@ -1159,3 +1159,18 @@ body,
   height: 10px;
   border-radius: 2px;
 }
+
+/* A pane: its terminal above, the remote monitor bar (SSH) below. */
+.pane-stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pane-stack__terminal {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
