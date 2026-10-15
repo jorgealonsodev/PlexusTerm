@@ -1117,7 +1117,9 @@ textarea::placeholder {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 140px;
+  /* As wide as its longest item, never narrower than its button. */
+  width: max-content;
+  min-width: max(200px, 100%);
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1129,6 +1131,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
   padding: 6px 10px;
   font: inherit;
   text-align: left;
