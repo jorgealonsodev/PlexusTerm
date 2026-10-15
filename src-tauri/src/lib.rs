@@ -243,6 +243,18 @@ fn tunnels_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, TUNNELS_FILE)?, &contents)
 }
 
+const MACROS_FILE: &str = "macros.json";
+
+#[tauri::command]
+fn macros_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    storage::load(&config_path(&app, MACROS_FILE)?)
+}
+
+#[tauri::command]
+fn macros_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, MACROS_FILE)?, &contents)
+}
+
 const SETTINGS_FILE: &str = "settings.json";
 
 #[tauri::command]
@@ -354,6 +366,8 @@ pub fn run() {
             tunnel_statuses,
             settings_load,
             settings_save,
+            macros_load,
+            macros_save,
             save_text_file,
             append_text_file
         ])

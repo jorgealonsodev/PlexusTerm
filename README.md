@@ -171,6 +171,23 @@ Pasted text is sent like typed text, so multi-exec forwards it too, and shells t
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
 
+## Macros
+
+A macro is a named list of steps played into the focused pane of the active tab:
+
+- **Send text**: sent as if typed, so multi-exec forwards it too.
+- **Wait**: pauses for a number of milliseconds.
+- **Wait for text**: waits until the pane's output contains a text (colours and other escape sequences ignored), for up to a timeout in seconds (10 by default). If the text does not appear, the macro stops and the pane shows why.
+
+**Record macro** in the toolbar (or Ctrl+Shift+R) records everything typed or pasted in the focused pane until you stop it; each line becomes a send step. A red **Recording** banner stays visible the whole time. When you stop, name the macro to save it, or discard it. Recordings do not include pauses: add **Wait** or **Wait for text** steps in the editor where a command needs time (e.g. before typing a password).
+
+The **Macros** sidebar tab lists the macros with a search box; each one can be played, edited, duplicated or deleted. While a macro plays, a bar shows its progress; **Stop** or Escape ends it.
+The editor changes the name, the hotkey and the steps (add, remove, move up or down, change the kind). Ctrl+Alt+1 to Ctrl+Alt+9 play the macro bound to that key; a hotkey belongs to one macro, so giving it to another macro moves it.
+
+Text in send and wait-for steps accepts escapes: `\r` (Enter), `\n`, `\t`, `\e` (Escape), `\\`, `\xHH`, and `^A` to `^Z` (e.g. `^C`), `^[` (Escape) and `^?` (Delete). Anything else is sent as written.
+
+**Macros are saved as plain text** in `macros.json` in the app config directory (readable only by you). Everything you type while recording is saved, including passwords; nothing is masked or filtered. If the file cannot be read, macros cannot be edited until it is fixed, so it is never overwritten.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -186,6 +203,9 @@ Logging appends everything the pane receives from then on to the chosen file, wi
 | Ctrl+Shift+C | Copy the selection |
 | Ctrl+Shift+V | Paste |
 | Ctrl+= / Ctrl+- / Ctrl+0 | Larger / smaller / default font size (every terminal) |
+| Ctrl+Shift+R | Start or stop recording a macro |
+| Ctrl+Alt+1 … Ctrl+Alt+9 | Play the macro bound to that key in the focused terminal |
+| Escape (while a macro plays) | Stop the macro |
 | Middle click on a tab | Close that tab |
 
 These shortcuts are handled by the app and never reach the shell.

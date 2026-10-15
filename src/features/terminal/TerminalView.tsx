@@ -15,6 +15,7 @@ import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
+import type { MacroTarget } from "../macros/player";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
@@ -48,6 +49,8 @@ interface TerminalViewProps {
   onSettingsChange?: (patch: Partial<TerminalSettings>) => void;
   /** File this pane's output is logged to, or null when logging stops (S15.5). */
   onLogging?: (path: string | null) => void;
+  /** Hands out this pane's macro interface (S16.3); returns its unregister function. */
+  registerMacroTarget?: (target: MacroTarget) => () => void;
 }
 
 interface PendingHost {
@@ -112,6 +115,7 @@ export function TerminalView({
   settings = DEFAULT_SETTINGS,
   onSettingsChange,
   onLogging,
+  registerMacroTarget,
 }: TerminalViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -142,8 +146,8 @@ export function TerminalView({
         ? savedLoginOf(target)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -186,6 +190,8 @@ export function TerminalView({
     let disposed = false;
     /** Set when a serial device went away: the pane stays open so its error remains readable. */
     let ended = false;
+    /** Macros waiting for output (S16.3). */
+    const outputListeners = new Set<(text: string) => void>();
 
     const endSerial = () => {
       ended = true;
@@ -221,6 +227,7 @@ export function TerminalView({
           if (msg.event === "output") {
             term.write(msg.data);
             logRef.current?.write(msg.data);
+            outputListeners.forEach((listener) => listener(msg.data));
           }
           else if (target.type === "serial") endSerial();
           else {
@@ -262,12 +269,22 @@ export function TerminalView({
       if (sessionId !== null) void backend.write(sessionId, data);
     };
     const unregisterWriter = callbacks.current.registerWriter?.(write);
+    /** The normal input path: typing, pastes and macros all go through it (multi-execution included). */
+    const typed = (data: string) => {
+      write(data);
+      callbacks.current.onInput?.(data);
+    };
+    const unregisterMacroTarget = callbacks.current.registerMacroTarget?.({
+      send: typed,
+      subscribe: (listener) => {
+        outputListeners.add(listener);
+        return () => outputListeners.delete(listener);
+      },
+      notice: (text) => term.write(`\r\n${red(text)}`),
+    });
 
     const subs = [
-      term.onData((data) => {
-        write(data);
-        callbacks.current.onInput?.(data);
-      }),
+      term.onData(typed),
       term.onResize(({ cols, rows }) => sessionId !== null && void backend.resize(sessionId, cols, rows)),
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
       term.parser.registerOscHandler(7, (data) => {
@@ -307,6 +324,8 @@ export function TerminalView({
       logRef.current = null;
       clearTimeout(startTimer);
       unregisterWriter?.();
+      unregisterMacroTarget?.();
+      outputListeners.clear();
       observer.disconnect();
       subs.forEach((s) => s.dispose());
       if (sessionId !== null) void backend.close(sessionId);

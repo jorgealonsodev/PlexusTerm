@@ -504,9 +504,13 @@ body,
 
 .sidebar__tab {
   flex: 1;
-  padding: 7px 8px;
+  min-width: 0;
+  /* Four tabs share the 240px sidebar. */
+  padding: 7px 2px;
   font: inherit;
+  font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   color: var(--muted);
   background: none;
   border: none;
@@ -884,4 +888,118 @@ body,
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+
+/* Macros (S16) */
+.btn--recording {
+  border-color: #e06c75;
+  color: #e06c75;
+}
+
+.recording-banner,
+.macro-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 12px;
+  font-weight: 600;
+}
+
+.recording-banner {
+  color: #fff;
+  background: #b4232f;
+}
+
+.recording-banner__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  animation: recording-blink 1s steps(2, start) infinite;
+}
+
+@keyframes recording-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-banner__dot {
+    animation: none;
+  }
+}
+
+.macro-progress {
+  color: var(--text);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.macro-progress progress {
+  width: 160px;
+  accent-color: var(--accent);
+}
+
+.macro__hotkey {
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.dialog--wide {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.macro-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.macro-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.macro-step__text {
+  flex: 1;
+  min-width: 0;
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+}
+
+.macro-step__number {
+  width: 72px;
+}
+
+.macro-step__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.macro-step__actions button {
+  padding: 2px 6px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.macro-step__actions button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.macro-step__actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

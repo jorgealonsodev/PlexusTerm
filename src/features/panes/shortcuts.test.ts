@@ -44,6 +44,17 @@ describe("shortcutFor", () => {
     expect(shortcutFor(key("-", { altKey: true }))).toBeNull();
   });
 
+  it("maps Ctrl+Shift+R to recording and Ctrl+Alt+1..9 to macro hotkeys (S16.2, S16.4)", () => {
+    expect(shortcutFor(ctrlShift("r"))).toEqual({ type: "recordMacro" });
+    expect(shortcutFor(key("1", { ctrlKey: true, altKey: true }))).toEqual({ type: "playMacro", hotkey: 1 });
+    expect(shortcutFor(key("9", { ctrlKey: true, altKey: true }))).toEqual({ type: "playMacro", hotkey: 9 });
+    // Ctrl+Alt+0 is not a hotkey, and Ctrl+Alt+Shift+1 belongs to the terminal.
+    expect(shortcutFor(key("0", { ctrlKey: true, altKey: true }))).toBeNull();
+    expect(shortcutFor(key("!", { ctrlKey: true, altKey: true, shiftKey: true }))).toBeNull();
+    // A character typed with AltGr (reported as Ctrl+Alt on some systems) still reaches the terminal.
+    expect(shortcutFor(key("@", { ctrlKey: true, altKey: true }))).toBeNull();
+  });
+
   it("leaves every other key to the terminal", () => {
     expect(shortcutFor(key("d", { ctrlKey: true }))).toBeNull(); // Ctrl+D is EOF for the shell
     expect(shortcutFor(key("c", { ctrlKey: true }))).toBeNull(); // Ctrl+C interrupts
