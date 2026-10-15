@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { paneIds, paneRects, splitBoxes, type PaneLayout, type Rect, type SplitBox } from "./paneLayout";
 
 interface PaneGridProps {
@@ -10,20 +10,40 @@ interface PaneGridProps {
   onResize: (splitId: string, ratio: number) => void;
 }
 
-const pct = (value: number) => `${value * 100}%`;
+/** The grid's size in CSS pixels; null until measured (then positions fall back to percentages). */
+type Size = { width: number; height: number } | null;
 
-const placement = ({ x, y, w, h }: Rect): CSSProperties => ({
-  left: pct(x),
-  top: pct(y),
-  width: pct(w),
-  height: pct(h),
+/**
+ * A position along one axis: whole pixels once the grid is measured, so each pane edge sits on a
+ * pixel and neighbours meet exactly (a 1px border at a fractional offset may not be drawn at all).
+ */
+const at = (fraction: number, total: number | undefined) =>
+  total ? `${Math.round(fraction * total)}px` : `${fraction * 100}%`;
+
+/** A length from `start` to `end` with the same rounding as `at`, so rounded edges stay shared. */
+const span = (start: number, end: number, total: number | undefined) =>
+  total ? `${Math.round(end * total) - Math.round(start * total)}px` : `${(end - start) * 100}%`;
+
+const placement = ({ x, y, w, h }: Rect, size: Size): CSSProperties => ({
+  left: at(x, size?.width),
+  top: at(y, size?.height),
+  width: span(x, x + w, size?.width),
+  height: span(y, y + h, size?.height),
 });
 
 /** Where the divider of a split sits, as a thin bar across the split's rectangle. */
-const dividerPlacement = ({ direction, ratio, rect }: SplitBox): CSSProperties =>
+const dividerPlacement = ({ direction, ratio, rect }: SplitBox, size: Size): CSSProperties =>
   direction === "row"
-    ? { left: pct(rect.x + rect.w * ratio), top: pct(rect.y), height: pct(rect.h) }
-    : { top: pct(rect.y + rect.h * ratio), left: pct(rect.x), width: pct(rect.w) };
+    ? {
+        left: at(rect.x + rect.w * ratio, size?.width),
+        top: at(rect.y, size?.height),
+        height: span(rect.y, rect.y + rect.h, size?.height),
+      }
+    : {
+        top: at(rect.y + rect.h * ratio, size?.height),
+        left: at(rect.x, size?.width),
+        width: span(rect.x, rect.x + rect.w, size?.width),
+      };
 
 /**
  * Lays out the panes of one tab (S11.2).
@@ -36,6 +56,20 @@ const dividerPlacement = ({ direction, ratio, rect }: SplitBox): CSSProperties =
 export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResize }: PaneGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const drag = useRef<SplitBox | null>(null);
+  const [size, setSize] = useState<Size>(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const { width, height } = root.getBoundingClientRect();
+      setSize((prev) => (prev && prev.width === width && prev.height === height ? prev : width && height ? { width, height } : null));
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    measure();
+    return () => observer.disconnect();
+  }, []);
   const rects = paneRects(layout);
   const multiple = layout.kind === "split";
 
@@ -62,7 +96,7 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
         <div
           key={id}
           className={`pane${multiple ? " pane--split" : ""}${multiple && id === focusedPane ? " pane--focused" : ""}`}
-          style={placement(rects[id])}
+          style={placement(rects[id], size)}
           data-pane-id={id}
           onMouseDown={() => onFocusPane(id)}
           onFocus={() => onFocusPane(id)}
@@ -77,7 +111,7 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
           aria-orientation={box.direction === "row" ? "vertical" : "horizontal"}
           aria-valuenow={Math.round(box.ratio * 100)}
           className={`pane-divider pane-divider--${box.direction}`}
-          style={dividerPlacement(box)}
+          style={dividerPlacement(box, size)}
           onPointerDown={(e) => {
             e.preventDefault();
             drag.current = box;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { closePane, leaf, splitPane, type PaneLayout } from "./paneLayout";
 import { PaneGrid } from "./PaneGrid";
@@ -82,5 +82,51 @@ describe("PaneGrid", () => {
   it("has no divider for a single pane", () => {
     render(grid(leaf("p1"), "p1"));
     expect(screen.queryByRole("separator")).toBeNull();
+  });
+});
+
+describe("PaneGrid pixel snapping", () => {
+  it("places panes and dividers on whole pixels, edge to edge, so 1px focus borders always show", () => {
+    let notify: () => void = () => {};
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(cb: () => void) {
+        notify = cb;
+      }
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 1001,
+      height: 601,
+      left: 0,
+      top: 0,
+      right: 1001,
+      bottom: 601,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    try {
+      const layout = splitPane(splitPane(leaf("p1"), "p1", "row", "p2"), "p2", "column", "p3");
+      const { container } = render(grid(layout, "p3"));
+      act(() => notify());
+      const style = (id: string) => (container.querySelector(`[data-pane-id="${id}"]`) as HTMLElement).style;
+      for (const id of ["p1", "p2", "p3"]) {
+        for (const prop of ["left", "top", "width", "height"] as const) {
+          expect(style(id)[prop], `${id} ${prop}`).toMatch(/^\d+px$/);
+        }
+      }
+      const px = (v: string) => Number.parseInt(v, 10);
+      expect(px(style("p1").width)).toBe(px(style("p2").left));
+      expect(px(style("p2").left) + px(style("p2").width)).toBe(1001);
+      expect(px(style("p2").top) + px(style("p2").height)).toBe(px(style("p3").top));
+      expect(px(style("p3").top) + px(style("p3").height)).toBe(601);
+      const divider = container.querySelector(".pane-divider--row") as HTMLElement;
+      expect(divider.style.left).toMatch(/^\d+px$/);
+    } finally {
+      rect.mockRestore();
+      globalThis.ResizeObserver = original;
+    }
   });
 });
