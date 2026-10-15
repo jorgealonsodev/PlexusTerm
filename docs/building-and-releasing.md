@@ -31,7 +31,7 @@ pnpm install
 pnpm tauri build --bundles nsis,msi   # installers under src-tauri\target\release\bundle\
 ```
 
-Windows support is developed on Linux, where it is only cross-compiled (`cargo check --target x86_64-pc-windows-gnu`); it is built, tested and packaged on a real Windows machine by the CI workflow (`.github/workflows/ci.yml`, Linux and Windows jobs on every push), whose artifacts hold the `.deb`, AppImage, NSIS and MSI installers.
+Windows support is developed on Linux, where it is only cross-compiled (`cargo check --target x86_64-pc-windows-gnu`); it is built, tested and packaged on a real Windows machine by the CI workflow (`.github/workflows/ci.yml`, Linux and Windows jobs on every pull request and every push to `main`; a newer push cancels the run in progress), whose artifacts hold the `.deb`, AppImage, NSIS and MSI installers.
 
 ## Releases
 
