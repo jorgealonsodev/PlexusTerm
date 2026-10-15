@@ -8,6 +8,8 @@
 //!   record it.
 
 #[cfg(test)]
+mod interop_tests;
+#[cfg(test)]
 pub(crate) mod test_server;
 
 use std::collections::HashMap;
