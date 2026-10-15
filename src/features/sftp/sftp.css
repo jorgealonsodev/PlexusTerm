@@ -1,0 +1,37 @@
+/* Dialogs of the SFTP browser's entry menu. */
+
+.sftp-properties {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0 0 12px;
+}
+
+.sftp-properties__row {
+  display: contents;
+}
+
+.sftp-properties dt {
+  color: var(--muted, inherit);
+}
+
+.sftp-properties dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.sftp-permissions {
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.sftp-permissions th,
+.sftp-permissions td {
+  padding: 4px 12px;
+  text-align: center;
+}
+
+.sftp-permissions th[scope="row"] {
+  text-align: left;
+}

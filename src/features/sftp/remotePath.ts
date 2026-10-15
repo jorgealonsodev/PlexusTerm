@@ -18,3 +18,11 @@ export function basename(path: string): string {
   if (trimmed === "/") return "/";
   return trimmed.slice(trimmed.lastIndexOf("/") + 1);
 }
+
+/** Characters that never need quoting in a POSIX shell word. */
+const PLAIN = /^[A-Za-z0-9_\-./+@:,=%]+$/;
+
+/** `path` as one POSIX shell word: unchanged when plain, otherwise single-quoted. */
+export function shellQuote(path: string): string {
+  return PLAIN.test(path) ? path : `'${path.replace(/'/g, "'\\''")}'`;
+}

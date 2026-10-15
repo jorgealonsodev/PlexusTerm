@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { basename, joinPath, parentPath } from "./remotePath";
-import { describeSftpError, sftp, type SftpEntry } from "./sftpClient";
+import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
+import { writeText } from "../terminal/clipboard";
+import { formatDate, formatSize } from "./format";
+import { PermissionsDialog } from "./PermissionsDialog";
+import { PropertiesDialog } from "./PropertiesDialog";
+import { basename, joinPath, parentPath, shellQuote } from "./remotePath";
+import { describeSftpError, EDIT_SAVED_EVENT, sftp, type EditSaved, type OpenWith, type SftpEntry } from "./sftpClient";
 
 interface SftpPanelProps {
   /** Backend id of the connected SSH session. */
@@ -11,28 +17,16 @@ interface SftpPanelProps {
   cwd: string | null;
   follow: boolean;
   onFollowChange: (follow: boolean) => void;
+  /** Types text into the focused terminal pane; without it "Copy file path to terminal" is disabled. */
+  onPathToTerminal?: (text: string) => void;
 }
 
 const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
 
-function formatSize(bytes: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${units[unit]}`;
-}
-
-const formatDate = (secs: number) =>
-  new Date(secs * 1000).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
-
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal }: SftpPanelProps) {
   const [path, setPath] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<SftpEntry[]>([]);
@@ -40,6 +34,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelP
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // Only the latest listing request may update the view.
   const listSeq = useRef(0);
@@ -152,30 +148,122 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelP
 
   const selectedEntry = entries.find((e) => e.path === selected) ?? null;
 
-  const renameSelected = async () => {
+  const renameEntry = async (entry: SftpEntry | null) => {
     const dir = current.current.path;
-    if (!selectedEntry || dir === null) return;
-    const name = window.prompt(`Rename "${selectedEntry.name}" to`, selectedEntry.name)?.trim();
-    if (!name || name === selectedEntry.name) return;
+    if (!entry || dir === null) return;
+    const name = window.prompt(`Rename "${entry.name}" to`, entry.name)?.trim();
+    if (!name || name === entry.name) return;
     if (!validName(name)) return setError(`"${name}" is not a valid name.`);
     const target = joinPath(dir, name);
-    if (await act(`Renaming ${selectedEntry.name}…`, () => sftp.rename(sessionId, selectedEntry.path, target))) {
+    if (await act(`Renaming ${entry.name}…`, () => sftp.rename(sessionId, entry.path, target))) {
       await navigate(dir);
     }
   };
 
-  const deleteSelected = async () => {
+  const deleteEntry = async (entry: SftpEntry | null) => {
     const dir = current.current.path;
-    if (!selectedEntry || dir === null) return;
-    const isDir = selectedEntry.kind === "dir";
+    if (!entry || dir === null) return;
+    const isDir = entry.kind === "dir";
     const question = isDir
-      ? `Delete folder "${selectedEntry.name}"? Only empty folders can be deleted.`
-      : `Delete "${selectedEntry.name}"?`;
+      ? `Delete folder "${entry.name}"? Only empty folders can be deleted.`
+      : `Delete "${entry.name}"?`;
     if (!window.confirm(question)) return;
-    if (await act(`Deleting ${selectedEntry.name}…`, () => sftp.remove(sessionId, selectedEntry.path, isDir))) {
+    if (await act(`Deleting ${entry.name}…`, () => sftp.remove(sessionId, entry.path, isDir))) {
       await navigate(dir);
     }
   };
+
+  const pathToTerminal = (entry: SftpEntry) => onPathToTerminal?.(shellQuote(entry.path));
+
+  const copyPath = (entry: SftpEntry) =>
+    void act("Copying the path…", () => writeText(entry.path), `Copied ${entry.path}.`);
+
+  /** Opens a temporary copy of a file; saving it later offers to upload it back. */
+  const editWith = (entry: SftpEntry, openWith: OpenWith) =>
+    void act(`Opening ${entry.name}…`, () => sftp.edit(sessionId, entry.path, openWith), `Opened ${entry.name}.`);
+
+  const openWithProgram = async (entry: SftpEntry) => {
+    try {
+      const program = await open({ title: `Open ${entry.name} with`, multiple: false, directory: false });
+      if (typeof program === "string") editWith(entry, { kind: "program", path: program });
+    } catch (err) {
+      setError(describeSftpError(err));
+    }
+  };
+
+  const compareWith = async (entry: SftpEntry) => {
+    try {
+      const local = await open({ title: `Compare ${entry.name} with`, multiple: false, directory: false });
+      if (typeof local !== "string") return;
+      await act(`Comparing ${entry.name}…`, () => sftp.compare(sessionId, entry.path, local));
+    } catch (err) {
+      setError(describeSftpError(err));
+    }
+  };
+
+  const changePermissions = async (entry: SftpEntry, mode: number) => {
+    await sftp.chmod(sessionId, entry.path, mode);
+    if (current.current.path !== null) await navigate(current.current.path);
+  };
+
+  const menuItems = (entry: SftpEntry): ContextMenuItem[] => {
+    const isFile = entry.kind !== "dir";
+    const fileItems: ContextMenuItem[] = isFile
+      ? [
+          { label: "Open with default text editor", onSelect: () => editWith(entry, { kind: "textEditor" }) },
+          { label: "Open with default program", onSelect: () => editWith(entry, { kind: "default" }) },
+          { label: "Open with…", onSelect: () => void openWithProgram(entry) },
+          { label: "Compare file with…", onSelect: () => void compareWith(entry) },
+        ]
+      : [];
+    return [
+      { label: "Open", onSelect: () => void openEntry(entry) },
+      ...fileItems,
+      { label: "Download…", onSelect: () => void download(entry), disabled: !isFile },
+      { separator: true },
+      { label: "Rename…", onSelect: () => void renameEntry(entry) },
+      { label: "Delete", onSelect: () => void deleteEntry(entry), danger: true },
+      { separator: true },
+      { label: "Copy file path", onSelect: () => copyPath(entry) },
+      { label: "Copy file path to terminal", onSelect: () => pathToTerminal(entry), disabled: !onPathToTerminal },
+      { separator: true },
+      { label: "Properties", onSelect: () => setDialog({ kind: "properties", entry }) },
+      { label: "Permissions…", onSelect: () => setDialog({ kind: "permissions", entry }) },
+    ];
+  };
+
+  // A saved temporary copy is uploaded back after a confirmation the first time per file.
+  const confirmedUploads = useRef(new Set<string>());
+  const onSaved = useRef<(saved: EditSaved) => void>(() => {});
+  onSaved.current = ({ id, remote }: EditSaved) => {
+    if (id !== sessionId) return;
+    const name = basename(remote);
+    if (!confirmedUploads.current.has(remote)) {
+      if (!window.confirm(`${name} was saved. Upload it to ${remote}?`)) return;
+      confirmedUploads.current.add(remote);
+    }
+    void (async () => {
+      if (await act(`Uploading ${name}…`, () => sftp.editUpload(sessionId, remote), `Uploaded ${name}.`)) {
+        const dir = current.current.path;
+        if (dir !== null && parentPath(remote) === dir) await navigate(dir);
+      }
+    })();
+  };
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    try {
+      listen<EditSaved>(EDIT_SAVED_EVENT, ({ payload }) => onSaved.current(payload))
+        .then((stop) => (disposed ? stop() : (unlisten = stop)))
+        .catch(() => {});
+    } catch {
+      // Not running inside Tauri (e.g. tests): no saved-copy events.
+    }
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   // Start in the terminal folder when following it, otherwise in the home folder.
   const start = useRef({ follow, cwd });
@@ -259,10 +347,10 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelP
         <button className="btn btn--small" disabled={busy} onClick={() => void newFolder()}>
           New folder
         </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameSelected()}>
+        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)}>
           Rename
         </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteSelected()}>
+        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)}>
           Delete
         </button>
         <button
@@ -294,6 +382,18 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelP
             onClick={() => setSelected(entry.path)}
             onDoubleClick={() => void openEntry(entry)}
             onKeyDown={(e) => e.key === "Enter" && void openEntry(entry)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setSelected(entry.path);
+              setMenu({ x: e.clientX, y: e.clientY, entry });
+            }}
+            // Middle click types the path into the terminal (and never starts autoscroll).
+            onMouseDown={(e) => e.button === 1 && e.preventDefault()}
+            onAuxClick={(e) => {
+              if (e.button !== 1) return;
+              e.preventDefault();
+              pathToTerminal(entry);
+            }}
           >
             <span className="sftp-row__icon">{ICONS[entry.kind]}</span>
             <span className="sftp-row__name">{entry.name}</span>
@@ -302,7 +402,19 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange }: SftpPanelP
           </li>
         ))}
       </ul>
-      <p className="sidebar__hint">Double-click a folder to open it or a file to download it. Drop files here to upload them.</p>
+      <p className="sidebar__hint">
+        Double-click a folder to open it or a file to download it. Right-click an entry for more options; middle-click
+        it to type its path in the terminal. Drop files here to upload them.
+      </p>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
+      {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "permissions" && (
+        <PermissionsDialog
+          entry={dialog.entry}
+          onApply={(mode) => changePermissions(dialog.entry, mode)}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }
