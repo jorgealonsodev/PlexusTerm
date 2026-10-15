@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
+import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
@@ -98,7 +100,14 @@ export function SettingsDialog({ settings, onSave, onCancel }: SettingsDialogPro
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="settings-title" noValidate>
-        <h2 id="settings-title">Settings</h2>
+        <div className="settings__header">
+          <h2 id="settings-title">Settings</h2>
+          <img
+            className="settings__logo"
+            src={themeById(settings.theme).dark ? wordmarkUrl : wordmarkLightUrl}
+            alt="PlexusTerm"
+          />
+        </div>
         <label className="field field--port">
           Font size
           <input

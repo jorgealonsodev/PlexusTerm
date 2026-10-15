@@ -1246,3 +1246,21 @@ textarea::placeholder {
   color: var(--text);
   border-color: var(--danger);
 }
+
+/* Settings: title on the left, the PlexusTerm wordmark on the right. */
+.settings__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings__header h2 {
+  margin: 0;
+}
+
+.settings__logo {
+  height: 18px;
+  opacity: 0.9;
+}
+

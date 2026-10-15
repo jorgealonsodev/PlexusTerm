@@ -17,6 +17,14 @@ const setup = () => {
 };
 
 describe("SettingsDialog", () => {
+  it("shows the PlexusTerm logo in its header, light for light schemes", () => {
+    const { unmount } = render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).not.toContain("light");
+    unmount();
+    render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, theme: "solarized-light" }} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).toContain("light");
+  });
+
   it("shows the current settings", () => {
     setup();
     expect((screen.getByLabelText("Font size") as HTMLInputElement).value).toBe("14");
