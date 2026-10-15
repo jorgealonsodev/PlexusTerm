@@ -18,6 +18,12 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S7.4 Browser: editable path bar, up / home / refresh, double-click folder to enter, double-click file to download via a save dialog, toolbar Upload (multi-select open dialog), New folder, Rename, Delete (with confirmation), Download; dropping OS files on the panel uploads them to the current folder.
   - S7.5 Follow terminal folder (toggle, on by default): the terminal reports the remote cwd from OSC 7 sequences and the browser follows it; README explains how to make a remote bash emit OSC 7.
 - S8 (assumption, later): tunnels, macros, multi-exec, password vault, split panes, serial, VNC/RDP.
+- S9 (decided by the parent under L13 "haz lo que te creas mas optimo"): SSH tunnels, like MobaXterm's MobaSSHTunnel.
+  - S9.1 Types: local (`-L`: listen on listenHost:listenPort, forward through the SSH server to destHost:destPort), remote (`-R`: the SSH server listens on listenPort and forwards to destHost:destPort reachable from this machine), dynamic (`-D`: SOCKS5 proxy on listenHost:listenPort; no-auth method, CONNECT command, IPv4/IPv6/domain addresses).
+  - S9.2 Each tunnel uses its own SSH connection to a saved session (S6) chosen by id; key/agent sessions start directly, password sessions ask for the password when the tunnel starts (never stored). The known_hosts policy is the same as S5 (unknown host → fingerprint prompt → retry with trust; changed key → refused).
+  - S9.3 Listeners bind to 127.0.0.1 by default; any other listen address must be typed explicitly and the editor shows a warning that other machines can reach it.
+  - S9.4 Tunnel definitions persist in tunnels.json via the atomic 0600 storage (same rules as sessions: an unreadable file disables editing; no secrets stored). Fields: id, name, type, sessionId, listenHost, listenPort, destHost, destPort (dest fields unused for dynamic).
+  - S9.5 UI: a third sidebar tab "Tunnels" listing every tunnel with its status (stopped / starting / running / error with message) and a start/stop toggle; New, Edit, Delete (confirm), Start all, Stop all. Stopping closes the listener, open forwarded connections and the SSH connection. Running tunnels stop when the app exits.
 
 ## Tasks
 
@@ -26,6 +32,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T3 — S6 — inline — Session manager UI + persistence. RED→GREEN: cargo storage 6/6 (atomic write, 0600, concurrent saves RED without unique temp names), vitest library/sessionForm; panel component tests added after implementation (regression). UI smoke: folder via prompt, session saved without password, password prompt → connect error shown.
 - [x] T2b — S5 — inline — Verifier advisories: reader/writer split (4 MiB paste test RED: stalled 20s → GREEN), otherKnownKeys warning, Debug redaction, IPv6 parsing, agent tries every identity (+ real ssh-agent test). cargo 31/31, vitest 49/49.
 - [x] T4 — S7 (S7.1-S7.5) — delegated (writer trigger: long-session context backstop, parent context ~180k) — SFTP side browser. Writer: cargo 43/43, vitest 62/62 (RED→GREEN for sftp ops + helpers; panel tests regression). Independent verifier: no blockers, S7.1-S7.5 PASS. Parent fixes: download via temp file + rename (RED: existing file lost → GREEN), dialog capability narrowed to allow-open/allow-save. Smoke: connect → SFTP tab auto-switch → list → enter folder → download 300000 B byte-exact.
+
+- [ ] T5 — S9 (S9.1-S9.5) — delegated (writer trigger: long-session context backstop) — SSH tunnels.
 
 ## Log
 
