@@ -64,7 +64,12 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null);
   const sessions = useSessionLibrary();
   const tunnels = useTunnels();
-  const launcher = useTunnelLauncher(sessions.library.sessions, tunnels.statusOf, tunnels.reportError);
+  const launcher = useTunnelLauncher(
+    sessions.library.sessions,
+    tunnels.statusOf,
+    tunnels.reportError,
+    tunnels.list.tunnels,
+  );
   const [tabSessions, setTabSessions] = useState<Record<string, TabSession>>({});
   const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
   const [followCwd, setFollowCwd] = useState(true);

@@ -78,6 +78,8 @@ type Notify = Arc<dyn Fn(StatusUpdate) + Send + Sync>;
 const WATCH_INTERVAL: Duration = Duration::from_secs(1);
 /// Upper bound for the polite part of stopping (cancel forward, disconnect).
 const STOP_TIMEOUT: Duration = Duration::from_secs(5);
+/// Time a SOCKS client gets to send its greeting and its request.
+const SOCKS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Resources of a running tunnel. Dropping it aborts the listener, the
 /// forwarded connections and the watcher, which releases the SSH connection.
@@ -125,24 +127,29 @@ impl Shared {
         self.next_generation.fetch_add(1, Ordering::Relaxed) + 1
     }
 
+    /// Reports a status change. Callers hold the `entries` lock, so updates
+    /// leave in the same order as the changes they describe: a `stop` racing
+    /// a finishing `start` can never be followed by a stale `Running`.
+    fn notify(&self, id: &str, status: TunnelStatus) {
+        (self.notify)(StatusUpdate {
+            id: id.to_string(),
+            status,
+        });
+    }
+
     /// Marks a running tunnel as failed, unless it was stopped or restarted meanwhile.
     fn fail(&self, id: &str, generation: u64, message: String) {
         let running = {
             let mut entries = self.entries.lock().unwrap();
             match entries.get_mut(id) {
                 Some(entry) if entry.generation == generation => {
-                    entry.status = TunnelStatus::Error {
-                        message: message.clone(),
-                    };
+                    entry.status = TunnelStatus::Error { message };
+                    self.notify(id, entry.status.clone());
                     entry.running.take()
                 }
                 _ => return,
             }
         };
-        (self.notify)(StatusUpdate {
-            id: id.to_string(),
-            status: TunnelStatus::Error { message },
-        });
         drop(running);
     }
 }
@@ -155,7 +162,9 @@ pub struct TunnelManager {
 }
 
 impl TunnelManager {
-    /// `notify` receives every status change.
+    /// `notify` receives every status change, in order. It runs while the
+    /// tunnel table is locked, so it must be quick and must not call back
+    /// into the manager.
     pub fn new(
         known_hosts: PathBuf,
         notify: impl Fn(StatusUpdate) + Send + Sync + 'static,
@@ -177,13 +186,6 @@ impl TunnelManager {
             .map(PathBuf::from)
             .unwrap_or_default();
         Self::new(home.join(".ssh").join("known_hosts"), notify)
-    }
-
-    fn notify(&self, id: &str, status: TunnelStatus) {
-        (self.shared.notify)(StatusUpdate {
-            id: id.to_string(),
-            status,
-        });
     }
 
     /// Opens the tunnel's SSH connection and starts forwarding.
@@ -212,8 +214,8 @@ impl TunnelManager {
                     cancel: Some(cancel),
                 },
             );
+            self.shared.notify(&id, TunnelStatus::Starting);
         }
-        self.notify(&id, TunnelStatus::Starting);
 
         let result = tokio::select! {
             result = self.open(tunnel, target, trusted_fingerprint, generation) => result,
@@ -231,7 +233,8 @@ impl TunnelManager {
             let mut entries = self.shared.entries.lock().unwrap();
             match entries.get_mut(&id).filter(|e| e.generation == generation) {
                 Some(entry) => {
-                    entry.status = status.clone();
+                    self.shared.notify(&id, status.clone());
+                    entry.status = status;
                     (
                         Some(result.map(|running| entry.running = Some(running))),
                         None,
@@ -241,10 +244,7 @@ impl TunnelManager {
             }
         };
         match outcome {
-            Some(outcome) => {
-                self.notify(&id, status);
-                outcome
-            }
+            Some(outcome) => outcome,
             None => {
                 // Stopped while starting: release what was opened.
                 if let Some(running) = orphan {
@@ -357,12 +357,12 @@ impl TunnelManager {
             };
             entry.generation = self.shared.generation();
             entry.status = TunnelStatus::Stopped;
+            self.shared.notify(id, TunnelStatus::Stopped);
             if let Some(cancel) = entry.cancel.take() {
                 let _ = cancel.send(());
             }
             entry.running.take()
         };
-        self.notify(id, TunnelStatus::Stopped);
         if let Some(running) = running {
             running.shutdown().await;
         }
@@ -472,7 +472,8 @@ async fn forward_socks(
     mut tcp: TcpStream,
     peer: SocketAddr,
 ) -> Result<(), socks::SocksError> {
-    let target = socks::handshake(&mut tcp).await?;
+    // On error (including a timeout) `tcp` is dropped, which closes the client connection.
+    let target = socks::handshake(&mut tcp, SOCKS_HANDSHAKE_TIMEOUT).await?;
     let opened = connection
         .channel_open_direct_tcpip(
             target.host,
