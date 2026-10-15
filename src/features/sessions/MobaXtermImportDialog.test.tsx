@@ -1,0 +1,60 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SavedSession } from "./library";
+import { MobaXtermImportDialog } from "./MobaXtermImportDialog";
+
+const imported: SavedSession = {
+  id: "n1",
+  name: "web",
+  folder: "MobaXterm",
+  host: "web.example.com",
+  port: 22,
+  username: "deploy",
+  auth: { method: "password" },
+};
+
+afterEach(cleanup);
+
+describe("MobaXtermImportDialog", () => {
+  it("previews the counts and imports on confirm", () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <MobaXtermImportDialog
+        result={{ ok: true, plan: { toAdd: [imported], duplicates: 2, skipped: { Telnet: 3, invalid: 1 } } }}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />,
+    );
+    expect(screen.getByText("1 SSH session to import.")).toBeTruthy();
+    expect(screen.getByText("2 duplicates already saved will be skipped.")).toBeTruthy();
+    expect(screen.getByText("Telnet sessions: 3")).toBeTruthy();
+    expect(screen.getByText("SSH without a host: 1")).toBeTruthy();
+    expect(screen.getByText(/Passwords are not imported/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Import 1 session"));
+    expect(onConfirm).toHaveBeenCalledWith([imported]);
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("only offers Close when there is nothing to import", () => {
+    render(
+      <MobaXtermImportDialog
+        result={{ ok: true, plan: { toAdd: [], duplicates: 0, skipped: {} } }}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("No SSH sessions to import.")).toBeTruthy();
+    expect(screen.getByText("Close")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Import/ })).toBeNull();
+    expect(screen.queryByText("Cancel")).toBeNull();
+  });
+
+  it("shows a read error", () => {
+    render(<MobaXtermImportDialog result={{ ok: false, error: "boom" }} onConfirm={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole("alert").textContent).toContain("boom");
+    expect(screen.getByText("Close")).toBeTruthy();
+  });
+});

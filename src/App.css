@@ -179,6 +179,13 @@ body,
   line-height: 1.45;
 }
 
+.import-skipped {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .dialog__actions {
   display: flex;
   justify-content: flex-end;
@@ -280,7 +287,10 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .sidebar__actions {

@@ -1,5 +1,9 @@
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
 import { buildTree, type SavedSession, type SessionLibrary, type TreeNode } from "./library";
+import { MobaXtermImportDialog, type ImportResult } from "./MobaXtermImportDialog";
+import { decodeIni, parseMobaXtermIni, planImport } from "./mobaxtermImport";
 import type { LibraryStatus } from "./useSessionLibrary";
 
 interface SessionsPanelProps {
@@ -12,6 +16,8 @@ interface SessionsPanelProps {
   onDelete: (session: SavedSession) => void;
   onNewFolder: (parent: string) => void;
   onDeleteFolder: (path: string) => void;
+  /** Saves the sessions confirmed in the MobaXterm import preview. */
+  onImport: (sessions: SavedSession[]) => void;
 }
 
 export function SessionsPanel(props: SessionsPanelProps) {
@@ -20,6 +26,25 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(library, filter), [library, filter]);
   const editable = status.state === "ready";
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
+  // Native dialog + bounded backend read: the same path as SFTP uploads, which works in WebKitGTK.
+  const importFile = async () => {
+    try {
+      const path = await open({
+        title: "Import sessions from MobaXterm.ini",
+        multiple: false,
+        directory: false,
+        filters: [{ name: "MobaXterm configuration", extensions: ["ini"] }],
+      });
+      if (typeof path !== "string") return;
+      const bytes = await invoke<number[]>("import_read_file", { path });
+      const parsed = parseMobaXtermIni(decodeIni(new Uint8Array(bytes)));
+      setImportResult({ ok: true, plan: planImport(library, parsed, () => crypto.randomUUID()) });
+    } catch (err) {
+      setImportResult({ ok: false, error: String(err) });
+    }
+  };
 
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -83,6 +108,9 @@ export function SessionsPanel(props: SessionsPanelProps) {
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={() => props.onNewSession("")}>New</button>
             <button className="btn btn--small" onClick={() => props.onNewFolder("")}>Folder</button>
+            <button className="btn btn--small" title="Import sessions from MobaXterm.ini" onClick={() => void importFile()}>
+              Import
+            </button>
           </span>
         )}
       </div>
@@ -104,6 +132,16 @@ export function SessionsPanel(props: SessionsPanelProps) {
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
       <p className="sidebar__hint">Double-click a session to connect.</p>
+      {importResult && (
+        <MobaXtermImportDialog
+          result={importResult}
+          onConfirm={(sessions) => {
+            props.onImport(sessions);
+            setImportResult(null);
+          }}
+          onClose={() => setImportResult(null)}
+        />
+      )}
     </div>
   );
 }

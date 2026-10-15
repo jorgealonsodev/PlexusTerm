@@ -22,6 +22,8 @@ export interface SessionLibrary {
 
 export type LibraryAction =
   | { type: "saveSession"; session: SavedSession }
+  /** Saves several sessions with a single write (e.g. an import). */
+  | { type: "saveSessions"; sessions: SavedSession[] }
   | { type: "deleteSession"; id: string }
   | { type: "addFolder"; path: string }
   | { type: "deleteFolder"; path: string };
@@ -81,6 +83,11 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
           : [...lib.sessions, session],
       };
     }
+    case "saveSessions":
+      return action.sessions.reduce(
+        (acc, session) => libraryReducer(acc, { type: "saveSession", session }),
+        lib,
+      );
     case "deleteSession":
       return { ...lib, sessions: lib.sessions.filter((s) => s.id !== action.id) };
     case "addFolder": {

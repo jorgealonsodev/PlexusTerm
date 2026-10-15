@@ -39,6 +39,16 @@ Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atom
 Passwords and key passphrases are never saved: password sessions ask for it on every connection.
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 
+### Import from MobaXterm
+
+**Import** in the Sessions panel reads a `MobaXterm.ini` file (UTF-8, or the Windows-1252 code page MobaXterm usually writes) and shows a preview before anything is saved:
+
+- SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, under a **MobaXterm** folder that keeps their MobaXterm folder path.
+- Imported sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
+- Other session types (Telnet, RDP, VNC, Serial, WSL, FTP, ...), SSH entries without a host and unrecognized lines are skipped and counted per type in the preview.
+- Sessions already saved with the same folder, name, host, port and username are skipped as duplicates.
+- Passwords are never imported: the `[Passwords]` section and any other section are not read.
+
 ## SFTP browser
 
 The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses the remote files of the active SSH tab over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.

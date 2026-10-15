@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { emptyLibrary, libraryReducer, type SavedSession } from "./library";
 import { SessionsPanel } from "./SessionsPanel";
+
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 const web: SavedSession = {
   id: "1",
@@ -26,6 +31,7 @@ function renderPanel(overrides: Partial<Parameters<typeof SessionsPanel>[0]> = {
     onDelete: vi.fn(),
     onNewFolder: vi.fn(),
     onDeleteFolder: vi.fn(),
+    onImport: vi.fn(),
     ...overrides,
   };
   render(<SessionsPanel {...props} />);
@@ -56,10 +62,45 @@ describe("SessionsPanel", () => {
     expect(screen.getByText("No matches.")).toBeTruthy();
   });
 
+  it("imports new sessions from a MobaXterm.ini file after the preview", async () => {
+    const props = renderPanel();
+    const ini = "[Bookmarks]\r\nSubRep=Prod\r\nrdp=#1#0%10.0.0.1%3389%\r\nnew=#109#0%10.0.0.2%%root%\r\n";
+    vi.mocked(open).mockResolvedValue("/home/u/MobaXterm.ini");
+    vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(ini)));
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(await screen.findByText("1 SSH session to import.")).toBeTruthy();
+    fireEvent.click(screen.getByText("Import 1 session"));
+    expect(props.onImport).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(props.onImport).mock.calls[0][0]).toMatchObject([
+      { name: "new", folder: "MobaXterm/Prod", host: "10.0.0.2", port: 22, username: "root", auth: { method: "password" } },
+    ]);
+    expect(screen.queryByText("Import 1 session")).toBeNull();
+  });
+
+  it("reads the file picked in the native dialog through the backend", async () => {
+    renderPanel();
+    vi.mocked(open).mockResolvedValue("/home/u/MobaXterm.ini");
+    vi.mocked(invoke).mockResolvedValue([]);
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(await screen.findByText("No SSH sessions to import.")).toBeTruthy();
+    expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/MobaXterm.ini" });
+  });
+
+  it("does nothing when the dialog is cancelled", async () => {
+    renderPanel();
+    vi.mocked(open).mockResolvedValue(null);
+    vi.mocked(invoke).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    await Promise.resolve();
+    expect(invoke).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("disables editing and explains why when the file could not be read", () => {
     renderPanel({ status: { state: "error", message: "bad json" } });
     expect(screen.getByText(/Editing is disabled/)).toBeTruthy();
     expect(screen.queryByText("New")).toBeNull();
+    expect(screen.queryByText("Import")).toBeNull();
     expect(screen.queryByTitle("Edit")).toBeNull();
   });
 });
