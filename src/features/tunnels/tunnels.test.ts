@@ -79,4 +79,9 @@ describe("isLoopback", () => {
     expect(["127.0.0.1", "localhost", "::1", " LOCALHOST "].every(isLoopback)).toBe(true);
     expect(["0.0.0.0", "192.168.1.5", "::", ""].some(isLoopback)).toBe(false);
   });
+
+  it("covers the whole 127.0.0.0/8 range and bracketed ::1, but not look-alikes", () => {
+    expect(["127.0.0.2", "127.255.255.254", "[::1]", "0:0:0:0:0:0:0:1"].every(isLoopback)).toBe(true);
+    expect(["127.0.0.256", "127.1", "1127.0.0.1", "127.0.0.1.evil.com", "::2"].some(isLoopback)).toBe(false);
+  });
 });

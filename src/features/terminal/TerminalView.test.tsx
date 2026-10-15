@@ -657,6 +657,17 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual([]);
     });
 
+    it("refuses to run a command with line breaks or control characters", async () => {
+      let assist: { run: (text: string) => boolean } | null = null;
+      await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
+      act(() => void (term().line = "$ "));
+      backend.write.mockClear();
+      for (const text of ["ls\nrm -rf ~", "ls\r", "vim\x1b:!id\r", "a\x03b", "x\u2028y", "\x9b2J"]) {
+        expect(assist!.run(text), JSON.stringify(text)).toBe(false);
+      }
+      expect(backend.write).not.toHaveBeenCalled();
+    });
+
     it("never records nor suggests at a password prompt", async () => {
       const history = historyWith("hunter2-is-not-a-command");
       const { container } = await renderView({ history });

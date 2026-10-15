@@ -120,6 +120,19 @@ pub async fn sftp_edit_upload(
     upload_file(&*ssh.sftp(id).await?, &local, &remote).await
 }
 
+/// The local file to compare with: an absolute path (as the file dialog gives), so it can never
+/// be read by the diff tool as one of its options.
+pub(crate) fn compare_target(local: &str) -> Result<std::path::PathBuf, SftpError> {
+    let path = std::path::PathBuf::from(local);
+    if path.is_absolute() {
+        Ok(path)
+    } else {
+        Err(SftpError::Sftp {
+            message: format!("cannot compare with \"{local}\": choose a local file"),
+        })
+    }
+}
+
 /// Opens a temporary copy of `remote` and the local file `local` in the first
 /// installed diff tool (Meld, KDiff3, Kompare, then `code --diff`).
 #[tauri::command]
@@ -130,6 +143,7 @@ pub async fn sftp_compare(
     ssh: State<'_, SshManager>,
     temp: State<'_, TempFiles>,
 ) -> Result<(), SftpError> {
+    let local = compare_target(&local)?;
     let (tool, args) =
         edit::find_diff_tool(std::env::var_os("PATH")).ok_or_else(|| SftpError::Sftp {
             message: "No diff tool found: install Meld, KDiff3, Kompare or Visual Studio Code."
@@ -139,7 +153,7 @@ pub async fn sftp_compare(
     let mut command: Vec<OsString> = vec![tool.into_os_string()];
     command.extend(args.iter().map(OsString::from));
     command.push(copy.clone().into_os_string());
-    command.push(local.into());
+    command.push(local.into_os_string());
     edit::spawn_detached(&command).map_err(|err| open_failure(&copy, err))
 }
 

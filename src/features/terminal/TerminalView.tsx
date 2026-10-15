@@ -534,6 +534,9 @@ export function TerminalView({
         track(text);
       },
       run: (text) => {
+        // One plain line only: a line break or control character would press keys of its own.
+        // eslint-disable-next-line no-control-regex
+        if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(text)) return false;
         if (fullScreen() || atSecretPrompt()) return false;
         // Ctrl+E Ctrl+U first: whatever was half typed (even after Tab or arrows) is cleared, so
         // the line sent is exactly the command.
