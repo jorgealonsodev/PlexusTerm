@@ -65,7 +65,9 @@ describe("Interface language (S3, S4)", () => {
     languages.mockReturnValue(["de-DE"]);
     await renderApp({ language: "ko" });
     expect(document.documentElement.lang).toBe("ko");
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    // Someone who cannot read Korean finds the gear, not the word "Settings".
+    expect(screen.queryByRole("button", { name: "Settings" })).toBeNull();
+    fireEvent.click(document.querySelector(".toolbar__settings")!);
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(document.documentElement.lang).toBe("en");
     await flush();
