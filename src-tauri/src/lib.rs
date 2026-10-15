@@ -1,4 +1,5 @@
 mod mosh;
+mod ai;
 mod history;
 mod platform;
 mod pty;
@@ -419,6 +420,7 @@ pub fn run() {
         .manage(sftp::edit::TempFiles::default())
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
+        .manage(ai::AiClient::default())
         .setup(move |app| {
             let handle = app.handle().clone();
             app.manage(
@@ -476,6 +478,11 @@ pub fn run() {
             wol_send,
             history::history_load,
             history::history_save,
+            ai::ai_key_status,
+            ai::ai_key_save,
+            ai::ai_key_delete,
+            ai::ai_complete,
+            ai::ai_assist,
             tools::keygen::keygen_generate,
             tools::keygen::keygen_save,
             tools::keygen::keygen_install,

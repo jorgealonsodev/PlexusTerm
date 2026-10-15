@@ -210,7 +210,7 @@ describe("SettingsDialog", () => {
     it("switches a provider's default model to the new provider's default, but keeps a custom one", () => {
       openAi();
       fireEvent.change(field("Provider"), { target: { value: "gemini" } });
-      expect(field("Model").value).toBe("gemini-2.5-flash");
+      expect(field("Model").value).toBe("gemini-3.5-flash-lite");
       fireEvent.change(field("Provider"), { target: { value: "openai" } });
       expect(field("Model").value).toBe("");
       fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
