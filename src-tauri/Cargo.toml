@@ -28,6 +28,7 @@ russh = "0.64"
 tokio = { version = "1", features = ["full"] }
 russh-sftp = "3.0"
 tauri-plugin-dialog = "2"
+serialport = { version = "4", default-features = false }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

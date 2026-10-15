@@ -7,6 +7,7 @@ import {
   parseLibrary,
   serializeLibrary,
   toTarget,
+  type SavedSerialSession,
   type SavedSession,
   type SessionLibrary,
 } from "./library";
@@ -22,7 +23,21 @@ const session = (overrides: Partial<SavedSession> = {}): SavedSession => ({
   ...overrides,
 });
 
-const save = (lib: SessionLibrary, s: SavedSession) =>
+const serial = (overrides: Partial<SavedSerialSession> = {}): SavedSerialSession => ({
+  kind: "serial",
+  id: "c1",
+  name: "switch console",
+  folder: "Lab",
+  path: "/dev/ttyUSB0",
+  baud: 9600,
+  dataBits: 8,
+  parity: "none",
+  stopBits: 1,
+  flow: "none",
+  ...overrides,
+});
+
+const save = (lib: SessionLibrary, s: SavedSession | SavedSerialSession) =>
   libraryReducer(lib, { type: "saveSession", session: s });
 
 describe("normalizeFolder", () => {
@@ -89,6 +104,64 @@ describe("parseLibrary / serializeLibrary", () => {
     expect(parseLibrary('{"version":1,"folders":[],"sessions":[{"id":"x"}]}')).toMatchObject({ ok: false });
   });
 
+  it("loads files written before serial sessions existed (no kind) as SSH sessions", () => {
+    const legacy = JSON.stringify({
+      version: 1,
+      folders: ["Prod"],
+      sessions: [
+        {
+          id: "old",
+          name: "web",
+          folder: "Prod",
+          host: "web.example.com",
+          port: 22,
+          username: "deploy",
+          auth: { method: "key", path: "~/.ssh/id" },
+        },
+      ],
+    });
+    const result = parseLibrary(legacy);
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.library.sessions).toEqual([
+      {
+        kind: "ssh",
+        id: "old",
+        name: "web",
+        folder: "Prod",
+        host: "web.example.com",
+        port: 22,
+        username: "deploy",
+        auth: { method: "key", path: "~/.ssh/id" },
+      },
+    ]);
+    expect(JSON.parse(serializeLibrary(result.library)).sessions[0].kind).toBe("ssh");
+  });
+
+  it("round-trips serial sessions and writes their kind", () => {
+    const lib = save(save(emptyLibrary, session()), serial({ parity: "even", stopBits: 2, flow: "software" }));
+    const json = serializeLibrary(lib);
+    expect(JSON.parse(json).sessions.map((s: { kind: string }) => s.kind)).toEqual(["ssh", "serial"]);
+    expect(parseLibrary(json)).toEqual({ ok: true, library: lib });
+  });
+
+  it("rejects serial sessions with invalid fields", () => {
+    const file = (bad: Record<string, unknown>) =>
+      JSON.stringify({ version: 1, folders: [], sessions: [{ ...serial(), ...bad }] });
+    for (const bad of [
+      { path: 5 },
+      { baud: 0 },
+      { baud: 9600.5 },
+      { dataBits: 9 },
+      { parity: "mark" },
+      { stopBits: 3 },
+      { flow: "rts" },
+      { kind: "telnet" },
+    ]) {
+      expect(parseLibrary(file(bad)), JSON.stringify(bad)).toMatchObject({ ok: false });
+    }
+  });
+
   it("never serializes passwords", () => {
     const withSecret = { ...session(), auth: { method: "password", password: "hunter2" } } as unknown as SavedSession;
     const json = serializeLibrary(save(emptyLibrary, withSecret));
@@ -103,19 +176,25 @@ describe("buildTree", () => {
     session({ id: "2", name: "alpha", folder: "" }),
     session({ id: "3", name: "db", folder: "Prod", host: "10.0.0.9" }),
     session({ id: "4", name: "cache", folder: "Prod/Infra" }),
+    serial({ id: "5", name: "router", folder: "Prod", path: "/dev/ttyACM3" }),
   ].reduce(save, libraryReducer(emptyLibrary, { type: "addFolder", path: "Empty" }));
 
   it("nests folders first, then sessions, each sorted by name", () => {
     const tree = buildTree(lib, "");
     expect(tree.map((n) => n.name)).toEqual(["Empty", "Prod", "alpha", "zeta"]);
     const prod = tree[1];
-    expect(prod.kind === "folder" && prod.children.map((n) => n.name)).toEqual(["Infra", "db"]);
+    expect(prod.kind === "folder" && prod.children.map((n) => n.name)).toEqual(["Infra", "db", "router"]);
   });
 
   it("filters by name or host and keeps only folders with matches", () => {
     expect(buildTree(lib, "10.0.0").map((n) => n.name)).toEqual(["Prod"]);
     const prod = buildTree(lib, "CACHE")[0];
     expect(prod.kind === "folder" && prod.children.map((n) => n.name)).toEqual(["Infra"]);
+  });
+
+  it("matches serial sessions by device path", () => {
+    const prod = buildTree(lib, "ttyacm3")[0];
+    expect(prod.kind === "folder" && prod.children.map((n) => n.name)).toEqual(["router"]);
   });
 });
 
@@ -132,6 +211,18 @@ describe("toTarget", () => {
       port: 22,
       username: "deploy",
       auth: { method: "agent" },
+    });
+  });
+
+  it("turns a serial session into a serial target", () => {
+    expect(toTarget(serial({ flow: "hardware" }))).toEqual({
+      type: "serial",
+      path: "/dev/ttyUSB0",
+      baud: 9600,
+      dataBits: 8,
+      parity: "none",
+      stopBits: 1,
+      flow: "hardware",
     });
   });
 });

@@ -104,6 +104,7 @@ describe("planImport", () => {
     expect(plan.duplicates).toBe(1);
     expect(plan.toAdd).toEqual([
       {
+        kind: "ssh",
         id: "id1",
         name: "bare",
         folder: "Imported",
@@ -113,6 +114,7 @@ describe("planImport", () => {
         auth: { method: "password" },
       },
       {
+        kind: "ssh",
         id: "id2",
         name: "db1",
         folder: "Imported/Prod/DB",
@@ -130,6 +132,26 @@ describe("planImport", () => {
     const plan = planImport(emptyLibrary, parseSessionsIni(text), () => "x");
     expect(plan.toAdd).toHaveLength(1);
     expect(plan.duplicates).toBe(1);
+  });
+
+  it("does not compare imported hosts against serial sessions", () => {
+    const withSerial = libraryReducer(library, {
+      type: "saveSession",
+      session: {
+        kind: "serial",
+        id: "c",
+        name: "web",
+        folder: "Imported",
+        path: "/dev/ttyUSB0",
+        baud: 9600,
+        dataBits: 8,
+        parity: "none",
+        stopBits: 1,
+        flow: "none",
+      },
+    });
+    const text = "[Bookmarks]\nweb=#109#0%web.example.com%2222%deploy%\n";
+    expect(planImport(withSerial, parseSessionsIni(text), () => "x").duplicates).toBe(1);
   });
 
   it("treats a different port or user as a different session", () => {

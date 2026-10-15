@@ -1,4 +1,4 @@
-import { normalizeFolder, type SavedSession, type SessionLibrary } from "./library";
+import { isSshSession, normalizeFolder, type SavedSession, type SessionLibrary } from "./library";
 
 /** An SSH bookmark read from sessions.ini; secrets and key paths are never read. */
 export interface ImportedSession {
@@ -119,7 +119,7 @@ const identity = (s: { folder: string; name: string; host: string; port: number;
 
 /** New sessions use password auth (asked at connect time); exact duplicates are skipped. */
 export function planImport(library: SessionLibrary, parsed: ParsedImport, newId: () => string): ImportPlan {
-  const seen = new Set(library.sessions.map(identity));
+  const seen = new Set(library.sessions.filter(isSshSession).map(identity));
   const toAdd: SavedSession[] = [];
   let duplicates = 0;
   for (const session of parsed.sessions) {
@@ -129,7 +129,7 @@ export function planImport(library: SessionLibrary, parsed: ParsedImport, newId:
       continue;
     }
     seen.add(key);
-    toAdd.push({ id: newId(), ...session, auth: { method: "password" } });
+    toAdd.push({ kind: "ssh", id: newId(), ...session, auth: { method: "password" } });
   }
   return { toAdd, duplicates, skipped: parsed.skipped };
 }

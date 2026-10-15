@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { defaultSerialForm } from "../serial/serialSettings";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
 const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
@@ -11,6 +12,8 @@ const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
   password: "",
   keyPath: "",
   passphrase: "",
+  kind: "ssh",
+  serial: defaultSerialForm,
   ...overrides,
 });
 
@@ -19,6 +22,7 @@ describe("parseSessionForm", () => {
     expect(parseSessionForm(form(), "id-1")).toEqual({
       ok: true,
       session: {
+        kind: "ssh",
         id: "id-1",
         name: "Web",
         folder: "Prod/Web",
@@ -45,6 +49,39 @@ describe("parseSessionForm", () => {
 
   it("reports validation errors", () => {
     expect(parseSessionForm(form({ host: "" }), "x")).toEqual({ ok: false, error: "Host is required" });
+  });
+});
+
+describe("parseSessionForm (serial)", () => {
+  const serialForm = (overrides: Partial<SessionForm["serial"]> = {}) =>
+    form({ kind: "serial", name: "", host: "", serial: { ...defaultSerialForm, path: "/dev/ttyUSB1", ...overrides } });
+
+  it("builds a serial session named after the device by default", () => {
+    expect(parseSessionForm(serialForm({ baud: "9600" }), "c-1")).toEqual({
+      ok: true,
+      session: {
+        kind: "serial",
+        id: "c-1",
+        name: "/dev/ttyUSB1",
+        folder: "Prod/Web",
+        path: "/dev/ttyUSB1",
+        baud: 9600,
+        dataBits: 8,
+        parity: "none",
+        stopBits: 1,
+        flow: "none",
+      },
+    });
+  });
+
+  it("reports serial validation errors", () => {
+    expect(parseSessionForm(serialForm({ path: "" }), "x")).toEqual({ ok: false, error: "Serial port is required" });
+  });
+
+  it("round-trips a serial session", () => {
+    const parsed = parseSessionForm(serialForm({ baud: "custom", customBaud: "250000", parity: "odd" }), "c-2");
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parseSessionForm(formFromSession(parsed.session), "c-2")).toEqual(parsed);
   });
 });
 

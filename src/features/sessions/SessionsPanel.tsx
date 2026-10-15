@@ -1,7 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
-import { buildTree, type SavedSession, type SessionLibrary, type TreeNode } from "./library";
+import {
+  buildTree,
+  isSerialSession,
+  type LibrarySession,
+  type SavedSession,
+  type SessionLibrary,
+  type TreeNode,
+} from "./library";
 import { IniImportDialog, type ImportResult } from "./IniImportDialog";
 import { decodeIni, parseSessionsIni, planImport } from "./iniImport";
 import type { LibraryStatus } from "./useSessionLibrary";
@@ -10,10 +17,10 @@ interface SessionsPanelProps {
   library: SessionLibrary;
   status: LibraryStatus;
   saveError: string | null;
-  onOpen: (session: SavedSession) => void;
+  onOpen: (session: LibrarySession) => void;
   onNewSession: (folder: string) => void;
-  onEdit: (session: SavedSession) => void;
-  onDelete: (session: SavedSession) => void;
+  onEdit: (session: LibrarySession) => void;
+  onDelete: (session: LibrarySession) => void;
   onNewFolder: (parent: string) => void;
   onDeleteFolder: (path: string) => void;
   /** Saves the sessions confirmed in the another app import preview. */
@@ -83,7 +90,11 @@ export function SessionsPanel(props: SessionsPanelProps) {
           className="tree-row"
           style={indent}
           tabIndex={0}
-          title={`${session.username}@${session.host}:${session.port}`}
+          title={
+            isSerialSession(session)
+              ? `${session.path} @ ${session.baud}`
+              : `${session.username}@${session.host}:${session.port}`
+          }
           onDoubleClick={() => props.onOpen(session)}
           onKeyDown={(e) => e.key === "Enter" && props.onOpen(session)}
         >

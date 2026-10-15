@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from "react";
+import { SerialFields } from "../serial/SerialFields";
 import { fieldSetter, SshFields } from "../ssh/SshFields";
-import type { SavedSession } from "./library";
+import type { LibrarySession } from "./library";
 import { formFromSession, parseSessionForm, type SessionForm } from "./sessionForm";
 
 interface SessionEditDialogProps {
   /** Existing session to edit, or a draft (new id, preset folder) to create. */
-  session: SavedSession;
+  session: LibrarySession;
   isNew: boolean;
   folders: string[];
-  onSave: (session: SavedSession) => void;
+  onSave: (session: LibrarySession) => void;
   onCancel: () => void;
 }
 
@@ -27,11 +28,23 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="se-title">
-        <h2 id="se-title">{isNew ? "New SSH session" : "Edit session"}</h2>
+        <h2 id="se-title">{isNew ? "New session" : "Edit session"}</h2>
+        <label className="field">
+          Session type
+          <select value={form.kind} onChange={set("kind")}>
+            <option value="ssh">SSH</option>
+            <option value="serial">Serial</option>
+          </select>
+        </label>
         <div className="form-row">
           <label className="field field--grow">
             Name
-            <input autoFocus value={form.name} onChange={set("name")} placeholder="user@host" />
+            <input
+              autoFocus
+              value={form.name}
+              onChange={set("name")}
+              placeholder={form.kind === "serial" ? "Device path" : "user@host"}
+            />
           </label>
           <label className="field field--grow">
             Folder
@@ -43,9 +56,15 @@ export function SessionEditDialog({ session, isNew, folders, onSave, onCancel }:
             </datalist>
           </label>
         </div>
-        <SshFields form={form} set={set} withSecrets={false} />
-        {form.method === "password" && (
-          <p className="muted">The password is asked each time you connect; it is never saved.</p>
+        {form.kind === "serial" ? (
+          <SerialFields form={form.serial} onChange={(serial) => setForm((f) => ({ ...f, serial }))} />
+        ) : (
+          <>
+            <SshFields form={form} set={set} withSecrets={false} />
+            {form.method === "password" && (
+              <p className="muted">The password is asked each time you connect; it is never saved.</p>
+            )}
+          </>
         )}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">

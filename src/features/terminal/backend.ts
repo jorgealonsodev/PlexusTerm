@@ -1,5 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type { SessionTarget, SshTarget } from "../sessions/types";
+import { serialBackend } from "../serial/serialBackend";
 
 export type TerminalEvent =
   | { event: "output"; data: string }
@@ -61,5 +62,12 @@ function sshBackend(target: SshTarget): TerminalBackend {
 }
 
 export function backendFor(target: SessionTarget): TerminalBackend {
-  return target.type === "local" ? localBackend : sshBackend(target);
+  switch (target.type) {
+    case "local":
+      return localBackend;
+    case "ssh":
+      return sshBackend(target);
+    case "serial":
+      return serialBackend(target);
+  }
 }

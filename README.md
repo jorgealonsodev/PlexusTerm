@@ -30,12 +30,35 @@ Host keys are verified against `~/.ssh/known_hosts`, like OpenSSH:
 
 Known limitations of the known_hosts parser (russh): `@revoked` / `@cert-authority` markers and wildcard patterns are not supported, and hostnames are matched case-sensitively; in those cases you get the unknown-host prompt instead of a silent connection.
 
+## Serial consoles
+
+Open **Serial** to connect to a serial console (USB-serial adapters such as `/dev/ttyUSB0`, CDC-ACM devices such as `/dev/ttyACM0`, on-board UARTs such as `/dev/ttyS0`).
+The dialog lists the ports detected on this machine (**Refresh** scans again) and also accepts any device path typed by hand.
+
+| Setting | Values | Default |
+| --- | --- | --- |
+| Baud rate | 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 or a custom value | 115200 |
+| Data bits | 5, 6, 7, 8 | 8 |
+| Parity | None, Odd, Even | None |
+| Stop bits | 1, 2 | 1 |
+| Flow control | None, XON/XOFF (software), RTS/CTS (hardware) | None |
+
+The tab is titled `<device> @ <baud>`. Keys are sent as typed (Enter sends CR) and resizing the window does not affect the device.
+The app shortcuts (Ctrl+Shift+...) work the same in serial tabs and never reach the device.
+
+- **Permission denied**: serial devices belong to the `dialout` group. Run `sudo usermod -aG dialout $USER`, then log out and back in.
+- A missing device, or one already open in another program (or in another tab or pane), is reported in the tab.
+- If the device disappears while open (USB adapter unplugged), the tab shows the error and the session ends; close the tab or open the port again.
+
+Port detection reads `/sys/class/tty` and does not need libudev; it never opens the devices.
+
 ## Saved sessions
 
-The **Sessions** panel on the left keeps SSH sessions in folders (`Prod/DB` style paths).
-Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name or host.
+The **Sessions** panel on the left keeps SSH and serial sessions in folders (`Prod/DB` style paths).
+Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
+The edit dialog has a **Session type** selector (SSH or Serial) that shows the matching fields. Serial sessions keep the device path and line settings and open directly, without any password.
 
-Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`).
+Sessions are stored in `~/.config/dev.nexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh` or `serial`), and entries written by earlier versions without it load as SSH sessions.
 Passwords and key passphrases are never saved: password sessions ask for it on every connection.
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 

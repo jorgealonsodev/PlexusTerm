@@ -47,7 +47,28 @@ describe("SessionsPanel", () => {
     fireEvent.doubleClick(row);
     fireEvent.keyDown(row, { key: "Enter" });
     expect(props.onOpen).toHaveBeenCalledTimes(2);
-    expect(props.onOpen).toHaveBeenCalledWith(web);
+    expect(props.onOpen).toHaveBeenCalledWith({ ...web, kind: "ssh" });
+  });
+
+  it("opens a serial session on double-click; its tooltip shows the device", () => {
+    const withSerial = libraryReducer(library, {
+      type: "saveSession",
+      session: {
+        kind: "serial",
+        id: "2",
+        name: "switch",
+        folder: "Prod",
+        path: "/dev/ttyUSB0",
+        baud: 9600,
+        dataBits: 8,
+        parity: "none",
+        stopBits: 1,
+        flow: "none",
+      },
+    });
+    const props = renderPanel({ library: withSerial });
+    fireEvent.doubleClick(screen.getByTitle("/dev/ttyUSB0 @ 9600"));
+    expect(props.onOpen).toHaveBeenCalledWith(expect.objectContaining({ kind: "serial", id: "2" }));
   });
 
   it("collapses a folder when its row is clicked", () => {
