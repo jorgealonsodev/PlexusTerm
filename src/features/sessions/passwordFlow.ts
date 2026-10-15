@@ -42,6 +42,14 @@ export function shouldAskAgain(auth: SshAuth, err: SshError): boolean {
   return auth.method === "storedPassword" && (err.kind === "secretMissing" || err.kind === "authFailed");
 }
 
+/**
+ * True when the server rejected the saved password (`authFailed`); false when none could be
+ * used (`secretMissing`), which is asked like a first login: unticked, with nothing to forget.
+ */
+export function savedPasswordRejected(err: SshError): boolean {
+  return err.kind === "authFailed";
+}
+
 /** Saved SSH sessions that `action` removes from `library` (their saved passwords go with them). */
 export function removedSshSessions(library: SessionLibrary, action: LibraryAction): SavedSession[] {
   const kept = new Set(libraryReducer(library, action).sessions.map((s) => s.id));

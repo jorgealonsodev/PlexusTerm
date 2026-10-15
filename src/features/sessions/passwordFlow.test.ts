@@ -3,6 +3,7 @@ import { emptyLibrary, libraryReducer, type LibrarySession, type SavedSession } 
 import {
   secretToForgetOnEdit,
   removedSshSessions,
+  savedPasswordRejected,
   secretLabel,
   shouldAskAgain,
   storageFor,
@@ -97,6 +98,16 @@ describe("shouldAskAgain", () => {
 
   it("never loops on a typed password", () => {
     expect(shouldAskAgain({ method: "password", password: "pw" }, { kind: "authFailed" })).toBe(false);
+  });
+});
+
+describe("savedPasswordRejected", () => {
+  it("is true when the server rejected the saved password", () => {
+    expect(savedPasswordRejected({ kind: "authFailed" })).toBe(true);
+  });
+
+  it("is false when no saved password could be used (asked like a first login)", () => {
+    expect(savedPasswordRejected({ kind: "secretMissing" })).toBe(false);
   });
 });
 

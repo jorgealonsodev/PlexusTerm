@@ -344,14 +344,28 @@ describe("TerminalView", () => {
       });
     });
 
-    it("forgets the saved password when the checkbox is unticked on a missing secret", async () => {
-      const box = await rejectFirstStartWith({ kind: "secretMissing" });
+    it("forgets the saved password when the checkbox is unticked after it was rejected", async () => {
+      const box = await rejectFirstStartWith({ kind: "authFailed" });
       await vi.waitFor(() => expect(box.disabled).toBe(false));
       fireEvent.click(box);
       fireEvent.change(screen.getByLabelText("Password"), { target: { value: "new" } });
       fireEvent.click(screen.getByText("Connect"));
       await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
       expect(backend.start.mock.calls[1][0]).toMatchObject({ storage: { action: "forget", sessionId: "s1" } });
+    });
+
+    it("connects first and asks only when no password is saved, unticked like a first login", async () => {
+      const box = await rejectFirstStartWith({ kind: "secretMissing" });
+      expect(backend.start).toHaveBeenCalledTimes(1);
+      expect(backend.start.mock.calls[0][0]).not.toHaveProperty("auth");
+      expect(box.checked).toBe(false);
+      await vi.waitFor(() => expect(box.disabled).toBe(false));
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "new" } });
+      fireEvent.click(screen.getByText("Connect"));
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalledTimes(2));
+      const retry = backend.start.mock.calls[1][0] as { auth: unknown; storage?: unknown };
+      expect(retry.auth).toEqual({ method: "password", password: "new" });
+      expect(retry.storage).toBeUndefined();
     });
 
     it("does not prompt for other failures", async () => {

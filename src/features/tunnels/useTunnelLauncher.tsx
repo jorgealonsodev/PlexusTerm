@@ -2,9 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { chainTarget, collectLogins, hopLabel, patchJump, type PasswordAnswer } from "../sessions/jumpHosts";
 import { isSshSession, resolveChain, type LibrarySession } from "../sessions/library";
-import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
+import { savedPasswordRejected, shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
-import { secretExists } from "../sessions/secrets";
 import type { SshAuth } from "../sessions/types";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { toSshError, type SshError } from "../ssh/sshErrors";
@@ -89,23 +88,21 @@ export function useTunnelLauncher(
       }
       const hops = [...chain.jumps, session];
       const last = hops.length - 1;
-      // Saved passwords are used when present; the others are asked one hop at a time.
-      const logins = await collectLogins(hops, {
-        secretExists,
-        askPassword: async (index) => {
-          const answer = await askPassword(hopLabel(hops, index), false);
-          return answer && stillWanted(tunnel) ? answer : null;
-        },
-      });
+      // Password hops connect first (the backend tries the agent and default keys); a password
+      // the server still needs is asked after connecting, one hop at a time.
+      const logins = await collectLogins(hops);
       if (logins === null || !stillWanted(tunnel)) return;
       let target = chainTarget(hops, logins);
 
-      /** Asks again for hop `index` after its saved password failed; false when cancelled. */
-      const retypePassword = async (index: number) => {
-        const answer = await askPassword(hopLabel(hops, index), true);
+      /**
+       * Asks for hop `index` after its saved password was missing (unticked, like a first login)
+       * or rejected (ticked); false when cancelled.
+       */
+      const retypePassword = async (index: number, rejected: boolean) => {
+        const answer = await askPassword(hopLabel(hops, index), rejected);
         if (answer === null || !stillWanted(tunnel)) return false;
         const auth: SshAuth = { method: "password", password: answer.password };
-        const storage = storageFor(hops[index], answer.remember, true);
+        const storage = storageFor(hops[index], answer.remember, rejected);
         if (index === last) target = { ...target, auth, storage };
         else target = { ...target, jumps: patchJump(target.jumps ?? [], index, { auth, storage }) };
         return true;
@@ -148,7 +145,7 @@ export function useTunnelLauncher(
             if (!jump || index >= last) return;
             // The saved password of a jump host is missing or outdated: ask for it and retry.
             if (shouldAskAgain(jump.auth, err.error)) {
-              if (!(await retypePassword(index))) return;
+              if (!(await retypePassword(index, savedPasswordRejected(err.error)))) return;
               continue;
             }
             if (err.error.kind !== "unknownHost" || jump.trustedFingerprint) return;
@@ -158,7 +155,7 @@ export function useTunnelLauncher(
           }
           // The saved password is missing or outdated: ask for it and retry (once, typed).
           if (shouldAskAgain(target.auth, err)) {
-            if (!(await retypePassword(last))) return;
+            if (!(await retypePassword(last, savedPasswordRejected(err)))) return;
             continue;
           }
           if (err.kind !== "unknownHost" || trustedFingerprint !== null) return;

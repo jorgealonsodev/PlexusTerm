@@ -194,6 +194,15 @@ describe("collectLogins", () => {
     ]);
   });
 
+  it("without prompts, gives every password hop its saved password slot so the backend tries keys first", async () => {
+    const logins = await collectLogins([bastion, saved, keyed]);
+    expect(logins).toEqual<HopLogin[]>([
+      { auth: { method: "storedPassword", sessionId: "bastion" } },
+      { auth: { method: "storedPassword", sessionId: "saved" } },
+      { auth: { method: "key", path: "~/.ssh/id" } },
+    ]);
+  });
+
   it("stops at the first cancelled prompt", async () => {
     const askPassword = vi.fn(async () => null);
     const logins = await collectLogins([bastion, ssh("t", { auth: { method: "password" } })], {

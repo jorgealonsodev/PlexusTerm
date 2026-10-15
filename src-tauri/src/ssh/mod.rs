@@ -11,6 +11,11 @@
 //! each hop is reached through a `direct-tcpip` channel of the previous one and
 //! applies the same known_hosts policy and its own authentication. Errors of a
 //! jump host are wrapped in [`SshError::Hop`], which names it.
+//!
+//! Password logins (typed or saved) first try public-key authentication like OpenSSH:
+//! the SSH agent's keys, then the default identity files `id_ed25519`, `id_ecdsa` and
+//! `id_rsa` next to known_hosts (`~/.ssh`), unencrypted only. The password is only sent
+//! when the server rejects all of them (see [`try_default_keys`]).
 
 #[cfg(test)]
 mod interop_tests;
@@ -457,6 +462,10 @@ pub(crate) async fn connect_authenticated(
 
 /// Connects to one hop (over a `direct-tcpip` channel of `via` when given), applies
 /// the known_hosts policy, authenticates and then applies the hop's `storage`.
+///
+/// A password login first tries the default keys; when the server drops the connection
+/// while they are tried (too many authentication failures), the hop is reconnected once
+/// and only the password is tried.
 async fn connect_hop(
     hop: Hop,
     via: Option<&Connection>,
@@ -469,12 +478,66 @@ async fn connect_hop(
         secrets,
         storage_timeout,
     } = ctx;
+    let mut handle = open_hop(&hop, via, known_hosts, forwarded.clone()).await?;
+    let endpoint = endpoint(&hop.username, &hop.host, hop.port);
+
+    if matches!(
+        hop.auth,
+        SshAuth::Password { .. } | SshAuth::StoredPassword { .. }
+    ) {
+        let identity_dir = known_hosts.parent();
+        match try_default_keys(&mut handle, &hop.username, agent_socket, identity_dir).await {
+            // The typed password was never checked, so it is not saved.
+            KeysOutcome::Accepted => {
+                let warning =
+                    apply_storage(secrets, hop.storage, None, endpoint, storage_timeout).await;
+                return Ok((handle, warning));
+            }
+            KeysOutcome::Rejected => {}
+            KeysOutcome::Disconnected => {
+                handle = open_hop(&hop, via, known_hosts, forwarded).await?;
+            }
+        }
+    }
+
+    let typed_password = match &hop.auth {
+        SshAuth::Password { password } => Some(password.clone()),
+        _ => None,
+    };
+    authenticate(
+        &mut handle,
+        &hop.username,
+        hop.auth,
+        agent_socket,
+        secrets,
+        &endpoint,
+    )
+    .await?;
+    let warning = apply_storage(
+        secrets,
+        hop.storage,
+        typed_password,
+        endpoint,
+        storage_timeout,
+    )
+    .await;
+    Ok((handle, warning))
+}
+
+/// Opens the SSH connection to `hop` (over a `direct-tcpip` channel of `via` when given)
+/// and applies the known_hosts policy, without authenticating.
+async fn open_hop(
+    hop: &Hop,
+    via: Option<&Connection>,
+    known_hosts: &Path,
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
+) -> Result<Connection, SshError> {
     let rejection = Arc::new(Mutex::new(None));
     let handler = ClientHandler {
         host: hop.host.clone(),
         port: hop.port,
         known_hosts: known_hosts.to_path_buf(),
-        trusted_fingerprint: hop.trusted_fingerprint,
+        trusted_fingerprint: hop.trusted_fingerprint.clone(),
         rejection: rejection.clone(),
         forwarded,
     };
@@ -505,38 +568,101 @@ async fn connect_hop(
                 .unwrap_or_else(|| connection(err))
         })
     };
-    let mut handle = match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
-        Err(_) => {
-            return Err(SshError::Connection {
-                message: format!("connection to {label} timed out"),
-            });
-        }
-        Ok(result) => result?,
-    };
+    match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
+        Err(_) => Err(SshError::Connection {
+            message: format!("connection to {label} timed out"),
+        }),
+        Ok(result) => result,
+    }
+}
 
-    let typed_password = match &hop.auth {
-        SshAuth::Password { password } => Some(password.clone()),
-        _ => None,
+/// Default identity files tried by password logins, in OpenSSH's order.
+const DEFAULT_IDENTITIES: [&str; 3] = ["id_ed25519", "id_ecdsa", "id_rsa"];
+
+/// Most keys a password login tries before the password. OpenSSH servers allow 6
+/// authentication attempts by default, so the password always keeps one.
+const MAX_DEFAULT_KEY_ATTEMPTS: usize = 5;
+
+/// What trying the default keys before a password led to.
+#[derive(Debug, PartialEq, Eq)]
+enum KeysOutcome {
+    Accepted,
+    /// Every key was rejected (or there was none): the password comes next.
+    Rejected,
+    /// The server closed the connection while keys were tried.
+    Disconnected,
+}
+
+/// Tries the SSH agent's keys, then the unencrypted default identity files in
+/// `identity_dir` that the agent did not already offer, at most
+/// [`MAX_DEFAULT_KEY_ATTEMPTS`] in all. Nothing here prompts or fails the login: an
+/// unavailable agent, a missing, unreadable or encrypted file, or a key that cannot sign
+/// is skipped.
+async fn try_default_keys(
+    handle: &mut Connection,
+    user: &str,
+    agent_socket: Option<&Path>,
+    identity_dir: Option<&Path>,
+) -> KeysOutcome {
+    let hash = match handle.best_supported_rsa_hash().await {
+        Ok(hash) => hash.flatten(),
+        Err(_) if handle.is_closed() => return KeysOutcome::Disconnected,
+        Err(_) => None,
     };
-    let endpoint = endpoint(&hop.username, &hop.host, hop.port);
-    authenticate(
-        &mut handle,
-        &hop.username,
-        hop.auth,
-        agent_socket,
-        secrets,
-        &endpoint,
-    )
-    .await?;
-    let warning = apply_storage(
-        secrets,
-        hop.storage,
-        typed_password,
-        endpoint,
-        storage_timeout,
-    )
-    .await;
-    Ok((handle, warning))
+    let mut attempts = 0;
+    let mut offered: Vec<PublicKey> = Vec::new();
+
+    // Tests only use an explicit agent socket, never the developer's own agent.
+    if (agent_socket.is_some() || !cfg!(test))
+        && let Ok(mut agent) = platform::connect_agent(agent_socket).await
+    {
+        let identities = agent.request_identities().await.unwrap_or_default();
+        for identity in identities {
+            if attempts == MAX_DEFAULT_KEY_ATTEMPTS {
+                return KeysOutcome::Rejected;
+            }
+            let key = identity.public_key().into_owned();
+            attempts += 1;
+            offered.push(key.clone());
+            match handle
+                .authenticate_publickey_with(user, key, hash, &mut agent)
+                .await
+            {
+                Ok(result) if result.success() => return KeysOutcome::Accepted,
+                _ if handle.is_closed() => return KeysOutcome::Disconnected,
+                _ => {}
+            }
+        }
+    }
+
+    let Some(dir) = identity_dir else {
+        return KeysOutcome::Rejected;
+    };
+    for name in DEFAULT_IDENTITIES {
+        if attempts == MAX_DEFAULT_KEY_ATTEMPTS {
+            break;
+        }
+        // Missing, unreadable and passphrase-protected files are skipped without asking.
+        let Ok(key) = load_secret_key(dir.join(name), None) else {
+            continue;
+        };
+        if offered
+            .iter()
+            .any(|known| known.key_data() == key.public_key().key_data())
+        {
+            continue;
+        }
+        attempts += 1;
+        match handle
+            .authenticate_publickey(user, PrivateKeyWithHashAlg::new(Arc::new(key), hash))
+            .await
+        {
+            Ok(result) if result.success() => return KeysOutcome::Accepted,
+            _ if handle.is_closed() => return KeysOutcome::Disconnected,
+            _ => {}
+        }
+    }
+    KeysOutcome::Rejected
 }
 
 /// Saves or forgets the session's password after a successful login. A keyring
@@ -1211,22 +1337,33 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    /// Writes `key` unencrypted to `path` (mode 0600 on Unix, as ssh-add requires).
+    fn write_key(path: &Path, key: &russh::keys::PrivateKey) {
+        let pem = key
+            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+            .unwrap();
+        std::fs::write(path, pem.as_bytes()).unwrap();
+        #[cfg(unix)]
+        std::fs::set_permissions(path, std::os::unix::fs::PermissionsExt::from_mode(0o600))
+            .unwrap();
+    }
+
+    /// An `ssh-agent` holding `key`, listening in `dir`; `None` when ssh-agent is not installed.
     #[cfg(unix)]
-    async fn agent_login_uses_the_agent_identities() {
+    async fn spawn_agent(
+        dir: &tempfile::TempDir,
+        key: &russh::keys::PrivateKey,
+    ) -> Option<(std::process::Child, PathBuf)> {
         if std::process::Command::new("ssh-agent")
             .arg("-h")
             .output()
             .is_err()
         {
             eprintln!("skipping: ssh-agent not installed");
-            return;
+            return None;
         }
-        let client_key = key_from_seed(9);
-        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
-        let dir = tempfile::tempdir().unwrap();
         let socket = dir.path().join("agent.sock");
-        let mut agent = std::process::Command::new("ssh-agent")
+        let agent = std::process::Command::new("ssh-agent")
             .args(["-D", "-a"])
             .arg(&socket)
             .stdout(std::process::Stdio::null())
@@ -1238,22 +1375,28 @@ mod tests {
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
-        let key_path = dir.path().join("id_ed25519");
-        let pem = client_key
-            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
-            .unwrap();
-        std::fs::write(&key_path, pem.as_bytes()).unwrap();
-        std::fs::set_permissions(
-            &key_path,
-            std::os::unix::fs::PermissionsExt::from_mode(0o600),
-        )
-        .unwrap();
+        // Outside `dir`, so it is never taken for a default identity file.
+        let keys = tempfile::tempdir().unwrap();
+        let key_path = keys.path().join("agent_key");
+        write_key(&key_path, key);
         let added = std::process::Command::new("ssh-add")
             .arg(&key_path)
             .env("SSH_AUTH_SOCK", &socket)
             .output()
             .unwrap();
         assert!(added.status.success(), "ssh-add failed: {added:?}");
+        Some((agent, socket))
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn agent_login_uses_the_agent_identities() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        let Some((mut agent, socket)) = spawn_agent(&dir, &client_key).await else {
+            return;
+        };
 
         let mgr = trusting(&dir, server.addr.port(), &server.host_key).with_agent_socket(socket);
         let (s, mut rx) = sink();
@@ -2162,5 +2305,233 @@ mod tests {
             matches!(err, SshError::UnknownSession { id: 42 }),
             "{err:?}"
         );
+    }
+
+    // Password logins try the agent and the default identity files first (S1).
+
+    #[tokio::test]
+    async fn a_password_login_uses_an_accepted_default_key_without_sending_the_password() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &client_key);
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), password("nope")), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 0, "the password was sent");
+    }
+
+    #[tokio::test]
+    async fn a_stored_password_login_uses_an_accepted_default_key_without_reading_the_keyring() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_rsa"), &client_key);
+        // No saved password: the login must not need one.
+        let mgr = with_store(&dir, &server, &MemoryStore::shared());
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 0);
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn a_password_login_uses_an_accepted_agent_key_without_sending_the_password() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        let Some((mut agent, socket)) = spawn_agent(&dir, &client_key).await else {
+            return;
+        };
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key).with_agent_socket(socket);
+        let (s, mut rx) = sink();
+
+        let result = mgr
+            .connect(request(server.addr.port(), password("nope")), s)
+            .await;
+        let _ = agent.kill();
+        let _ = agent.wait();
+        result.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 0, "the password was sent");
+    }
+
+    #[tokio::test]
+    async fn an_encrypted_default_key_is_skipped_and_the_password_logs_in() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        let encrypted = client_key
+            .encrypt(
+                &mut russh::keys::ssh_key::rand_core::UnwrapErr(rand::rngs::SysRng),
+                "passphrase",
+            )
+            .unwrap();
+        let pem = encrypted
+            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+            .unwrap();
+        std::fs::write(dir.path().join("id_ed25519"), pem.as_bytes()).unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(
+            server.publickey_attempts(),
+            0,
+            "the encrypted key was offered"
+        );
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn rejected_default_keys_fall_back_to_the_stored_password() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &key_from_seed(20));
+        write_key(&dir.path().join("id_ecdsa"), &key_from_seed(21));
+        let store = MemoryStore::shared();
+        store
+            .set("s1", "label", &secret_for(server.addr.port(), PASSWORD))
+            .unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.publickey_attempts(), 2);
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn rejected_default_keys_without_a_stored_password_are_secret_missing() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &key_from_seed(20));
+        let mgr = with_store(&dir, &server, &MemoryStore::shared());
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::SecretMissing), "got {err:?}");
+        assert_eq!(
+            server.publickey_attempts(),
+            1,
+            "the default key was not tried first"
+        );
+        assert_eq!(server.password_attempts(), 0);
+    }
+
+    #[tokio::test]
+    async fn rejected_default_keys_then_a_wrong_password_is_auth_failed() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &key_from_seed(20));
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(server.addr.port(), password("nope")), s)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::AuthFailed), "got {err:?}");
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn the_password_still_gets_a_chance_when_the_server_drops_after_too_many_keys() {
+        // Disconnects at the third attempt, like OpenSSH with `MaxAuthTries 2`.
+        let server = test_server::start_limited(1, None, 2).await;
+        let dir = tempfile::tempdir().unwrap();
+        for (name, seed) in [("id_ed25519", 20), ("id_ecdsa", 21), ("id_rsa", 22)] {
+            write_key(&dir.path().join(name), &key_from_seed(seed));
+        }
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        mgr.connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn remember_saves_nothing_when_a_default_key_logged_in() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &client_key);
+        let store = MemoryStore::shared();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        mgr.connect_with(
+            request(server.addr.port(), password("unverified")),
+            remember("s1"),
+            s,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            store.get("s1").unwrap(),
+            None,
+            "an unverified password was saved"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_key_file_login_does_not_try_the_default_keys() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &key_from_seed(20));
+        let keys = tempfile::tempdir().unwrap();
+        let key_path = keys.path().join("chosen");
+        write_key(&key_path, &client_key);
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, _rx) = sink();
+
+        let auth = SshAuth::Key {
+            path: key_path.to_string_lossy().into(),
+            passphrase: None,
+        };
+        mgr.connect(request(server.addr.port(), auth), s)
+            .await
+            .unwrap();
+        assert_eq!(server.publickey_attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_password_jump_host_logs_in_with_a_default_key() {
+        let client_key = key_from_seed(9);
+        let bastion = test_server::start(2, Some(client_key.public_key().clone())).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        write_key(&dir.path().join("id_ed25519"), &client_key);
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password("nope"))];
+        let (s, mut rx) = sink();
+
+        mgr.connect(req, s).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(bastion.password_attempts(), 0, "the jump password was sent");
+        assert_eq!(target.publickey_attempts(), 1);
+        assert_eq!(target.password_attempts(), 1);
     }
 }
