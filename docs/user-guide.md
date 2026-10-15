@@ -54,7 +54,7 @@ Port detection reads `/sys/class/tty` and does not need libudev; it never opens 
 
 ## Telnet and Mosh
 
-The toolbar **More ▾** menu opens **Telnet…** and **Mosh…** quick-connect dialogs; both can also be saved as sessions (see [Saved sessions](#saved-sessions)).
+The toolbar **More** menu opens **Telnet…** and **Mosh…** quick-connect dialogs; both can also be saved as sessions (see [Saved sessions](#saved-sessions)).
 
 **Telnet** uses a built-in client (host, port 23 by default, 15 s connect timeout).
 

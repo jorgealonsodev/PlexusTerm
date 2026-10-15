@@ -71,6 +71,33 @@ describe("SessionsPanel", () => {
     expect(props.onOpen).toHaveBeenCalledWith(expect.objectContaining({ kind: "serial", id: "2" }));
   });
 
+  it("shows an icon for each session type and for folders", () => {
+    const withMore = [
+      { kind: "serial" as const, id: "2", name: "switch", folder: "Prod", path: "/dev/ttyUSB0", baud: 9600, dataBits: 8 as const, parity: "none" as const, stopBits: 1 as const, flow: "none" as const },
+      { kind: "telnet" as const, id: "3", name: "router", folder: "Prod", host: "10.0.0.9", port: 23 },
+    ].reduce((lib, session) => libraryReducer(lib, { type: "saveSession", session }), library);
+    const { container } = render(
+      <SessionsPanel
+        library={withMore}
+        status={{ state: "ready" }}
+        saveError={null}
+        onOpen={vi.fn()}
+        onNewSession={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onNewFolder={vi.fn()}
+        onDeleteFolder={vi.fn()}
+        onImport={vi.fn()}
+      />,
+    );
+    const iconOf = (name: string) =>
+      screen.getByText(name).closest(".tree-row")!.querySelector("svg.tree-row__icon")?.getAttribute("data-kind");
+    expect(iconOf("web")).toBe("ssh");
+    expect(iconOf("switch")).toBe("serial");
+    expect(iconOf("router")).toBe("telnet");
+    expect(container.querySelector(".tree-row--folder svg.tree-row__icon")?.getAttribute("data-kind")).toBe("folder");
+  });
+
   it("collapses a folder when its row is clicked", () => {
     renderPanel();
     fireEvent.click(screen.getByText("Prod"));

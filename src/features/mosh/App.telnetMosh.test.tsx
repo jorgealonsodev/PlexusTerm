@@ -48,7 +48,7 @@ afterEach(cleanup);
 describe("App Telnet and Mosh (S17.3)", () => {
   it("opens a Telnet tab from the More menu", () => {
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "More ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Telnet…" }));
     fireEvent.change(screen.getByLabelText("Host"), { target: { value: "switch.lan" } });
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
@@ -58,7 +58,7 @@ describe("App Telnet and Mosh (S17.3)", () => {
   it("opens a Mosh tab over a saved SSH session from the More menu", async () => {
     render(<App />);
     await screen.findByText("web");
-    fireEvent.click(screen.getByRole("button", { name: "More ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Mosh…" }));
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await vi.waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(2));
@@ -75,7 +75,7 @@ describe("App Telnet and Mosh (S17.3)", () => {
       await screen.findByText("web");
       await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith("platform"));
       await new Promise((resolve) => setTimeout(resolve, 10));
-      fireEvent.click(screen.getByRole("button", { name: "More ▾" }));
+      fireEvent.click(screen.getByRole("button", { name: "More" }));
       expect(screen.getByRole("menuitem", { name: "Telnet…" })).toBeTruthy();
       expect(screen.queryByRole("menuitem", { name: "Mosh…" })).toBeNull();
     } finally {
