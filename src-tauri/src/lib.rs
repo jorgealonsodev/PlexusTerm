@@ -1,4 +1,5 @@
 mod mosh;
+mod history;
 mod platform;
 mod pty;
 mod secrets;
@@ -473,6 +474,8 @@ pub fn run() {
             save_text_file,
             append_text_file,
             wol_send,
+            history::history_load,
+            history::history_save,
             tools::keygen::keygen_generate,
             tools::keygen::keygen_save,
             tools::keygen::keygen_install,

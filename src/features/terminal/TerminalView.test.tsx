@@ -27,6 +27,11 @@ interface FakeTerminal {
   clear: ReturnType<typeof vi.fn>;
   selectAll: ReturnType<typeof vi.fn>;
   written: string[];
+  /** The cursor line on screen; the cursor sits at its end. */
+  line: string;
+  bufferType: "normal" | "alternate";
+  /** What xterm's onData would emit for typed keys. */
+  type: (data: string) => void;
 }
 
 vi.mock("@xterm/xterm", () => ({
@@ -39,7 +44,31 @@ vi.mock("@xterm/xterm", () => ({
     paste = vi.fn();
     clear = vi.fn();
     selectAll = vi.fn();
-    buffer = { active: { length: 0, getLine: () => undefined } };
+    line = "";
+    bufferType = "normal";
+    get buffer() {
+      const line = this.line;
+      const row = {
+        isWrapped: false,
+        translateToString: (trim?: boolean, start = 0, end?: number) =>
+          trim ? line.slice(start, end).trimEnd() : line.slice(start, end),
+      };
+      return {
+        active: {
+          type: this.bufferType,
+          length: 1,
+          cursorX: line.length,
+          cursorY: 0,
+          baseY: 0,
+          viewportY: 0,
+          getLine: (i: number) => (i === 0 ? row : undefined),
+        },
+      };
+    }
+    dataHandlers: ((data: string) => void)[] = [];
+    type(data: string) {
+      this.dataHandlers.forEach((handler) => handler(data));
+    }
     constructor(options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } }) {
       this.options = { ...options };
       terms.push(this as unknown as FakeTerminal);
@@ -61,7 +90,13 @@ vi.mock("@xterm/xterm", () => ({
     getSelection() {
       return "";
     }
-    onData = () => ({ dispose() {} });
+    onData = (handler: (data: string) => void) => {
+      this.dataHandlers.push(handler);
+      return { dispose() {} };
+    };
+    onWriteParsed = () => ({ dispose() {} });
+    onCursorMove = () => ({ dispose() {} });
+    onScroll = () => ({ dispose() {} });
     onResize = () => ({ dispose() {} });
     onTitleChange = () => ({ dispose() {} });
   },
@@ -83,6 +118,7 @@ vi.mock("@xterm/addon-search", () => ({
 import { invoke } from "@tauri-apps/api/core";
 import { TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
+import { createHistoryStore } from "../history/historyStore";
 
 const lastTerm = () => terms[terms.length - 1];
 
@@ -429,6 +465,191 @@ describe("TerminalView", () => {
           storage: { action: "remember", sessionId: "j1", label: "PlexusTerm: j@10.0.0.9:22" },
         },
       ]);
+    });
+  });
+
+  describe("inline suggestions (S1)", () => {
+    const term = () => lastTerm();
+    const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+    const ghost = (container: HTMLElement) => container.querySelector(".terminal-ghost")?.textContent ?? null;
+    const historyWith = (...commands: string[]) =>
+      createHistoryStore({
+        load: async () =>
+          JSON.stringify({ version: 1, hosts: { local: commands.map((command, i) => ({ command, count: 1, last: i + 1 })) } }),
+        save: async () => {},
+      });
+    /** Types `data` at a prompt, the shell echoing it on the cursor line. */
+    const typeAt = (prompt: string, data: string) =>
+      act(() => {
+        term().line = prompt + data;
+        term().type(data);
+      });
+    const key = (k: string, mods: { ctrlKey?: boolean } = {}) => {
+      let passed = true;
+      act(() => {
+        passed = term().keyHandler({ type: "keydown", key: k, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      });
+      return passed;
+    };
+    const renderView = async (props: Partial<Parameters<typeof TerminalView>[0]> = {}) => {
+      backend.start.mockImplementationOnce(() => Promise.resolve(7));
+      const view = render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} {...props} />);
+      await settle();
+      return view;
+    };
+
+    it("draws the rest of a known command after the typed prefix and accepts it with Right Arrow, like typing", async () => {
+      const onInput = vi.fn();
+      const history = historyWith("git status");
+      const { container } = await renderView({ history, onInput });
+      typeAt("$ ", "git st");
+      expect(ghost(container)).toBe("atus");
+      expect(key("ArrowRight")).toBe(false);
+      expect(backend.write).toHaveBeenLastCalledWith(7, "atus");
+      expect(onInput).toHaveBeenLastCalledWith("atus");
+      act(() => void (term().line = "$ git status"));
+      act(() => term().type("\r"));
+      expect(history.recent("local", 1)).toEqual(["git status"]);
+    });
+
+    it("accepts the whole suggestion with End and one word with Ctrl+Right", async () => {
+      const { container } = await renderView({ history: historyWith("docker compose up -d") });
+      typeAt("$ ", "dock");
+      expect(key("ArrowRight", { ctrlKey: true })).toBe(false);
+      expect(backend.write).toHaveBeenLastCalledWith(7, "er");
+      // The shell echoes the accepted word.
+      typeAt("$ docker", "");
+      expect(ghost(container)).toBe(" compose up -d");
+      expect(key("End")).toBe(false);
+      expect(backend.write).toHaveBeenLastCalledWith(7, " compose up -d");
+    });
+
+    it("leaves Tab and other keys to the shell and pauses suggestions after Tab", async () => {
+      const { container } = await renderView({ history: historyWith("git status") });
+      typeAt("$ ", "git st");
+      expect(key("Tab")).toBe(true);
+      expect(key("a")).toBe(true);
+      act(() => term().type("\t"));
+      expect(ghost(container)).toBeNull();
+      // Right Arrow without a suggestion reaches the shell.
+      expect(key("ArrowRight")).toBe(true);
+    });
+
+    it("hides suggestions when they are turned off or the cursor is not at the end of the typed text", async () => {
+      const { container, rerender } = await renderView({ history: historyWith("git status") });
+      act(() => void (term().line = "$ "));
+      act(() => term().type("git st")); // not echoed (yet)
+      expect(ghost(container)).toBeNull();
+      typeAt("$ git st", "");
+      act(() => term().type(""));
+      expect(ghost(container)).toBe("atus");
+      rerender(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          history={historyWith("git status")}
+          settings={{ ...DEFAULT_SETTINGS, inlineSuggestions: false }}
+        />,
+      );
+      expect(ghost(container)).toBeNull();
+    });
+
+    it("records commands sent with Enter, except lines starting with a space", async () => {
+      const history = historyWith();
+      await renderView({ history });
+      typeAt("$ ", "uptime");
+      act(() => term().type("\r"));
+      typeAt("$ ", " export TOKEN=x");
+      act(() => term().type("\r"));
+      expect(history.recent("local", 5)).toEqual(["uptime"]);
+    });
+
+    it("never records nor suggests at a password prompt", async () => {
+      const history = historyWith("hunter2-is-not-a-command");
+      const { container } = await renderView({ history });
+      act(() => void (term().line = "[sudo] password for jorge: "));
+      act(() => term().type("hunter2"));
+      expect(ghost(container)).toBeNull();
+      act(() => term().type("\r"));
+      expect(history.recent("local", 5)).toEqual(["hunter2-is-not-a-command"]);
+    });
+
+    it("never records nor suggests in full-screen programs", async () => {
+      const history = historyWith("git status");
+      const { container } = await renderView({ history });
+      act(() => void (term().bufferType = "alternate"));
+      typeAt("", "git st");
+      expect(ghost(container)).toBeNull();
+      act(() => term().type(":wq\r"));
+      expect(history.recent("local", 5)).toEqual(["git status"]);
+    });
+
+    it("does not record commands other panes broadcast to this one", async () => {
+      const history = historyWith();
+      let write: (data: string) => void = () => {};
+      await renderView({ history, registerWriter: (w) => ((write = w), () => {}) });
+      act(() => write("uptime\r"));
+      expect(backend.write).toHaveBeenLastCalledWith(7, "uptime\r");
+      expect(history.recent("local", 5)).toEqual([]);
+    });
+
+    describe("AI completion seam", () => {
+      afterEach(() => vi.useRealTimers());
+      const aiOn = { ...DEFAULT_SETTINGS, aiSuggestions: true, aiHistoryContext: 2 };
+
+      it("asks the AI only when the history has nothing, after a pause, and shows its answer", async () => {
+        vi.useFakeTimers();
+        const aiSuggest = vi.fn(async ({ line }: { line: string }) => `${line} -o wide`);
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        const history = historyWith("ls -la", "kubectl apply -f x.yaml");
+        const { container } = render(
+          <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} history={history} settings={aiOn} aiSuggest={aiSuggest} />,
+        );
+        await act(() => vi.advanceTimersByTimeAsync(10));
+        typeAt("$ ", "ls");
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+        expect(aiSuggest).not.toHaveBeenCalled();
+        act(() => term().type("\x15"));
+        typeAt("$ ", "kubectl get p");
+        await act(() => vi.advanceTimersByTimeAsync(200));
+        typeAt("$ kubectl get p", "o");
+        await act(() => vi.advanceTimersByTimeAsync(399));
+        expect(aiSuggest).not.toHaveBeenCalled();
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(aiSuggest).toHaveBeenCalledTimes(1);
+        expect(aiSuggest).toHaveBeenCalledWith({
+          line: "kubectl get po",
+          hostKey: "local",
+          cwd: null,
+          history: ["ls -la", "kubectl apply -f x.yaml"],
+        });
+        expect(ghost(container)).toBe(" -o wide");
+      });
+
+      it("ignores an answer that arrives after the line changed, and never asks when AI suggestions are off", async () => {
+        vi.useFakeTimers();
+        let answer: (text: string) => void = () => {};
+        const aiSuggest = vi.fn(() => new Promise<string | null>((resolve) => (answer = resolve)));
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        const { container, rerender } = render(
+          <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} history={historyWith()} settings={aiOn} aiSuggest={aiSuggest} />,
+        );
+        await act(() => vi.advanceTimersByTimeAsync(10));
+        typeAt("$ ", "terraform pl");
+        await act(() => vi.advanceTimersByTimeAsync(400));
+        typeAt("$ terraform pl", "a");
+        await act(async () => answer("terraform plan -out=tf.plan"));
+        expect(ghost(container)).toBeNull();
+        rerender(
+          <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={DEFAULT_SETTINGS} aiSuggest={aiSuggest} />,
+        );
+        aiSuggest.mockClear();
+        typeAt("$ terraform pla", "n");
+        await act(() => vi.advanceTimersByTimeAsync(1000));
+        expect(aiSuggest).not.toHaveBeenCalled();
+      });
     });
   });
 });

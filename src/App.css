@@ -205,6 +205,16 @@ textarea::placeholder {
   background: var(--bg);
 }
 
+/* The grey rest of a suggested command, drawn on xterm's cell grid after the cursor (S1). */
+.terminal-ghost {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+  white-space: pre;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .tab-panes,
 .pane-grid {
   position: absolute;
@@ -1303,6 +1313,15 @@ textarea::placeholder {
 
 .settings__panel[hidden] {
   display: none;
+}
+
+.shortcut-capture {
+  cursor: pointer;
+  max-width: 240px;
+}
+
+.field input.shortcut-capture--active {
+  border-color: var(--accent);
 }
 
 .settings__about {
