@@ -75,7 +75,7 @@ export function TabBar(props: TabBarProps) {
               ●
             </span>
           )}
-          <span className="tab__title">{tab.title}</span>
+          <span className="tab__title" dir="auto">{tab.title}</span>
           <button
             className="tab__close"
             aria-label={t("app.tabs.closeNamed", { title: tab.title })}

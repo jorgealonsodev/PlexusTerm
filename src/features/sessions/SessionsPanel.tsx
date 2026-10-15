@@ -166,7 +166,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
             ) : (
               <Folder size={15} className="tree-row__icon" data-kind="folder" />
             )}
-            <span className="tree-row__label">{node.name}</span>
+            <span className="tree-row__label" dir="auto">{node.name}</span>
             {editable && (
               <span className="tree-row__actions" onClick={(e) => e.stopPropagation()}>
                 <button title={t("sessions.panel.newSessionHere")} onClick={() => props.onNewSession(node.path)}>+</button>
@@ -192,7 +192,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
           onContextMenu={(e) => openMenu(e, { kind: "session", session })}
         >
           <SessionIcon session={session} />
-          <span className="tree-row__label">{session.name}</span>
+          <span className="tree-row__label" dir="auto">{session.name}</span>
           {editable && (
             <span className="tree-row__actions">
               <button title={t("common.edit")} onClick={() => props.onEdit(session)}>✎</button>

@@ -52,7 +52,7 @@ body,
 .brand {
   flex: none;
   height: 22px;
-  margin-right: 2px;
+  margin-inline-end: 2px;
 }
 
 /* The X mark opens the AI assistant (S5); it looks like the plain logo. */
@@ -185,7 +185,7 @@ textarea::placeholder {
   max-width: 220px;
   padding: 6px 8px 6px 12px;
   color: var(--muted);
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   cursor: pointer;
   user-select: none;
 }
@@ -408,7 +408,7 @@ textarea::placeholder {
 
 .import-skipped {
   margin: 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   color: var(--muted);
   line-height: 1.45;
 }
@@ -526,7 +526,7 @@ textarea::placeholder {
   padding: 8px;
   overflow-y: auto;
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
 }
 
 .sidebar__header {
@@ -826,7 +826,7 @@ textarea::placeholder {
   flex-shrink: 0;
   color: var(--muted);
   font-size: 11px;
-  text-align: right;
+  text-align: end;
 }
 
 .sftp-row__size {
@@ -947,7 +947,7 @@ textarea::placeholder {
 
 .jump-hosts__list {
   margin: 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -972,7 +972,7 @@ textarea::placeholder {
 
 /* Terminal comfort (S15) */
 .toolbar__settings {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 15px;
   line-height: 1;
 }
@@ -1060,7 +1060,7 @@ textarea::placeholder {
 .context-menu__item {
   padding: 6px 10px;
   font: inherit;
-  text-align: left;
+  text-align: start;
   color: var(--text);
   background: none;
   border: none;
@@ -1175,7 +1175,7 @@ textarea::placeholder {
   flex-direction: column;
   gap: 6px;
   margin: 0;
-  padding-left: 22px;
+  padding-inline-start: 22px;
 }
 
 .macro-step {
@@ -1225,7 +1225,7 @@ textarea::placeholder {
 .menu__list {
   position: absolute;
   top: calc(100% + 4px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -1246,7 +1246,7 @@ textarea::placeholder {
   white-space: nowrap;
   padding: 6px 10px;
   font: inherit;
-  text-align: left;
+  text-align: start;
   color: var(--text);
   background: none;
   border: none;
@@ -1360,8 +1360,8 @@ textarea::placeholder {
   flex-direction: column;
   gap: 2px;
   width: 150px;
-  padding-right: 12px;
-  border-right: 1px solid var(--border);
+  padding-inline-end: 12px;
+  border-inline-end: 1px solid var(--border);
 }
 
 .settings__tab {
@@ -1370,7 +1370,7 @@ textarea::placeholder {
   gap: 8px;
   padding: 7px 10px;
   font: inherit;
-  text-align: left;
+  text-align: start;
   color: var(--muted);
   background: none;
   border: none;
@@ -1396,7 +1396,7 @@ textarea::placeholder {
   gap: 12px;
   min-width: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-inline-end: 4px;
 }
 
 .settings__panel[hidden] {
@@ -1442,7 +1442,7 @@ textarea::placeholder {
     flex-wrap: wrap;
     width: auto;
     padding: 0 0 8px;
-    border-right: none;
+    border-inline-end: none;
     border-bottom: 1px solid var(--border);
   }
 }
@@ -1509,7 +1509,7 @@ textarea::placeholder {
 .model-picker__popover {
   position: absolute;
   top: calc(100% + 4px);
-  left: 0;
+  inset-inline-start: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -1650,13 +1650,13 @@ textarea::placeholder {
 
 .chat__chip .assistant__selection {
   max-height: 80px;
-  padding-right: 28px;
+  padding-inline-end: 28px;
 }
 
 .chat__chip-remove {
   position: absolute;
   top: 4px;
-  right: 4px;
+  inset-inline-end: 4px;
 }
 
 .chat__input-row {
@@ -1755,3 +1755,22 @@ textarea::placeholder {
   white-space: pre-wrap;
   color: var(--text);
 }
+
+/*
+ * Right to left (Arabic, S4): the interface mirrors through logical properties, while terminals,
+ * commands and code stay left to right, and typed text and names keep the direction of their script.
+ */
+.terminal-pane,
+.theme-preview,
+pre,
+code {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Names (tabs, sessions, macros, tunnels, models) carry dir="auto" in the markup. */
+input,
+textarea {
+  unicode-bidi: plaintext;
+}
+

@@ -59,7 +59,7 @@ export function MacrosPanel(props: MacrosPanelProps) {
         {shown.map((macro) => (
           <li key={macro.id}>
             <div className="tree-row" title={t("macros.panel.steps", { count: macro.steps.length })}>
-              <span className="tree-row__label">{macro.name}</span>
+              <span className="tree-row__label" dir="auto">{macro.name}</span>
               {macro.hotkey !== undefined && <span className="macro__hotkey">{hotkeyLabel(macro.hotkey)}</span>}
               {editable && (
                 <span className="tree-row__actions">

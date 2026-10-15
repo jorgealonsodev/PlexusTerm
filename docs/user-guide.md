@@ -11,6 +11,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
+| [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
 | [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI chat |
 | [Macros](#macros) | Recording and playing keystroke sequences |
@@ -172,6 +173,16 @@ While it is on, each pane shows an **exclude** toggle in its top-right corner to
 Multi-execution is off when the app starts and is never saved.
 
 The SFTP browser and **Follow terminal folder** use the focused pane of the active tab.
+
+## Interface language
+
+PlexusTerm's interface comes in English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic and Hindi.
+
+- **Default:** the language of the operating system; when it is none of these, English.
+- **Choosing one:** Settings → Appearance → **Language** lists **System** and each language by its own name; **Save** applies it.
+- **Getting back:** next to the list, **System language** and **English** are never translated and apply and save at once, without **Save**. If you chose a language you cannot read, open Settings with the gear button and click one of them.
+- **Arabic** mirrors the interface right to left. Terminals, commands, code and file paths stay left to right, and split panes keep their places, so **Split right** still opens a pane on the right.
+- **Not translated yet:** error messages that come from the connection backend (SSH, SFTP, serial, AI providers) are shown in English. Product names, protocol names, shortcuts and the text sent to AI providers are never translated.
 
 ## Terminal settings
 
