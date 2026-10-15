@@ -6,7 +6,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use super::*;
-use crate::secrets::{MemoryStore, SecretStore};
+use crate::secrets::{BlockingStore, MemoryStore, SecretStore};
 use crate::ssh::PasswordStorage;
 use crate::ssh::test_server::{self, PASSWORD, TestServer};
 
@@ -29,6 +29,16 @@ async fn echo_server() -> u16 {
 async fn free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     listener.local_addr().unwrap().port()
+}
+
+/// Keyring value of `password` saved for the test user on `server`.
+fn secret_for(server: &TestServer, password: &str) -> String {
+    serde_json::json!({
+        "v": 1,
+        "endpoint": format!("tester@127.0.0.1:{}", server.addr.port()),
+        "password": password,
+    })
+    .to_string()
 }
 
 fn target(server: &TestServer) -> SshTarget {
@@ -100,9 +110,12 @@ async fn local_forward_round_trips_bytes_and_reports_running() {
     )
     .await
     .unwrap();
-    assert_eq!(mgr.status("t1"), TunnelStatus::Running);
+    assert_eq!(mgr.status("t1"), TunnelStatus::Running { warning: None });
     assert_eq!(updates.recv().await.unwrap().status, TunnelStatus::Starting);
-    assert_eq!(updates.recv().await.unwrap().status, TunnelStatus::Running);
+    assert_eq!(
+        updates.recv().await.unwrap().status,
+        TunnelStatus::Running { warning: None }
+    );
 
     // Two concurrent connections share the tunnel.
     let mut a = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
@@ -338,7 +351,7 @@ async fn unknown_host_reports_its_fingerprint_like_ssh_sessions() {
     )
     .await
     .unwrap();
-    assert_eq!(mgr.status("t1"), TunnelStatus::Running);
+    assert_eq!(mgr.status("t1"), TunnelStatus::Running { warning: None });
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -367,7 +380,7 @@ async fn starting_a_running_tunnel_is_refused() {
         matches!(err, TunnelError::AlreadyRunning { .. }),
         "got {err:?}"
     );
-    assert_eq!(mgr.status("t1"), TunnelStatus::Running);
+    assert_eq!(mgr.status("t1"), TunnelStatus::Running { warning: None });
 }
 
 #[test]
@@ -415,7 +428,7 @@ async fn a_stop_racing_the_running_notification_is_reported_last() {
     let mgr = {
         let seen = seen.clone();
         Arc::new(TunnelManager::new(path, move |update| {
-            if update.status == TunnelStatus::Running {
+            if matches!(update.status, TunnelStatus::Running { .. }) {
                 // Let the test start a stop while this notification is in flight.
                 let _ = running_tx.send(());
                 std::thread::sleep(Duration::from_millis(300));
@@ -516,7 +529,9 @@ async fn a_stored_password_starts_the_tunnel() {
     let dir = tempfile::tempdir().unwrap();
     let (mgr, _updates) = manager(&dir, &server);
     let store = MemoryStore::shared();
-    store.set("s1", "label", PASSWORD).unwrap();
+    store
+        .set("s1", "label", &secret_for(&server, PASSWORD))
+        .unwrap();
     let mgr = mgr.with_secrets(store.clone());
     let (echo, listen) = (echo_server().await, free_port().await);
     let mut session = target(&server);
@@ -552,5 +567,112 @@ async fn a_tunnel_start_can_remember_the_typed_password() {
     )
     .await
     .unwrap();
-    assert_eq!(store.get("s1").unwrap().as_deref(), Some(PASSWORD));
+    let saved: serde_json::Value =
+        serde_json::from_str(&store.get("s1").unwrap().unwrap()).unwrap();
+    let expected: serde_json::Value = serde_json::from_str(&secret_for(&server, PASSWORD)).unwrap();
+    assert_eq!(saved, expected);
+    assert_eq!(mgr.status("t1"), TunnelStatus::Running { warning: None });
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stored_password_for_another_endpoint_is_never_sent() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, _updates) = manager(&dir, &server);
+    let store = MemoryStore::shared();
+    let other = serde_json::json!({"v": 1, "endpoint": "root@127.0.0.1:22", "password": PASSWORD});
+    store.set("s1", "label", &other.to_string()).unwrap();
+    let mgr = mgr.with_secrets(store.clone());
+    let (echo, listen) = (echo_server().await, free_port().await);
+    let mut session = target(&server);
+    session.auth = SshAuth::StoredPassword {
+        session_id: "s1".into(),
+    };
+
+    let err = mgr
+        .start(tunnel(TunnelKind::Local, listen, echo), session, None)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, TunnelError::Ssh(SshError::SecretMissing)),
+        "got {err:?}"
+    );
+    assert_eq!(server.password_attempts(), 0, "the secret was sent");
+}
+
+fn remember_s1() -> Option<PasswordStorage> {
+    Some(PasswordStorage::Remember {
+        session_id: "s1".into(),
+        label: "NexusTerm: tester@127.0.0.1:22".into(),
+    })
+}
+
+/// The status warning of a tunnel started with `remember_s1()` by `mgr`.
+async fn warning_after_remember(server: &TestServer, mgr: &TunnelManager) -> String {
+    let (echo, listen) = (echo_server().await, free_port().await);
+    mgr.start_with(
+        tunnel(TunnelKind::Local, listen, echo),
+        target(server),
+        None,
+        remember_s1(),
+    )
+    .await
+    .unwrap();
+    let mut tcp = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"up").await, b"up");
+    match mgr.status("t1") {
+        TunnelStatus::Running {
+            warning: Some(warning),
+        } => warning,
+        other => panic!("expected a running tunnel with a warning, got {other:?}"),
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_password_the_keyring_cannot_save_is_a_warning_of_the_running_tunnel() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, mut updates) = manager(&dir, &server);
+    // No keyring configured: saving fails.
+
+    let warning = warning_after_remember(&server, &mgr).await;
+    assert!(
+        warning.starts_with("The password could not be saved in the system keyring:"),
+        "{warning}"
+    );
+    assert!(!warning.contains(PASSWORD), "{warning}");
+    assert_eq!(updates.recv().await.unwrap().status, TunnelStatus::Starting);
+    let running = updates.recv().await.unwrap().status;
+    assert_eq!(
+        serde_json::to_value(&running).unwrap(),
+        serde_json::json!({"state": "running", "warning": warning})
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_keyring_that_does_not_answer_does_not_hold_the_tunnel_back() {
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, _updates) = manager(&dir, &server);
+    let (store, release) = BlockingStore::new();
+    let mgr = mgr
+        .with_secrets(store)
+        .with_storage_timeout(Duration::from_millis(100));
+
+    let warning = tokio::time::timeout(
+        Duration::from_secs(5),
+        warning_after_remember(&server, &mgr),
+    )
+    .await
+    .expect("the tunnel waited for the keyring");
+    assert!(warning.contains("did not respond in time"), "{warning}");
+    drop(release);
+}
+
+#[test]
+fn running_without_a_warning_serializes_like_before() {
+    assert_eq!(
+        serde_json::to_value(TunnelStatus::Running { warning: None }).unwrap(),
+        serde_json::json!({"state": "running"})
+    );
 }

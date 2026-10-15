@@ -129,9 +129,10 @@ impl SecretStore for KeyringStore {
     }
 
     fn set(&self, id: &str, label: &str, secret: &str) -> Result<(), SecretError> {
-        // Secret Service only updates the secret of an existing item, so replace the item
-        // to keep its label in sync with the session (user@host:port may have changed).
-        self.delete(id)?;
+        // Updated in place: deleting first could lose the old secret if the write then
+        // failed. Secret Service keeps the label of an existing item, so it may show an
+        // old user@host:port; editing those forgets the secret anyway, so a new item
+        // (with a fresh label) is created the next time the password is saved.
         self.entry(id, Some(label))?
             .set_password(secret)
             .map_err(keyring_error)
@@ -190,6 +191,48 @@ impl SecretStore for MemoryStore {
     fn delete(&self, id: &str) -> Result<(), SecretError> {
         self.entries.lock().unwrap().remove(id);
         Ok(())
+    }
+}
+
+/// A keyring that never answers writes until the returned sender is dropped,
+/// like a locked Secret Service waiting on its unlock dialog (tests).
+#[cfg(test)]
+pub struct BlockingStore {
+    release: Mutex<std::sync::mpsc::Receiver<()>>,
+}
+
+#[cfg(test)]
+impl BlockingStore {
+    pub fn new() -> (Arc<Self>, std::sync::mpsc::Sender<()>) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let store = Self {
+            release: Mutex::new(rx),
+        };
+        (Arc::new(store), tx)
+    }
+
+    fn wait(&self) -> Result<(), SecretError> {
+        // Returns once the sender is dropped (or sends).
+        let _ = self.release.lock().unwrap().recv();
+        Err(SecretError::Keyring {
+            message: "released".into(),
+        })
+    }
+}
+
+#[cfg(test)]
+impl SecretStore for BlockingStore {
+    fn available(&self) -> bool {
+        true
+    }
+    fn get(&self, _id: &str) -> Result<Option<String>, SecretError> {
+        Ok(None)
+    }
+    fn set(&self, _id: &str, _label: &str, _secret: &str) -> Result<(), SecretError> {
+        self.wait()
+    }
+    fn delete(&self, _id: &str) -> Result<(), SecretError> {
+        self.wait()
     }
 }
 

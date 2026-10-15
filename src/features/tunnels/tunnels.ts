@@ -31,7 +31,8 @@ export type TunnelAction = { type: "save"; tunnel: Tunnel } | { type: "delete"; 
 export type TunnelStatus =
   | { state: "stopped" }
   | { state: "starting" }
-  | { state: "running" }
+  /** `warning`: something went wrong next to the tunnel (e.g. the password could not be saved). */
+  | { state: "running"; warning?: string }
   | { state: "error"; message: string };
 
 export const emptyTunnels: TunnelList = { version: 1, tunnels: [] };

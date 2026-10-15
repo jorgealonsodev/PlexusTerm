@@ -84,6 +84,11 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
               <div className="tunnel__detail">
                 {describeTunnel(tunnel)} · {sessionName(tunnel.sessionId)}
               </div>
+              {current.state === "running" && current.warning && (
+                <div className="tunnel__detail" role="status" style={{ color: "#e5c07b" }}>
+                  {current.warning}
+                </div>
+              )}
               {current.state === "error" && (
                 <div className="tunnel__detail form-error" role="alert">
                   {current.message}

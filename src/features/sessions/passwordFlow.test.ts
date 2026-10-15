@@ -134,8 +134,15 @@ describe("secretToForgetOnEdit", () => {
     expect(secretToForgetOnEdit(web, { ...web, auth: { method: "agent" } })).toBe(web.id);
   });
 
-  it("keeps it while the session still uses a password, and ignores other sessions", () => {
-    expect(secretToForgetOnEdit(web, { ...web, host: "other" })).toBeNull();
+  it("forgets it when the host, port or username changes", () => {
+    expect(secretToForgetOnEdit(web, { ...web, host: "10.0.0.2" })).toBe(web.id);
+    expect(secretToForgetOnEdit(web, { ...web, port: 22 })).toBe(web.id);
+    expect(secretToForgetOnEdit(web, { ...web, username: "root" })).toBe(web.id);
+  });
+
+  it("keeps it while the session still uses a password for the same endpoint, and ignores other sessions", () => {
+    expect(secretToForgetOnEdit(web, { ...web, name: "renamed", folder: "Other" })).toBeNull();
+    expect(secretToForgetOnEdit(web, { ...web, host: " 10.0.0.1 " })).toBeNull();
     const key: SavedSession = { ...web, auth: { method: "key", path: "/k" } };
     expect(secretToForgetOnEdit(key, { ...key, auth: { method: "agent" } })).toBeNull();
   });
