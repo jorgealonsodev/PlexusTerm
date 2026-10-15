@@ -65,6 +65,14 @@ body,
   cursor: pointer;
 }
 
+/* Example texts must not look like typed values. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .btn--icon {
   display: inline-flex;
   align-items: center;
