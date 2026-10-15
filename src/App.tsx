@@ -49,8 +49,8 @@ import { TunnelsPanel } from "./features/tunnels/TunnelsPanel";
 import type { Tunnel } from "./features/tunnels/tunnels";
 import { useTunnelLauncher } from "./features/tunnels/useTunnelLauncher";
 import { useTunnels } from "./features/tunnels/useTunnels";
-import wordmarkUrl from "./assets/plexusterm-wordmark.svg";
-import wordmarkLightUrl from "./assets/plexusterm-wordmark-light.svg";
+import markUrl from "./assets/plexusterm-mark.svg";
+import markLightUrl from "./assets/plexusterm-mark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
 import { useCompactToolbar } from "./features/toolbar/compact";
 import { DropdownMenu } from "./features/menu/DropdownMenu";
@@ -460,7 +460,7 @@ function AppContent() {
   return (
     <div className="app">
       <header className={`toolbar${compactToolbar ? " toolbar--compact" : ""}`} ref={toolbarRef}>
-        <img className="brand" src={scheme.dark ? wordmarkUrl : wordmarkLightUrl} alt="PlexusTerm" />
+        <img className="brand" src={scheme.dark ? markUrl : markLightUrl} alt="PlexusTerm" title="PlexusTerm" />
         <button className="btn btn--icon" title="Terminal (Ctrl+Shift+T)" onClick={openLocal}>
           <SquareTerminal size={16} />
           <span className="btn__label">Terminal</span>
