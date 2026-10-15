@@ -70,4 +70,15 @@ describe("App settings (S15.2, S15.6)", () => {
     expect(root.dataset.theme).toBe("light");
     expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).toContain("light");
   });
+
+  it("shows an icon next to every toolbar action and sidebar tab", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    for (const name of ["Terminal", "SSH", "Serial", "More", "Split right", "Split down", "Multi-exec", "Record macro", "Settings"]) {
+      expect(screen.getByRole("button", { name }).querySelector("svg"), name).not.toBeNull();
+    }
+    const sidebarTabs = [...document.querySelectorAll(".sidebar__tabs [role=tab]")];
+    expect(sidebarTabs.map((t) => t.textContent)).toEqual(["Sessions", "SFTP", "Tunnels", "Macros"]);
+    for (const tab of sidebarTabs) expect(tab.querySelector("svg"), tab.textContent!).not.toBeNull();
+  });
 });

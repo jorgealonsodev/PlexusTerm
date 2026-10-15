@@ -1,3 +1,4 @@
+import { Folder, FolderOpen, Globe, KeyRound, Usb, Waypoints } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
@@ -37,6 +38,15 @@ function sessionTooltip(session: LibrarySession, library: SessionLibrary): strin
     return ssh ? `mosh, logging in with "${ssh.name}"` : "mosh (its SSH session no longer exists)";
   }
   return `${session.username}@${session.host}:${session.port}`;
+}
+
+const KIND_ICONS = { ssh: KeyRound, serial: Usb, telnet: Globe, mosh: Waypoints } as const;
+
+/** The session's type as an icon coloured by type (SSH, serial, Telnet or Mosh). */
+function SessionIcon({ session }: { session: LibrarySession }) {
+  const kind = session.kind ?? "ssh";
+  const Icon = KIND_ICONS[kind];
+  return <Icon size={15} className={`tree-row__icon tree-row__icon--${kind}`} data-kind={kind} />;
 }
 
 export function SessionsPanel(props: SessionsPanelProps) {
@@ -82,6 +92,11 @@ export function SessionsPanel(props: SessionsPanelProps) {
         <li key={`f:${node.path}`}>
           <div className="tree-row tree-row--folder" style={indent} onClick={() => toggle(node.path)}>
             <span className="tree-row__chevron">{open ? "▾" : "▸"}</span>
+            {open ? (
+              <FolderOpen size={15} className="tree-row__icon" data-kind="folder" />
+            ) : (
+              <Folder size={15} className="tree-row__icon" data-kind="folder" />
+            )}
             <span className="tree-row__label">{node.name}</span>
             {editable && (
               <span className="tree-row__actions" onClick={(e) => e.stopPropagation()}>
@@ -106,7 +121,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
           onDoubleClick={() => props.onOpen(session)}
           onKeyDown={(e) => e.key === "Enter" && props.onOpen(session)}
         >
-          <span className="tree-row__chevron">›</span>
+          <SessionIcon session={session} />
           <span className="tree-row__label">{session.name}</span>
           {editable && (
             <span className="tree-row__actions">

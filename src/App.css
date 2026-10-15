@@ -61,6 +61,16 @@ body,
   cursor: pointer;
 }
 
+.btn--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn--icon svg {
+  flex: none;
+}
+
 .btn:hover {
   border-color: var(--accent);
 }
@@ -456,6 +466,27 @@ body,
   color: var(--muted);
 }
 
+.tree-row__icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.tree-row__icon--ssh {
+  color: var(--warning);
+}
+
+.tree-row__icon--serial {
+  color: var(--success);
+}
+
+.tree-row__icon--telnet {
+  color: var(--danger);
+}
+
+.tree-row__icon--mosh {
+  color: var(--accent);
+}
+
 .tree-row__label {
   flex: 1;
   overflow: hidden;
@@ -503,15 +534,20 @@ body,
   flex: 1;
   min-width: 0;
   /* Four tabs share the 240px sidebar. */
-  padding: 7px 2px;
+  padding: 6px 2px 5px;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   color: var(--muted);
   background: none;
   border: none;
   cursor: pointer;
+  /* Icon above the label, like another app's side tabs. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 
 .sidebar__tab:hover:not(:disabled) {

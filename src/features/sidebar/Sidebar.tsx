@@ -1,3 +1,4 @@
+import { ArrowLeftRight, FolderTree, Keyboard, Star, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type SidebarView = "sessions" | "sftp" | "tunnels" | "macros";
@@ -16,7 +17,7 @@ interface SidebarProps {
 /** Left sidebar with the "Sessions", "SFTP", "Tunnels" and "Macros" tabs; SFTP falls back to Sessions when unavailable. */
 export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tunnels, macros }: SidebarProps) {
   const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
-  const tab = (id: SidebarView, label: string, disabled = false) => (
+  const tab = (id: SidebarView, label: string, Icon: LucideIcon, disabled = false) => (
     <button
       role="tab"
       aria-selected={shown === id}
@@ -25,6 +26,7 @@ export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tun
       title={disabled ? "Available when the focused pane of the active tab is a connected SSH session" : undefined}
       onClick={() => onViewChange(id)}
     >
+      <Icon size={16} />
       {label}
     </button>
   );
@@ -32,10 +34,10 @@ export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tun
   return (
     <aside className={`sidebar${shown === "sessions" ? "" : " sidebar--wide"}`}>
       <div className="sidebar__tabs" role="tablist">
-        {tab("sessions", "Sessions")}
-        {tab("sftp", "SFTP", !sftpAvailable)}
-        {tab("tunnels", "Tunnels")}
-        {tab("macros", "Macros")}
+        {tab("sessions", "Sessions", Star)}
+        {tab("sftp", "SFTP", FolderTree, !sftpAvailable)}
+        {tab("tunnels", "Tunnels", ArrowLeftRight)}
+        {tab("macros", "Macros", Keyboard)}
       </div>
       {panels[shown]}
     </aside>

@@ -49,6 +49,17 @@ import { useTunnels } from "./features/tunnels/useTunnels";
 import wordmarkUrl from "./assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "./assets/plexusterm-wordmark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
+import {
+  ChevronDown,
+  Circle,
+  Columns2,
+  KeyRound,
+  Radio,
+  Rows2,
+  Settings as SettingsIcon,
+  SquareTerminal,
+  Usb,
+} from "lucide-react";
 import { themeById } from "./features/terminal/themes";
 import "./App.css";
 
@@ -138,8 +149,9 @@ function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => vo
 
   return (
     <div className="menu" ref={ref}>
-      <button className="btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        More ▾
+      <button className="btn btn--icon" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        More
+        <ChevronDown size={14} />
       </button>
       {open && (
         <div className="menu__list" role="menu">
@@ -423,48 +435,55 @@ function AppContent() {
     <div className="app">
       <header className="toolbar">
         <img className="brand" src={scheme.dark ? wordmarkUrl : wordmarkLightUrl} alt="PlexusTerm" />
-        <button className="btn" onClick={openLocal}>
+        <button className="btn btn--icon" onClick={openLocal}>
+          <SquareTerminal size={16} />
           Terminal
         </button>
-        <button className="btn" onClick={() => setModal({ kind: "quickConnect" })}>
+        <button className="btn btn--icon" onClick={() => setModal({ kind: "quickConnect" })}>
+          <KeyRound size={16} />
           SSH
         </button>
-        <button className="btn" onClick={() => setModal({ kind: "serial" })}>
+        <button className="btn btn--icon" onClick={() => setModal({ kind: "serial" })}>
+          <Usb size={16} />
           Serial
         </button>
         <MoreMenu
           onTelnet={() => setModal({ kind: "telnet" })}
           onMosh={() => setModal({ kind: "mosh" })}
         />
-        <button className="btn" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
+        <button className="btn btn--icon" disabled={!canSplit} title="Ctrl+Shift+D" onClick={() => split("row")}>
+          <Columns2 size={16} />
           Split right
         </button>
-        <button className="btn" disabled={!canSplit} title="Ctrl+Shift+E" onClick={() => split("column")}>
+        <button className="btn btn--icon" disabled={!canSplit} title="Ctrl+Shift+E" onClick={() => split("column")}>
+          <Rows2 size={16} />
           Split down
         </button>
         <button
-          className={`btn${multiExec ? " btn--pressed" : ""}`}
+          className={`btn btn--icon${multiExec ? " btn--pressed" : ""}`}
           aria-pressed={multiExec}
           title="Ctrl+Shift+M"
           onClick={() => setMultiExec((on) => !on)}
         >
+          <Radio size={16} />
           Multi-exec
         </button>
         <button
-          className={`btn${recording ? " btn--pressed btn--recording" : ""}`}
+          className={`btn btn--icon${recording ? " btn--pressed btn--recording" : ""}`}
           aria-pressed={recording}
           title="Ctrl+Shift+R"
           onClick={toggleRecording}
         >
+          <Circle size={16} />
           Record macro
         </button>
         <button
-          className="btn toolbar__settings"
+          className="btn btn--icon toolbar__settings"
           aria-label="Settings"
           title="Settings"
           onClick={() => setModal({ kind: "settings" })}
         >
-          ⚙
+          <SettingsIcon size={16} />
         </button>
       </header>
       {notice && (
