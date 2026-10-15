@@ -270,7 +270,7 @@ Choose **OpenCode Go** as the provider and save your OpenCode API key; nothing e
 
 The AI chat answers any question or request in plain words (explanations, steps, what an error means, general help, any topic), in the language you write in, and offers a command for its terminal only when one fits. Press **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or click the PlexusTerm X at the left of the toolbar: the focused terminal is split and the chat opens in a pane below it, linked to that terminal. The X turns once each time the chat opens or takes the focus (not when the system asks for reduced motion).
 
-- Each terminal has at most one chat: pressing the shortcut (or the X) in a terminal that already has one moves the focus to it; pressing it in a chat goes back to its terminal.
+- Each terminal has at most one chat: pressing the shortcut in a terminal that already has one moves the focus to it; pressing it in a chat goes back to its terminal. Clicking the X while a chat is open (it or its terminal has the focus) closes that chat, with the same turn of the X.
 - The chat counts as one of the tab's 4 panes. When the tab is full, a notice says so and no chat opens; close a pane first.
 - Type your question and press **Enter** or **Send** (**Shift+Enter** starts a new line). The conversation scrolls above the input. **Stop** cancels the answer being waited for and puts the question back in the input. An error is shown under the question it belongs to.
 - Follow-up questions send the earlier questions and answers of the same chat as context: the last 10 at most, and at most 16,000 characters in all (the oldest are left out first). Each chat is one conversation (one session ID for OpenCode).
