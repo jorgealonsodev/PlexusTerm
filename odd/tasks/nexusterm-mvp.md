@@ -41,6 +41,13 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S11.4 Multi-execution: when on, what is typed in the focused pane is also sent to every other open terminal pane in every tab. A clear banner shows "Multi-execution ON — input goes to N terminals" with a button to turn it off; each pane shows a small "excluded" toggle so a pane can be left out; excluded panes and panes still connecting do not receive input. Multi-execution is off at start and is never persisted.
   - S11.5 SFTP and OSC 7 cwd follow the focused pane of the active tab.
 
+- S12 (decided by the parent under "haz lo que te creas mas optimo"): serial console sessions, like MobaXterm's Serial session type.
+  - S12.1 A new terminal target "serial" with: device path (e.g. /dev/ttyUSB0), baud rate (default 115200; common values offered plus a custom value), data bits 5-8 (default 8), parity none/odd/even (default none), stop bits 1/2 (default 1), flow control none/software/hardware (default none). Input is sent as typed (Enter sends CR); resize is a no-op.
+  - S12.2 A toolbar "Serial" button opens a dialog listing detected ports (refresh button) plus a free-text device path; the tab title is "<device> @ <baud>".
+  - S12.3 Saved sessions support the serial type next to SSH: the saved format gains a `kind` field ("ssh" | "serial"); files written before this change (no `kind`) keep loading as SSH; the edit dialog switches fields by kind; double-click opens a serial tab. No secrets are involved.
+  - S12.4 Errors are explicit: permission denied explains that the user must be in the "dialout" group (and log out/in); a missing or busy device says so; when the device disappears while open (USB unplugged) the tab shows the error and ends.
+  - S12.5 Port listing must not require libudev development headers (they are not installed on the target machine); enumerate without the libudev feature (sysfs/device scan). Tests never open real devices: they use a pseudo-terminal pair as the serial device.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -56,6 +63,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T6 — S10 (S10.1-S10.6) — delegated (writer trigger: long-session context backstop) — Import sessions from MobaXterm.ini. Writer: parser/planner/saveSessions/dialog RED→GREEN (vitest 101). Parent: hidden <input type=file> could not be confirmed in WebKitGTK → switched to the native dialog (plugin-dialog open) + bounded backend read `import_read_file` (5 MiB; storage::read_bounded RED→GREEN); header layout fix (buttons wrap). Smoke with a cp1252/CRLF ini: native dialog → preview "2 SSH sessions to import; RDP 1, Serial 1, SSH without a host 1" (correct). Confirm click not exercised in the GUI (user was using the desktop); covered by component + reducer tests. cargo 69/69, vitest 103/103.
 
 - [x] T7 — S11 (S11.1-S11.5) — delegated (writer trigger: long-session context backstop) — Split panes and multi-execution. Writer: layout/neighbour/broadcast/tab actions RED→GREEN, App-level tests proven by temporary breaking changes; panes rendered as flat keyed siblings so splits never remount terminals; xterm custom key handler stops Ctrl+Shift+D reaching the shell as EOF. vitest 141/141. Parent smoke on a private Xvfb display (:99): split right/down, isolated input, multi-exec broadcast to 2 panes, Ctrl+Shift+W closes only the focused pane (other keeps its history and focus). Parent fix: exclude toggle moved to the bottom-right (it covered terminal text).
+
+- [ ] T8 — S12 (S12.1-S12.5) — delegated (writer trigger: long-session context backstop) — Serial console sessions.
 
 ## Log
 
@@ -80,3 +89,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L19 (2026-10-15): GUI automation incidents: (1) a title-based xdotool search matched the user's Thorium browser window and typed Ctrl+L + a scratch file path + Enter into it (tab navigated to a local test file; nothing destructive); (2) a pid+name search returned the app main window. Rule adopted: only interact with windows detected as new after the click and owned by the app pid, and never steal focus while the user is active.
 - L20 (2026-10-15): "haz lo que te creas mas optimo" — next unit T7 (split panes + multi-exec). GUI smoke tests only when the user is not using the desktop.
 - L21 (2026-10-15): GUI smoke tests now run on a private Xvfb display (:99) with xdotool bound to it, so they never touch the user's desktop.
+- L22 (2026-10-15): "haz lo que te creas mas optimo" — next unit T8 (serial). Machine facts: libudev dev headers missing; user in dialout; a real /dev/ttyUSB0 exists and must not be opened by tests.
