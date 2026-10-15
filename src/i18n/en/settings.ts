@@ -3,4 +3,99 @@ export const settings = {
     label: "Language",
     system: "System",
   },
+  dialog: {
+    title: "Settings",
+    sections: "Settings sections",
+  },
+  sections: {
+    appearance: "Appearance",
+    terminal: "Terminal",
+    ssh: "SSH",
+    files: "Files",
+    ai: "AI",
+    about: "About",
+  },
+  appearance: {
+    colourScheme: "Colour scheme",
+    dark: "Dark",
+    light: "Light",
+    preview: "Preview of {name}",
+    fontFamily: "Font family",
+    fontSize: "Font size",
+    fontHelp:
+      "Ctrl+= / Ctrl+- / Ctrl+0 change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
+    hideSidebar: "Hide the sidebar completely when folded",
+    sidebarHelp:
+      "Ctrl+Shift+B or the toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
+  },
+  terminal: {
+    copyOnSelect: "Copy on select",
+    rightClickPastes: "Right click pastes",
+    confirmMultilinePaste: "Confirm multi-line paste",
+    rightClickHelp: "When right click pastes, Ctrl+right click opens the terminal menu.",
+  },
+  ssh: {
+    remoteMonitor: "Remote monitor bar (SSH tabs)",
+    remoteMonitorHelp:
+      "A bar under each SSH pane with the server's CPU, memory, disk, network and users, read over the same connection. Also in Tools.",
+  },
+  files: {
+    textEditor: "Text editor",
+    systemDefault: "System default",
+    useSystemDefault: "Use system default",
+    chooseEditor: "Choose a text editor",
+    /** `{command}` is shown as code. */
+    textEditorHelp:
+      "The text editor opens files from the SFTP browser: a program, or a command such as {command}; leave it empty to use the system default.",
+  },
+  ai: {
+    inlineSuggestions: "Inline suggestions",
+    inlineSuggestionsHelp:
+      "A grey suggestion of the rest of the command while you type. Right Arrow or End accepts it, Ctrl+Right accepts one word.",
+    commandHistory: "Command history",
+    clearHistory: "Clear history",
+    historyCleared: "History cleared.",
+    historyClearFailed: "Could not clear the history: {error}",
+    historyHelp:
+      "Commands you run are kept on this computer, per host, to suggest them again. Lines starting with a space, passwords and full-screen programs are never recorded.",
+    aiSuggestions: "AI suggestions",
+    aiSuggestionsHelp:
+      "When the history has nothing, ask the AI provider. Only the typed line, the current folder and the last history commands are sent, never the terminal output.",
+    provider: "Provider",
+    openCodeGoNote:
+      "OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short requests.",
+    baseUrl: "Base URL",
+    model: "Model",
+    historyContext: "History commands sent as context",
+    chooseModel: "Choose a model",
+    modelOption: "{name} ({id})",
+    modelOptionUnsupported: "{name} ({id}) — not supported yet",
+    refreshModels: "Refresh models",
+    loadingModels: "Loading the models…",
+    modelsError: "{error} Type a model id from {url}.",
+    apiKey: "API key",
+    keyChecking: "Checking the keyring…",
+    keySaved: "A key is saved",
+    keyNone: "No key saved",
+    keyUnavailable: "Keyring unavailable",
+    keyReplacePlaceholder: "Type a new key to replace it",
+    keyPastePlaceholder: "Paste the key",
+    saveKey: "Save key",
+    removeKey: "Remove key",
+    saveKeyFailed: "Could not save the key: {error}",
+    removeKeyFailed: "Could not remove the key: {error}",
+    assistantShortcut: "Assistant shortcut",
+    shortcutInvalid: "Use Ctrl, Alt or Meta with a key.",
+    shortcutTaken: "{shortcut} is already used by PlexusTerm.",
+    shortcutCapturing: "Press the new key combination, or Escape to keep it.",
+    shortcutIdle: "Click the field to change it.",
+  },
+  about: {
+    version: "Version {version}",
+    description:
+      "A terminal and remote-session manager for Linux and Windows: local shells, SSH, SFTP, tunnels, serial, Telnet and Mosh in one window.",
+    /** `{notices}` is the link to the third-party notices. */
+    credits: "Colour schemes from iTerm2-Color-Schemes (MIT) and their authors; see {notices}.",
+    notices: "third-party notices",
+  },
 };

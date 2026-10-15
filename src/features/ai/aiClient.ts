@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { t } from "../../i18n/i18n";
 
 /** Provider ids (Rust `ai::Provider`). */
 export type AiProvider = "anthropic" | "gemini" | "openai" | "openai-compatible" | "opencode-go";
@@ -85,15 +86,16 @@ export interface AiError {
   message: string;
 }
 
-const FALLBACK: Record<AiErrorKind, string> = {
-  noKey: "No API key is saved for this provider.",
-  auth: "The API key was rejected.",
-  rateLimit: "The AI provider is limiting requests; try again in a moment.",
-  network: "Could not reach the AI provider.",
-  timeout: "The AI provider did not answer in time.",
-  refused: "The AI provider declined to answer this request.",
-  badResponse: "The AI provider sent an answer PlexusTerm could not read.",
-  config: "Check the AI settings.",
+/** Every error kind; the text shown when the backend sends no message is `ai.errors.<kind>`. */
+const KINDS: Record<AiErrorKind, true> = {
+  noKey: true,
+  auth: true,
+  rateLimit: true,
+  network: true,
+  timeout: true,
+  refused: true,
+  badResponse: true,
+  config: true,
 };
 
 export function isAiError(err: unknown): err is AiError {
@@ -101,12 +103,12 @@ export function isAiError(err: unknown): err is AiError {
     typeof err === "object" &&
     err !== null &&
     typeof (err as { kind?: unknown }).kind === "string" &&
-    (err as { kind: string }).kind in FALLBACK
+    (err as { kind: string }).kind in KINDS
   );
 }
 
 export function describeAiError(err: unknown): string {
-  if (isAiError(err)) return err.message || FALLBACK[err.kind];
+  if (isAiError(err)) return err.message || t(`ai.errors.${err.kind}`);
   if (err instanceof Error) return err.message;
   return String(err);
 }

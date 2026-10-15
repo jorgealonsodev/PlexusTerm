@@ -1,3 +1,5 @@
+import { useT } from "../../i18n/i18n";
+
 /** A piece of an answer: plain text, or the inside of a fenced code block. */
 type AnswerPart = { code: boolean; text: string };
 
@@ -25,8 +27,9 @@ function answerParts(answer: string): AnswerPart[] {
 
 /** An AI answer as React text nodes only (never HTML): line breaks kept, code in monospace blocks (S8). */
 export function AnswerText({ answer }: { answer: string }) {
+  const t = useT();
   return (
-    <div className="assistant__reply" aria-label="Answer">
+    <div className="assistant__reply" aria-label={t("ai.answer.label")}>
       {answerParts(answer).map((part, i) =>
         part.code ? (
           <pre key={i} className="assistant__code">
