@@ -55,6 +55,12 @@ describe("TunnelsPanel", () => {
     expect(props.onToggle).toHaveBeenCalledWith(db);
   });
 
+  it("shows the warning of a running tunnel", () => {
+    renderPanel({ state: "running", warning: "The password could not be saved in the system keyring: locked" });
+    expect(screen.getByText("Stop")).toBeTruthy();
+    expect(screen.getByText("The password could not be saved in the system keyring: locked")).toBeTruthy();
+  });
+
   it("offers Stop while running and shows error messages", () => {
     renderPanel({ state: "running" });
     expect(screen.getByText("Stop")).toBeTruthy();

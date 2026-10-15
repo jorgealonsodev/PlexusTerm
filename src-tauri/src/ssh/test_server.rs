@@ -14,6 +14,7 @@
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use russh::keys::ssh_key::private::Ed25519Keypair;
@@ -35,6 +36,14 @@ pub fn key_from_seed(seed: u8) -> PrivateKey {
 pub struct TestServer {
     pub addr: SocketAddr,
     pub host_key: PublicKey,
+    /// Password authentication attempts received, over every connection.
+    pub password_attempts: Arc<AtomicUsize>,
+}
+
+impl TestServer {
+    pub fn password_attempts(&self) -> usize {
+        self.password_attempts.load(Ordering::SeqCst)
+    }
 }
 
 #[derive(Clone)]
@@ -49,6 +58,7 @@ struct Handler {
     stream_channels: Arc<Mutex<HashSet<ChannelId>>>,
     /// Remote forward listeners of this connection, by requested address and port.
     forwards: Arc<Mutex<HashMap<(String, u32), tokio::task::AbortHandle>>>,
+    password_attempts: Arc<AtomicUsize>,
 }
 
 /// Starts a server with the given host key seed; `allowed_key` enables public-key auth.
@@ -83,11 +93,17 @@ async fn start_inner(
         channels: Arc::default(),
         stream_channels: Arc::default(),
         forwards: Arc::default(),
+        password_attempts: Arc::default(),
     };
+    let password_attempts = server.password_attempts.clone();
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
     });
-    TestServer { addr, host_key }
+    TestServer {
+        addr,
+        host_key,
+        password_attempts,
+    }
 }
 
 impl russh::server::Server for Handler {
@@ -106,6 +122,7 @@ impl russh::server::Handler for Handler {
     type Error = russh::Error;
 
     async fn auth_password(&mut self, _user: &str, password: &str) -> Result<Auth, Self::Error> {
+        self.password_attempts.fetch_add(1, Ordering::SeqCst);
         Ok(if password == PASSWORD {
             Auth::Accept
         } else {

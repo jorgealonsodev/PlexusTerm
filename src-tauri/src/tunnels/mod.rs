@@ -22,8 +22,8 @@ use crate::secrets::{NoStore, SharedSecrets};
 #[cfg(test)]
 use crate::ssh::SshAuth;
 use crate::ssh::{
-    ConnectContext, Connection, ForwardedChannel, PasswordStorage, SshError, SshTarget,
-    connect_authenticated,
+    ConnectContext, Connection, ForwardedChannel, PasswordStorage, STORAGE_TIMEOUT, SshError,
+    SshTarget, connect_authenticated,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -56,8 +56,14 @@ pub struct TunnelDefinition {
 pub enum TunnelStatus {
     Stopped,
     Starting,
-    Running,
-    Error { message: String },
+    Running {
+        /// Shown next to the tunnel, e.g. when its password could not be saved.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        warning: Option<String>,
+    },
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -92,6 +98,8 @@ struct Running {
     connection: Arc<Connection>,
     /// Address and port the server listens on for a remote forward.
     remote_forward: Option<(String, u32)>,
+    /// Keyring problem after the login, reported in the running status.
+    warning: Option<String>,
 }
 
 impl Running {
@@ -163,6 +171,7 @@ pub struct TunnelManager {
     /// Overrides `SSH_AUTH_SOCK` (used by tests).
     agent_socket: Option<PathBuf>,
     secrets: SharedSecrets,
+    storage_timeout: Duration,
     shared: Arc<Shared>,
 }
 
@@ -178,6 +187,7 @@ impl TunnelManager {
             known_hosts,
             agent_socket: None,
             secrets: Arc::new(NoStore),
+            storage_timeout: STORAGE_TIMEOUT,
             shared: Arc::new(Shared {
                 entries: Mutex::new(HashMap::new()),
                 next_generation: AtomicU64::new(0),
@@ -189,6 +199,12 @@ impl TunnelManager {
     /// Uses `secrets` for stored passwords (none are available otherwise).
     pub fn with_secrets(mut self, secrets: SharedSecrets) -> Self {
         self.secrets = secrets;
+        self
+    }
+
+    #[cfg(test)]
+    fn with_storage_timeout(mut self, timeout: Duration) -> Self {
+        self.storage_timeout = timeout;
         self
     }
 
@@ -228,7 +244,10 @@ impl TunnelManager {
         {
             let mut entries = self.shared.entries.lock().unwrap();
             if let Some(entry) = entries.get(&id)
-                && matches!(entry.status, TunnelStatus::Starting | TunnelStatus::Running)
+                && matches!(
+                    entry.status,
+                    TunnelStatus::Starting | TunnelStatus::Running { .. }
+                )
             {
                 return Err(TunnelError::AlreadyRunning { id });
             }
@@ -251,7 +270,9 @@ impl TunnelManager {
         };
 
         let status = match &result {
-            Ok(_) => TunnelStatus::Running,
+            Ok(running) => TunnelStatus::Running {
+                warning: running.warning.clone(),
+            },
             Err(err) => TunnelStatus::Error {
                 message: err.to_string(),
             },
@@ -320,20 +341,20 @@ impl TunnelManager {
             }
             _ => (None, None),
         };
-        let connection = Arc::new(
-            connect_authenticated(
-                target,
-                trusted_fingerprint,
-                storage,
-                ConnectContext {
-                    known_hosts: &self.known_hosts,
-                    agent_socket: self.agent_socket.as_deref(),
-                    secrets: &self.secrets,
-                },
-                forwarded_tx,
-            )
-            .await?,
-        );
+        let (connection, warning) = connect_authenticated(
+            target,
+            trusted_fingerprint,
+            storage,
+            ConnectContext {
+                known_hosts: &self.known_hosts,
+                agent_socket: self.agent_socket.as_deref(),
+                secrets: &self.secrets,
+                storage_timeout: self.storage_timeout,
+            },
+            forwarded_tx,
+        )
+        .await?;
+        let connection = Arc::new(connection);
 
         let mut tasks = JoinSet::new();
         let mut remote_forward = None;
@@ -377,6 +398,7 @@ impl TunnelManager {
             tasks,
             connection,
             remote_forward,
+            warning,
         })
     }
 

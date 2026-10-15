@@ -68,6 +68,8 @@ Password sessions ask for the password when you connect. For saved sessions (ter
 
 - Passwords are kept only in the system keyring through the Secret Service API (GNOME Keyring, KWallet), under the service `dev.nexusterm.app` with the session id as the account and the label `NexusTerm: user@host:port`. They are never written to `sessions.json` or `tunnels.json`.
 - A password is saved only after a successful login. Later connections read it in the backend; it is never sent back to the user interface.
+- A saved password is bound to the `user@host:port` it was typed for and is only ever sent there. Changing the host, port or username of a session (or switching it away from password authentication) forgets the saved password; passwords saved by earlier versions, which carry no such binding, are asked again once.
+- If the keyring cannot save or delete the password (for example because it is locked and does not answer within 10 seconds), the connection still opens and a warning is shown: a yellow line in the terminal tab, or a note under the tunnel.
 - If the saved password is missing or rejected, the prompt appears again with the checkbox ticked: a successful login replaces it, and unticking the checkbox deletes it.
 - **Forget saved password** in the session's edit dialog deletes it; deleting a session, or a folder containing it, deletes it too.
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.

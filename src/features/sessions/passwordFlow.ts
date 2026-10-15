@@ -48,9 +48,19 @@ export function removedSshSessions(library: SessionLibrary, action: LibraryActio
   return library.sessions.filter(isSshSession).filter((s) => !kept.has(s.id));
 }
 
-/** Id whose saved password must be forgotten when `before` is edited into `after` (password auth dropped). */
+/** `user@host:port`, normalized like the endpoint the backend binds a saved password to. */
+function endpointOf(session: SavedSession): string {
+  return `${session.username.trim()}@${session.host.trim()}:${session.port}`;
+}
+
+/**
+ * Id whose saved password must be forgotten when `before` is edited into `after`:
+ * password auth was dropped, or the password would now go to another host, port or user.
+ */
 export function secretToForgetOnEdit(before: SavedSession, after: SavedSession | { kind: "serial" }): string | null {
-  const usedPassword = before.auth.method === "password";
-  const stillPassword = isSshSession(after as SavedSession) && (after as SavedSession).auth.method === "password";
-  return usedPassword && !stillPassword ? before.id : null;
+  if (before.auth.method !== "password") return null;
+  const next = after as SavedSession;
+  const samePasswordEndpoint =
+    isSshSession(next) && next.auth.method === "password" && endpointOf(next) === endpointOf(before);
+  return samePasswordEndpoint ? null : before.id;
 }

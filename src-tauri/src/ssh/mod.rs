@@ -32,6 +32,9 @@ use crate::sftp::SftpError;
 use crate::terminal::{TerminalSink, Utf8Stream};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+/// How long saving or forgetting a password may take after a login. A locked
+/// keyring can wait for an unlock dialog indefinitely; the connection must not.
+pub(crate) const STORAGE_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -277,21 +280,63 @@ pub(crate) struct ConnectContext<'a> {
     pub known_hosts: &'a Path,
     pub agent_socket: Option<&'a Path>,
     pub secrets: &'a SharedSecrets,
+    /// Bound on the keyring update after the login (see [`STORAGE_TIMEOUT`]).
+    pub storage_timeout: Duration,
+}
+
+/// `user@host:port` a saved password belongs to, normalized the same way when
+/// it is saved and when it is used.
+fn endpoint(username: &str, host: &str, port: u16) -> String {
+    format!("{}@{}:{port}", username.trim(), host.trim())
+}
+
+const SAVED_PASSWORD_VERSION: u32 = 1;
+
+/// Keyring value of a saved password: the password bound to the endpoint it was
+/// typed for, so it is never sent anywhere else (e.g. after the session was edited).
+/// Deliberately not `Debug`.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SavedPassword {
+    v: u32,
+    endpoint: String,
+    password: String,
+}
+
+impl SavedPassword {
+    fn encode(endpoint: String, password: String) -> String {
+        serde_json::to_string(&Self {
+            v: SAVED_PASSWORD_VERSION,
+            endpoint,
+            password,
+        })
+        .expect("a struct of strings always serializes")
+    }
+
+    /// The password when `value` was saved for `endpoint`. Values saved for another
+    /// endpoint, in another format or as plain text (older builds) yield `None`.
+    fn password_for(value: &str, endpoint: &str) -> Option<String> {
+        let saved: Self = serde_json::from_str(value).ok()?;
+        (saved.v == SAVED_PASSWORD_VERSION && saved.endpoint == endpoint).then_some(saved.password)
+    }
 }
 
 /// Connects, applies the known_hosts policy and authenticates, then applies
 /// `storage` to the saved password. Nothing is stored or deleted on failure.
+///
+/// Also returns a user-facing warning when the keyring could not be updated;
+/// that never fails the login.
 pub(crate) async fn connect_authenticated(
     target: SshTarget,
     trusted_fingerprint: Option<String>,
     storage: Option<PasswordStorage>,
     ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
-) -> Result<Connection, SshError> {
+) -> Result<(Connection, Option<String>), SshError> {
     let ConnectContext {
         known_hosts,
         agent_socket,
         secrets,
+        storage_timeout,
     } = ctx;
     let rejection = Arc::new(Mutex::new(None));
     let handler = ClientHandler {
@@ -331,36 +376,61 @@ pub(crate) async fn connect_authenticated(
         SshAuth::Password { password } => Some(password.clone()),
         _ => None,
     };
+    let endpoint = endpoint(&target.username, &target.host, target.port);
     authenticate(
         &mut handle,
         &target.username,
         target.auth,
         agent_socket,
         secrets,
+        &endpoint,
     )
     .await?;
-    apply_storage(secrets, storage, typed_password).await;
-    Ok(handle)
+    let warning = apply_storage(secrets, storage, typed_password, endpoint, storage_timeout).await;
+    Ok((handle, warning))
 }
 
 /// Saves or forgets the session's password after a successful login. A keyring
-/// failure does not fail the login; the password is then simply asked again later.
+/// failure does not fail the login: it becomes the returned warning, which never
+/// contains the password.
 async fn apply_storage(
     secrets: &SharedSecrets,
     storage: Option<PasswordStorage>,
     typed_password: Option<String>,
-) {
-    let result = match (storage, typed_password) {
+    endpoint: String,
+    timeout: Duration,
+) -> Option<String> {
+    let (failure, result) = match (storage, typed_password) {
         (Some(PasswordStorage::Remember { session_id, label }), Some(password)) => {
-            secrets::run(secrets, move |s| s.set(&session_id, &label, &password)).await
+            let value = SavedPassword::encode(endpoint, password);
+            let update = secrets::run(secrets, move |s| s.set(&session_id, &label, &value));
+            (
+                "The password could not be saved in the system keyring",
+                bounded(timeout, update).await,
+            )
         }
         (Some(PasswordStorage::Forget { session_id }), _) => {
-            secrets::run(secrets, move |s| s.delete(&session_id)).await
+            let update = secrets::run(secrets, move |s| s.delete(&session_id));
+            (
+                "The saved password could not be removed from the system keyring",
+                bounded(timeout, update).await,
+            )
         }
-        _ => Ok(()),
+        _ => return None,
     };
-    if let Err(err) = result {
-        eprintln!("nexusterm: cannot update the saved password: {err}");
+    result.err().map(|reason| format!("{failure}: {reason}"))
+}
+
+/// Runs a keyring update for at most `timeout`; the error is a reason for the user.
+async fn bounded(
+    timeout: Duration,
+    update: impl std::future::Future<Output = Result<(), secrets::SecretError>>,
+) -> Result<(), String> {
+    // On timeout the blocking keyring call keeps running in the background and may
+    // still complete once the keyring is unlocked; the connection goes on regardless.
+    match tokio::time::timeout(timeout, update).await {
+        Ok(result) => result.map_err(|err| err.to_string()),
+        Err(_) => Err("the system keyring did not respond in time (it may be locked)".into()),
     }
 }
 
@@ -370,6 +440,7 @@ async fn authenticate(
     auth: SshAuth,
     agent_socket: Option<&Path>,
     secrets: &SharedSecrets,
+    endpoint: &str,
 ) -> Result<(), SshError> {
     let accepted = match auth {
         SshAuth::Password { password } => handle
@@ -378,11 +449,14 @@ async fn authenticate(
             .map_err(connection)?
             .success(),
         SshAuth::StoredPassword { session_id } => {
-            // An unreadable keyring is treated like a missing secret: the user is asked instead.
+            // An unreadable keyring, or a secret saved for another endpoint (the session was
+            // edited) or in an older format, is treated like a missing secret: the user is
+            // asked instead and the secret is never sent.
             let password = secrets::run(secrets, move |s| s.get(&session_id))
                 .await
                 .ok()
                 .flatten()
+                .and_then(|value| SavedPassword::password_for(&value, endpoint))
                 .ok_or(SshError::SecretMissing)?;
             handle
                 .authenticate_password(user, password)
@@ -465,6 +539,7 @@ pub struct SshManager {
     /// Overrides `SSH_AUTH_SOCK` (used by tests).
     agent_socket: Option<PathBuf>,
     secrets: SharedSecrets,
+    storage_timeout: Duration,
     next_id: AtomicU32,
     sessions: Mutex<HashMap<u32, SessionEntry>>,
 }
@@ -475,6 +550,7 @@ impl SshManager {
             known_hosts,
             agent_socket: None,
             secrets: Arc::new(NoStore),
+            storage_timeout: STORAGE_TIMEOUT,
             next_id: AtomicU32::new(0),
             sessions: Mutex::new(HashMap::new()),
         }
@@ -483,6 +559,12 @@ impl SshManager {
     /// Uses `secrets` for stored passwords (none are available otherwise).
     pub fn with_secrets(mut self, secrets: SharedSecrets) -> Self {
         self.secrets = secrets;
+        self
+    }
+
+    #[cfg(test)]
+    fn with_storage_timeout(mut self, timeout: Duration) -> Self {
+        self.storage_timeout = timeout;
         self
     }
 
@@ -528,8 +610,9 @@ impl SshManager {
             known_hosts: &self.known_hosts,
             agent_socket: self.agent_socket.as_deref(),
             secrets: &self.secrets,
+            storage_timeout: self.storage_timeout,
         };
-        let handle =
+        let (handle, warning) =
             connect_authenticated(target, req.trusted_fingerprint, storage, ctx, None).await?;
 
         let channel = handle.channel_open_session().await.map_err(connection)?;
@@ -546,6 +629,10 @@ impl SshManager {
             .await
             .map_err(connection)?;
         channel.request_shell(false).await.map_err(connection)?;
+        // Shown before any remote output, which only the reader task below forwards.
+        if let Some(warning) = warning {
+            sink.data(format!("\r\n\x1b[33m{warning}\x1b[0m\r\n"));
+        }
 
         let (tx, mut commands) = unbounded_channel();
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
@@ -1110,6 +1197,16 @@ mod tests {
         }
     }
 
+    /// Keyring value binding `password` to `endpoint` (`user@host:port`), as `remember` writes it.
+    fn bound_secret(endpoint: &str, password: &str) -> String {
+        serde_json::json!({"v": 1, "endpoint": endpoint, "password": password}).to_string()
+    }
+
+    /// Keyring value for the test user on the test server at `port`.
+    fn secret_for(port: u16, password: &str) -> String {
+        bound_secret(&format!("tester@127.0.0.1:{port}"), password)
+    }
+
     fn remember(session_id: &str) -> Option<PasswordStorage> {
         Some(PasswordStorage::Remember {
             session_id: session_id.into(),
@@ -1122,7 +1219,9 @@ mod tests {
         let server = test_server::start(1, None).await;
         let dir = tempfile::tempdir().unwrap();
         let store = MemoryStore::shared();
-        store.set("s1", "label", PASSWORD).unwrap();
+        store
+            .set("s1", "label", &secret_for(server.addr.port(), PASSWORD))
+            .unwrap();
         let mgr = with_store(&dir, &server, &store);
         let (s, mut rx) = sink();
 
@@ -1130,6 +1229,69 @@ mod tests {
             .await
             .unwrap();
         assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    /// Stores `value(server port)` for "s1", connects with it and expects it to be
+    /// treated as missing without any password reaching the server.
+    async fn assert_secret_not_sent(value: impl Fn(u16) -> String) {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        store
+            .set("s1", "label", &value(server.addr.port()))
+            .unwrap();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(server.addr.port(), stored("s1")), s)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SshError::SecretMissing), "got {err:?}");
+        assert_eq!(server.password_attempts(), 0, "the secret was sent");
+    }
+
+    #[tokio::test]
+    async fn a_secret_stored_for_another_port_is_never_sent() {
+        assert_secret_not_sent(|port| {
+            bound_secret(&format!("tester@127.0.0.1:{}", port + 1), PASSWORD)
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn a_secret_stored_for_another_user_is_never_sent() {
+        assert_secret_not_sent(|port| bound_secret(&format!("root@127.0.0.1:{port}"), PASSWORD))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn a_secret_stored_for_another_host_is_never_sent() {
+        assert_secret_not_sent(|port| bound_secret(&format!("tester@10.0.0.1:{port}"), PASSWORD))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn a_legacy_plain_text_secret_is_never_sent() {
+        assert_secret_not_sent(|_| PASSWORD.to_string()).await;
+    }
+
+    #[tokio::test]
+    async fn an_unsupported_secret_format_is_never_sent() {
+        assert_secret_not_sent(|port| {
+            serde_json::json!({"v": 2, "endpoint": format!("tester@127.0.0.1:{port}"), "password": PASSWORD})
+                .to_string()
+        })
+        .await;
+    }
+
+    #[test]
+    fn endpoints_are_normalized() {
+        assert_eq!(
+            endpoint(" tester ", " 127.0.0.1 ", 2222),
+            "tester@127.0.0.1:2222"
+        );
     }
 
     #[tokio::test]
@@ -1156,7 +1318,8 @@ mod tests {
         let server = test_server::start(1, None).await;
         let dir = tempfile::tempdir().unwrap();
         let store = MemoryStore::shared();
-        store.set("s1", "label", "old-password").unwrap();
+        let old = secret_for(server.addr.port(), "old-password");
+        store.set("s1", "label", &old).unwrap();
         let mgr = with_store(&dir, &server, &store);
         let (s, _rx) = sink();
 
@@ -1165,7 +1328,7 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SshError::AuthFailed), "got {err:?}");
-        assert_eq!(store.get("s1").unwrap().as_deref(), Some("old-password"));
+        assert_eq!(store.get("s1").unwrap(), Some(old));
     }
 
     #[tokio::test]
@@ -1184,7 +1347,16 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(store.get("s1").unwrap().as_deref(), Some(PASSWORD));
+        let saved: serde_json::Value =
+            serde_json::from_str(&store.get("s1").unwrap().unwrap()).unwrap();
+        assert_eq!(
+            saved,
+            serde_json::json!({
+                "v": 1,
+                "endpoint": format!("tester@127.0.0.1:{}", server.addr.port()),
+                "password": PASSWORD,
+            })
+        );
         assert_eq!(
             store.label("s1").as_deref(),
             Some("NexusTerm: tester@127.0.0.1:22")
@@ -1216,7 +1388,9 @@ mod tests {
         let server = test_server::start(1, None).await;
         let dir = tempfile::tempdir().unwrap();
         let store = MemoryStore::shared();
-        store.set("other", "label", PASSWORD).unwrap();
+        store
+            .set("other", "label", &secret_for(server.addr.port(), PASSWORD))
+            .unwrap();
         let mgr = with_store(&dir, &server, &store);
         let (s, _rx) = sink();
 
@@ -1228,6 +1402,75 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    /// Output of a shell opened with a typed password and `storage`, up to the welcome banner.
+    async fn output_after_login(
+        mgr: &SshManager,
+        port: u16,
+        storage: Option<PasswordStorage>,
+    ) -> String {
+        let (s, mut rx) = sink();
+        mgr.connect_with(request(port, password(PASSWORD)), storage, s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await.0
+    }
+
+    #[tokio::test]
+    async fn a_password_the_keyring_cannot_save_is_reported_in_the_terminal() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        // No keyring configured: saving fails.
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+
+        let out = output_after_login(&mgr, server.addr.port(), remember("s1")).await;
+        let warning = "\r\n\x1b[33mThe password could not be saved in the system keyring: \
+                       the system keyring is not available\x1b[0m\r\n";
+        assert!(out.starts_with(warning), "output was {out:?}");
+        assert!(out.contains("welcome"), "output was {out:?}");
+        assert!(!out.contains(PASSWORD), "output was {out:?}");
+    }
+
+    #[tokio::test]
+    async fn a_successful_save_writes_nothing_to_the_terminal() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr = with_store(&dir, &server, &store);
+
+        let out = output_after_login(&mgr, server.addr.port(), remember("s1")).await;
+        assert!(!out.contains("keyring"), "output was {out:?}");
+    }
+
+    #[tokio::test]
+    async fn a_keyring_that_does_not_answer_does_not_hold_the_login_back() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let (store, release) = crate::secrets::BlockingStore::new();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key)
+            .with_secrets(store)
+            .with_storage_timeout(Duration::from_millis(100));
+
+        for storage in [
+            remember("s1"),
+            Some(PasswordStorage::Forget {
+                session_id: "s1".into(),
+            }),
+        ] {
+            let out = tokio::time::timeout(
+                Duration::from_secs(5),
+                output_after_login(&mgr, server.addr.port(), storage),
+            )
+            .await
+            .expect("the login waited for the keyring");
+            assert!(
+                out.contains("did not respond in time"),
+                "output was {out:?}"
+            );
+            assert!(out.contains("welcome"), "output was {out:?}");
+        }
+        drop(release);
     }
 
     #[tokio::test]
