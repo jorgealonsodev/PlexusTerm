@@ -193,8 +193,14 @@ async fn create_file_makes_an_empty_file_and_never_replaces_one() {
     assert_eq!(std::fs::read(root.path().join("new.txt")).unwrap(), b"");
     std::fs::write(root.path().join("keep.txt"), b"data").unwrap();
     let err = create_file(&sftp, "/keep.txt").await.unwrap_err();
-    assert!(err.to_string().contains("cannot create file /keep.txt"), "{err}");
-    assert_eq!(std::fs::read(root.path().join("keep.txt")).unwrap(), b"data");
+    assert!(
+        err.to_string().contains("cannot create file /keep.txt"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read(root.path().join("keep.txt")).unwrap(),
+        b"data"
+    );
 }
 
 #[tokio::test]
@@ -452,10 +458,17 @@ fn the_chosen_text_editor_gets_the_file_as_its_own_argument() {
     // Empty: the system default editor.
     assert_eq!(args(""), None);
     assert_eq!(args("   "), None);
-    assert_eq!(args("kate"), Some(vec!["kate".into(), file.display().to_string()]));
+    assert_eq!(
+        args("kate"),
+        Some(vec!["kate".into(), file.display().to_string()])
+    );
     assert_eq!(
         args("  code --wait "),
-        Some(vec!["code".into(), "--wait".into(), file.display().to_string()])
+        Some(vec![
+            "code".into(),
+            "--wait".into(),
+            file.display().to_string()
+        ])
     );
     assert_eq!(
         args("\"/opt/My Editor/edit\" -n %f --end"),
@@ -469,7 +482,12 @@ fn the_chosen_text_editor_gets_the_file_as_its_own_argument() {
     // Shell syntax is only text: no shell ever runs the command.
     assert_eq!(
         args("vim | true"),
-        Some(vec!["vim".into(), "|".into(), "true".into(), file.display().to_string()])
+        Some(vec![
+            "vim".into(),
+            "|".into(),
+            "true".into(),
+            file.display().to_string()
+        ])
     );
 }
 
@@ -532,7 +550,10 @@ fn copy_names_never_leave_the_private_folder() {
     let temp = TempFiles::default();
     for (remote, expected) in [
         ("/srv/..\\..\\evil.bat", ".._.._evil.bat"),
-        ("/srv/C:\\Users\\x\\Startup\\a.bat", "C__Users_x_Startup_a.bat"),
+        (
+            "/srv/C:\\Users\\x\\Startup\\a.bat",
+            "C__Users_x_Startup_a.bat",
+        ),
         ("/srv/a<b>c|d?e*f\"g", "a_b_c_d_e_f_g"),
         ("/srv/..", "file"),
         ("/srv/.", "file"),
@@ -544,4 +565,3 @@ fn copy_names_never_leave_the_private_folder() {
         assert_eq!(local.file_name().unwrap(), expected, "{remote}");
     }
 }
-

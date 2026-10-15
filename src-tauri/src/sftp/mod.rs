@@ -242,7 +242,10 @@ pub async fn mkdir(sftp: &SftpSession, path: &str) -> Result<(), SftpError> {
 pub async fn create_file(sftp: &SftpSession, path: &str) -> Result<(), SftpError> {
     use russh_sftp::protocol::OpenFlags;
     let file = sftp
-        .open_with_flags(path, OpenFlags::CREATE | OpenFlags::EXCLUDE | OpenFlags::WRITE)
+        .open_with_flags(
+            path,
+            OpenFlags::CREATE | OpenFlags::EXCLUDE | OpenFlags::WRITE,
+        )
         .await
         .map_err(|err| failure("create file", path, err))?;
     drop(file);

@@ -34,11 +34,29 @@ pub struct Outcome {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(tag = "event", content = "data", rename_all = "camelCase")]
 pub enum ScanEvent {
-    Started { total: usize },
-    Open { host: String, port: u16, service: Option<String> },
-    Progress { done: usize, total: usize },
-    Host { host: String, name: Option<String>, mac: Option<String>, ports: Vec<u16> },
-    Done { done: usize, total: usize, cancelled: bool },
+    Started {
+        total: usize,
+    },
+    Open {
+        host: String,
+        port: u16,
+        service: Option<String>,
+    },
+    Progress {
+        done: usize,
+        total: usize,
+    },
+    Host {
+        host: String,
+        name: Option<String>,
+        mac: Option<String>,
+        ports: Vec<u16>,
+    },
+    Done {
+        done: usize,
+        total: usize,
+        cancelled: bool,
+    },
 }
 
 /// Cancellation shared by a running scan and `scan_stop`; wakes the scan immediately.
@@ -70,7 +88,8 @@ impl CancelFlag {
     }
 }
 
-const IPV4_TARGETS_HINT: &str = "Enter an IPv4 address, range (192.168.1.10-20) or CIDR (192.168.1.0/24)";
+const IPV4_TARGETS_HINT: &str =
+    "Enter an IPv4 address, range (192.168.1.10-20) or CIDR (192.168.1.0/24)";
 
 /// Parses `a.b.c.d`, `a.b.c.d-e` (last-octet range) or `a.b.c.d/n` with n in 24..=32
 /// (network and broadcast addresses skipped up to /30). Never more than 256 hosts.
@@ -79,27 +98,34 @@ pub fn parse_ipv4_targets(text: &str) -> Result<Vec<Ipv4Addr>, String> {
     if text.is_empty() {
         return Err(IPV4_TARGETS_HINT.to_string());
     }
-    let address = |part: &str| part.parse::<Ipv4Addr>().map_err(|_| format!("Invalid IPv4 address: {part}"));
+    let address = |part: &str| {
+        part.parse::<Ipv4Addr>()
+            .map_err(|_| format!("Invalid IPv4 address: {part}"))
+    };
     if let Some((base, prefix)) = text.split_once('/') {
         let base = address(base)?;
         let prefix = prefix
             .parse::<u32>()
             .ok()
             .filter(|p| (24..=32).contains(p))
-            .ok_or_else(|| "CIDR prefix must be between /24 and /32 (at most 256 hosts)".to_string())?;
+            .ok_or_else(|| {
+                "CIDR prefix must be between /24 and /32 (at most 256 hosts)".to_string()
+            })?;
         let size = 1u32 << (32 - prefix);
         let network = u32::from(base) & !(size - 1);
-        let (first, last) = if prefix <= 30 { (network + 1, network + size - 2) } else { (network, network + size - 1) };
+        let (first, last) = if prefix <= 30 {
+            (network + 1, network + size - 2)
+        } else {
+            (network, network + size - 1)
+        };
         return Ok((first..=last).map(Ipv4Addr::from).collect());
     }
     if let Some((start, end)) = text.split_once('-') {
         let start = address(start)?;
         let [a, b, c, d] = start.octets();
-        let end = end
-            .parse::<u8>()
-            .ok()
-            .filter(|e| *e >= d)
-            .ok_or_else(|| format!("Invalid range: {text} (use a.b.c.d-e with e between d and 255)"))?;
+        let end = end.parse::<u8>().ok().filter(|e| *e >= d).ok_or_else(|| {
+            format!("Invalid range: {text} (use a.b.c.d-e with e between d and 255)")
+        })?;
         return Ok((d..=end).map(|last| Ipv4Addr::new(a, b, c, last)).collect());
     }
     Ok(vec![address(text)?])
@@ -111,18 +137,30 @@ pub async fn parse_targets(text: &str) -> Result<Vec<IpAddr>, String> {
     if text.is_empty() {
         return Err("Enter a host, IPv4 address or range".to_string());
     }
-    if text.chars().all(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '/')) {
-        return Ok(parse_ipv4_targets(text)?.into_iter().map(IpAddr::V4).collect());
+    if text
+        .chars()
+        .all(|c| c.is_ascii_digit() || matches!(c, '.' | '-' | '/'))
+    {
+        return Ok(parse_ipv4_targets(text)?
+            .into_iter()
+            .map(IpAddr::V4)
+            .collect());
     }
     if let Ok(address) = text.parse::<IpAddr>() {
         return Ok(vec![address]);
     }
-    if !text.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')) {
+    if !text
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+    {
         return Err(format!("Invalid host: {text}"));
     }
     let unresolved = || format!("Could not resolve host: {text}");
-    let mut addresses: Vec<IpAddr> =
-        tokio::net::lookup_host((text, 0)).await.map_err(|_| unresolved())?.map(|a| a.ip()).collect();
+    let mut addresses: Vec<IpAddr> = tokio::net::lookup_host((text, 0))
+        .await
+        .map_err(|_| unresolved())?
+        .map(|a| a.ip())
+        .collect();
     // Prefer IPv4, which is what most LAN services listen on.
     addresses.sort_by_key(|a| !a.is_ipv4());
     addresses.first().map(|a| vec![*a]).ok_or_else(unresolved)
@@ -139,7 +177,10 @@ pub fn parse_ports(text: &str) -> Result<Vec<u16>, String> {
                 _ => return Err(format!("Invalid port range: {part}")),
             }
         } else {
-            ports.insert(port(part).ok_or_else(|| format!("Invalid port: {part} (use numbers from 1 to 65535)"))?);
+            ports
+                .insert(port(part).ok_or_else(|| {
+                    format!("Invalid port: {part} (use numbers from 1 to 65535)")
+                })?);
         }
     }
     if ports.is_empty() {
@@ -151,7 +192,9 @@ pub fn parse_ports(text: &str) -> Result<Vec<u16>, String> {
 pub fn check_probe_count(hosts: usize, ports: usize) -> Result<usize, String> {
     let total = hosts.saturating_mul(ports);
     if total > MAX_PROBES {
-        return Err(format!("Too many probes: {total} (the limit is {MAX_PROBES}; scan fewer hosts or ports)"));
+        return Err(format!(
+            "Too many probes: {total} (the limit is {MAX_PROBES}; scan fewer hosts or ports)"
+        ));
     }
     Ok(total)
 }
@@ -218,7 +261,8 @@ pub fn parse_arp_table(text: &str) -> HashMap<Ipv4Addr, String> {
             let fields: Vec<&str> = line.split_whitespace().collect();
             let (address, flags, mac) = (fields.first()?, fields.get(2)?, fields.get(3)?);
             let complete = u32::from_str_radix(flags.trim_start_matches("0x"), 16).ok()? & 0x2 != 0;
-            (complete && *mac != "00:00:00:00:00:00").then(|| Some((address.parse().ok()?, mac.to_lowercase())))?
+            (complete && *mac != "00:00:00:00:00:00")
+                .then(|| Some((address.parse().ok()?, mac.to_lowercase())))?
         })
         .collect()
 }
@@ -226,7 +270,12 @@ pub fn parse_arp_table(text: &str) -> HashMap<Ipv4Addr, String> {
 /// The canonical name of `getent hosts <ip>` output (`<ip> <name> [aliases]`).
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn parse_getent_hosts(output: &str) -> Option<String> {
-    output.lines().next()?.split_whitespace().nth(1).map(str::to_string)
+    output
+        .lines()
+        .next()?
+        .split_whitespace()
+        .nth(1)
+        .map(str::to_string)
 }
 
 /// Reverse DNS through the system resolver (NSS: DNS, mDNS, /etc/hosts) via `getent`.
@@ -237,11 +286,15 @@ async fn reverse_dns(ip: Ipv4Addr) -> Option<String> {
         .arg(ip.to_string())
         .kill_on_drop(true)
         .output();
-    let output = tokio::time::timeout(Duration::from_secs(2), lookup).await.ok()?.ok()?;
+    let output = tokio::time::timeout(Duration::from_secs(2), lookup)
+        .await
+        .ok()?
+        .ok()?;
     if !output.status.success() {
         return None;
     }
-    parse_getent_hosts(&String::from_utf8_lossy(&output.stdout)).filter(|name| *name != ip.to_string())
+    parse_getent_hosts(&String::from_utf8_lossy(&output.stdout))
+        .filter(|name| *name != ip.to_string())
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -285,7 +338,13 @@ pub async fn probe_all<F: FnMut(Outcome)>(
         while running.len() < concurrency.max(1) && next < total && !cancel.is_cancelled() {
             let (host, port) = (hosts[next / ports.len()], ports[next % ports.len()]);
             next += 1;
-            running.spawn(async move { Outcome { host, port, state: probe(SocketAddr::new(host, port), timeout).await } });
+            running.spawn(async move {
+                Outcome {
+                    host,
+                    port,
+                    state: probe(SocketAddr::new(host, port), timeout).await,
+                }
+            });
         }
         if cancel.is_cancelled() {
             running.abort_all();
@@ -332,7 +391,11 @@ pub async fn run_port_scan(
         }
     })
     .await;
-    emit(ScanEvent::Done { done, total, cancelled });
+    emit(ScanEvent::Done {
+        done,
+        total,
+        cancelled,
+    });
 }
 
 /// Finds live hosts: a host is live when any probed port answers (open or refused).
@@ -351,27 +414,41 @@ pub async fn run_network_scan(
     let mut pending: HashMap<IpAddr, (usize, bool, Vec<u16>)> = HashMap::new();
     let mut describing = JoinSet::new();
     let mut done = 0;
-    let cancelled = probe_all(&addresses, ports, timeout, CONCURRENCY, &cancel, |outcome| {
-        done += 1;
-        if done % PROGRESS_EVERY == 0 {
-            emit(ScanEvent::Progress { done, total });
-        }
-        let entry = pending.entry(outcome.host).or_insert((ports.len(), false, Vec::new()));
-        entry.0 -= 1;
-        entry.1 |= outcome.state != PortState::Filtered;
-        if outcome.state == PortState::Open {
-            entry.2.push(outcome.port);
-        }
-        if let (0, true, IpAddr::V4(ip)) = (entry.0, entry.1, outcome.host) {
-            let mut open = std::mem::take(&mut entry.2);
-            open.sort_unstable();
-            let emit = emit.clone();
-            describing.spawn(async move {
-                let (name, mac) = tokio::join!(reverse_dns(ip), arp_mac(ip));
-                emit(ScanEvent::Host { host: ip.to_string(), name, mac, ports: open });
-            });
-        }
-    })
+    let cancelled = probe_all(
+        &addresses,
+        ports,
+        timeout,
+        CONCURRENCY,
+        &cancel,
+        |outcome| {
+            done += 1;
+            if done % PROGRESS_EVERY == 0 {
+                emit(ScanEvent::Progress { done, total });
+            }
+            let entry = pending
+                .entry(outcome.host)
+                .or_insert((ports.len(), false, Vec::new()));
+            entry.0 -= 1;
+            entry.1 |= outcome.state != PortState::Filtered;
+            if outcome.state == PortState::Open {
+                entry.2.push(outcome.port);
+            }
+            if let (0, true, IpAddr::V4(ip)) = (entry.0, entry.1, outcome.host) {
+                let mut open = std::mem::take(&mut entry.2);
+                open.sort_unstable();
+                let emit = emit.clone();
+                describing.spawn(async move {
+                    let (name, mac) = tokio::join!(reverse_dns(ip), arp_mac(ip));
+                    emit(ScanEvent::Host {
+                        host: ip.to_string(),
+                        name,
+                        mac,
+                        ports: open,
+                    });
+                });
+            }
+        },
+    )
     .await;
     let cancelled = if cancelled {
         describing.abort_all();
@@ -385,7 +462,11 @@ pub async fn run_network_scan(
             _ = async { while describing.join_next().await.is_some() {} } => false,
         }
     };
-    emit(ScanEvent::Done { done, total, cancelled });
+    emit(ScanEvent::Done {
+        done,
+        total,
+        cancelled,
+    });
 }
 
 /// Scans in progress, by id, so `scan_stop` can cancel them.
@@ -472,7 +553,10 @@ mod tests {
 
     #[test]
     fn parses_a_single_ipv4_address() {
-        assert_eq!(parse_ipv4_targets(" 192.168.1.10 "), Ok(vec![ip("192.168.1.10")]));
+        assert_eq!(
+            parse_ipv4_targets(" 192.168.1.10 "),
+            Ok(vec![ip("192.168.1.10")])
+        );
     }
 
     #[test]
@@ -490,19 +574,37 @@ mod tests {
         assert_eq!(hosts[0], ip("10.0.0.1"));
         assert_eq!(hosts[253], ip("10.0.0.254"));
         assert_eq!(parse_ipv4_targets("10.0.0.5/32"), Ok(vec![ip("10.0.0.5")]));
-        assert_eq!(parse_ipv4_targets("10.0.0.4/31"), Ok(vec![ip("10.0.0.4"), ip("10.0.0.5")]));
+        assert_eq!(
+            parse_ipv4_targets("10.0.0.4/31"),
+            Ok(vec![ip("10.0.0.4"), ip("10.0.0.5")])
+        );
     }
 
     #[test]
     fn rejects_invalid_ipv4_targets_with_a_clear_error() {
         let cases = [
-            ("", "Enter an IPv4 address, range (192.168.1.10-20) or CIDR (192.168.1.0/24)"),
+            (
+                "",
+                "Enter an IPv4 address, range (192.168.1.10-20) or CIDR (192.168.1.0/24)",
+            ),
             ("192.168.1.300", "Invalid IPv4 address: 192.168.1.300"),
             ("router", "Invalid IPv4 address: router"),
-            ("192.168.1.20-10", "Invalid range: 192.168.1.20-10 (use a.b.c.d-e with e between d and 255)"),
-            ("192.168.1.10-256", "Invalid range: 192.168.1.10-256 (use a.b.c.d-e with e between d and 255)"),
-            ("10.0.0.0/23", "CIDR prefix must be between /24 and /32 (at most 256 hosts)"),
-            ("10.0.0.0/x", "CIDR prefix must be between /24 and /32 (at most 256 hosts)"),
+            (
+                "192.168.1.20-10",
+                "Invalid range: 192.168.1.20-10 (use a.b.c.d-e with e between d and 255)",
+            ),
+            (
+                "192.168.1.10-256",
+                "Invalid range: 192.168.1.10-256 (use a.b.c.d-e with e between d and 255)",
+            ),
+            (
+                "10.0.0.0/23",
+                "CIDR prefix must be between /24 and /32 (at most 256 hosts)",
+            ),
+            (
+                "10.0.0.0/x",
+                "CIDR prefix must be between /24 and /32 (at most 256 hosts)",
+            ),
             ("10.0.0/24", "Invalid IPv4 address: 10.0.0"),
         ];
         for (text, error) in cases {
@@ -514,8 +616,14 @@ mod tests {
     async fn targets_accept_hostnames_and_ipv4_forms() {
         assert!(parse_targets("localhost").await.unwrap()[0].is_loopback());
         assert_eq!(parse_targets("127.0.0.1-2").await.unwrap().len(), 2);
-        assert_eq!(parse_targets("  ").await, Err("Enter a host, IPv4 address or range".to_string()));
-        assert_eq!(parse_targets("bad host").await, Err("Invalid host: bad host".to_string()));
+        assert_eq!(
+            parse_targets("  ").await,
+            Err("Enter a host, IPv4 address or range".to_string())
+        );
+        assert_eq!(
+            parse_targets("bad host").await,
+            Err("Invalid host: bad host".to_string())
+        );
         assert_eq!(
             parse_targets("no-such-host.invalid").await,
             Err("Could not resolve host: no-such-host.invalid".to_string())
@@ -524,7 +632,10 @@ mod tests {
 
     #[test]
     fn parses_port_lists_sorted_and_deduplicated() {
-        assert_eq!(parse_ports("80, 22,8000-8002,22"), Ok(vec![22, 80, 8000, 8001, 8002]));
+        assert_eq!(
+            parse_ports("80, 22,8000-8002,22"),
+            Ok(vec![22, 80, 8000, 8001, 8002])
+        );
         assert_eq!(parse_ports("1-65535").unwrap().len(), 65535);
     }
 
@@ -550,7 +661,10 @@ mod tests {
         assert_eq!(check_probe_count(256, 256), Ok(65536));
         assert_eq!(
             check_probe_count(2, 65535),
-            Err("Too many probes: 131070 (the limit is 65536; scan fewer hosts or ports)".to_string())
+            Err(
+                "Too many probes: 131070 (the limit is 65536; scan fewer hosts or ports)"
+                    .to_string()
+            )
         );
     }
 
@@ -570,13 +684,22 @@ mod tests {
                        192.168.1.7      0x1         0x2         AA:BB:CC:DD:EE:07     *        wlan0\n";
         let table = parse_arp_table(fixture);
         assert_eq!(table.len(), 2);
-        assert_eq!(table.get(&ip("192.168.1.1")).map(String::as_str), Some("aa:bb:cc:dd:ee:01"));
-        assert_eq!(table.get(&ip("192.168.1.7")).map(String::as_str), Some("aa:bb:cc:dd:ee:07"));
+        assert_eq!(
+            table.get(&ip("192.168.1.1")).map(String::as_str),
+            Some("aa:bb:cc:dd:ee:01")
+        );
+        assert_eq!(
+            table.get(&ip("192.168.1.7")).map(String::as_str),
+            Some("aa:bb:cc:dd:ee:07")
+        );
     }
 
     #[test]
     fn parses_getent_hosts_output() {
-        assert_eq!(parse_getent_hosts("192.168.1.1     router.lan router\n"), Some("router.lan".to_string()));
+        assert_eq!(
+            parse_getent_hosts("192.168.1.1     router.lan router\n"),
+            Some("router.lan".to_string())
+        );
         assert_eq!(parse_getent_hosts(""), None);
         assert_eq!(parse_getent_hosts("192.168.1.1\n"), None);
     }
@@ -596,7 +719,10 @@ mod tests {
     fn collector() -> (Arc<Mutex<Vec<ScanEvent>>>, Sink) {
         let events = Arc::new(Mutex::new(Vec::new()));
         let sink = events.clone();
-        (events, Arc::new(move |event| sink.lock().unwrap().push(event)))
+        (
+            events,
+            Arc::new(move |event| sink.lock().unwrap().push(event)),
+        )
     }
 
     #[tokio::test]
@@ -604,13 +730,26 @@ mod tests {
         let (_listener, open, closed) = open_and_closed_ports().await;
         let mut outcomes = Vec::new();
         let localhost = [IpAddr::V4(Ipv4Addr::LOCALHOST)];
-        let cancelled =
-            probe_all(&localhost, &[open, closed], PROBE_TIMEOUT, 4, &CancelFlag::default(), |o| outcomes.push(o)).await;
+        let cancelled = probe_all(
+            &localhost,
+            &[open, closed],
+            PROBE_TIMEOUT,
+            4,
+            &CancelFlag::default(),
+            |o| outcomes.push(o),
+        )
+        .await;
         assert!(!cancelled);
         outcomes.sort_by_key(|o| o.port != open);
         assert_eq!(outcomes.len(), 2);
-        assert_eq!((outcomes[0].port, outcomes[0].state), (open, PortState::Open));
-        assert_eq!((outcomes[1].port, outcomes[1].state), (closed, PortState::Closed));
+        assert_eq!(
+            (outcomes[0].port, outcomes[0].state),
+            (open, PortState::Open)
+        );
+        assert_eq!(
+            (outcomes[1].port, outcomes[1].state),
+            (closed, PortState::Closed)
+        );
     }
 
     #[tokio::test]
@@ -632,12 +771,36 @@ mod tests {
     async fn port_scan_streams_open_ports_then_done() {
         let (_listener, open, closed) = open_and_closed_ports().await;
         let (events, emit) = collector();
-        run_port_scan(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)], vec![open, closed], PROBE_TIMEOUT, Arc::default(), emit).await;
+        run_port_scan(
+            vec![IpAddr::V4(Ipv4Addr::LOCALHOST)],
+            vec![open, closed],
+            PROBE_TIMEOUT,
+            Arc::default(),
+            emit,
+        )
+        .await;
         let events = events.lock().unwrap();
         assert_eq!(events.first(), Some(&ScanEvent::Started { total: 2 }));
-        let opens: Vec<_> = events.iter().filter(|e| matches!(e, ScanEvent::Open { .. })).collect();
-        assert_eq!(opens, vec![&ScanEvent::Open { host: "127.0.0.1".into(), port: open, service: None }]);
-        assert_eq!(events.last(), Some(&ScanEvent::Done { done: 2, total: 2, cancelled: false }));
+        let opens: Vec<_> = events
+            .iter()
+            .filter(|e| matches!(e, ScanEvent::Open { .. }))
+            .collect();
+        assert_eq!(
+            opens,
+            vec![&ScanEvent::Open {
+                host: "127.0.0.1".into(),
+                port: open,
+                service: None
+            }]
+        );
+        assert_eq!(
+            events.last(),
+            Some(&ScanEvent::Done {
+                done: 2,
+                total: 2,
+                cancelled: false
+            })
+        );
     }
 
     #[tokio::test]
@@ -645,21 +808,60 @@ mod tests {
         let (events, emit) = collector();
         let cancel = Arc::new(CancelFlag::default());
         cancel.cancel();
-        run_port_scan(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)], vec![1, 2, 3], PROBE_TIMEOUT, cancel, emit).await;
+        run_port_scan(
+            vec![IpAddr::V4(Ipv4Addr::LOCALHOST)],
+            vec![1, 2, 3],
+            PROBE_TIMEOUT,
+            cancel,
+            emit,
+        )
+        .await;
         let events = events.lock().unwrap();
-        assert_eq!(events.last(), Some(&ScanEvent::Done { done: 0, total: 3, cancelled: true }));
+        assert_eq!(
+            events.last(),
+            Some(&ScanEvent::Done {
+                done: 0,
+                total: 3,
+                cancelled: true
+            })
+        );
     }
 
     #[tokio::test]
     async fn network_scan_reports_live_hosts_with_their_open_services() {
         let (_listener, open, closed) = open_and_closed_ports().await;
         let (events, emit) = collector();
-        run_network_scan(vec![Ipv4Addr::LOCALHOST], &[open, closed], PROBE_TIMEOUT, Arc::default(), emit).await;
+        run_network_scan(
+            vec![Ipv4Addr::LOCALHOST],
+            &[open, closed],
+            PROBE_TIMEOUT,
+            Arc::default(),
+            emit,
+        )
+        .await;
         let events = events.lock().unwrap();
-        let hosts: Vec<_> = events.iter().filter(|e| matches!(e, ScanEvent::Host { .. })).collect();
+        let hosts: Vec<_> = events
+            .iter()
+            .filter(|e| matches!(e, ScanEvent::Host { .. }))
+            .collect();
         assert_eq!(hosts.len(), 1);
-        let ScanEvent::Host { host, mac, ports, .. } = hosts[0] else { unreachable!() };
-        assert_eq!((host.as_str(), mac, ports), ("127.0.0.1", &None, &vec![open]));
-        assert_eq!(events.last(), Some(&ScanEvent::Done { done: 2, total: 2, cancelled: false }));
+        let ScanEvent::Host {
+            host, mac, ports, ..
+        } = hosts[0]
+        else {
+            unreachable!()
+        };
+        assert_eq!(
+            (host.as_str(), mac, ports),
+            ("127.0.0.1", &None, &vec![open])
+        );
+        assert_eq!(
+            events.last(),
+            Some(&ScanEvent::Done {
+                done: 2,
+                total: 2,
+                cancelled: false
+            })
+        );
     }
 }

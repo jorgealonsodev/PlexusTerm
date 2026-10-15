@@ -56,7 +56,15 @@ mod tests {
 
     #[test]
     fn rejects_malformed_macs() {
-        for bad in ["", "aa:bb:cc:dd:ee", "aa:bb:cc:dd:ee:ff:00", "aa:bb:cc:dd:ee:gg", "aabbccddeeff", "aa:bb-cc:dd:ee:ff", "a:bb:cc:dd:ee:ff"] {
+        for bad in [
+            "",
+            "aa:bb:cc:dd:ee",
+            "aa:bb:cc:dd:ee:ff:00",
+            "aa:bb:cc:dd:ee:gg",
+            "aabbccddeeff",
+            "aa:bb-cc:dd:ee:ff",
+            "a:bb:cc:dd:ee:ff",
+        ] {
             assert_eq!(
                 parse_mac(bad),
                 Err("MAC address must look like aa:bb:cc:dd:ee:ff".to_string()),
@@ -82,10 +90,13 @@ mod tests {
         let mac = [0xde, 0xad, 0xbe, 0xef, 0x00, 0x01];
         send(mac, Ipv4Addr::LOCALHOST, port).await.unwrap();
         let mut buf = [0u8; 200];
-        let (n, _) = tokio::time::timeout(std::time::Duration::from_secs(5), receiver.recv_from(&mut buf))
-            .await
-            .unwrap()
-            .unwrap();
+        let (n, _) = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            receiver.recv_from(&mut buf),
+        )
+        .await
+        .unwrap()
+        .unwrap();
         assert_eq!(&buf[..n], &magic_packet(mac)[..]);
     }
 }
