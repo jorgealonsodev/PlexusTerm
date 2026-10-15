@@ -8,7 +8,7 @@
 //!   record it.
 
 #[cfg(test)]
-mod test_server;
+pub(crate) mod test_server;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,8 +21,10 @@ use russh::keys::{
     HashAlg, PrivateKeyWithHashAlg, PublicKey, PublicKeyOrCertificate, known_hosts, load_secret_key,
 };
 use russh::{ChannelMsg, client};
+use russh_sftp::client::SftpSession;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
+use crate::sftp::SftpError;
 use crate::terminal::{TerminalSink, Utf8Stream};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -273,12 +275,21 @@ enum Command {
     Close,
 }
 
+/// The SFTP subsystem of a session, opened on first use.
+type SftpSlot = Arc<tokio::sync::Mutex<Option<Arc<SftpSession>>>>;
+
+struct SessionEntry {
+    tx: UnboundedSender<Command>,
+    handle: Arc<client::Handle<ClientHandler>>,
+    sftp: SftpSlot,
+}
+
 pub struct SshManager {
     known_hosts: PathBuf,
     /// Overrides `SSH_AUTH_SOCK` (used by tests).
     agent_socket: Option<PathBuf>,
     next_id: AtomicU32,
-    sessions: Mutex<HashMap<u32, UnboundedSender<Command>>>,
+    sessions: Mutex<HashMap<u32, SessionEntry>>,
 }
 
 impl SshManager {
@@ -368,10 +379,16 @@ impl SshManager {
 
         let (tx, mut commands) = unbounded_channel();
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
-        self.sessions.lock().unwrap().insert(id, tx);
-
         let (mut reader, writer) = channel.split();
         let handle = Arc::new(handle);
+        self.sessions.lock().unwrap().insert(
+            id,
+            SessionEntry {
+                tx,
+                handle: handle.clone(),
+                sftp: SftpSlot::default(),
+            },
+        );
 
         // Writes run in their own task: a large paste can wait for the remote
         // window while the reader keeps draining output (otherwise both stall).
@@ -425,8 +442,8 @@ impl SshManager {
 
     fn send(&self, id: u32, command: Command) -> Result<(), SshError> {
         let sessions = self.sessions.lock().unwrap();
-        let tx = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
-        tx.send(command).map_err(|_| SshError::Connection {
+        let entry = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
+        entry.tx.send(command).map_err(|_| SshError::Connection {
             message: "the SSH session has ended".into(),
         })
     }
@@ -440,15 +457,47 @@ impl SshManager {
     }
 
     pub fn close(&self, id: u32) -> Result<(), SshError> {
-        let tx = self
+        let entry = self
             .sessions
             .lock()
             .unwrap()
             .remove(&id)
             .ok_or(SshError::UnknownSession { id })?;
         // The session task may already have ended; nothing else to clean up then.
-        let _ = tx.send(Command::Close);
+        let _ = entry.tx.send(Command::Close);
         Ok(())
+    }
+
+    /// Returns the SFTP subsystem of session `id`, opening it over the same
+    /// SSH connection on first use.
+    pub async fn sftp(&self, id: u32) -> Result<Arc<SftpSession>, SftpError> {
+        let (handle, slot) = {
+            let sessions = self.sessions.lock().unwrap();
+            let entry = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
+            (entry.handle.clone(), entry.sftp.clone())
+        };
+        // Held across the open so concurrent callers share a single channel.
+        let mut slot = slot.lock().await;
+        if let Some(sftp) = slot.as_ref() {
+            return Ok(sftp.clone());
+        }
+        let unavailable = |err: &dyn std::fmt::Display| SftpError::Sftp {
+            message: format!("cannot start SFTP: {err}"),
+        };
+        let channel = handle
+            .channel_open_session()
+            .await
+            .map_err(|err| unavailable(&err))?;
+        channel
+            .request_subsystem(true, "sftp")
+            .await
+            .map_err(|err| unavailable(&err))?;
+        let sftp = SftpSession::new(channel.into_stream())
+            .await
+            .map(Arc::new)
+            .map_err(|err| unavailable(&err))?;
+        *slot = Some(sftp.clone());
+        Ok(sftp)
     }
 }
 

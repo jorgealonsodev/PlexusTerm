@@ -3,6 +3,8 @@ import { toTarget, type SavedSession } from "./features/sessions/library";
 import { PasswordPrompt } from "./features/sessions/PasswordPrompt";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
+import { SftpPanel } from "./features/sftp/SftpPanel";
+import { Sidebar, type SidebarView } from "./features/sidebar/Sidebar";
 import type { SessionTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
@@ -18,6 +20,14 @@ type Modal =
   | { kind: "editSession"; session: SavedSession; isNew: boolean }
   | { kind: "password"; session: SavedSession }
   | null;
+
+/** What a terminal tab reported about its backend session. */
+interface TabSession {
+  sessionId: number | null;
+  cwd: string | null;
+}
+
+const NO_SESSION: TabSession = { sessionId: null, cwd: null };
 
 const draftSession = (folder: string): SavedSession => ({
   id: crypto.randomUUID(),
@@ -36,6 +46,29 @@ export default function App() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const sessions = useSessionLibrary();
+  const [tabSessions, setTabSessions] = useState<Record<string, TabSession>>({});
+  const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
+  const [followCwd, setFollowCwd] = useState(true);
+
+  const updateTabSession = useCallback((key: string, patch: Partial<TabSession>) => {
+    setTabSessions((prev) => {
+      const current = prev[key] ?? NO_SESSION;
+      const next = { ...current, ...patch };
+      return next.sessionId === current.sessionId && next.cwd === current.cwd ? prev : { ...prev, [key]: next };
+    });
+  }, []);
+
+  // Forget what closed tabs reported.
+  useEffect(() => {
+    setTabSessions((prev) => {
+      const keys = Object.keys(prev).filter((key) => state.tabs.some((t) => t.key === key));
+      return keys.length === Object.keys(prev).length ? prev : Object.fromEntries(keys.map((k) => [k, prev[k]]));
+    });
+  }, [state.tabs]);
+
+  const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
+  const activeSession = (activeTab && tabSessions[activeTab.key]) ?? NO_SESSION;
+  const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
 
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
   const openLocal = useCallback(() => open(LOCAL), [open]);
@@ -80,24 +113,43 @@ export default function App() {
         </button>
       </header>
       <div className="body">
-        <SessionsPanel
-          library={sessions.library}
-          status={sessions.status}
-          saveError={sessions.saveError}
-          onOpen={openSaved}
-          onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
-          onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
-          onDelete={(session) => {
-            if (window.confirm(`Delete session "${session.name}"?`)) {
-              sessions.dispatch({ type: "deleteSession", id: session.id });
-            }
-          }}
-          onNewFolder={newFolder}
-          onDeleteFolder={(path) => {
-            if (window.confirm(`Delete folder "${path}" and every session inside it?`)) {
-              sessions.dispatch({ type: "deleteFolder", path });
-            }
-          }}
+        <Sidebar
+          view={sidebarView}
+          onViewChange={setSidebarView}
+          sftpAvailable={sftpSessionId !== null}
+          sftp={
+            activeTab &&
+            sftpSessionId !== null && (
+              <SftpPanel
+                key={`${activeTab.key}:${sftpSessionId}`}
+                sessionId={sftpSessionId}
+                cwd={activeSession.cwd}
+                follow={followCwd}
+                onFollowChange={setFollowCwd}
+              />
+            )
+          }
+          sessions={
+            <SessionsPanel
+              library={sessions.library}
+              status={sessions.status}
+              saveError={sessions.saveError}
+              onOpen={openSaved}
+              onNewSession={(folder) => setModal({ kind: "editSession", session: draftSession(folder), isNew: true })}
+              onEdit={(session) => setModal({ kind: "editSession", session, isNew: false })}
+              onDelete={(session) => {
+                if (window.confirm(`Delete session "${session.name}"?`)) {
+                  sessions.dispatch({ type: "deleteSession", id: session.id });
+                }
+              }}
+              onNewFolder={newFolder}
+              onDeleteFolder={(path) => {
+                if (window.confirm(`Delete folder "${path}" and every session inside it?`)) {
+                  sessions.dispatch({ type: "deleteFolder", path });
+                }
+              }}
+            />
+          }
         />
         <section className="main">
           <TabBar
@@ -115,6 +167,12 @@ export default function App() {
                 active={tab.key === state.activeKey}
                 onTitle={(title) => dispatch({ type: "rename", key: tab.key, title })}
                 onExit={() => dispatch({ type: "close", key: tab.key })}
+                onCwd={(cwd) => updateTabSession(tab.key, { cwd })}
+                onSession={(sessionId) => {
+                  updateTabSession(tab.key, { sessionId });
+                  // A new SSH connection brings its file browser to the front.
+                  if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
+                }}
               />
             ))}
             {state.tabs.length === 0 && (

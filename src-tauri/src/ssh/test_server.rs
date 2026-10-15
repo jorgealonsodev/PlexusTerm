@@ -3,14 +3,23 @@
 //! Behaviour: accepts password `secret` or the configured public key, opens a
 //! shell channel and echoes data back. `size?` replies with the last window
 //! size, and `exit` ends the channel with exit status 7.
+//!
+//! Servers started with [`start_with_sftp`] also serve the `sftp` subsystem
+//! from a local directory, which appears to the client as `/`.
 
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use russh::keys::ssh_key::private::Ed25519Keypair;
 use russh::keys::{PrivateKey, PublicKey};
 use russh::server::{Auth, Msg, Server as _, Session};
 use russh::{Channel, ChannelId, Pty};
+use russh_sftp::protocol::{
+    Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode,
+};
+use std::os::unix::fs::FileExt;
 use tokio::net::TcpListener;
 
 pub const PASSWORD: &str = "secret";
@@ -28,10 +37,28 @@ pub struct TestServer {
 struct Handler {
     allowed_key: Option<PublicKey>,
     size: Arc<Mutex<(u32, u32)>>,
+    sftp_root: Option<Arc<PathBuf>>,
+    /// Channels of this connection that may still become an SFTP subsystem.
+    channels: Arc<Mutex<HashMap<ChannelId, Channel<Msg>>>>,
+    /// Channels serving SFTP, which must not be echoed.
+    sftp_channels: Arc<Mutex<HashSet<ChannelId>>>,
 }
 
 /// Starts a server with the given host key seed; `allowed_key` enables public-key auth.
 pub async fn start(host_seed: u8, allowed_key: Option<PublicKey>) -> TestServer {
+    start_inner(host_seed, allowed_key, None).await
+}
+
+/// Starts a password-auth server (host key seed 1) that also serves SFTP from `root`.
+pub async fn start_with_sftp(root: &Path) -> TestServer {
+    start_inner(1, None, Some(Arc::new(root.to_path_buf()))).await
+}
+
+async fn start_inner(
+    host_seed: u8,
+    allowed_key: Option<PublicKey>,
+    sftp_root: Option<Arc<PathBuf>>,
+) -> TestServer {
     let host = key_from_seed(host_seed);
     let host_key = host.public_key().clone();
     let config = Arc::new(russh::server::Config {
@@ -45,6 +72,9 @@ pub async fn start(host_seed: u8, allowed_key: Option<PublicKey>) -> TestServer 
     let mut server = Handler {
         allowed_key,
         size: Arc::new(Mutex::new((0, 0))),
+        sftp_root,
+        channels: Arc::default(),
+        sftp_channels: Arc::default(),
     };
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
@@ -55,7 +85,11 @@ pub async fn start(host_seed: u8, allowed_key: Option<PublicKey>) -> TestServer 
 impl russh::server::Server for Handler {
     type Handler = Self;
     fn new_client(&mut self, _: Option<SocketAddr>) -> Self {
-        self.clone()
+        Self {
+            channels: Arc::default(),
+            sftp_channels: Arc::default(),
+            ..self.clone()
+        }
     }
 }
 
@@ -79,12 +113,34 @@ impl russh::server::Handler for Handler {
 
     async fn channel_open_session(
         &mut self,
-        _channel: Channel<Msg>,
+        channel: Channel<Msg>,
         reply: russh::server::ChannelOpenHandle,
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
+        if self.sftp_root.is_some() {
+            self.channels.lock().unwrap().insert(channel.id(), channel);
+        }
         reply.accept().await;
         Ok(())
+    }
+
+    async fn subsystem_request(
+        &mut self,
+        channel_id: ChannelId,
+        name: &str,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        let channel = self.channels.lock().unwrap().remove(&channel_id);
+        match (name, channel, &self.sftp_root) {
+            ("sftp", Some(channel), Some(root)) => {
+                self.sftp_channels.lock().unwrap().insert(channel_id);
+                session.channel_success(channel_id)?;
+                russh_sftp::server::run(channel.into_stream(), SftpFs::new(root.as_ref().clone()))
+                    .await;
+                Ok(())
+            }
+            _ => session.channel_failure(channel_id),
+        }
     }
 
     async fn pty_request(
@@ -98,6 +154,9 @@ impl russh::server::Handler for Handler {
         _modes: &[(Pty, u32)],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        // A shell channel is not read through its `Channel` object; keeping it
+        // would block the session once its buffer fills up.
+        self.channels.lock().unwrap().remove(&channel);
         *self.size.lock().unwrap() = (cols, rows);
         session.channel_success(channel)
     }
@@ -130,6 +189,9 @@ impl russh::server::Handler for Handler {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        if self.sftp_channels.lock().unwrap().contains(&channel) {
+            return Ok(());
+        }
         match data {
             b"exit" => {
                 session.exit_status_request(channel, 7)?;
@@ -142,5 +204,228 @@ impl russh::server::Handler for Handler {
             }
             other => session.data(channel, other.to_vec()),
         }
+    }
+}
+
+enum OpenHandle {
+    /// Directory entries not yet returned by `readdir`.
+    Dir(Vec<File>),
+    File(std::fs::File),
+}
+
+/// SFTP handler serving a local directory as `/`; paths escaping it are refused.
+struct SftpFs {
+    root: PathBuf,
+    handles: HashMap<String, OpenHandle>,
+    next_handle: u32,
+}
+
+impl SftpFs {
+    fn new(root: PathBuf) -> Self {
+        Self {
+            root,
+            handles: HashMap::new(),
+            next_handle: 0,
+        }
+    }
+
+    /// Normalizes a client path to an absolute virtual path (`/`-rooted).
+    fn virtual_path(path: &str) -> Result<String, StatusCode> {
+        let mut parts: Vec<&str> = Vec::new();
+        for part in path.split('/') {
+            match part {
+                "" | "." => {}
+                ".." => {
+                    parts.pop().ok_or(StatusCode::PermissionDenied)?;
+                }
+                other => parts.push(other),
+            }
+        }
+        Ok(format!("/{}", parts.join("/")))
+    }
+
+    fn real_path(&self, path: &str) -> Result<PathBuf, StatusCode> {
+        let virt = Self::virtual_path(path)?;
+        Ok(self.root.join(virt.trim_start_matches('/')))
+    }
+
+    fn add_handle(&mut self, handle: OpenHandle) -> String {
+        self.next_handle += 1;
+        let key = self.next_handle.to_string();
+        self.handles.insert(key.clone(), handle);
+        key
+    }
+}
+
+fn io_status(err: std::io::Error) -> StatusCode {
+    match err.kind() {
+        std::io::ErrorKind::NotFound => StatusCode::NoSuchFile,
+        std::io::ErrorKind::PermissionDenied => StatusCode::PermissionDenied,
+        _ => StatusCode::Failure,
+    }
+}
+
+fn ok(id: u32) -> Status {
+    Status {
+        id,
+        status_code: StatusCode::Ok,
+        error_message: "Ok".into(),
+        language_tag: "en-US".into(),
+    }
+}
+
+impl russh_sftp::server::Handler for SftpFs {
+    type Error = StatusCode;
+
+    fn unimplemented(&self) -> Self::Error {
+        StatusCode::OpUnsupported
+    }
+
+    async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
+        Ok(Name {
+            id,
+            files: vec![File::dummy(Self::virtual_path(&path)?)],
+        })
+    }
+
+    async fn opendir(&mut self, id: u32, path: String) -> Result<Handle, Self::Error> {
+        let dir = self.real_path(&path)?;
+        let mut files = vec![
+            File::new(
+                ".",
+                FileAttributes::from(&dir.metadata().map_err(io_status)?),
+            ),
+            File::new("..", FileAttributes::dummy()),
+        ];
+        for entry in std::fs::read_dir(&dir).map_err(io_status)? {
+            let entry = entry.map_err(io_status)?;
+            let meta = std::fs::symlink_metadata(entry.path()).map_err(io_status)?;
+            files.push(File::new(
+                entry.file_name().to_string_lossy(),
+                FileAttributes::from(&meta),
+            ));
+        }
+        let handle = self.add_handle(OpenHandle::Dir(files));
+        Ok(Handle { id, handle })
+    }
+
+    async fn readdir(&mut self, id: u32, handle: String) -> Result<Name, Self::Error> {
+        match self.handles.get_mut(&handle) {
+            Some(OpenHandle::Dir(files)) if !files.is_empty() => Ok(Name {
+                id,
+                files: std::mem::take(files),
+            }),
+            Some(OpenHandle::Dir(_)) => Err(StatusCode::Eof),
+            _ => Err(StatusCode::Failure),
+        }
+    }
+
+    async fn open(
+        &mut self,
+        id: u32,
+        filename: String,
+        pflags: OpenFlags,
+        _attrs: FileAttributes,
+    ) -> Result<Handle, Self::Error> {
+        let path = self.real_path(&filename)?;
+        let file = std::fs::OpenOptions::from(pflags)
+            .open(path)
+            .map_err(io_status)?;
+        let handle = self.add_handle(OpenHandle::File(file));
+        Ok(Handle { id, handle })
+    }
+
+    async fn read(
+        &mut self,
+        id: u32,
+        handle: String,
+        offset: u64,
+        len: u32,
+    ) -> Result<Data, Self::Error> {
+        let Some(OpenHandle::File(file)) = self.handles.get(&handle) else {
+            return Err(StatusCode::Failure);
+        };
+        let mut data = vec![0; len as usize];
+        let read = file.read_at(&mut data, offset).map_err(io_status)?;
+        if read == 0 {
+            return Err(StatusCode::Eof);
+        }
+        data.truncate(read);
+        Ok(Data { id, data })
+    }
+
+    async fn write(
+        &mut self,
+        id: u32,
+        handle: String,
+        offset: u64,
+        data: Vec<u8>,
+    ) -> Result<Status, Self::Error> {
+        let Some(OpenHandle::File(file)) = self.handles.get(&handle) else {
+            return Err(StatusCode::Failure);
+        };
+        file.write_all_at(&data, offset).map_err(io_status)?;
+        Ok(ok(id))
+    }
+
+    async fn close(&mut self, id: u32, handle: String) -> Result<Status, Self::Error> {
+        self.handles.remove(&handle);
+        Ok(ok(id))
+    }
+
+    async fn stat(&mut self, id: u32, path: String) -> Result<Attrs, Self::Error> {
+        let meta = self.real_path(&path)?.metadata().map_err(io_status)?;
+        Ok(Attrs {
+            id,
+            attrs: FileAttributes::from(&meta),
+        })
+    }
+
+    async fn lstat(&mut self, id: u32, path: String) -> Result<Attrs, Self::Error> {
+        let meta = std::fs::symlink_metadata(self.real_path(&path)?).map_err(io_status)?;
+        Ok(Attrs {
+            id,
+            attrs: FileAttributes::from(&meta),
+        })
+    }
+
+    async fn fstat(&mut self, id: u32, handle: String) -> Result<Attrs, Self::Error> {
+        let Some(OpenHandle::File(file)) = self.handles.get(&handle) else {
+            return Err(StatusCode::Failure);
+        };
+        Ok(Attrs {
+            id,
+            attrs: FileAttributes::from(&file.metadata().map_err(io_status)?),
+        })
+    }
+
+    async fn mkdir(
+        &mut self,
+        id: u32,
+        path: String,
+        _attrs: FileAttributes,
+    ) -> Result<Status, Self::Error> {
+        std::fs::create_dir(self.real_path(&path)?).map_err(io_status)?;
+        Ok(ok(id))
+    }
+
+    async fn rmdir(&mut self, id: u32, path: String) -> Result<Status, Self::Error> {
+        std::fs::remove_dir(self.real_path(&path)?).map_err(io_status)?;
+        Ok(ok(id))
+    }
+
+    async fn remove(&mut self, id: u32, filename: String) -> Result<Status, Self::Error> {
+        std::fs::remove_file(self.real_path(&filename)?).map_err(io_status)?;
+        Ok(ok(id))
+    }
+
+    async fn rename(
+        &mut self,
+        id: u32,
+        oldpath: String,
+        newpath: String,
+    ) -> Result<Status, Self::Error> {
+        std::fs::rename(self.real_path(&oldpath)?, self.real_path(&newpath)?).map_err(io_status)?;
+        Ok(ok(id))
     }
 }
