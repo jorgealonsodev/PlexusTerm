@@ -108,3 +108,28 @@
   width: 0;
   min-width: 100%;
 }
+
+.ip-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.ip-range__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ip-range__field {
+  width: 4.5ch;
+  box-sizing: content-box;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ip-range__sep {
+  padding: 0 2px;
+  color: var(--muted);
+}
