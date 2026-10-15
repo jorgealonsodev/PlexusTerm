@@ -359,7 +359,10 @@ pub fn spawn_detached(args: &[OsString]) -> std::io::Result<()> {
 /// characters that mean something in local paths (`\\`, `:`, Windows-reserved ones, control
 /// characters) become `_`, and `.`/`..`/empty become `file`; the copy can never leave its folder.
 fn local_name(remote: &str) -> String {
-    let last = remote.rsplit('/').find(|part| !part.is_empty()).unwrap_or("");
+    let last = remote
+        .rsplit('/')
+        .find(|part| !part.is_empty())
+        .unwrap_or("");
     let name: String = last
         .chars()
         .map(|c| match c {
@@ -373,4 +376,3 @@ fn local_name(remote: &str) -> String {
         _ => name,
     }
 }
-
