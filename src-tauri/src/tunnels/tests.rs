@@ -519,8 +519,15 @@ async fn a_dropped_ssh_connection_sets_the_error_status_and_releases_the_listene
     .expect("no error status after the SSH connection dropped");
     assert!(failed.contains("closed"), "message: {failed}");
     assert!(matches!(mgr.status("t1"), TunnelStatus::Error { .. }));
+    // The listener task closes just after the status is sent: give it a moment (Windows is slower).
+    let released = tokio::time::timeout(Duration::from_secs(5), async {
+        while TcpStream::connect(("127.0.0.1", listen)).await.is_ok() {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await;
     assert!(
-        TcpStream::connect(("127.0.0.1", listen)).await.is_err(),
+        released.is_ok(),
         "the listener must be released after the connection dropped"
     );
 }
