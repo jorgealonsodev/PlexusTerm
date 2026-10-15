@@ -25,7 +25,9 @@ export type Shortcut =
   | { type: "fontSize"; step: FontStep }
   /** Macros (S16.2, S16.4): start or stop recording, play the macro bound to Ctrl+Alt+`hotkey`. */
   | { type: "recordMacro" }
-  | { type: "playMacro"; hotkey: number };
+  | { type: "playMacro"; hotkey: number }
+  /** Folds the sidebar to its tab icons (or hides it) and opens it again. */
+  | { type: "toggleSidebar" };
 
 const CTRL_SHIFT: Record<string, Shortcut> = {
   T: { type: "newTerminal" },
@@ -38,6 +40,7 @@ const CTRL_SHIFT: Record<string, Shortcut> = {
   C: { type: "copy" },
   V: { type: "paste" },
   R: { type: "recordMacro" },
+  B: { type: "toggleSidebar" },
 };
 
 /** Ctrl+= (or Ctrl++, which needs Shift on most layouts), Ctrl+- and Ctrl+0. */

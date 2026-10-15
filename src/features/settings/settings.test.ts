@@ -27,6 +27,8 @@ describe("parseSettings", () => {
       aiModel: "claude-opus-5-5",
       aiHistoryContext: 5,
       assistantShortcut: "Ctrl+Shift+Space",
+      sidebarCollapsed: false,
+      sidebarHideWhenCollapsed: false,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -41,7 +43,8 @@ describe("parseSettings", () => {
     const json =
       '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
-      '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K"}';
+      '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
+      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -59,6 +62,8 @@ describe("parseSettings", () => {
       aiModel: "llama3.1",
       aiHistoryContext: 0,
       assistantShortcut: "Ctrl+Alt+K",
+      sidebarCollapsed: true,
+      sidebarHideWhenCollapsed: true,
     });
   });
 
@@ -164,6 +169,8 @@ describe("serializeSettings", () => {
       aiModel: "gemini-2.5-pro",
       aiHistoryContext: 12,
       assistantShortcut: "Ctrl+Alt+Space",
+      sidebarCollapsed: true,
+      sidebarHideWhenCollapsed: true,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });
@@ -178,5 +185,15 @@ describe("stepFontSize", () => {
     expect(stepFontSize(20, "reset")).toBe(14);
     expect(stepFontSize(32, "increase")).toBe(32);
     expect(stepFontSize(8, "decrease")).toBe(8);
+  });
+});
+
+describe("sidebar settings", () => {
+  it("default to an open sidebar that folds to icons, and keep saved booleans only", () => {
+    expect(DEFAULT_SETTINGS.sidebarCollapsed).toBe(false);
+    expect(DEFAULT_SETTINGS.sidebarHideWhenCollapsed).toBe(false);
+    const parsed = parseSettings(JSON.stringify({ sidebarCollapsed: true, sidebarHideWhenCollapsed: "yes" }));
+    expect(parsed.sidebarCollapsed).toBe(true);
+    expect(parsed.sidebarHideWhenCollapsed).toBe(false);
   });
 });

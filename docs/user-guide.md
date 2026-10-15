@@ -122,7 +122,7 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ## SFTP browser
 
-The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+The sidebar has four tabs, **Sessions**, **SFTP**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
@@ -349,6 +349,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Ctrl+Shift+V | Paste |
 | Ctrl+= / Ctrl+- / Ctrl+0 | Larger / smaller / default font size (every terminal) |
 | Ctrl+Shift+R | Start or stop recording a macro |
+| Ctrl+Shift+B | Fold the sidebar to its icons (or hide it) and open it again |
 | Ctrl+Alt+1 … Ctrl+Alt+9 | Play the macro bound to that key in the focused terminal |
 | Escape (while a macro plays) | Stop the macro |
 | Right Arrow / End (with a grey suggestion) | Accept the suggested command |

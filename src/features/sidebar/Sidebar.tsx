@@ -12,34 +12,62 @@ interface SidebarProps {
   sftp: ReactNode;
   tunnels: ReactNode;
   macros: ReactNode;
+  /** Folded: only the tab icons; a click on one opens the sidebar on that tab. */
+  collapsed: boolean;
+  onExpand: () => void;
 }
 
 /** Left sidebar with the "Sessions", "SFTP", "Tunnels" and "Macros" tabs; SFTP falls back to Sessions when unavailable. */
-export function Sidebar({ view, onViewChange, sftpAvailable, sessions, sftp, tunnels, macros }: SidebarProps) {
+export function Sidebar({
+  view,
+  onViewChange,
+  sftpAvailable,
+  sessions,
+  sftp,
+  tunnels,
+  macros,
+  collapsed,
+  onExpand,
+}: SidebarProps) {
   const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
   const tab = (id: SidebarView, label: string, Icon: LucideIcon, disabled = false) => (
     <button
       role="tab"
       aria-selected={shown === id}
+      aria-label={label}
       className={`sidebar__tab${shown === id ? " sidebar__tab--active" : ""}`}
       disabled={disabled}
-      title={disabled ? "Available when the focused pane of the active tab is a connected SSH session" : undefined}
-      onClick={() => onViewChange(id)}
+      title={
+        disabled
+          ? "Available when the focused pane of the active tab is a connected SSH session"
+          : collapsed
+            ? label
+            : undefined
+      }
+      onClick={() => {
+        onViewChange(id);
+        if (collapsed) onExpand();
+      }}
     >
       <Icon size={16} />
-      {label}
+      {!collapsed && label}
     </button>
   );
   const panels: Record<SidebarView, ReactNode> = { sessions, sftp, tunnels, macros };
   return (
-    <aside className={`sidebar${shown === "sessions" ? "" : " sidebar--wide"}`}>
-      <div className="sidebar__tabs" role="tablist">
+    <aside className={`sidebar${collapsed ? " sidebar--collapsed" : shown === "sessions" ? "" : " sidebar--wide"}`}>
+      <div
+        className="sidebar__tabs"
+        role="tablist"
+        aria-label="Sidebar"
+        aria-orientation={collapsed ? "vertical" : "horizontal"}
+      >
         {tab("sessions", "Sessions", Star)}
         {tab("sftp", "SFTP", FolderTree, !sftpAvailable)}
         {tab("tunnels", "Tunnels", ArrowLeftRight)}
         {tab("macros", "Macros", Keyboard)}
       </div>
-      {panels[shown]}
+      {!collapsed && panels[shown]}
     </aside>
   );
 }
