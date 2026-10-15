@@ -222,7 +222,7 @@ export function TerminalView({
       const label = jumpLabel(jumpsRef.current, index);
       if (err.error.kind === "unknownHost") setPendingHost({ ...err.error, jump: { index, label } });
       else {
-        term.write(red(describeSshError(err)));
+        if (err.error.kind !== "secretMissing") term.write(red(describeSshError(err)));
         if (shouldAskAgain(jump.auth, err.error)) {
           setAskPassword({ jump: { index, label }, rejected: savedPasswordRejected(err.error) });
         }
@@ -276,7 +276,8 @@ export function TerminalView({
           if (err.kind === "hop") return jumpFailed(err);
           const auth = typedLogin.current?.auth ?? sshLoginOf(target)?.auth ?? null;
           if (auth && shouldAskAgain(auth, err)) {
-            term.write(red(describeSshError(err)));
+            // No saved password is the normal first login, not an error worth a red line.
+            if (err.kind !== "secretMissing") term.write(red(describeSshError(err)));
             setAskPassword({ jump: null, rejected: savedPasswordRejected(err) });
           } else if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));

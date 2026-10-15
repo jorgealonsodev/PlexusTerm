@@ -22,6 +22,16 @@ export function basename(path: string): string {
 /** Characters that never need quoting in a POSIX shell word. */
 const PLAIN = /^[A-Za-z0-9_\-./+@:,=%]+$/;
 
+/**
+ * `path` quoted to be typed into a terminal, or null when it holds control characters: the
+ * shell's line editor acts on them (Ctrl-U discards the quote, newline runs the line) even
+ * inside quotes, so such a name cannot be typed safely.
+ */
+export function terminalPath(path: string): string | null {
+  // eslint-disable-next-line no-control-regex
+  return /[\x00-\x1f\x7f]/.test(path) ? null : shellQuote(path);
+}
+
 /** `path` as one POSIX shell word: unchanged when plain, otherwise single-quoted. */
 export function shellQuote(path: string): string {
   return PLAIN.test(path) ? path : `'${path.replace(/'/g, "'\\''")}'`;

@@ -69,11 +69,7 @@ impl TempFiles {
         session.next += 1;
         let folder = session.dir.path().join(session.next.to_string());
         std::fs::create_dir(&folder)?;
-        let name = remote
-            .rsplit('/')
-            .find(|part| !part.is_empty())
-            .unwrap_or("file");
-        let local = folder.join(name);
+        let local = folder.join(local_name(remote));
         session.copies.insert(
             key,
             Copy {
@@ -341,3 +337,23 @@ pub fn spawn_detached(args: &[OsString]) -> std::io::Result<()> {
     });
     Ok(())
 }
+
+/// The local file name for the last segment of `remote`: a remote name is only data here, so
+/// characters that mean something in local paths (`\\`, `:`, Windows-reserved ones, control
+/// characters) become `_`, and `.`/`..`/empty become `file`; the copy can never leave its folder.
+fn local_name(remote: &str) -> String {
+    let last = remote.rsplit('/').find(|part| !part.is_empty()).unwrap_or("");
+    let name: String = last
+        .chars()
+        .map(|c| match c {
+            '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect();
+    match name.as_str() {
+        "" | "." | ".." => "file".to_string(),
+        _ => name,
+    }
+}
+

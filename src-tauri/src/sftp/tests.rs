@@ -461,3 +461,24 @@ fn the_first_installed_diff_tool_wins_in_order() {
     assert!(edit::find_diff_tool(Some(path)).is_none());
     assert!(edit::find_diff_tool(None).is_none());
 }
+
+/// A remote name is only data on this machine: it can never place the copy outside the
+/// session's private folder, whatever separators or drive letters it contains.
+#[test]
+fn copy_names_never_leave_the_private_folder() {
+    let temp = TempFiles::default();
+    for (remote, expected) in [
+        ("/srv/..\\..\\evil.bat", ".._.._evil.bat"),
+        ("/srv/C:\\Users\\x\\Startup\\a.bat", "C__Users_x_Startup_a.bat"),
+        ("/srv/a<b>c|d?e*f\"g", "a_b_c_d_e_f_g"),
+        ("/srv/..", "file"),
+        ("/srv/.", "file"),
+        ("/srv/x\u{1}y", "x_y"),
+    ] {
+        let local = temp.local_path(7, "edit", remote).unwrap();
+        let dir = temp.session_dir(7).unwrap();
+        assert_eq!(local.parent().unwrap().parent().unwrap(), dir, "{remote}");
+        assert_eq!(local.file_name().unwrap(), expected, "{remote}");
+    }
+}
+

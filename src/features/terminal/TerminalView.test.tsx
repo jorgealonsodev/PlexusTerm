@@ -366,6 +366,8 @@ describe("TerminalView", () => {
       const retry = backend.start.mock.calls[1][0] as { auth: unknown; storage?: unknown };
       expect(retry.auth).toEqual({ method: "password", password: "new" });
       expect(retry.storage).toBeUndefined();
+      // A first password login is not an error: no red "No saved password" line.
+      expect(terms[terms.length - 1].written.join("")).not.toContain("No saved password");
     });
 
     it("does not prompt for other failures", async () => {

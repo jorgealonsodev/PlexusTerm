@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
@@ -7,8 +6,8 @@ import { writeText } from "../terminal/clipboard";
 import { formatDate, formatSize } from "./format";
 import { PermissionsDialog } from "./PermissionsDialog";
 import { PropertiesDialog } from "./PropertiesDialog";
-import { basename, joinPath, parentPath, shellQuote } from "./remotePath";
-import { describeSftpError, EDIT_SAVED_EVENT, sftp, type EditSaved, type OpenWith, type SftpEntry } from "./sftpClient";
+import { basename, joinPath, parentPath, terminalPath } from "./remotePath";
+import { describeSftpError, sftp, type OpenWith, type SftpEntry } from "./sftpClient";
 
 interface SftpPanelProps {
   /** Backend id of the connected SSH session. */
@@ -173,7 +172,11 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     }
   };
 
-  const pathToTerminal = (entry: SftpEntry) => onPathToTerminal?.(shellQuote(entry.path));
+  const pathToTerminal = (entry: SftpEntry) => {
+    const text = terminalPath(entry.path);
+    if (text === null) return setError("This name contains control characters and cannot be typed into the terminal safely.");
+    onPathToTerminal?.(text);
+  };
 
   const copyPath = (entry: SftpEntry) =>
     void act("Copying the path…", () => writeText(entry.path), `Copied ${entry.path}.`);
@@ -231,39 +234,6 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
       { label: "Permissions…", onSelect: () => setDialog({ kind: "permissions", entry }) },
     ];
   };
-
-  // A saved temporary copy is uploaded back after a confirmation the first time per file.
-  const confirmedUploads = useRef(new Set<string>());
-  const onSaved = useRef<(saved: EditSaved) => void>(() => {});
-  onSaved.current = ({ id, remote }: EditSaved) => {
-    if (id !== sessionId) return;
-    const name = basename(remote);
-    if (!confirmedUploads.current.has(remote)) {
-      if (!window.confirm(`${name} was saved. Upload it to ${remote}?`)) return;
-      confirmedUploads.current.add(remote);
-    }
-    void (async () => {
-      if (await act(`Uploading ${name}…`, () => sftp.editUpload(sessionId, remote), `Uploaded ${name}.`)) {
-        const dir = current.current.path;
-        if (dir !== null && parentPath(remote) === dir) await navigate(dir);
-      }
-    })();
-  };
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-    try {
-      listen<EditSaved>(EDIT_SAVED_EVENT, ({ payload }) => onSaved.current(payload))
-        .then((stop) => (disposed ? stop() : (unlisten = stop)))
-        .catch(() => {});
-    } catch {
-      // Not running inside Tauri (e.g. tests): no saved-copy events.
-    }
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, []);
 
   // Start in the terminal folder when following it, otherwise in the home folder.
   const start = useRef({ follow, cwd });

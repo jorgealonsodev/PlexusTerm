@@ -47,16 +47,10 @@ const entry = (name: string, kind: SftpEntry["kind"], dir = "/home/u"): SftpEntr
 });
 
 const mocked = vi.mocked(sftp);
-type SavedHandler = (event: { payload: { id: number; remote: string; local: string } }) => void;
-let savedHandler: SavedHandler | null = null;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  savedHandler = null;
-  vi.mocked(listen).mockImplementation(async (_name, handler) => {
-    savedHandler = handler as unknown as SavedHandler;
-    return () => {};
-  });
+  vi.mocked(listen).mockImplementation(async () => () => {});
   mocked.home.mockResolvedValue("/home/u");
   mocked.list.mockImplementation(async (_id, path) =>
     path === "/home/u"
@@ -323,31 +317,4 @@ describe("SftpPanel open and compare", () => {
     );
   });
 
-  it("uploads a saved copy after confirming once per file", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
-    mocked.editUpload.mockResolvedValue(undefined);
-    render(panel());
-    await screen.findByText("notes.txt");
-    await waitFor(() => expect(savedHandler).not.toBeNull());
-    const saved = (id: number, remote: string) => savedHandler!({ payload: { id, remote, local: "/tmp/x" } });
-
-    saved(1, "/home/u/notes.txt"); // declined: nothing uploaded, asked again next time
-    expect(mocked.editUpload).not.toHaveBeenCalled();
-    saved(1, "/home/u/notes.txt");
-    await waitFor(() => expect(mocked.editUpload).toHaveBeenCalledWith(1, "/home/u/notes.txt"));
-    expect(await screen.findByText("Uploaded notes.txt.")).toBeTruthy();
-    saved(1, "/home/u/notes.txt");
-    await waitFor(() => expect(mocked.editUpload).toHaveBeenCalledTimes(2));
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm).toHaveBeenCalledWith("notes.txt was saved. Upload it to /home/u/notes.txt?");
-
-    saved(2, "/home/u/notes.txt"); // another session's copy
-    await new Promise((r) => setTimeout(r, 0));
-    expect(mocked.editUpload).toHaveBeenCalledTimes(2);
-
-    mocked.editUpload.mockRejectedValueOnce({ kind: "sftp", message: "cannot upload to /home/u/notes.txt: Failure" });
-    saved(1, "/home/u/notes.txt");
-    expect((await screen.findByRole("alert")).textContent).toBe("cannot upload to /home/u/notes.txt: Failure");
-    confirm.mockRestore();
-  });
 });

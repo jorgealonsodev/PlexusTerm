@@ -16,4 +16,5 @@ Objective: MobaXterm-style options on the SFTP browser entries, in PlexusTerm's 
 
 - L1 (2026-10-15): "añade opciones al sftp" with a screenshot of MobaXterm's SFTP right-click menu.
 - L2 (2026-10-15): "a los archivos lo mismo: … no es necesario que mantega el mismo orden" with a screenshot of MobaXterm's file menu (S2).
+- L3 (2026-10-15): Implemented in d5db0a1 (writer: Vitest sftp 36, cargo sftp 24 after the parent added setstat to the test server). Independent verifier: S1 FAIL (B1: control characters in a file name, e.g. Ctrl-U, break the shell quoting of "Copy file path to terminal"), S2 FAIL (B2: saves are not uploaded while the session's SFTP panel is hidden; B3: on Windows a remote name with `\` or `C:` could put the temporary copy outside its folder). One correction batch: terminalPath refuses names with control characters; EditUploads at App level uploads saves of every session; local_name sanitizes the copy name. Also removed the red "No saved password was found" line before the first password prompt (ssh-default-keys advisory 1). RED→GREEN for each; cargo 260, Vitest 503, clippy and tsc clean.
 

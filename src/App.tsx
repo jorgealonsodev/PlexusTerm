@@ -10,6 +10,7 @@ import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
+import { EditUploads } from "./features/sftp/EditUploads";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
@@ -513,6 +514,7 @@ function AppContent() {
           <SettingsIcon size={16} />
         </button>
       </header>
+      <EditUploads onNotice={setNotice} />
       {notice && (
         <div className="notice" role="status">
           <span>{notice}</span>
