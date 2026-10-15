@@ -746,9 +746,18 @@ mod tests {
             (outcomes[0].port, outcomes[0].state),
             (open, PortState::Open)
         );
-        assert_eq!(
-            (outcomes[1].port, outcomes[1].state),
-            (closed, PortState::Closed)
+        // Windows retries a refused connection for about two seconds, so within the one-second
+        // probe a closed port can only be told apart from a filtered one elsewhere.
+        let closed_states: &[PortState] = if cfg!(windows) {
+            &[PortState::Closed, PortState::Filtered]
+        } else {
+            &[PortState::Closed]
+        };
+        assert_eq!(outcomes[1].port, closed);
+        assert!(
+            closed_states.contains(&outcomes[1].state),
+            "{:?}",
+            outcomes[1].state
         );
     }
 

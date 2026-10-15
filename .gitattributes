@@ -1,0 +1,2 @@
+# Key test vectors are compared byte for byte: never convert their line endings.
+src-tauri/src/tools/keygen/testdata/** -text
