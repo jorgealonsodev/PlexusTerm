@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "OpenAI-kompatibel",
+    openaiCompatibleEndpoint: "den OpenAI-kompatiblen Endpunkt",
+  },
+  errors: {
+    noKey: "Für diesen Anbieter ist kein API-Schlüssel gespeichert.",
+    auth: "Der API-Schlüssel wurde abgelehnt.",
+    rateLimit: "Der KI-Anbieter begrenzt die Anfragen; versuche es gleich noch einmal.",
+    network: "Der KI-Anbieter ist nicht erreichbar.",
+    timeout: "Der KI-Anbieter hat nicht rechtzeitig geantwortet.",
+    refused: "Der KI-Anbieter hat die Beantwortung dieser Anfrage abgelehnt.",
+    badResponse: "Der KI-Anbieter hat eine Antwort gesendet, die PlexusTerm nicht lesen konnte.",
+    config: "Prüfe die KI-Einstellungen.",
+  },
+  hint: {
+    unavailable: "KI: nicht verfügbar",
+    noKey: "KI: kein API-Schlüssel",
+    keyRejected: "KI: Schlüssel abgelehnt",
+    rateLimited: "KI: Anfragelimit erreicht",
+  },
+  chat: {
+    label: "KI-Chat",
+    title: "KI",
+    close: "KI-Chat schließen",
+    closeTitle: "KI-Chat schließen (Ctrl+Shift+W)",
+    empty: "Frag einfach. Befehle werden nur ausgeführt, wenn du auf „Ausführen“ klickst.",
+    question: "Frage",
+    asking: "Wird gefragt…",
+    noKey: "Für {provider} ist kein API-Schlüssel gespeichert. Füge unter Einstellungen → KI einen hinzu.",
+    openSettings: "KI-Einstellungen öffnen",
+    selectedText: "Zu sendender markierter Text",
+    removeSelection: "Markierten Text entfernen",
+    removeSelectionTitle: "Markierten Text nicht senden",
+    input: "Deine Frage",
+    placeholder: "Frag etwas…",
+    send: "Senden",
+  },
+  command: {
+    label: "Vorgeschlagener Befehl",
+    copied: "Kopiert",
+    copyFailed: "Kopieren fehlgeschlagen",
+    insert: "Einfügen",
+    insertTitle: "Schreibt den Befehl ins Terminal, ohne ihn auszuführen",
+    run: "Ausführen",
+    runTitle: "Führt den Befehl im Terminal aus (schreibt ihn und drückt Enter)",
+  },
+  answer: {
+    label: "Antwort",
+  },
+  models: {
+    chooseAnother: "{label} – anderes Modell auswählen",
+    filter: "Modelle filtern",
+    filterPlaceholder: "Modelle filtern…",
+    list: "KI-Modelle",
+    loading: "Modelle werden geladen…",
+    noProvider: "Kein KI-Anbieter hat einen API-Schlüssel. Füge unter Einstellungen → KI einen hinzu.",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} – noch nicht unterstützt",
+    loadingProvider: "Modelle von {provider} werden geladen…",
+  },
+};
