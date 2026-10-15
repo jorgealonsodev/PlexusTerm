@@ -1,6 +1,6 @@
 //! Interoperability tests against a real OpenSSH server.
 //!
-//! Ignored by default; `scripts/openssh-interop.sh` starts a disposable
+//! Ignored by default (shell, SFTP and local tunnels); `scripts/openssh-interop.sh` starts a disposable
 //! OpenSSH container and runs them with:
 //! - `NEXUSTERM_INTEROP_PORT`: sshd port on 127.0.0.1
 //! - `NEXUSTERM_INTEROP_USER`: login user
@@ -68,7 +68,10 @@ async fn connect(t: &Target, mgr: &SshManager) -> (u32, Receiver<String>) {
     let (tx, _rx) = channel();
     let fingerprint = match mgr.connect(request(t, None), TestSink(tx)).await {
         Err(SshError::UnknownHost { fingerprint, .. }) => fingerprint,
-        other => panic!("expected UnknownHost on first contact, got {:?}", other.map(|_| ())),
+        other => panic!(
+            "expected UnknownHost on first contact, got {:?}",
+            other.map(|_| ())
+        ),
     };
     let (tx, rx) = channel();
     let id = mgr
@@ -119,19 +122,93 @@ async fn openssh_sftp_round_trip() {
     let _ = sftp::remove(&session, &work, true).await;
     sftp::mkdir(&session, &work).await.unwrap();
 
-    let payload: Vec<u8> = (0..3 * 1024 * 1024 + 17).map(|i| (i * 31 % 251) as u8).collect();
+    let payload: Vec<u8> = (0..3 * 1024 * 1024 + 17)
+        .map(|i| (i * 31 % 251) as u8)
+        .collect();
     let local = dir.path().join("payload.bin");
     std::fs::write(&local, &payload).unwrap();
     let remote = sftp::upload(&session, &local, &work).await.unwrap();
 
-    let names: Vec<_> = sftp::list(&session, &work).await.unwrap().into_iter().map(|e| e.name).collect();
+    let names: Vec<_> = sftp::list(&session, &work)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|e| e.name)
+        .collect();
     assert_eq!(names, vec!["payload.bin"]);
 
     let back = dir.path().join("back.bin");
     sftp::download(&session, &remote, &back).await.unwrap();
-    assert!(std::fs::read(&back).unwrap() == payload, "downloaded bytes differ");
+    assert!(
+        std::fs::read(&back).unwrap() == payload,
+        "downloaded bytes differ"
+    );
 
     sftp::remove(&session, &remote, false).await.unwrap();
     sftp::remove(&session, &work, true).await.unwrap();
     mgr.close(id).unwrap();
+}
+
+// Multi-threaded: the tunnel tasks run while the test awaits the TCP client.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs scripts/openssh-interop.sh"]
+async fn openssh_local_tunnel_reaches_a_service_behind_the_server() {
+    use crate::tunnels::{TunnelDefinition, TunnelKind, TunnelManager};
+    use tokio::io::AsyncReadExt;
+
+    let t = target();
+    let dir = tempfile::tempdir().unwrap();
+    let known_hosts = dir.path().join("known_hosts");
+    // Record the host key through the regular trust flow first.
+    let ssh = SshManager::new(known_hosts.clone());
+    let (id, _rx) = connect(&t, &ssh).await;
+    ssh.close(id).unwrap();
+
+    let listen_port = {
+        let probe = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        probe.local_addr().unwrap().port()
+    };
+    let tunnels = TunnelManager::new(known_hosts, |_| {});
+    let tunnel = TunnelDefinition {
+        id: "interop".into(),
+        name: "interop".into(),
+        kind: TunnelKind::Local,
+        session_id: "interop".into(),
+        listen_host: "127.0.0.1".into(),
+        listen_port,
+        // The container's own sshd, reachable only from inside the server.
+        dest_host: "localhost".into(),
+        dest_port: 22,
+    };
+    let session = super::SshTarget {
+        host: "127.0.0.1".into(),
+        port: t.port,
+        username: t.user.clone(),
+        auth: SshAuth::Key {
+            path: t.key.clone(),
+            passphrase: None,
+        },
+    };
+    tunnels
+        .start(tunnel, session, None)
+        .await
+        .expect("tunnel starts");
+
+    let mut tcp = tokio::net::TcpStream::connect(("127.0.0.1", listen_port))
+        .await
+        .unwrap();
+    let mut banner = vec![0u8; 64];
+    let n = tokio::time::timeout(Duration::from_secs(10), tcp.read(&mut banner))
+        .await
+        .expect("banner within 10s")
+        .unwrap();
+    let banner = String::from_utf8_lossy(&banner[..n]);
+    assert!(banner.starts_with("SSH-2.0-OpenSSH"), "got {banner:?}");
+
+    tunnels.stop("interop").await;
+    assert!(
+        tokio::net::TcpStream::connect(("127.0.0.1", listen_port))
+            .await
+            .is_err()
+    );
 }

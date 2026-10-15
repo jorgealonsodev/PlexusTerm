@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs the ignored OpenSSH interoperability tests against a disposable
-# Alpine container (sshd + sftp-server) bound to 127.0.0.1 only.
+# Alpine container (sshd + sftp-server, TCP forwarding enabled because Alpine
+# disables it by default) bound to 127.0.0.1 only.
 # Requires Docker. Usage: scripts/openssh-interop.sh
 set -euo pipefail
 
@@ -28,7 +29,7 @@ docker run -d --name "$NAME" -p 127.0.0.1::22 -e PUBKEY="$PUBKEY" "$IMAGE" sh -c
   echo "$PUBKEY" > /home/tester/.ssh/authorized_keys
   chown -R tester:tester /home/tester/.ssh
   chmod 700 /home/tester/.ssh && chmod 600 /home/tester/.ssh/authorized_keys
-  exec /usr/sbin/sshd -D -e -o PasswordAuthentication=no
+  exec /usr/sbin/sshd -D -e -o PasswordAuthentication=no -o AllowTcpForwarding=yes
 ' >/dev/null
 
 PORT="$(docker port "$NAME" 22/tcp | head -n1 | sed 's/.*://')"

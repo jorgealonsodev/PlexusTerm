@@ -14,7 +14,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend tests
 scripts/openssh-interop.sh         # SSH/SFTP against a real OpenSSH server (needs Docker)
 ```
 
-`scripts/openssh-interop.sh` starts a disposable Alpine container with `sshd` and `sftp-server` bound to `127.0.0.1`, runs the ignored interoperability tests (host-key trust flow, key login, shell, resize, SFTP round trip) and removes the container.
+`scripts/openssh-interop.sh` starts a disposable Alpine container with `sshd` and `sftp-server` bound to `127.0.0.1`, runs the ignored interoperability tests (host-key trust flow, key login, shell, resize, SFTP round trip, local tunnel) and removes the container.
 
 ## SSH sessions
 
@@ -41,7 +41,7 @@ If the file cannot be read, the panel shows the error and disables editing so th
 
 ## SFTP browser
 
-The sidebar has two tabs, **Sessions** and **SFTP**. SFTP browses the remote files of the active SSH tab over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses the remote files of the active SSH tab over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
@@ -55,6 +55,21 @@ PROMPT_COMMAND='printf "\033]7;file://%s%s\007" "$HOSTNAME" "$PWD"'
 ```
 
 Paths containing special characters may need percent-encoding; many distributions' `vte.sh` already emit OSC 7 that way.
+
+## SSH tunnels
+
+The **Tunnels** tab of the sidebar keeps port forwards that run over a saved SSH session, each with its own connection:
+
+- **Local (-L)**: listens on this machine and forwards each connection through the server to the destination (as seen from the server).
+- **Remote (-R)**: the server listens on the port and forwards each connection back to the destination as seen from this machine.
+- **Dynamic (-D)**: a SOCKS5 proxy on this machine (no authentication, CONNECT only, IPv4/IPv6/domain targets); the server opens the connections.
+
+Listeners bind to `127.0.0.1` by default; any other address must be typed explicitly and the editor warns that other machines can reach it.
+Each tunnel shows its status (stopped, starting, running, or the error) and a Start/Stop toggle; **Start all** and **Stop all** act on every tunnel.
+Starting a tunnel whose session uses a password asks for it (it is never saved), and an unknown host asks to trust its fingerprint like SSH tabs do.
+Stopping closes the listener, the open connections and the SSH connection; running tunnels stop when the app exits.
+
+Tunnels are stored in `~/.config/dev.nexusterm.app/tunnels.json` with the same rules as sessions (atomic, mode `0600`, no secrets, editing disabled if the file cannot be read).
 
 ## Keyboard shortcuts
 

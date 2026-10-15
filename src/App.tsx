@@ -11,6 +11,11 @@ import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { initialTabs, tabsReducer } from "./features/tabs/tabs";
 import { TerminalView } from "./features/terminal/TerminalView";
+import { TunnelEditDialog } from "./features/tunnels/TunnelEditDialog";
+import { TunnelsPanel } from "./features/tunnels/TunnelsPanel";
+import type { Tunnel } from "./features/tunnels/tunnels";
+import { useTunnelLauncher } from "./features/tunnels/useTunnelLauncher";
+import { useTunnels } from "./features/tunnels/useTunnels";
 import "./App.css";
 
 const LOCAL: SessionTarget = { type: "local" };
@@ -19,6 +24,7 @@ type Modal =
   | { kind: "quickConnect" }
   | { kind: "editSession"; session: SavedSession; isNew: boolean }
   | { kind: "password"; session: SavedSession }
+  | { kind: "editTunnel"; tunnel: Tunnel; isNew: boolean }
   | null;
 
 /** What a terminal tab reported about its backend session. */
@@ -39,6 +45,17 @@ const draftSession = (folder: string): SavedSession => ({
   auth: { method: "password" },
 });
 
+const draftTunnel = (): Tunnel => ({
+  id: crypto.randomUUID(),
+  name: "",
+  type: "local",
+  sessionId: "",
+  listenHost: "127.0.0.1",
+  listenPort: 8080,
+  destHost: "localhost",
+  destPort: 80,
+});
+
 export default function App() {
   // Start with one local terminal open.
   const [state, dispatch] = useReducer(tabsReducer, initialTabs, (s) =>
@@ -46,6 +63,8 @@ export default function App() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const sessions = useSessionLibrary();
+  const tunnels = useTunnels();
+  const launcher = useTunnelLauncher(sessions.library.sessions, tunnels.statusOf, tunnels.reportError);
   const [tabSessions, setTabSessions] = useState<Record<string, TabSession>>({});
   const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
   const [followCwd, setFollowCwd] = useState(true);
@@ -128,6 +147,29 @@ export default function App() {
                 onFollowChange={setFollowCwd}
               />
             )
+          }
+          tunnels={
+            <TunnelsPanel
+              list={tunnels.list}
+              status={tunnels.status}
+              saveError={tunnels.saveError}
+              sessions={sessions.library.sessions}
+              statusOf={tunnels.statusOf}
+              onToggle={(tunnel) => {
+                if (launcher.isActive(tunnels.statusOf(tunnel.id))) void launcher.stop(tunnel.id);
+                else void launcher.start(tunnel);
+              }}
+              onNew={() => setModal({ kind: "editTunnel", tunnel: draftTunnel(), isNew: true })}
+              onEdit={(tunnel) => setModal({ kind: "editTunnel", tunnel, isNew: false })}
+              onDelete={(tunnel) => {
+                if (window.confirm(`Delete tunnel "${tunnel.name}"?`)) {
+                  void launcher.stop(tunnel.id);
+                  tunnels.dispatch({ type: "delete", id: tunnel.id });
+                }
+              }}
+              onStartAll={() => void launcher.startAll(tunnels.list.tunnels)}
+              onStopAll={() => void launcher.stopAll(tunnels.list.tunnels)}
+            />
           }
           sessions={
             <SessionsPanel
@@ -213,6 +255,19 @@ export default function App() {
           }}
         />
       )}
+      {modal?.kind === "editTunnel" && (
+        <TunnelEditDialog
+          tunnel={modal.tunnel}
+          isNew={modal.isNew}
+          sessions={sessions.library.sessions}
+          onCancel={() => setModal(null)}
+          onSave={(tunnel) => {
+            tunnels.dispatch({ type: "save", tunnel });
+            setModal(null);
+          }}
+        />
+      )}
+      {launcher.dialog}
       {modal?.kind === "password" && (
         <PasswordPrompt
           label={`${modal.session.username}@${modal.session.host}`}

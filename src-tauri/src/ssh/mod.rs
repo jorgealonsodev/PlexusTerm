@@ -18,11 +18,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use russh::client::ChannelOpenHandle;
 use russh::keys::agent::client::AgentClient;
 use russh::keys::{
     HashAlg, PrivateKeyWithHashAlg, PublicKey, PublicKeyOrCertificate, known_hosts, load_secret_key,
 };
-use russh::{ChannelMsg, client};
+use russh::{Channel, ChannelMsg, ChannelOpenFailure, client};
 use russh_sftp::client::SftpSession;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
@@ -158,14 +159,22 @@ fn verify_host_key(
     }
 }
 
-struct ClientHandler {
+/// A `forwarded-tcpip` channel opened by the server for a remote port forward.
+pub(crate) type ForwardedChannel = Channel<client::Msg>;
+
+pub(crate) struct ClientHandler {
     host: String,
     port: u16,
     known_hosts: PathBuf,
     trusted_fingerprint: Option<String>,
     /// Why the host key was rejected; russh only reports a generic error.
     rejection: Arc<Mutex<Option<SshError>>>,
+    /// Receives the server's `forwarded-tcpip` channels; without it they are refused.
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
 }
+
+/// An authenticated SSH connection.
+pub(crate) type Connection = client::Handle<ClientHandler>;
 
 impl client::Handler for ClientHandler {
     type Error = russh::Error;
@@ -194,6 +203,28 @@ impl client::Handler for ClientHandler {
             }
         }
     }
+
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: Channel<client::Msg>,
+        _connected_address: &str,
+        _connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: ChannelOpenHandle,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        // One connection per tunnel, so every forwarded channel belongs to it.
+        match &self.forwarded {
+            Some(tx) if tx.send(channel).is_ok() => reply.accept().await,
+            _ => {
+                reply
+                    .reject(ChannelOpenFailure::AdministrativelyProhibited)
+                    .await
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Expands a leading `~/` to `$HOME`, as users type key paths like `~/.ssh/id_ed25519`.
@@ -204,8 +235,65 @@ fn expand_home(path: &str) -> PathBuf {
     }
 }
 
+/// Where and as whom to connect.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SshTarget {
+    pub host: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
+    pub username: String,
+    pub auth: SshAuth,
+}
+
+/// Connects, applies the known_hosts policy and authenticates.
+pub(crate) async fn connect_authenticated(
+    target: SshTarget,
+    trusted_fingerprint: Option<String>,
+    known_hosts: &Path,
+    agent_socket: Option<&Path>,
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
+) -> Result<Connection, SshError> {
+    let rejection = Arc::new(Mutex::new(None));
+    let handler = ClientHandler {
+        host: target.host.clone(),
+        port: target.port,
+        known_hosts: known_hosts.to_path_buf(),
+        trusted_fingerprint,
+        rejection: rejection.clone(),
+        forwarded,
+    };
+    let config = Arc::new(client::Config {
+        keepalive_interval: Some(Duration::from_secs(30)),
+        ..Default::default()
+    });
+
+    let connecting = client::connect(config, (target.host.as_str(), target.port), handler);
+    let mut handle = match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
+        Err(_) => {
+            return Err(SshError::Connection {
+                message: format!(
+                    "connection to {} timed out",
+                    host_label(&target.host, target.port)
+                ),
+            });
+        }
+        Ok(Err(err)) => {
+            return Err(rejection
+                .lock()
+                .unwrap()
+                .take()
+                .unwrap_or_else(|| connection(err)));
+        }
+        Ok(Ok(handle)) => handle,
+    };
+
+    authenticate(&mut handle, &target.username, target.auth, agent_socket).await?;
+    Ok(handle)
+}
+
 async fn authenticate(
-    handle: &mut client::Handle<ClientHandler>,
+    handle: &mut Connection,
     user: &str,
     auth: SshAuth,
     agent_socket: Option<&Path>,
@@ -282,7 +370,7 @@ type SftpSlot = Arc<tokio::sync::Mutex<Option<Arc<SftpSession>>>>;
 
 struct SessionEntry {
     tx: UnboundedSender<Command>,
-    handle: Arc<client::Handle<ClientHandler>>,
+    handle: Arc<Connection>,
     sftp: SftpSlot,
 }
 
@@ -323,44 +411,18 @@ impl SshManager {
         req: ConnectRequest,
         sink: impl TerminalSink,
     ) -> Result<u32, SshError> {
-        let rejection = Arc::new(Mutex::new(None));
-        let handler = ClientHandler {
-            host: req.host.clone(),
+        let target = SshTarget {
+            host: req.host,
             port: req.port,
-            known_hosts: self.known_hosts.clone(),
-            trusted_fingerprint: req.trusted_fingerprint.clone(),
-            rejection: rejection.clone(),
+            username: req.username,
+            auth: req.auth,
         };
-        let config = Arc::new(client::Config {
-            keepalive_interval: Some(Duration::from_secs(30)),
-            ..Default::default()
-        });
-
-        let connecting = client::connect(config, (req.host.as_str(), req.port), handler);
-        let mut handle = match tokio::time::timeout(CONNECT_TIMEOUT, connecting).await {
-            Err(_) => {
-                return Err(SshError::Connection {
-                    message: format!(
-                        "connection to {} timed out",
-                        host_label(&req.host, req.port)
-                    ),
-                });
-            }
-            Ok(Err(err)) => {
-                return Err(rejection
-                    .lock()
-                    .unwrap()
-                    .take()
-                    .unwrap_or_else(|| connection(err)));
-            }
-            Ok(Ok(handle)) => handle,
-        };
-
-        authenticate(
-            &mut handle,
-            &req.username,
-            req.auth,
+        let handle = connect_authenticated(
+            target,
+            req.trusted_fingerprint,
+            &self.known_hosts,
             self.agent_socket.as_deref(),
+            None,
         )
         .await?;
 

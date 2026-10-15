@@ -6,6 +6,10 @@
 //!
 //! Servers started with [`start_with_sftp`] also serve the `sftp` subsystem
 //! from a local directory, which appears to the client as `/`.
+//!
+//! Port forwarding works like OpenSSH: `direct-tcpip` channels connect to the
+//! requested target, and `tcpip-forward` listens on the requested address and
+//! opens a `forwarded-tcpip` channel back to the client for every connection.
 
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -20,7 +24,7 @@ use russh_sftp::protocol::{
     Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode,
 };
 use std::os::unix::fs::FileExt;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 
 pub const PASSWORD: &str = "secret";
 
@@ -40,8 +44,11 @@ struct Handler {
     sftp_root: Option<Arc<PathBuf>>,
     /// Channels of this connection that may still become an SFTP subsystem.
     channels: Arc<Mutex<HashMap<ChannelId, Channel<Msg>>>>,
-    /// Channels serving SFTP, which must not be echoed.
-    sftp_channels: Arc<Mutex<HashSet<ChannelId>>>,
+    /// Channels served through their `Channel` object (SFTP, port forwards),
+    /// which must not be echoed.
+    stream_channels: Arc<Mutex<HashSet<ChannelId>>>,
+    /// Remote forward listeners of this connection, by requested address and port.
+    forwards: Arc<Mutex<HashMap<(String, u32), tokio::task::AbortHandle>>>,
 }
 
 /// Starts a server with the given host key seed; `allowed_key` enables public-key auth.
@@ -74,7 +81,8 @@ async fn start_inner(
         size: Arc::new(Mutex::new((0, 0))),
         sftp_root,
         channels: Arc::default(),
-        sftp_channels: Arc::default(),
+        stream_channels: Arc::default(),
+        forwards: Arc::default(),
     };
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
@@ -87,7 +95,8 @@ impl russh::server::Server for Handler {
     fn new_client(&mut self, _: Option<SocketAddr>) -> Self {
         Self {
             channels: Arc::default(),
-            sftp_channels: Arc::default(),
+            stream_channels: Arc::default(),
+            forwards: Arc::default(),
             ..self.clone()
         }
     }
@@ -124,6 +133,82 @@ impl russh::server::Handler for Handler {
         Ok(())
     }
 
+    async fn channel_open_direct_tcpip(
+        &mut self,
+        channel: Channel<Msg>,
+        host_to_connect: &str,
+        port_to_connect: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: russh::server::ChannelOpenHandle,
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        self.stream_channels.lock().unwrap().insert(channel.id());
+        reply.accept().await;
+        let target = format!("{host_to_connect}:{port_to_connect}");
+        tokio::spawn(async move {
+            match TcpStream::connect(target).await {
+                Ok(tcp) => pipe(channel, tcp).await,
+                Err(_) => {
+                    let _ = channel.close().await;
+                }
+            }
+        });
+        Ok(())
+    }
+
+    async fn tcpip_forward(
+        &mut self,
+        address: &str,
+        port: &mut u32,
+        session: &mut Session,
+    ) -> Result<bool, Self::Error> {
+        let Ok(listener) = TcpListener::bind(format!("{address}:{port}")).await else {
+            return Ok(false);
+        };
+        if *port == 0 {
+            *port = listener.local_addr().unwrap().port().into();
+        }
+        let (handle, stream_channels) = (session.handle(), self.stream_channels.clone());
+        let (connected_address, connected_port) = (address.to_string(), *port);
+        let task = tokio::spawn(async move {
+            while let Ok((tcp, peer)) = listener.accept().await {
+                let Ok(channel) = handle
+                    .channel_open_forwarded_tcpip(
+                        connected_address.clone(),
+                        connected_port,
+                        peer.ip().to_string(),
+                        peer.port().into(),
+                    )
+                    .await
+                else {
+                    continue;
+                };
+                stream_channels.lock().unwrap().insert(channel.id());
+                tokio::spawn(pipe(channel, tcp));
+            }
+        });
+        self.forwards
+            .lock()
+            .unwrap()
+            .insert((address.to_string(), *port), task.abort_handle());
+        Ok(true)
+    }
+
+    async fn cancel_tcpip_forward(
+        &mut self,
+        address: &str,
+        port: u32,
+        _session: &mut Session,
+    ) -> Result<bool, Self::Error> {
+        let task = self
+            .forwards
+            .lock()
+            .unwrap()
+            .remove(&(address.to_string(), port));
+        Ok(task.map(|task| task.abort()).is_some())
+    }
+
     async fn subsystem_request(
         &mut self,
         channel_id: ChannelId,
@@ -133,7 +218,7 @@ impl russh::server::Handler for Handler {
         let channel = self.channels.lock().unwrap().remove(&channel_id);
         match (name, channel, &self.sftp_root) {
             ("sftp", Some(channel), Some(root)) => {
-                self.sftp_channels.lock().unwrap().insert(channel_id);
+                self.stream_channels.lock().unwrap().insert(channel_id);
                 session.channel_success(channel_id)?;
                 russh_sftp::server::run(channel.into_stream(), SftpFs::new(root.as_ref().clone()))
                     .await;
@@ -189,7 +274,7 @@ impl russh::server::Handler for Handler {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        if self.sftp_channels.lock().unwrap().contains(&channel) {
+        if self.stream_channels.lock().unwrap().contains(&channel) {
             return Ok(());
         }
         match data {
@@ -205,6 +290,12 @@ impl russh::server::Handler for Handler {
             other => session.data(channel, other.to_vec()),
         }
     }
+}
+
+/// Copies bytes both ways between a channel and a TCP stream until both sides close.
+async fn pipe(channel: Channel<Msg>, mut tcp: TcpStream) {
+    let mut stream = channel.into_stream();
+    let _ = tokio::io::copy_bidirectional(&mut stream, &mut tcp).await;
 }
 
 enum OpenHandle {
