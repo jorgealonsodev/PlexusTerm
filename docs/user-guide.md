@@ -130,7 +130,7 @@ The sidebar has three tabs, **Sessions**, **SFTP** and **Tunnels**. SFTP browses
 
 Right-click an entry for more:
 
-- **Open** (enters a folder; downloads a file), **Download…**, **Rename…**, **Delete**.
+- **Open** (enters a folder; opens a file in its default program, like **Open with default program** below), **Download…**, **Rename…**, **Delete**.
 - **Copy file path** copies the full remote path; **Copy file path to terminal** types it into the focused pane of the active tab, quoted for the shell when needed. Middle-clicking an entry does the same.
 - **Properties** shows the name, path, type, size, modification time, owner, group and permissions (`rwxr-xr-x (0755)`).
 - **Permissions…** changes the mode (`chmod`) with read/write/execute checkboxes for owner, group and others, kept in sync with the octal value.
