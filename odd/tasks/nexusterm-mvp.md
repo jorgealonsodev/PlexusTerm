@@ -48,6 +48,14 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S12.4 Errors are explicit: permission denied explains that the user must be in the "dialout" group (and log out/in); a missing or busy device says so; when the device disappears while open (USB unplugged) the tab shows the error and ends.
   - S12.5 Port listing must not require libudev development headers (they are not installed on the target machine); enumerate without the libudev feature (sysfs/device scan). Tests never open real devices: they use a pseudo-terminal pair as the serial device.
 
+- S13 (decided by the parent under "haz lo que te creas mas optimo"): optional password storage in the system keyring (Secret Service: GNOME Keyring / KWallet), MobaXterm's "save password" without a custom vault.
+  - S13.1 The password prompt for saved SSH sessions (terminal tabs and tunnels) gets a "Save password in the system keyring" checkbox, unchecked by default. Quick-connect (unsaved) sessions never store passwords.
+  - S13.2 Secrets live only in the keyring: service "dev.nexusterm.app", account = saved session id, label "NexusTerm: user@host:port". sessions.json and tunnels.json never contain them.
+  - S13.3 The password never crosses into the webview once stored: the frontend asks the backend to connect with `{ method: "storedPassword", sessionId }` and Rust reads the keyring itself; storing happens in Rust right after a successful login with a password typed in the prompt (only if the checkbox was ticked).
+  - S13.4 Opening a saved password session that has a stored secret connects without prompting. If that login fails with authFailed, the prompt is shown (checkbox ticked) and a successful login replaces the stored secret; unticking it and connecting deletes the stored secret.
+  - S13.5 The session edit dialog shows "Forget saved password" when a secret exists; deleting a session (or a folder containing it) deletes its secret.
+  - S13.6 When no Secret Service is available, the checkbox is disabled with a short explanation and everything else works as before.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -65,6 +73,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T7 — S11 (S11.1-S11.5) — delegated (writer trigger: long-session context backstop) — Split panes and multi-execution. Writer: layout/neighbour/broadcast/tab actions RED→GREEN, App-level tests proven by temporary breaking changes; panes rendered as flat keyed siblings so splits never remount terminals; xterm custom key handler stops Ctrl+Shift+D reaching the shell as EOF. vitest 141/141. Parent smoke on a private Xvfb display (:99): split right/down, isolated input, multi-exec broadcast to 2 panes, Ctrl+Shift+W closes only the focused pane (other keeps its history and focus). Parent fix: exclude toggle moved to the bottom-right (it covered terminal text).
 
 - [x] T8 — S12 (S12.1-S12.5) — delegated (writer trigger: long-session context backstop) — Serial console sessions. Writer: serial backend/settings/library kind/dialog RED→GREEN, PTY pair as fake device; cargo 80, vitest 167. Own sysfs enumeration (filters placeholder ttyS* by type=0) — no libudev needed at build or run time. Parent smoke on Xvfb with a socat virtual pair: real bug found — StrictMode double mount opened the port twice → "busy" (serial ports take an exclusive lock; SSH tabs were silently opening two connections in dev too). Fix: defer the session start one tick and cancel it on cleanup (TerminalView StrictMode test RED: 2 opens → GREEN: 1). After fix: device→app text shown, app→device "AT+PING\r" received byte-exact, unplug shows "disconnected: Broken pipe" + session ended. vitest 169/169.
+
+- [ ] T9 — S13 (S13.1-S13.6) — delegated (writer trigger: long-session context backstop) — Passwords in the system keyring.
 
 ## Log
 
@@ -92,3 +102,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L22 (2026-10-15): "haz lo que te creas mas optimo" — next unit T8 (serial). Machine facts: libudev dev headers missing; user in dialout; a real /dev/ttyUSB0 exists and must not be opened by tests.
 - L23 (2026-10-15): User: "si tienes que instalar algo instalalo, tienes sudo". Installed libudev-dev (255.4) so serialport can use its libudev feature (USB product/manufacturer names). After T8 lands, switch serialport to default features and show port descriptions. Other packages (librsvg2-dev, libayatana-appindicator3-dev for bundling) only when packaging.
 - L24 (2026-10-15): libudev-dev was installed (L23) but is not used: the sysfs enumeration keeps the app free of a libudev runtime dependency, which is better for packaging. socat installed for serial tests. Known limitation: splitting a serial tab opens the same device again and reports busy.
+- L25 (2026-10-15): "haz lo que te creas mas optimo" — next unit T9 (keyring). Environment: gnome-keyring-daemon provides org.freedesktop.secrets; libdbus-1-dev 1.14.10 present; keyring crate latest 4.2.0.
