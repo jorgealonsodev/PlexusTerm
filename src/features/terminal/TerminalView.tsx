@@ -19,6 +19,7 @@ interface TerminalViewProps {
 interface PendingHost {
   host: string;
   fingerprint: string;
+  otherKnownKeys: string[];
 }
 
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
@@ -74,7 +75,7 @@ export function TerminalView({ target, active, onTitle, onExit }: TerminalViewPr
         .catch((raw) => {
           if (disposed) return;
           const err = toSshError(raw);
-          if (err.kind === "unknownHost") setPendingHost({ host: err.host, fingerprint: err.fingerprint });
+          if (err.kind === "unknownHost") setPendingHost(err);
           else term.write(red(describeSshError(err)));
         });
     };
@@ -116,6 +117,7 @@ export function TerminalView({ target, active, onTitle, onExit }: TerminalViewPr
         <HostKeyPrompt
           host={pendingHost.host}
           fingerprint={pendingHost.fingerprint}
+          otherKnownKeys={pendingHost.otherKnownKeys}
           onTrust={() => {
             setPendingHost(null);
             startRef.current(pendingHost.fingerprint);

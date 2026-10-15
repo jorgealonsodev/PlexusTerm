@@ -34,6 +34,15 @@ describe("parseQuickConnect", () => {
     });
   });
 
+  it.each([
+    ["::1", "::1", 22],
+    ["[::1]", "::1", 22],
+    ["[fe80::1%eth0]:2222", "fe80::1%eth0", 2222],
+    ["bob@[2001:db8::7]:2200", "2001:db8::7", 2200],
+  ])("parses the IPv6 address %s", (input, host, port) => {
+    expect(parseQuickConnect(form({ host: input }))).toMatchObject({ ok: true, target: { host, port } });
+  });
+
   it("an explicit port field wins over the host field", () => {
     const result = parseQuickConnect(form({ host: "h:2222", port: "2200" }));
     expect(result).toMatchObject({ ok: true, target: { host: "h", port: 2200 } });

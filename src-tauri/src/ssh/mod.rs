@@ -45,7 +45,7 @@ fn default_port() -> u16 {
     22
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 #[serde(tag = "method", rename_all = "camelCase")]
 pub enum SshAuth {
     Password {
@@ -58,11 +58,32 @@ pub enum SshAuth {
     Agent,
 }
 
+/// Hand-written so secrets never reach logs or panic messages.
+impl std::fmt::Debug for SshAuth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Password { .. } => f.write_str("Password { .. }"),
+            Self::Key { path, passphrase } => f
+                .debug_struct("Key")
+                .field("path", path)
+                .field("passphrase", &passphrase.as_ref().map(|_| "<redacted>"))
+                .finish(),
+            Self::Agent => f.write_str("Agent"),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum SshError {
     #[error("the authenticity of host {host} can't be established ({fingerprint})")]
-    UnknownHost { host: String, fingerprint: String },
+    #[serde(rename_all = "camelCase")]
+    UnknownHost {
+        host: String,
+        fingerprint: String,
+        /// Algorithms of keys already recorded for this host (e.g. after a server key-type change).
+        other_known_keys: Vec<String>,
+    },
     #[error(
         "the host key for {host} has changed ({fingerprint}); it does not match line {line} of known_hosts"
     )]
@@ -108,10 +129,20 @@ fn verify_host_key(
         Ok(false) if trusted_fingerprint == Some(fingerprint.as_str()) => {
             known_hosts::learn_known_hosts_path(host, port, key, known_hosts).map_err(connection)
         }
-        Ok(false) => Err(SshError::UnknownHost {
-            host: host_label(host, port),
-            fingerprint,
-        }),
+        Ok(false) => {
+            let mut other_known_keys: Vec<String> =
+                known_hosts::known_host_keys_path(host, port, known_hosts)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|(_, key)| key.algorithm().to_string())
+                    .collect();
+            other_known_keys.dedup();
+            Err(SshError::UnknownHost {
+                host: host_label(host, port),
+                fingerprint,
+                other_known_keys,
+            })
+        }
         Err(russh::keys::Error::KeyChanged { line }) => Err(SshError::HostKeyChanged {
             host: host_label(host, port),
             fingerprint,
@@ -173,6 +204,7 @@ async fn authenticate(
     handle: &mut client::Handle<ClientHandler>,
     user: &str,
     auth: SshAuth,
+    agent_socket: Option<&Path>,
 ) -> Result<(), SshError> {
     let accepted = match auth {
         SshAuth::Password { password } => handle
@@ -199,12 +231,13 @@ async fn authenticate(
                 .success()
         }
         SshAuth::Agent => {
-            let mut agent =
-                AgentClient::connect_env()
-                    .await
-                    .map_err(|err| SshError::Connection {
-                        message: format!("SSH agent unavailable: {err}"),
-                    })?;
+            let agent = match agent_socket {
+                Some(socket) => AgentClient::connect_uds(socket).await,
+                None => AgentClient::connect_env().await,
+            };
+            let mut agent = agent.map_err(|err| SshError::Connection {
+                message: format!("SSH agent unavailable: {err}"),
+            })?;
             let identities = agent.request_identities().await.map_err(connection)?;
             let hash = handle
                 .best_supported_rsa_hash()
@@ -214,11 +247,11 @@ async fn authenticate(
             let mut accepted = false;
             for identity in identities {
                 let key = identity.public_key().into_owned();
-                if handle
+                // One identity failing to sign (e.g. a removed hardware key) must not stop the others.
+                if let Ok(result) = handle
                     .authenticate_publickey_with(user, key, hash, &mut agent)
                     .await
-                    .map_err(connection)?
-                    .success()
+                    && result.success()
                 {
                     accepted = true;
                     break;
@@ -242,6 +275,8 @@ enum Command {
 
 pub struct SshManager {
     known_hosts: PathBuf,
+    /// Overrides `SSH_AUTH_SOCK` (used by tests).
+    agent_socket: Option<PathBuf>,
     next_id: AtomicU32,
     sessions: Mutex<HashMap<u32, UnboundedSender<Command>>>,
 }
@@ -250,9 +285,16 @@ impl SshManager {
     pub fn new(known_hosts: PathBuf) -> Self {
         Self {
             known_hosts,
+            agent_socket: None,
             next_id: AtomicU32::new(0),
             sessions: Mutex::new(HashMap::new()),
         }
+    }
+
+    #[cfg(test)]
+    fn with_agent_socket(mut self, socket: PathBuf) -> Self {
+        self.agent_socket = Some(socket);
+        self
     }
 
     /// Uses the current user's `~/.ssh/known_hosts`, like OpenSSH.
@@ -301,7 +343,13 @@ impl SshManager {
             Ok(Ok(handle)) => handle,
         };
 
-        authenticate(&mut handle, &req.username, req.auth).await?;
+        authenticate(
+            &mut handle,
+            &req.username,
+            req.auth,
+            self.agent_socket.as_deref(),
+        )
+        .await?;
 
         let channel = handle.channel_open_session().await.map_err(connection)?;
         channel
@@ -322,37 +370,48 @@ impl SshManager {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
         self.sessions.lock().unwrap().insert(id, tx);
 
+        let (mut reader, writer) = channel.split();
+        let handle = Arc::new(handle);
+
+        // Writes run in their own task: a large paste can wait for the remote
+        // window while the reader keeps draining output (otherwise both stall).
+        let writer_handle = handle.clone();
         tokio::spawn(async move {
-            let (mut reader, writer) = channel.split();
-            let mut decoder = Utf8Stream::default();
-            let mut exit_code = None;
-            loop {
-                tokio::select! {
-                    command = commands.recv() => match command {
-                        Some(Command::Data(data)) => {
-                            if writer.data(&data[..]).await.is_err() {
-                                break;
-                            }
-                        }
-                        Some(Command::Resize(cols, rows)) => {
-                            let _ = writer.window_change(cols.into(), rows.into(), 0, 0).await;
-                        }
-                        Some(Command::Close) | None => {
-                            let _ = writer.close().await;
+            while let Some(command) = commands.recv().await {
+                match command {
+                    Command::Data(data) => {
+                        if writer.data(&data[..]).await.is_err() {
                             break;
                         }
-                    },
-                    message = reader.wait() => match message {
-                        Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
-                            let text = decoder.push(&data);
-                            if !text.is_empty() {
-                                sink.data(text);
-                            }
+                    }
+                    Command::Resize(cols, rows) => {
+                        let _ = writer.window_change(cols.into(), rows.into(), 0, 0).await;
+                    }
+                    Command::Close => break,
+                }
+            }
+            // Closed by the user (or the manager was dropped): end the whole connection,
+            // which also ends the reader below.
+            let _ = writer.close().await;
+            let _ = writer_handle
+                .disconnect(russh::Disconnect::ByApplication, "", "en")
+                .await;
+        });
+
+        tokio::spawn(async move {
+            let mut decoder = Utf8Stream::default();
+            let mut exit_code = None;
+            while let Some(message) = reader.wait().await {
+                match message {
+                    ChannelMsg::Data { data } | ChannelMsg::ExtendedData { data, .. } => {
+                        let text = decoder.push(&data);
+                        if !text.is_empty() {
+                            sink.data(text);
                         }
-                        Some(ChannelMsg::ExitStatus { exit_status }) => exit_code = Some(exit_status),
-                        Some(ChannelMsg::Close) | None => break,
-                        Some(_) => {}
-                    },
+                    }
+                    ChannelMsg::ExitStatus { exit_status } => exit_code = Some(exit_status),
+                    ChannelMsg::Close => break,
+                    _ => {}
                 }
             }
             let _ = handle
@@ -550,9 +609,12 @@ mod tests {
             .unwrap_err();
         match err {
             SshError::UnknownHost {
-                fingerprint: fp, ..
+                fingerprint: fp,
+                other_known_keys,
+                ..
             } => {
-                assert_eq!(fp, fingerprint(&server.host_key))
+                assert_eq!(fp, fingerprint(&server.host_key));
+                assert!(other_known_keys.is_empty());
             }
             other => panic!("expected UnknownHost, got {other:?}"),
         }
@@ -560,6 +622,139 @@ mod tests {
             !path.exists(),
             "known_hosts must not be written without consent"
         );
+    }
+
+    const ECDSA_HOST_KEY: &str = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLcc4aYgvq7F2Wz+WMIijfkYv83TLq6CCChf7Y/3RbrZLPu+it5GkrceW7eoKv62EINLq6qDsX34FW/ldLgLE1M=";
+
+    #[tokio::test]
+    async fn unknown_key_type_reports_the_key_types_already_known_for_the_host() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("known_hosts");
+        let port = server.addr.port();
+        std::fs::write(&path, format!("[127.0.0.1]:{port} {ECDSA_HOST_KEY}\n")).unwrap();
+        let mgr = SshManager::new(path);
+        let (s, _rx) = sink();
+
+        let err = mgr
+            .connect(request(port, password(PASSWORD)), s)
+            .await
+            .unwrap_err();
+        match err {
+            SshError::UnknownHost {
+                other_known_keys, ..
+            } => {
+                assert_eq!(other_known_keys, vec!["ecdsa-sha2-nistp256".to_string()])
+            }
+            other => panic!("expected UnknownHost, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_host_error_serializes_with_camel_case_fields() {
+        let err = SshError::UnknownHost {
+            host: "h".into(),
+            fingerprint: "SHA256:x".into(),
+            other_known_keys: vec!["ssh-rsa".into()],
+        };
+        let json = serde_json::to_value(&err).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"kind": "unknownHost", "host": "h", "fingerprint": "SHA256:x", "otherKnownKeys": ["ssh-rsa"]})
+        );
+    }
+
+    #[test]
+    fn debug_output_never_contains_secrets() {
+        let pw = SshAuth::Password {
+            password: "hunter2".into(),
+        };
+        assert!(!format!("{pw:?}").contains("hunter2"));
+        let key = SshAuth::Key {
+            path: "/k".into(),
+            passphrase: Some("s3cr3t".into()),
+        };
+        let dbg = format!("{key:?}");
+        assert!(!dbg.contains("s3cr3t") && dbg.contains("/k"), "{dbg}");
+        assert!(!format!("{:?}", request(22, pw)).contains("hunter2"));
+    }
+
+    #[tokio::test]
+    async fn large_paste_is_fully_echoed_without_stalling() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+
+        let size = 4 * 1024 * 1024;
+        mgr.write(id, &vec![b'a'; size]).unwrap();
+        let mut echoed = 0;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+        while echoed < size {
+            match tokio::time::timeout_at(deadline, rx.recv()).await {
+                Ok(Some(Event::Data(t))) => echoed += t.bytes().filter(|b| *b == b'a').count(),
+                Ok(Some(Event::Exit(_))) | Ok(None) => panic!("session ended after {echoed} bytes"),
+                Err(_) => panic!("stalled after echoing {echoed} of {size} bytes"),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn agent_login_uses_the_agent_identities() {
+        if std::process::Command::new("ssh-agent")
+            .arg("-h")
+            .output()
+            .is_err()
+        {
+            eprintln!("skipping: ssh-agent not installed");
+            return;
+        }
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        let socket = dir.path().join("agent.sock");
+        let mut agent = std::process::Command::new("ssh-agent")
+            .args(["-D", "-a"])
+            .arg(&socket)
+            .stdout(std::process::Stdio::null())
+            .spawn()
+            .unwrap();
+        for _ in 0..50 {
+            if socket.exists() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        let key_path = dir.path().join("id_ed25519");
+        let pem = client_key
+            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+            .unwrap();
+        std::fs::write(&key_path, pem.as_bytes()).unwrap();
+        std::fs::set_permissions(
+            &key_path,
+            std::os::unix::fs::PermissionsExt::from_mode(0o600),
+        )
+        .unwrap();
+        let added = std::process::Command::new("ssh-add")
+            .arg(&key_path)
+            .env("SSH_AUTH_SOCK", &socket)
+            .output()
+            .unwrap();
+        assert!(added.status.success(), "ssh-add failed: {added:?}");
+
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key).with_agent_socket(socket);
+        let (s, mut rx) = sink();
+        let result = mgr
+            .connect(request(server.addr.port(), SshAuth::Agent), s)
+            .await;
+        let _ = agent.kill();
+        let _ = agent.wait();
+        result.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
     }
 
     #[tokio::test]

@@ -3,7 +3,7 @@ import { describeSshError, toSshError } from "./sshErrors";
 
 describe("toSshError", () => {
   it("passes structured backend errors through", () => {
-    const err = { kind: "unknownHost", host: "h", fingerprint: "SHA256:abc" };
+    const err = { kind: "unknownHost", host: "h", fingerprint: "SHA256:abc", otherKnownKeys: [] };
     expect(toSshError(err)).toEqual(err);
   });
 
@@ -26,11 +26,21 @@ describe("describeSshError", () => {
     expect(text).toContain("line 4");
   });
 
+  it("warns when keys of another type are already known for the host", () => {
+    const text = describeSshError({
+      kind: "unknownHost",
+      host: "h",
+      fingerprint: "SHA256:x",
+      otherKnownKeys: ["ssh-rsa", "ecdsa-sha2-nistp256"],
+    });
+    expect(text).toContain("already has ssh-rsa, ecdsa-sha2-nistp256 key(s) recorded");
+  });
+
   it("describes the other kinds", () => {
     expect(describeSshError({ kind: "authFailed" })).toBe("Authentication failed.");
     expect(describeSshError({ kind: "connection", message: "refused" })).toBe("refused");
     expect(describeSshError({ kind: "unknownSession", id: 3 })).toBe("Session 3 is no longer open.");
-    expect(describeSshError({ kind: "unknownHost", host: "h", fingerprint: "SHA256:x" })).toBe(
+    expect(describeSshError({ kind: "unknownHost", host: "h", fingerprint: "SHA256:x", otherKnownKeys: [] })).toBe(
       "The authenticity of host h can't be established. Fingerprint: SHA256:x",
     );
   });
