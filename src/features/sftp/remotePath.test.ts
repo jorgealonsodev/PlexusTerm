@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, joinPath, parentPath, shellQuote } from "./remotePath";
+import { basename, joinPath, parentPath, shellQuote, terminalPath } from "./remotePath";
 
 describe("joinPath", () => {
   it("joins a directory and a name with one separator", () => {
@@ -43,3 +43,17 @@ describe("shellQuote", () => {
     expect(shellQuote("")).toBe("''");
   });
 });
+
+describe("terminalPath", () => {
+  it("refuses names with control characters, which a shell could run as commands", () => {
+    expect(terminalPath("/tmp/x\x15touch /tmp/pwned\n")).toBeNull();
+    expect(terminalPath("/tmp/a\nb")).toBeNull();
+    expect(terminalPath("/tmp/a\x7fb")).toBeNull();
+  });
+
+  it("quotes every other name like shellQuote", () => {
+    expect(terminalPath("/home/u/my file's.txt")).toBe(shellQuote("/home/u/my file's.txt"));
+    expect(terminalPath("/etc/hosts")).toBe("/etc/hosts");
+  });
+});
+
