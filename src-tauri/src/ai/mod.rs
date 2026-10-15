@@ -6,6 +6,7 @@
 //! only shows or types it, every command text is reduced to one line without control
 //! characters first, and assistant answers keep only line breaks and tabs.
 
+pub mod models;
 mod opencode;
 mod providers;
 #[cfg(test)]

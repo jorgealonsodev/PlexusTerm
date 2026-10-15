@@ -1,6 +1,6 @@
-mod mosh;
 mod ai;
 mod history;
+mod mosh;
 mod platform;
 mod pty;
 mod secrets;
@@ -273,7 +273,11 @@ async fn sftp_mkdir(id: u32, path: String, ssh: State<'_, SshManager>) -> Result
 }
 
 #[tauri::command]
-async fn sftp_create_file(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<(), SftpError> {
+async fn sftp_create_file(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<(), SftpError> {
     sftp::create_file(&*ssh.sftp(id).await?, &path).await
 }
 
@@ -484,6 +488,7 @@ pub fn run() {
             ai::ai_complete,
             ai::ai_assist,
             ai::ai_opencode_models,
+            ai::models::ai_models,
             tools::keygen::keygen_generate,
             tools::keygen::keygen_save,
             tools::keygen::keygen_install,

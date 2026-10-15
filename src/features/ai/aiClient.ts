@@ -127,3 +127,20 @@ export const aiComplete = async (config: AiConfig, request: AiCompleteRequest) =
 
 export const aiAssist = (config: AiConfig, request: AiAssistRequest) =>
   invoke<AiAnswer>("ai_assist", { config, request });
+
+/** One model of a provider's list (Rust `ai::models::ModelInfo`). */
+export interface AiModelInfo {
+  id: string;
+  name: string;
+  /** False for models PlexusTerm cannot talk to yet. */
+  supported: boolean;
+}
+
+export interface AiModelList {
+  models: AiModelInfo[];
+  note: string | null;
+}
+
+/** The models `provider` offers, read with its saved key; `baseUrl` only for `openai-compatible`. */
+export const aiModels = (provider: AiProvider, baseUrl?: string) =>
+  invoke<AiModelList>("ai_models", baseUrl === undefined ? { provider } : { provider, baseUrl });

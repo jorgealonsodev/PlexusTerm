@@ -258,6 +258,25 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(within(chat()).getByText("OpenCode Go · kimi-k3")).toBeTruthy();
   });
 
+  it("switches provider and model from the header's model list, for the next question (S10)", async () => {
+    withSettings({ aiProvider: "opencode-go", aiModel: "kimi-k3" });
+    answers.ai_models = (args) =>
+      (args as { provider: string }).provider === "anthropic"
+        ? { models: [{ id: "claude-opus-5-5", name: "Claude Opus 5.5", supported: true }], note: null }
+        : { models: [{ id: "kimi-k3", name: "Kimi K3", supported: true }], note: null };
+    answers.ai_assist = () => ({ answer: "Hi.", command: null });
+    await renderApp();
+    pressShortcut();
+    fireEvent.click(within(chat()).getByRole("button", { name: /OpenCode Go · kimi-k3/ }));
+    fireEvent.click(await within(chat()).findByRole("option", { name: /Claude Opus 5.5/ }));
+    expect(within(chat()).getByText("Anthropic · claude-opus-5-5")).toBeTruthy();
+    await ask("hola");
+    expect((calls("ai_assist")[0] as { config: { provider: string; model: string } }).config).toMatchObject({
+      provider: "anthropic",
+      model: "claude-opus-5-5",
+    });
+  });
+
   it("asks with the context and inserts the answer's command into the linked terminal without Enter", async () => {
     withSettings({ aiProvider: "openai-compatible", aiBaseUrl: "http://localhost:11434/v1", aiModel: "llama3.2", aiHistoryContext: 2 });
     answers.ai_assist = () => ({ answer: "Sizes of the entries, smallest first.", command: "du -sh * | sort -h" });
