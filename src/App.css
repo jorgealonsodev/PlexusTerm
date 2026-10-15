@@ -39,14 +39,18 @@ body,
 
 .toolbar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 12px;
+  /* Buttons shrink (labels end in "…") and then show icons only (features/toolbar/compact.ts). */
+  min-width: 0;
   padding: 6px 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
 .brand {
+  flex: none;
   height: 16px;
   margin-right: 4px;
 }
@@ -68,6 +72,46 @@ body,
 }
 
 .btn--icon svg {
+  flex: none;
+}
+
+/* Shrinks with its label cut by an ellipsis; compact.ts switches to icons only when too little is left. */
+.toolbar .btn--icon {
+  flex: 0 1 auto;
+  min-width: var(--btn-min, 0);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.btn__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hidden visually only: the label still names the button for screen readers. */
+.toolbar--compact .btn__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.toolbar--compact .btn--icon {
+  gap: 2px;
+  min-width: 0;
+}
+
+/* "More" is short: its menu keeps the whole button, so it never overlaps its neighbour. */
+.toolbar .menu {
+  display: flex;
+  flex: none;
+}
+
+.toolbar .toolbar__settings {
   flex: none;
 }
 

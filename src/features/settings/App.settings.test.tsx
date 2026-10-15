@@ -77,6 +77,13 @@ describe("App settings (S15.2, S15.6)", () => {
     for (const name of ["Terminal", "SSH", "Serial", "More", "Split right", "Split down", "Multi-exec", "Record macro", "Settings"]) {
       expect(screen.getByRole("button", { name }).querySelector("svg"), name).not.toBeNull();
     }
+    // Labels can shrink or hide on narrow windows; the tooltip still names the action.
+    for (const name of ["Terminal", "SSH", "Serial", "Split right", "Split down", "Multi-exec", "Record macro"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.querySelector(".btn__label")?.textContent).toBe(name);
+      expect(button.title).toContain(name);
+    }
+    expect(document.querySelector(".toolbar")?.classList.contains("toolbar--compact")).toBe(false);
     const sidebarTabs = [...document.querySelectorAll(".sidebar__tabs [role=tab]")];
     expect(sidebarTabs.map((t) => t.textContent)).toEqual(["Sessions", "SFTP", "Tunnels", "Macros"]);
     for (const tab of sidebarTabs) expect(tab.querySelector("svg"), tab.textContent!).not.toBeNull();
