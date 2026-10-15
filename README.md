@@ -45,6 +45,7 @@ sha256sum --ignore-missing -c checksums.txt
 | Colour schemes | 57 terminal schemes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Solarized, Rosé Pine, ...) with a live preview, and any font | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Terminal comfort | Find, font size, copy on select, paste confirmation, save and log output | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Macros | Record, edit and replay keystrokes, with waits and hotkeys | [Macros](docs/user-guide.md#macros) |
+| Languages | Interface in English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic (right to left) and Hindi; follows the system language | [Interface language](docs/user-guide.md#interface-language) |
 
 On Windows everything works as on Linux except Mosh; see [Windows](docs/user-guide.md#windows) for the other differences (shell, home folder, SSH agent, COM ports).
 

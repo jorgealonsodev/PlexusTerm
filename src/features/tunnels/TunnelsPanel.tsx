@@ -71,7 +71,7 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
                   role="img"
                   aria-label={t(STATE_LABEL[current.state])}
                 />
-                <span className="tree-row__label">{tunnel.name}</span>
+                <span className="tree-row__label" dir="auto">{tunnel.name}</span>
                 {editable && (
                   <span className="tree-row__actions">
                     <button title={t("common.edit")} onClick={() => props.onEdit(tunnel)}>✎</button>

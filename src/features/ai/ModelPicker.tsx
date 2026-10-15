@@ -139,7 +139,7 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
         title={t("ai.models.chooseAnother", { label })}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="model-picker__label">{label}</span>
+        <span className="model-picker__label" dir="auto">{label}</span>
         <ChevronDown size={12} aria-hidden />
       </button>
       {open && (
@@ -187,7 +187,7 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
                           }
                         }}
                       >
-                        <span className="model-picker__name">{m.name}</span>
+                        <span className="model-picker__name" dir="auto">{m.name}</span>
                         <span className="model-picker__provider">{aiProviderLabel(g.provider)}</span>
                       </div>
                     );
