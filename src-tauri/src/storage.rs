@@ -88,6 +88,37 @@ pub fn read_bounded(path: &Path, max_bytes: u64) -> Result<Vec<u8>, StorageError
     Ok(bytes)
 }
 
+fn too_large(path: &Path, max_bytes: u64) -> StorageError {
+    StorageError::Io(format!(
+        "{}: contents are too large (limit {max_bytes} bytes)",
+        path.display()
+    ))
+}
+
+/// Writes a text file the user chose (e.g. saved terminal output), replacing it.
+/// Refuses contents larger than `max_bytes` before touching the file.
+pub fn write_text(path: &Path, contents: &str, max_bytes: u64) -> Result<(), StorageError> {
+    if contents.len() as u64 > max_bytes {
+        return Err(too_large(path, max_bytes));
+    }
+    std::fs::write(path, contents).map_err(|err| io(path, err))
+}
+
+/// Appends to a text file the user chose (e.g. a session log), creating it when missing.
+/// Refuses chunks larger than `max_bytes`; the parent directory must exist.
+pub fn append_text(path: &Path, contents: &str, max_bytes: u64) -> Result<(), StorageError> {
+    if contents.len() as u64 > max_bytes {
+        return Err(too_large(path, max_bytes));
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)
+        .map_err(|err| io(path, err))?;
+    file.write_all(contents.as_bytes())
+        .map_err(|err| io(path, err))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +140,37 @@ mod tests {
         let err = read_bounded(&path, 1024).unwrap_err().to_string();
         assert!(err.contains("too large"), "{err}");
         assert!(read_bounded(&dir.path().join("missing.ini"), 1024).is_err());
+    }
+
+    #[test]
+    fn write_text_creates_or_replaces_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("output.txt");
+        write_text(&path, "first\n", 1024).unwrap();
+        write_text(&path, "second\n", 1024).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "second\n");
+    }
+
+    #[test]
+    fn write_text_refuses_contents_over_the_limit_and_leaves_no_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("output.txt");
+        let err = write_text(&path, &"x".repeat(2048), 1024)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("too large"), "{err}");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn append_text_creates_the_file_then_appends() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.log");
+        append_text(&path, "one\n", 1024).unwrap();
+        append_text(&path, "two\n", 1024).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "one\ntwo\n");
+        assert!(append_text(&path, &"x".repeat(2048), 1024).is_err());
+        assert!(append_text(&dir.path().join("missing/dir/x.log"), "a", 1024).is_err());
     }
 
     #[test]

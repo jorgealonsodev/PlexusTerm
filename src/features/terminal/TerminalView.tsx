@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { patchJump } from "../sessions/jumpHosts";
 import { shouldAskAgain, storageFor } from "../sessions/passwordFlow";
 import { PasswordPrompt } from "../sessions/PasswordPrompt";
@@ -11,8 +15,15 @@ import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7 } from "../sftp/osc7";
-import { shortcutFor } from "../panes/shortcuts";
+import { shortcutFor, type Shortcut } from "../panes/shortcuts";
+import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
+import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
+import { bufferText, type BufferLine } from "./output";
+import { pastePlan } from "./paste";
+import { PasteConfirm } from "./PasteConfirm";
+import { createSessionLog, type SessionLog } from "./sessionLog";
+import { TerminalContextMenu, type MenuAction } from "./TerminalContextMenu";
 import { terminalTheme } from "./theme";
 
 interface TerminalViewProps {
@@ -31,6 +42,12 @@ interface TerminalViewProps {
   onInput?: (data: string) => void;
   /** Hands out a function that writes to this session as if typed; returns its unregister function. */
   registerWriter?: (write: (data: string) => void) => () => void;
+  /** App-wide terminal settings (S15.6); defaults when omitted. */
+  settings?: TerminalSettings;
+  /** Changes a setting from inside the pane (the paste confirmation's "Don't ask again"). */
+  onSettingsChange?: (patch: Partial<TerminalSettings>) => void;
+  /** File this pane's output is logged to, or null when logging stops (S15.5). */
+  onLogging?: (path: string | null) => void;
 }
 
 interface PendingHost {
@@ -56,6 +73,25 @@ const savedLoginOf = (where: { host: string; port: number; username: string; aut
 
 const red = (text: string) => `\x1b[31m${text}\x1b[0m\r\n`;
 
+/** Every row of the scrollback, for "Save output to file". */
+const scrollback = (term: Terminal): BufferLine[] => {
+  const buffer = term.buffer.active;
+  const rows: BufferLine[] = [];
+  for (let i = 0; i < buffer.length; i++) {
+    const line = buffer.getLine(i);
+    if (line) rows.push({ text: line.translateToString(false), isWrapped: line.isWrapped });
+  }
+  return rows;
+};
+
+const TEXT_FILTERS = [{ name: "Text", extensions: ["txt", "log"] }];
+
+interface PendingPaste {
+  text: string;
+  lineCount: number;
+  preview: string[];
+}
+
 /** Login typed after the saved password failed; kept for later retries (e.g. host key trust). */
 interface TypedLogin {
   auth: SshAuth;
@@ -73,10 +109,25 @@ export function TerminalView({
   onSession,
   onInput,
   registerWriter,
+  settings = DEFAULT_SETTINGS,
+  onSettingsChange,
+  onLogging,
 }: TerminalViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const searchRef = useRef<SearchAddon | null>(null);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const [findOpen, setFindOpen] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [pendingPaste, setPendingPaste] = useState<PendingPaste | null>(null);
+  const logRef = useRef<SessionLog | null>(null);
+  const [logPath, setLogPath] = useState<string | null>(null);
+  /** Pane-local shortcuts, reached from xterm's key handler. */
+  const paneShortcutRef = useRef<(shortcut: Shortcut) => void>(() => {});
+  /** The current paste handler, reached from the native paste listener. */
+  const pasteTextRef = useRef<(text: string) => void>(() => {});
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
   const [askPassword, setAskPassword] = useState<PasswordFor | null>(null);
@@ -91,8 +142,8 @@ export function TerminalView({
         ? savedLoginOf(target)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -101,7 +152,7 @@ export function TerminalView({
     const term = new Terminal({
       cursorBlink: true,
       fontFamily: '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace',
-      fontSize: 14,
+      fontSize: settingsRef.current.fontSize,
       lineHeight: 1.15,
       scrollback: 10000,
       theme: terminalTheme,
@@ -109,13 +160,26 @@ export function TerminalView({
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon());
+    const search = new SearchAddon();
+    term.loadAddon(search);
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
     // returning false lets the event bubble to the window listener without xterm handling it.
-    term.attachCustomKeyEventHandler((e) => shortcutFor(e) === null);
+    // Find, copy and paste belong to this pane and are handled here.
+    term.attachCustomKeyEventHandler((e) => {
+      const shortcut = shortcutFor(e);
+      if (shortcut === null) return true;
+      if (e.type === "keydown") {
+        // No native paste on top of ours.
+        if (shortcut.type === "paste") e.preventDefault();
+        paneShortcutRef.current(shortcut);
+      }
+      return false;
+    });
     term.open(host);
     fit.fit();
     termRef.current = term;
     fitRef.current = fit;
+    searchRef.current = search;
 
     const backend = backendFor(target);
     let sessionId: number | null = null;
@@ -154,7 +218,10 @@ export function TerminalView({
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
-          if (msg.event === "output") term.write(msg.data);
+          if (msg.event === "output") {
+            term.write(msg.data);
+            logRef.current?.write(msg.data);
+          }
           else if (target.type === "serial") endSerial();
           else {
             callbacks.current.onSession?.(null);
@@ -215,8 +282,29 @@ export function TerminalView({
     });
     observer.observe(host);
 
+    // Every native paste (e.g. middle click) goes through the same confirmation as ours.
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      pasteTextRef.current(e.clipboardData?.getData("text/plain") ?? "");
+    };
+    host.addEventListener("paste", onPaste, true);
+    // Copy on select: only selections made with the mouse (find matches select text too).
+    const onMouseUp = (e: globalThis.MouseEvent) => {
+      if (e.button !== 0 || !settingsRef.current.copyOnSelect) return;
+      setTimeout(() => {
+        if (!disposed && term.hasSelection()) void writeText(term.getSelection()).catch(() => {});
+      }, 0);
+    };
+    host.addEventListener("mouseup", onMouseUp);
+
     return () => {
       disposed = true;
+      host.removeEventListener("paste", onPaste, true);
+      host.removeEventListener("mouseup", onMouseUp);
+      // Closing the pane writes what the log still holds.
+      void logRef.current?.stop();
+      logRef.current = null;
       clearTimeout(startTimer);
       unregisterWriter?.();
       observer.disconnect();
@@ -234,9 +322,158 @@ export function TerminalView({
     if (focused) termRef.current?.focus();
   }, [active, focused]);
 
+  // Font size changes apply live (S15.2); hidden tabs refit when they are shown again.
+  const fontSize = settings.fontSize;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || term.options.fontSize === fontSize) return;
+    term.options.fontSize = fontSize;
+    if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
+  }, [fontSize]);
+
+  const focusTerminal = () => termRef.current?.focus();
+
+  /** Pastes as if typed (multi-execution included), asking first for several lines (S15.3). */
+  const pasteText = (text: string) => {
+    const plan = pastePlan(text, settingsRef.current);
+    if (plan.kind === "direct") termRef.current?.paste(plan.text);
+    else if (plan.kind === "confirm") setPendingPaste(plan);
+  };
+  pasteTextRef.current = pasteText;
+
+  const pasteFromClipboard = () => {
+    readText()
+      .then((text) => pasteText(text ?? ""))
+      .catch(() => termRef.current?.write(red("Could not read the clipboard.")));
+  };
+
+  const copySelection = () => {
+    const term = termRef.current;
+    if (term?.hasSelection()) void writeText(term.getSelection()).catch(() => {});
+  };
+
+  const find = (text: string, options: FindOptions, direction: FindDirection) => {
+    const search = searchRef.current;
+    if (!search) return false;
+    try {
+      return direction === "next" ? search.findNext(text, options) : search.findPrevious(text, options);
+    } catch {
+      return false; // e.g. an unfinished regular expression
+    }
+  };
+
+  const closeFind = () => {
+    setFindOpen(false);
+    searchRef.current?.clearDecorations();
+    focusTerminal();
+  };
+
+  const saveOutput = async () => {
+    const term = termRef.current;
+    if (!term) return;
+    const contents = bufferText(scrollback(term));
+    const path = await save({ defaultPath: "terminal-output.txt", filters: TEXT_FILTERS });
+    if (!path) return;
+    await invoke("save_text_file", { path, contents }).catch((err) =>
+      termRef.current?.write(red(`Could not save the output: ${err}`)),
+    );
+  };
+
+  const stopLogging = () => {
+    void logRef.current?.stop();
+    logRef.current = null;
+    setLogPath(null);
+    callbacks.current.onLogging?.(null);
+  };
+
+  const toggleLogging = async () => {
+    if (logRef.current) return stopLogging();
+    const path = await save({ defaultPath: "session.log", filters: TEXT_FILTERS });
+    if (!path || logRef.current || !termRef.current) return;
+    const log = createSessionLog(path, (file, contents) => invoke("append_text_file", { path: file, contents }), {
+      onError: (err) => {
+        if (logRef.current !== log) return;
+        termRef.current?.write(red(`Logging stopped: ${err}`));
+        stopLogging();
+      },
+    });
+    logRef.current = log;
+    setLogPath(path);
+    callbacks.current.onLogging?.(path);
+  };
+
+  const runMenuAction = (action: MenuAction) => {
+    const term = termRef.current;
+    switch (action) {
+      case "copy":
+        copySelection();
+        break;
+      case "paste":
+        pasteFromClipboard();
+        break;
+      case "selectAll":
+        term?.selectAll();
+        break;
+      case "clear":
+        term?.clear();
+        break;
+      case "find":
+        return setFindOpen(true);
+      case "save":
+        void saveOutput();
+        break;
+      case "log":
+        void toggleLogging();
+        break;
+    }
+    focusTerminal();
+  };
+
+  paneShortcutRef.current = (shortcut) => {
+    if (shortcut.type === "find") setFindOpen(true);
+    else if (shortcut.type === "copy") copySelection();
+    else if (shortcut.type === "paste") pasteFromClipboard();
+  };
+
+  /** Right click pastes, or opens the menu when that is turned off; Ctrl+right click always opens it (S15.4). */
+  const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    if (settingsRef.current.rightClickPastes && !e.ctrlKey) pasteFromClipboard();
+    else setMenu({ x: e.clientX, y: e.clientY });
+  };
+
   return (
     <div className="terminal-pane" hidden={!active}>
-      <div className="terminal-host" ref={hostRef} />
+      <div className="terminal-host" ref={hostRef} onContextMenu={onContextMenu} />
+      {findOpen && <FindBar onFind={find} onClose={closeFind} />}
+      {menu && (
+        <TerminalContextMenu
+          x={menu.x}
+          y={menu.y}
+          logging={logPath !== null}
+          onAction={runMenuAction}
+          onClose={() => {
+            setMenu(null);
+            focusTerminal();
+          }}
+        />
+      )}
+      {pendingPaste && (
+        <PasteConfirm
+          lineCount={pendingPaste.lineCount}
+          preview={pendingPaste.preview}
+          onPaste={(dontAskAgain) => {
+            setPendingPaste(null);
+            if (dontAskAgain) onSettingsChange?.({ confirmMultilinePaste: false });
+            termRef.current?.paste(pendingPaste.text);
+            focusTerminal();
+          }}
+          onCancel={() => {
+            setPendingPaste(null);
+            focusTerminal();
+          }}
+        />
+      )}
       {pendingHost && (
         <HostKeyPrompt
           host={pendingHost.host}

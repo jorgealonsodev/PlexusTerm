@@ -3,12 +3,14 @@ import type { Tab } from "./tabs";
 interface TabBarProps {
   tabs: Tab[];
   activeKey: string | null;
+  /** Tabs whose output is being logged to a file. */
+  logging?: ReadonlySet<string>;
   onActivate: (key: string) => void;
   onClose: (key: string) => void;
   onNew: () => void;
 }
 
-export function TabBar({ tabs, activeKey, onActivate, onClose, onNew }: TabBarProps) {
+export function TabBar({ tabs, activeKey, logging, onActivate, onClose, onNew }: TabBarProps) {
   return (
     <div className="tabbar" role="tablist">
       {tabs.map((tab) => (
@@ -23,6 +25,11 @@ export function TabBar({ tabs, activeKey, onActivate, onClose, onNew }: TabBarPr
           }}
           title={tab.title}
         >
+          {logging?.has(tab.key) && (
+            <span className="tab__log" role="img" aria-label="Logging to file" title="Logging to file">
+              ●
+            </span>
+          )}
           <span className="tab__title">{tab.title}</span>
           <button
             className="tab__close"
