@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePlatform } from "../platform/usePlatform";
 import { listSerialPorts } from "./serialBackend";
 import { COMMON_BAUD_RATES, CUSTOM_BAUD, type SerialForm } from "./serialSettings";
+import { useT } from "../../i18n/i18n";
 
 interface SerialFieldsProps {
   form: SerialForm;
@@ -14,6 +15,7 @@ export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProp
   const [ports, setPorts] = useState<string[] | null>(null);
   const [portsError, setPortsError] = useState<string | null>(null);
   const platform = usePlatform();
+  const t = useT();
   const set =
     (field: keyof SerialForm) =>
     (e: { target: { value: string } }) =>
@@ -34,15 +36,15 @@ export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProp
     <>
       <div className="serial-ports">
         <div className="serial-ports__header">
-          <span>Detected ports</span>
+          <span>{t("sessions.serial.detected")}</span>
           <button type="button" className="btn" onClick={refresh}>
-            Refresh
+            {t("common.refresh")}
           </button>
         </div>
         {ports === null ? (
-          <p className="muted">Looking for serial ports...</p>
+          <p className="muted">{t("sessions.serial.looking")}</p>
         ) : ports.length === 0 ? (
-          <p className="muted">{portsError ?? "No serial ports detected."}</p>
+          <p className="muted">{portsError ?? t("sessions.serial.noneDetected")}</p>
         ) : (
           <div className="serial-ports__list">
             {ports.map((port) => (
@@ -59,31 +61,31 @@ export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProp
         )}
       </div>
       <label className="field">
-        Serial port
+        {t("sessions.serial.port")}
         <input autoFocus={autoFocusPath} value={form.path} onChange={set("path")} placeholder={platform === "windows" ? "COM3" : "/dev/ttyUSB0"} />
       </label>
       <div className="form-row">
         <label className="field field--grow">
-          Baud rate
+          {t("sessions.serial.baud")}
           <select value={form.baud} onChange={set("baud")}>
             {COMMON_BAUD_RATES.map((rate) => (
               <option key={rate} value={String(rate)}>
                 {rate}
               </option>
             ))}
-            <option value={CUSTOM_BAUD}>Custom...</option>
+            <option value={CUSTOM_BAUD}>{t("sessions.serial.custom")}</option>
           </select>
         </label>
         {form.baud === CUSTOM_BAUD && (
           <label className="field field--grow">
-            Custom baud rate
+            {t("sessions.serial.customBaud")}
             <input value={form.customBaud} onChange={set("customBaud")} inputMode="numeric" />
           </label>
         )}
       </div>
       <div className="form-row">
         <label className="field field--grow">
-          Data bits
+          {t("sessions.serial.dataBits")}
           <select value={form.dataBits} onChange={set("dataBits")}>
             {["5", "6", "7", "8"].map((n) => (
               <option key={n} value={n}>
@@ -93,24 +95,24 @@ export function SerialFields({ form, onChange, autoFocusPath }: SerialFieldsProp
           </select>
         </label>
         <label className="field field--grow">
-          Parity
+          {t("sessions.serial.parity")}
           <select value={form.parity} onChange={set("parity")}>
-            <option value="none">None</option>
-            <option value="odd">Odd</option>
-            <option value="even">Even</option>
+            <option value="none">{t("sessions.serial.none")}</option>
+            <option value="odd">{t("sessions.serial.odd")}</option>
+            <option value="even">{t("sessions.serial.even")}</option>
           </select>
         </label>
         <label className="field field--grow">
-          Stop bits
+          {t("sessions.serial.stopBits")}
           <select value={form.stopBits} onChange={set("stopBits")}>
             <option value="1">1</option>
             <option value="2">2</option>
           </select>
         </label>
         <label className="field field--grow">
-          Flow control
+          {t("sessions.serial.flow")}
           <select value={form.flow} onChange={set("flow")}>
-            <option value="none">None</option>
+            <option value="none">{t("sessions.serial.none")}</option>
             <option value="software">XON/XOFF</option>
             <option value="hardware">RTS/CTS</option>
           </select>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { SerialTarget } from "../sessions/types";
 import { SerialFields } from "./SerialFields";
 import { defaultSerialForm, parseSerialForm } from "./serialSettings";
+import { useT } from "../../i18n/i18n";
 
 interface SerialDialogProps {
   onConnect: (target: SerialTarget) => void;
@@ -9,6 +10,7 @@ interface SerialDialogProps {
 }
 
 export function SerialDialog({ onConnect, onCancel }: SerialDialogProps) {
+  const t = useT();
   const [form, setForm] = useState(defaultSerialForm);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,15 +24,15 @@ export function SerialDialog({ onConnect, onCancel }: SerialDialogProps) {
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="serial-title">
-        <h2 id="serial-title">Serial session</h2>
+        <h2 id="serial-title">{t("sessions.serial.title")}</h2>
         <SerialFields form={form} onChange={setForm} autoFocusPath />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
-            Connect
+            {t("common.connect")}
           </button>
         </div>
       </form>

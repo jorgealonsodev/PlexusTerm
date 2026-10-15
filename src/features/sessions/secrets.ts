@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
@@ -35,7 +36,7 @@ export async function forgetSecrets(sessionIds: string[]): Promise<string | null
   if (failed.length === 0) return null;
   const reason = failed[0].reason as { message?: unknown } | undefined;
   const detail = typeof reason?.message === "string" ? reason.message : String(failed[0].reason);
-  return `Could not delete ${failed.length} saved password(s) from the system keyring: ${detail}`;
+  return t("sessions.secrets.deleteFailed", { count: failed.length, error: detail });
 }
 
 /** `secret_available`, asked once per mount while `enabled`; null until known. */

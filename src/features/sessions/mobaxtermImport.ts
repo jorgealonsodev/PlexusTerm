@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import {
   isSshSession,
   isTelnetSession,
@@ -166,7 +167,10 @@ export function planImport(library: SessionLibrary, parsed: ParsedImport, newId:
 
 /** Readable label for a key of `skipped`. */
 export function skippedLabel(key: string): string {
-  if (key === "invalid") return "Sessions without a host";
-  if (key === "unrecognized") return "Unrecognized lines";
-  return `${key} sessions`;
+  if (key === "invalid") return t("sessions.import.skippedInvalid");
+  if (key === "unrecognized") return t("sessions.import.skippedUnrecognized");
+  if (key === "Serial") return t("sessions.import.skippedSerial");
+  const unknown = /^type (\d+)$/.exec(key);
+  if (unknown) return t("sessions.import.skippedUnknownType", { type: unknown[1] });
+  return t("sessions.import.skippedType", { type: key });
 }

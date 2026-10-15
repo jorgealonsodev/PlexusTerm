@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import { emptyMoshForm, type MoshForm } from "../mosh/mosh";
 import { emptyTelnetForm, parseTelnetForm, type TelnetForm } from "../telnet/telnetForm";
 import { defaultSerialForm, formFromSettings, parseSerialForm, type SerialForm } from "../serial/serialSettings";
@@ -58,7 +59,7 @@ export function parseSessionForm(
     const sshSessionId = form.mosh.sshSessionId;
     const ssh = library?.sessions.find((s) => s.id === sshSessionId);
     if (!sshSessionId || (library && (!ssh || !isSshSession(ssh)))) {
-      return { ok: false, error: "Choose the saved SSH session Mosh logs in with" };
+      return { ok: false, error: t("sessions.form.moshSessionRequired") };
     }
     const serverCommand = form.mosh.serverCommand.trim();
     return {
@@ -77,9 +78,9 @@ export function parseSessionForm(
   const parsed = parseQuickConnect(form);
   if (!parsed.ok) return parsed;
   const jumpIds = form.jumpIds ?? [];
-  if (jumpIds.length > MAX_JUMPS) return { ok: false, error: `At most ${MAX_JUMPS} jump hosts are allowed` };
-  if (new Set(jumpIds).size !== jumpIds.length) return { ok: false, error: "A jump host is listed twice" };
-  if (jumpIds.includes(id)) return { ok: false, error: "A session cannot be its own jump host" };
+  if (jumpIds.length > MAX_JUMPS) return { ok: false, error: t("sessions.form.tooManyJumps", { max: MAX_JUMPS }) };
+  if (new Set(jumpIds).size !== jumpIds.length) return { ok: false, error: t("sessions.form.jumpTwice") };
+  if (jumpIds.includes(id)) return { ok: false, error: t("sessions.form.ownJump") };
   const { host, port, username, auth } = parsed.target;
 
   const saved: SavedAuth =

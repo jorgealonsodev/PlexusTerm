@@ -1,3 +1,5 @@
+import { t } from "../../i18n/i18n";
+
 /** Mirrors the Rust `SshError` enum serialized with `#[serde(tag = "kind")]`. */
 export type SshError =
   | { kind: "unknownHost"; host: string; fingerprint: string; otherKnownKeys: string[] }
@@ -19,35 +21,32 @@ export function toSshError(err: unknown): SshError {
 
 /** Shown when the server offers a key type that differs from the ones recorded for it. */
 export function otherKeysWarning(otherKnownKeys: string[]): string {
-  return (
-    `This host already has ${otherKnownKeys.join(", ")} key(s) recorded in known_hosts. ` +
-    "The server may have changed its key type, or someone may be intercepting the connection."
-  );
+  return t("sessions.sshError.otherKeys", { keys: otherKnownKeys.join(", ") });
 }
 
 export function describeSshError(err: SshError): string {
   switch (err.kind) {
     case "unknownHost": {
-      const text = `The authenticity of host ${err.host} can't be established. Fingerprint: ${err.fingerprint}`;
+      const text = t("sessions.sshError.unknownHost", { host: err.host, fingerprint: err.fingerprint });
       return err.otherKnownKeys.length ? `${text}\r\n${otherKeysWarning(err.otherKnownKeys)}` : text;
     }
     case "hostKeyChanged":
       return [
-        "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!",
-        `The host key for ${err.host} is now ${err.fingerprint},`,
-        `which does not match line ${err.line} of ~/.ssh/known_hosts.`,
-        "Someone could be intercepting the connection. If the change is expected,",
-        "remove the old entry (ssh-keygen -R <host>) and connect again.",
+        t("sessions.sshError.hostKeyChanged1"),
+        t("sessions.sshError.hostKeyChanged2", { host: err.host, fingerprint: err.fingerprint }),
+        t("sessions.sshError.hostKeyChanged3", { line: err.line }),
+        t("sessions.sshError.hostKeyChanged4"),
+        t("sessions.sshError.hostKeyChanged5"),
       ].join("\r\n");
     case "authFailed":
-      return "Authentication failed.";
+      return t("sessions.sshError.authFailed");
     case "secretMissing":
-      return "No saved password was found for this session.";
+      return t("sessions.sshError.secretMissing");
     case "unknownSession":
-      return `Session ${err.id} is no longer open.`;
+      return t("sessions.sshError.unknownSession", { id: err.id });
     case "connection":
       return err.message;
     case "hop":
-      return `via ${err.name} (jump host ${err.hop}): ${describeSshError(err.error)}`;
+      return t("sessions.sshError.hop", { name: err.name, hop: err.hop, error: describeSshError(err.error) });
   }
 }

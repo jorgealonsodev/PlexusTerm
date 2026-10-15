@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MAX_JUMPS, type SavedSession } from "./library";
+import { useT } from "../../i18n/i18n";
 
 interface JumpHostsFieldProps {
   /** Ids of the chosen jump hosts, outermost first. */
@@ -9,12 +10,11 @@ interface JumpHostsFieldProps {
   candidates: SavedSession[];
 }
 
-const DELETED = "(deleted session)";
-
 /** Ordered list of jump hosts (S14.1): add from the saved SSH sessions, remove, move up/down. */
 export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldProps) {
+  const t = useT();
   const [choice, setChoice] = useState("");
-  const nameOf = (id: string) => candidates.find((c) => c.id === id)?.name ?? DELETED;
+  const nameOf = (id: string) => candidates.find((c) => c.id === id)?.name ?? t("sessions.jumps.deleted");
   const available = candidates.filter((c) => !value.includes(c.id));
   const full = value.length >= MAX_JUMPS;
   const selected = available.some((c) => c.id === choice) ? choice : (available[0]?.id ?? "");
@@ -27,9 +27,9 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
 
   return (
     <fieldset className="jump-hosts">
-      <legend>Jump hosts</legend>
+      <legend>{t("sessions.jumps.legend")}</legend>
       {value.length === 0 ? (
-        <p className="muted">Connects directly. Add saved SSH sessions to go through them first, in order.</p>
+        <p className="muted">{t("sessions.jumps.direct")}</p>
       ) : (
         <ol className="jump-hosts__list">
           {value.map((id, index) => {
@@ -40,7 +40,7 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
                 <button
                   type="button"
                   className="btn btn--small"
-                  aria-label={`Move ${name} up`}
+                  aria-label={t("sessions.jumps.moveUp", { name })}
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
                 >
@@ -49,7 +49,7 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
                 <button
                   type="button"
                   className="btn btn--small"
-                  aria-label={`Move ${name} down`}
+                  aria-label={t("sessions.jumps.moveDown", { name })}
                   disabled={index === value.length - 1}
                   onClick={() => move(index, 1)}
                 >
@@ -58,7 +58,7 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
                 <button
                   type="button"
                   className="btn btn--small"
-                  aria-label={`Remove ${name}`}
+                  aria-label={t("sessions.jumps.remove", { name })}
                   onClick={() => onChange(value.filter((_, i) => i !== index))}
                 >
                   ✕
@@ -70,7 +70,7 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
       )}
       <div className="form-row">
         <label className="field field--grow">
-          Add jump host
+          {t("sessions.jumps.addLabel")}
           <select
             value={selected}
             disabled={full || available.length === 0}
@@ -92,10 +92,10 @@ export function JumpHostsField({ value, onChange, candidates }: JumpHostsFieldPr
             setChoice("");
           }}
         >
-          Add
+          {t("common.add")}
         </button>
       </div>
-      {full && <p className="muted">At most {MAX_JUMPS} jump hosts.</p>}
+      {full && <p className="muted">{t("sessions.jumps.max", { max: MAX_JUMPS })}</p>}
     </fieldset>
   );
 }

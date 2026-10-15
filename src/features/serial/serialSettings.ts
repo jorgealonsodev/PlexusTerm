@@ -1,3 +1,4 @@
+import { t } from "../../i18n/i18n";
 import type { SerialFlow, SerialParity, SerialSettings } from "../sessions/types";
 
 export const COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
@@ -34,16 +35,16 @@ const STOP_BITS = [1, 2] as const;
 
 export function parseSerialForm(form: SerialForm): SerialFormResult {
   const path = form.path.trim();
-  if (!path) return { ok: false, error: "Serial port is required" };
+  if (!path) return { ok: false, error: t("sessions.serial.portRequired") };
   const baudText = (form.baud === CUSTOM_BAUD ? form.customBaud : form.baud).trim();
   const baud = Number(baudText);
   if (!/^\d+$/.test(baudText) || !Number.isSafeInteger(baud) || baud <= 0) {
-    return { ok: false, error: "Baud rate must be a positive whole number" };
+    return { ok: false, error: t("sessions.serial.baudInvalid") };
   }
   const dataBits = DATA_BITS.find((n) => String(n) === form.dataBits);
-  if (!dataBits) return { ok: false, error: "Data bits must be 5, 6, 7 or 8" };
+  if (!dataBits) return { ok: false, error: t("sessions.serial.dataBitsInvalid") };
   const stopBits = STOP_BITS.find((n) => String(n) === form.stopBits);
-  if (!stopBits) return { ok: false, error: "Stop bits must be 1 or 2" };
+  if (!stopBits) return { ok: false, error: t("sessions.serial.stopBitsInvalid") };
   return { ok: true, settings: { path, baud, dataBits, parity: form.parity, stopBits, flow: form.flow } };
 }
 

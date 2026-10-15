@@ -15,6 +15,7 @@ import { MobaXtermImportDialog, type ImportResult } from "./MobaXtermImportDialo
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { decodeIni, parseMobaXtermIni, planImport } from "./mobaxtermImport";
 import type { LibraryStatus } from "./useSessionLibrary";
+import { t, useT } from "../../i18n/i18n";
 
 interface SessionsPanelProps {
   library: SessionLibrary;
@@ -47,7 +48,7 @@ function sessionTooltip(session: LibrarySession, library: SessionLibrary): strin
   if (isTelnetSession(session)) return `telnet ${session.host}:${session.port}`;
   if (isMoshSession(session)) {
     const ssh = library.sessions.find((s) => s.id === session.sshSessionId);
-    return ssh ? `mosh, logging in with "${ssh.name}"` : "mosh (its SSH session no longer exists)";
+    return ssh ? t("sessions.panel.moshTooltip", { name: ssh.name }) : t("sessions.panel.moshOrphanTooltip");
   }
   return `${session.username}@${session.host}:${session.port}`;
 }
@@ -74,6 +75,7 @@ function findFolder(nodes: TreeNode[], path: string): TreeNode | null {
 
 export function SessionsPanel(props: SessionsPanelProps) {
   const { library, status, saveError } = props;
+  const t = useT();
   const [filter, setFilter] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(library, filter), [library, filter]);
@@ -92,30 +94,30 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const menuItems = (m: Menu): ContextMenuItem[] => {
     if (m.kind === "session") {
       const { session } = m;
-      const connect = { label: "Connect", onSelect: () => props.onOpen(session) };
+      const connect = { label: t("common.connect"), onSelect: () => props.onOpen(session) };
       if (!editable) return [connect];
       return [
         connect,
-        { label: "Edit…", onSelect: () => props.onEdit(session) },
-        { label: "Duplicate", onSelect: () => props.onDuplicate(session) },
+        { label: t("sessions.menu.edit"), onSelect: () => props.onEdit(session) },
+        { label: t("sessions.menu.duplicate"), onSelect: () => props.onDuplicate(session) },
         { separator: true },
-        { label: "Delete", onSelect: () => props.onDelete(session), danger: true },
+        { label: t("common.delete"), onSelect: () => props.onDelete(session), danger: true },
       ];
     }
     const folder = findFolder(tree, m.path);
     const inside = folder ? sessionsUnder(folder) : [];
     const connectAll = {
-      label: `Connect all (${inside.length})`,
+      label: t("sessions.menu.connectAll", { count: inside.length }),
       onSelect: () => inside.forEach((session) => props.onOpen(session)),
       disabled: inside.length === 0,
     };
     if (!editable) return [connectAll];
     return [
-      { label: "New session here…", onSelect: () => props.onNewSession(m.path) },
-      { label: "New folder here…", onSelect: () => props.onNewFolder(m.path) },
+      { label: t("sessions.menu.newSessionHere"), onSelect: () => props.onNewSession(m.path) },
+      { label: t("sessions.menu.newFolderHere"), onSelect: () => props.onNewFolder(m.path) },
       connectAll,
       { separator: true },
-      { label: "Delete folder", onSelect: () => props.onDeleteFolder(m.path), danger: true },
+      { label: t("sessions.menu.deleteFolder"), onSelect: () => props.onDeleteFolder(m.path), danger: true },
     ];
   };
 
@@ -123,10 +125,10 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const importFile = async () => {
     try {
       const path = await open({
-        title: "Import sessions from MobaXterm.ini",
+        title: t("sessions.panel.importTitle"),
         multiple: false,
         directory: false,
-        filters: [{ name: "MobaXterm configuration", extensions: ["ini"] }],
+        filters: [{ name: t("sessions.panel.importFilter"), extensions: ["ini"] }],
       });
       if (typeof path !== "string") return;
       const bytes = await invoke<number[]>("import_read_file", { path });
@@ -167,9 +169,9 @@ export function SessionsPanel(props: SessionsPanelProps) {
             <span className="tree-row__label">{node.name}</span>
             {editable && (
               <span className="tree-row__actions" onClick={(e) => e.stopPropagation()}>
-                <button title="New session here" onClick={() => props.onNewSession(node.path)}>+</button>
-                <button title="New subfolder" onClick={() => props.onNewFolder(node.path)}>⊞</button>
-                <button title="Delete folder" onClick={() => props.onDeleteFolder(node.path)}>🗑</button>
+                <button title={t("sessions.panel.newSessionHere")} onClick={() => props.onNewSession(node.path)}>+</button>
+                <button title={t("sessions.panel.newSubfolder")} onClick={() => props.onNewFolder(node.path)}>⊞</button>
+                <button title={t("sessions.panel.deleteFolder")} onClick={() => props.onDeleteFolder(node.path)}>🗑</button>
               </span>
             )}
           </div>
@@ -193,8 +195,8 @@ export function SessionsPanel(props: SessionsPanelProps) {
           <span className="tree-row__label">{session.name}</span>
           {editable && (
             <span className="tree-row__actions">
-              <button title="Edit" onClick={() => props.onEdit(session)}>✎</button>
-              <button title="Delete" onClick={() => props.onDelete(session)}>🗑</button>
+              <button title={t("common.edit")} onClick={() => props.onEdit(session)}>✎</button>
+              <button title={t("common.delete")} onClick={() => props.onDelete(session)}>🗑</button>
             </span>
           )}
         </div>
@@ -205,36 +207,36 @@ export function SessionsPanel(props: SessionsPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>Saved sessions</span>
+        <span>{t("sessions.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
-            <button className="btn btn--small" onClick={() => props.onNewSession("")}>New</button>
-            <button className="btn btn--small" onClick={() => props.onNewFolder("")}>Folder</button>
-            <button className="btn btn--small" title="Import sessions from MobaXterm.ini" onClick={() => void importFile()}>
-              Import
+            <button className="btn btn--small" onClick={() => props.onNewSession("")}>{t("sessions.panel.new")}</button>
+            <button className="btn btn--small" onClick={() => props.onNewFolder("")}>{t("sessions.panel.folder")}</button>
+            <button className="btn btn--small" title={t("sessions.panel.importTitle")} onClick={() => void importFile()}>
+              {t("sessions.panel.import")}
             </button>
           </span>
         )}
       </div>
       <input
         className="sidebar__search"
-        placeholder="Search sessions"
+        placeholder={t("sessions.panel.search")}
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
-      {status.state === "loading" && <p className="sidebar__note">Loading…</p>}
+      {status.state === "loading" && <p className="sidebar__note">{t("common.loading")}</p>}
       {status.state === "error" && (
         <p className="sidebar__note form-error">
-          Could not read saved sessions: {status.message}. Editing is disabled to protect the file.
+          {t("sessions.panel.readError", { error: status.message })}
         </p>
       )}
-      {saveError && <p className="sidebar__note form-error">Could not save sessions: {saveError}</p>}
+      {saveError && <p className="sidebar__note form-error">{t("sessions.panel.saveError", { error: saveError })}</p>}
       {status.state === "ready" && tree.length === 0 && (
-        <p className="sidebar__note">{filter ? "No matches." : "No saved sessions yet."}</p>
+        <p className="sidebar__note">{filter ? t("sessions.panel.noMatches") : t("sessions.panel.empty")}</p>
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
-      <p className="sidebar__hint">Double-click a session to connect.</p>
+      <p className="sidebar__hint">{t("sessions.panel.hint")}</p>
       {importResult && (
         <MobaXtermImportDialog
           result={importResult}

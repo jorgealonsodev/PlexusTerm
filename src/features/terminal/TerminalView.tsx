@@ -37,6 +37,8 @@ import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, type MenuAction } from "./TerminalContextMenu";
 import { themeById } from "./themes";
+import type { AppKey } from "../../i18n/catalogs";
+import { t } from "../../i18n/i18n";
 
 interface TerminalViewProps {
   target: SessionTarget;
@@ -131,7 +133,7 @@ type PasswordFor = { rejected: boolean } & ({ jump: null } | { jump: { index: nu
 
 /** "bastion — jump host 1 of 2" */
 const jumpLabel = (jumps: JumpTarget[], index: number) =>
-  `${jumps[index].name} — jump host ${index + 1} of ${jumps.length}`;
+  t("sessions.jumps.label", { name: jumps[index].name, index: index + 1, total: jumps.length });
 
 /** The saved session whose keyring password a login uses, if any. */
 const savedLoginOf = (where: { host: string; port: number; username: string; auth: SshAuth }) =>
@@ -152,7 +154,7 @@ const scrollback = (term: Terminal): BufferLine[] => {
   return rows;
 };
 
-const TEXT_FILTERS = [{ name: "Text", extensions: ["txt", "log"] }];
+const textFilters = () => [{ name: t("terminal.view.textFiles"), extensions: ["txt", "log"] }];
 
 interface PendingPaste {
   text: string;
@@ -304,15 +306,17 @@ export function TerminalView({
     };
 
     const start = (trustedFingerprint?: string) => {
-      const via = jumpsRef.current.length ? ` via ${jumpsRef.current.map((j) => j.name).join(", ")}` : "";
-      if (target.type === "ssh") term.write(`Connecting to ${targetTitle(target)}${via}...\r\n`);
+      const jumps = jumpsRef.current.map((j) => j.name).join(", ");
+      const say = (plain: AppKey, withJumps: AppKey, where: string) =>
+        term.write(`${jumps ? t(withJumps, { target: where, jumps }) : t(plain, { target: where })}\r\n`);
+      if (target.type === "ssh") say("terminal.view.connecting", "terminal.view.connectingVia", targetTitle(target));
       if (target.type === "mosh") {
-        term.write(`Starting mosh-server on ${targetTitle(target.ssh)}${via} over SSH...\r\n`);
+        say("terminal.view.startingMosh", "terminal.view.startingMoshVia", targetTitle(target.ssh));
       }
-      if (target.type === "serial") term.write(`Opening ${targetTitle(target)}...\r\n`);
+      if (target.type === "serial") term.write(`${t("terminal.view.opening", { target: targetTitle(target) })}\r\n`);
       if (target.type === "telnet") {
-        term.write("\x1b[33mTelnet is not encrypted.\x1b[0m\r\n");
-        term.write(`Connecting to ${target.host}:${target.port}...\r\n`);
+        term.write(`\x1b[33m${t("terminal.view.telnetUnencrypted")}\x1b[0m\r\n`);
+        term.write(`${t("terminal.view.connecting", { target: `${target.host}:${target.port}` })}\r\n`);
       }
       backend
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
@@ -323,10 +327,13 @@ export function TerminalView({
             logRef.current?.write(msg.data);
             outputListeners.forEach((listener) => listener(msg.data));
           }
-          else if (target.type === "serial") endKeepingPane("Session ended. Close this tab or open the port again.");
+          else if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
           else if (target.type === "mosh" && msg.data !== 0) {
-            const code = msg.data === null ? "" : ` with code ${msg.data}`;
-            endKeepingPane(`mosh-client exited${code}. Close this tab or open the session again.`);
+            endKeepingPane(
+              msg.data === null
+                ? t("terminal.view.moshExited")
+                : t("terminal.view.moshExitedCode", { code: msg.data }),
+            );
           } else {
             callbacks.current.onSession?.(null);
             callbacks.current.onExit(msg.data);
@@ -647,7 +654,7 @@ export function TerminalView({
   const pasteFromClipboard = () => {
     readText()
       .then((text) => pasteText(text ?? ""))
-      .catch(() => termRef.current?.write(red("Could not read the clipboard.")));
+      .catch(() => termRef.current?.write(red(t("terminal.view.clipboardError"))));
   };
 
   const copySelection = () => {
@@ -675,10 +682,10 @@ export function TerminalView({
     const term = termRef.current;
     if (!term) return;
     const contents = bufferText(scrollback(term));
-    const path = await save({ defaultPath: "terminal-output.txt", filters: TEXT_FILTERS });
+    const path = await save({ defaultPath: "terminal-output.txt", filters: textFilters() });
     if (!path) return;
     await invoke("save_text_file", { path, contents }).catch((err) =>
-      termRef.current?.write(red(`Could not save the output: ${err}`)),
+      termRef.current?.write(red(t("terminal.view.saveError", { error: String(err) }))),
     );
   };
 
@@ -691,12 +698,12 @@ export function TerminalView({
 
   const toggleLogging = async () => {
     if (logRef.current) return stopLogging();
-    const path = await save({ defaultPath: "session.log", filters: TEXT_FILTERS });
+    const path = await save({ defaultPath: "session.log", filters: textFilters() });
     if (!path || logRef.current || !termRef.current) return;
     const log = createSessionLog(path, (file, contents) => invoke("append_text_file", { path: file, contents }), {
       onError: (err) => {
         if (logRef.current !== log) return;
-        termRef.current?.write(red(`Logging stopped: ${err}`));
+        termRef.current?.write(red(t("terminal.view.loggingStopped", { error: String(err) })));
         stopLogging();
       },
     });
@@ -804,7 +811,7 @@ export function TerminalView({
           }}
           onCancel={() => {
             setPendingHost(null);
-            termRef.current?.write(red("Connection cancelled: host key not trusted."));
+            termRef.current?.write(red(t("terminal.view.hostKeyCancelled")));
             termRef.current?.focus();
           }}
         />
@@ -824,7 +831,7 @@ export function TerminalView({
           }}
           onCancel={() => {
             setAskPassword(null);
-            termRef.current?.write(red("Connection cancelled."));
+            termRef.current?.write(red(t("terminal.view.cancelled")));
             termRef.current?.focus();
           }}
         />
