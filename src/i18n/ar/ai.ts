@@ -1,0 +1,65 @@
+import type { ai as en } from "../en/ai";
+import type { Messages } from "../types";
+
+export const ai: Messages<typeof en> = {
+  providers: {
+    openaiCompatible: "متوافق مع OpenAI",
+    openaiCompatibleEndpoint: "نقطة النهاية المتوافقة مع OpenAI",
+  },
+  errors: {
+    noKey: "لا يوجد مفتاح API محفوظ لهذا المزوّد.",
+    auth: "تم رفض مفتاح API.",
+    rateLimit: "يحدّ مزوّد الذكاء الاصطناعي من الطلبات؛ حاول مجددًا بعد لحظات.",
+    network: "تعذّر الوصول إلى مزوّد الذكاء الاصطناعي.",
+    timeout: "لم يُجب مزوّد الذكاء الاصطناعي في الوقت المحدد.",
+    refused: "رفض مزوّد الذكاء الاصطناعي الإجابة عن هذا الطلب.",
+    badResponse: "أرسل مزوّد الذكاء الاصطناعي إجابة تعذّر على PlexusTerm قراءتها.",
+    config: "تحقق من إعدادات الذكاء الاصطناعي.",
+  },
+  hint: {
+    unavailable: "الذكاء الاصطناعي: غير متاح",
+    noKey: "الذكاء الاصطناعي: لا يوجد مفتاح API",
+    keyRejected: "الذكاء الاصطناعي: المفتاح مرفوض",
+    rateLimited: "الذكاء الاصطناعي: تم تقييد الطلبات",
+  },
+  chat: {
+    label: "دردشة الذكاء الاصطناعي",
+    title: "الذكاء الاصطناعي",
+    close: "إغلاق دردشة الذكاء الاصطناعي",
+    closeTitle: "إغلاق دردشة الذكاء الاصطناعي (Ctrl+Shift+W)",
+    empty: "اسأل عن أي شيء. لا تُنفَّذ الأوامر إلا عند النقر على «تشغيل».",
+    question: "السؤال",
+    asking: "جارٍ السؤال…",
+    noKey: "لا يوجد مفتاح API محفوظ لـ {provider}. أضف واحدًا في الإعدادات ← الذكاء الاصطناعي.",
+    openSettings: "فتح إعدادات الذكاء الاصطناعي",
+    selectedText: "النص المحدد المراد إرساله",
+    removeSelection: "إزالة النص المحدد",
+    removeSelectionTitle: "عدم إرسال النص المحدد",
+    input: "سؤالك",
+    placeholder: "اسأل عن أي شيء…",
+    send: "إرسال",
+  },
+  command: {
+    label: "الأمر المقترح",
+    copied: "تم النسخ",
+    copyFailed: "فشل النسخ",
+    insert: "إدراج",
+    insertTitle: "يكتب الأمر في الطرفية دون تنفيذه",
+    run: "تشغيل",
+    runTitle: "ينفّذ الأمر في الطرفية (يكتبه ويضغط Enter)",
+  },
+  answer: {
+    label: "الإجابة",
+  },
+  models: {
+    chooseAnother: "{label} — اختر نموذجًا آخر",
+    filter: "تصفية النماذج",
+    filterPlaceholder: "تصفية النماذج…",
+    list: "نماذج الذكاء الاصطناعي",
+    loading: "جارٍ تحميل النماذج…",
+    noProvider: "لا يملك أي مزوّد ذكاء اصطناعي مفتاح API. أضف واحدًا في الإعدادات ← الذكاء الاصطناعي.",
+    providerError: "{provider}: {error}",
+    unsupported: "{id} — غير مدعوم بعد",
+    loadingProvider: "جارٍ تحميل نماذج {provider}…",
+  },
+};
