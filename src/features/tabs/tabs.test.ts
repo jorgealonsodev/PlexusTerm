@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { SessionTarget } from "../sessions/types";
 import { initialTabs, tabsReducer, type TabsState } from "./tabs";
 
-const open = (state: TabsState, title = "Local shell") =>
-  tabsReducer(state, { type: "open", title });
+const open = (state: TabsState, target: SessionTarget = { type: "local" }) =>
+  tabsReducer(state, { type: "open", target });
 
 describe("tabsReducer", () => {
   it("opens a tab and makes it active", () => {
@@ -10,6 +11,19 @@ describe("tabsReducer", () => {
     expect(state.tabs).toHaveLength(1);
     expect(state.tabs[0].title).toBe("Local shell");
     expect(state.activeKey).toBe(state.tabs[0].key);
+  });
+
+  it("titles SSH tabs user@host, adding the port only when it is not 22", () => {
+    const ssh = (port: number): SessionTarget => ({
+      type: "ssh",
+      host: "srv",
+      port,
+      username: "bob",
+      auth: { method: "agent" },
+    });
+    const state = open(open(initialTabs, ssh(22)), ssh(2222));
+    expect(state.tabs.map((t) => t.title)).toEqual(["bob@srv", "bob@srv:2222"]);
+    expect(state.tabs[1].target).toEqual(ssh(2222));
   });
 
   it("gives every tab a unique key", () => {

@@ -1,7 +1,5 @@
 //! Local pseudo-terminal sessions, independent of Tauri so they can be tested directly.
 
-mod utf8;
-
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Mutex;
@@ -9,13 +7,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
-pub use utf8::Utf8Stream;
-
-/// Receives the output of one PTY session.
-pub trait PtySink: Send + 'static {
-    fn data(&self, text: String);
-    fn exit(&self, code: Option<u32>);
-}
+use crate::terminal::{TerminalSink, Utf8Stream};
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,7 +61,7 @@ pub struct PtyManager {
 }
 
 impl PtyManager {
-    pub fn spawn(&self, req: SpawnRequest, sink: impl PtySink) -> Result<u32, PtyError> {
+    pub fn spawn(&self, req: SpawnRequest, sink: impl TerminalSink) -> Result<u32, PtyError> {
         let pair = native_pty_system()
             .openpty(size(req.cols, req.rows))
             .map_err(io_err)?;
@@ -172,7 +164,7 @@ mod tests {
 
     struct TestSink(Sender<Event>);
 
-    impl PtySink for TestSink {
+    impl TerminalSink for TestSink {
         fn data(&self, text: String) {
             let _ = self.0.send(Event::Data(text));
         }
@@ -219,7 +211,8 @@ mod tests {
     fn streams_output_and_reports_exit_code() {
         let mgr = PtyManager::default();
         let (s, rx) = sink();
-        mgr.spawn(req("/bin/sh", &["-c", "echo hello; exit 3"]), s).unwrap();
+        mgr.spawn(req("/bin/sh", &["-c", "echo hello; exit 3"]), s)
+            .unwrap();
         let (out, exit) = wait_for(&rx, "");
         assert!(out.contains("hello"), "output was {out:?}");
         assert_eq!(exit, Some(Some(3)));
@@ -257,13 +250,19 @@ mod tests {
         mgr.close(id).unwrap();
         let (_, exit) = wait_for(&rx, "");
         assert!(exit.is_some(), "process did not exit after close");
-        assert!(matches!(mgr.write(id, b"x"), Err(PtyError::UnknownSession(_))));
+        assert!(matches!(
+            mgr.write(id, b"x"),
+            Err(PtyError::UnknownSession(_))
+        ));
     }
 
     #[test]
     fn unknown_session_is_an_error() {
         let mgr = PtyManager::default();
-        assert!(matches!(mgr.resize(99, 1, 1), Err(PtyError::UnknownSession(99))));
+        assert!(matches!(
+            mgr.resize(99, 1, 1),
+            Err(PtyError::UnknownSession(99))
+        ));
         assert!(matches!(mgr.close(99), Err(PtyError::UnknownSession(99))));
     }
 }

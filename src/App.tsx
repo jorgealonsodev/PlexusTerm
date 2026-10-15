@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import type { SessionTarget } from "./features/sessions/types";
+import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { initialTabs, tabsReducer } from "./features/tabs/tabs";
 import { TerminalView } from "./features/terminal/TerminalView";
 import "./App.css";
 
-const LOCAL_TITLE = "Local shell";
+const LOCAL: SessionTarget = { type: "local" };
 
 export default function App() {
   // Start with one local terminal open.
   const [state, dispatch] = useReducer(tabsReducer, initialTabs, (s) =>
-    tabsReducer(s, { type: "open", title: LOCAL_TITLE }),
+    tabsReducer(s, { type: "open", target: LOCAL }),
   );
+  const [quickConnect, setQuickConnect] = useState(false);
 
-  const openLocal = useCallback(() => dispatch({ type: "open", title: LOCAL_TITLE }), []);
+  const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
+  const openLocal = useCallback(() => open(LOCAL), [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -20,6 +24,9 @@ export default function App() {
       if (e.key === "T") {
         e.preventDefault();
         openLocal();
+      } else if (e.key === "S") {
+        e.preventDefault();
+        setQuickConnect(true);
       } else if (e.key === "W" && state.activeKey) {
         e.preventDefault();
         dispatch({ type: "close", key: state.activeKey });
@@ -33,8 +40,11 @@ export default function App() {
     <div className="app">
       <header className="toolbar">
         <span className="brand">NexusTerm</span>
-        <button className="toolbar__btn" onClick={openLocal}>
-          New terminal
+        <button className="btn" onClick={openLocal}>
+          Terminal
+        </button>
+        <button className="btn" onClick={() => setQuickConnect(true)}>
+          SSH
         </button>
       </header>
       <TabBar
@@ -48,6 +58,7 @@ export default function App() {
         {state.tabs.map((tab) => (
           <TerminalView
             key={tab.key}
+            target={tab.target}
             active={tab.key === state.activeKey}
             onTitle={(title) => dispatch({ type: "rename", key: tab.key, title })}
             onExit={() => dispatch({ type: "close", key: tab.key })}
@@ -56,12 +67,26 @@ export default function App() {
         {state.tabs.length === 0 && (
           <div className="empty">
             <p>No open sessions.</p>
-            <button className="toolbar__btn" onClick={openLocal}>
-              Start local terminal
-            </button>
+            <div className="empty__actions">
+              <button className="btn" onClick={openLocal}>
+                Start local terminal
+              </button>
+              <button className="btn" onClick={() => setQuickConnect(true)}>
+                New SSH session
+              </button>
+            </div>
           </div>
         )}
       </main>
+      {quickConnect && (
+        <QuickConnectDialog
+          onCancel={() => setQuickConnect(false)}
+          onConnect={(target) => {
+            setQuickConnect(false);
+            open(target);
+          }}
+        />
+      )}
     </div>
   );
 }
