@@ -42,6 +42,7 @@ sha256sum --ignore-missing -c checksums.txt
 | Tunnels | Local (-L), remote (-R) and SOCKS5 (-D) forwards | [SSH tunnels](docs/user-guide.md#ssh-tunnels) |
 | Serial, Telnet, Mosh | Serial consoles with line settings, a built-in Telnet client, Mosh over SSH | [Serial](docs/user-guide.md#serial-consoles), [Telnet and Mosh](docs/user-guide.md#telnet-and-mosh) |
 | Multi-execution | Type into every open terminal at once, with per-pane exclusion | [Multi-execution](docs/user-guide.md#split-panes-and-multi-execution) |
+| Colour schemes | 57 terminal schemes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Solarized, Rosé Pine, ...) with a live preview, and any font | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Terminal comfort | Find, font size, copy on select, paste confirmation, save and log output | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Macros | Record, edit and replay keystrokes, with waits and hotkeys | [Macros](docs/user-guide.md#macros) |
 
@@ -70,6 +71,7 @@ Macros are saved as plain text, including anything typed while recording.
 - [User guide](docs/user-guide.md): how every feature works and its limits.
 - [Building and releasing](docs/building-and-releasing.md): running from source, tests, packaging and publishing a release.
 - [Brand assets](assets/brand/README.md): logo, wordmark and colours.
+- [Credits](THIRD_PARTY_NOTICES.md): the colour schemes' authors and original projects, and third-party licences.
 
 ## Development
 
