@@ -1191,3 +1191,39 @@ textarea::placeholder {
   min-height: 0;
 }
 
+/* Shown in the top-right corner of a split pane while the pointer is over it. */
+.pane__close {
+  position: absolute;
+  top: 6px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.pane-stack__terminal:hover .pane__close,
+.pane__close:focus-visible {
+  opacity: 1;
+}
+
+.pane__close:hover {
+  color: var(--text);
+  border-color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane__close {
+    transition: none;
+  }
+}
+

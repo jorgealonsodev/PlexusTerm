@@ -152,7 +152,7 @@ Tunnels are stored in `~/.config/dev.plexusterm.app/tunnels.json` with the same 
 **Split right** (Ctrl+Shift+D) and **Split down** (Ctrl+Shift+E) divide the focused pane of the current tab in two, up to 4 panes per tab.
 The new pane opens another terminal for the same target: a local shell, or a new SSH connection to the same host that reuses the credentials the tab already holds in memory (nothing new is stored).
 Drag the divider between two panes to resize them (each side keeps at least 15%). The focused pane has an accent border; click a pane or use Alt+Arrow to move the focus.
-Ctrl+Shift+W, or the shell exiting, closes only that pane; the tab closes with its last pane.
+Ctrl+Shift+W, or the shell exiting, closes only that pane; the tab closes with its last pane. While a tab is split, moving the pointer over a pane shows a **×** in its top-right corner that closes that pane.
 
 **Multi-exec** (Ctrl+Shift+M) sends what you type in the focused pane to every other open terminal pane, in every tab. A banner shows how many terminals receive the input and has a **Turn off** button.
 While it is on, each pane shows an **exclude** toggle in its top-right corner to leave that pane out; panes that are still connecting do not receive input either. Typing in an excluded pane only reaches that pane.

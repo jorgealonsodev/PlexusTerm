@@ -66,6 +66,7 @@ import {
   Power,
   ScanSearch,
   Wrench,
+  X,
   KeyRound,
   Radio,
   Rows2,
@@ -667,6 +668,21 @@ function AppContent() {
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                           />
+                          {paneIds(tab.layout).length > 1 && (
+                            <button
+                              className="pane__close"
+                              aria-label="Close pane"
+                              title="Close pane (Ctrl+Shift+W closes the focused one)"
+                              // Keep the keyboard focus where it is.
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onClick={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
                           {multiExec && (
                             <button
                               className={`pane__exclude${excluded ? " pane__exclude--on" : ""}`}
