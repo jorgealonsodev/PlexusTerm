@@ -1,5 +1,6 @@
 import { ArrowLeftRight, FolderTree, Keyboard, Star, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { useT } from "../../i18n/i18n";
 
 export type SidebarView = "sessions" | "sftp" | "tunnels" | "macros";
 
@@ -29,6 +30,7 @@ export function Sidebar({
   collapsed,
   onExpand,
 }: SidebarProps) {
+  const t = useT();
   const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
   const tab = (id: SidebarView, label: string, Icon: LucideIcon, disabled = false) => (
     <button
@@ -39,7 +41,7 @@ export function Sidebar({
       disabled={disabled}
       title={
         disabled
-          ? "Available when the focused pane of the active tab is a connected SSH session"
+          ? t("app.sidebar.sftpUnavailable")
           : collapsed
             ? label
             : undefined
@@ -59,13 +61,13 @@ export function Sidebar({
       <div
         className="sidebar__tabs"
         role="tablist"
-        aria-label="Sidebar"
+        aria-label={t("app.sidebar.label")}
         aria-orientation={collapsed ? "vertical" : "horizontal"}
       >
-        {tab("sessions", "Sessions", Star)}
+        {tab("sessions", t("app.sidebar.sessions"), Star)}
         {tab("sftp", "SFTP", FolderTree, !sftpAvailable)}
-        {tab("tunnels", "Tunnels", ArrowLeftRight)}
-        {tab("macros", "Macros", Keyboard)}
+        {tab("tunnels", t("app.sidebar.tunnels"), ArrowLeftRight)}
+        {tab("macros", t("app.sidebar.macros"), Keyboard)}
       </div>
       {!collapsed && panels[shown]}
     </aside>

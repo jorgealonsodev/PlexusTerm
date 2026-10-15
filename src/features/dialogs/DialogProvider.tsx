@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useT } from "../../i18n/i18n";
 
 /**
  * In-app replacements for the browser's native confirm and prompt boxes, which the system webview
@@ -89,6 +90,7 @@ const keys = (onCancel: () => void, onEnter?: () => void) => (e: KeyboardEvent) 
 };
 
 function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswer: (ok: boolean) => void }) {
+  const t = useT();
   const { title, message, confirmLabel, danger = false } = options;
   // Enter on a focused button presses that button, so Enter on a destructive one cancels.
   return (
@@ -106,7 +108,7 @@ function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswe
         </div>
         <div className="dialog__actions">
           <button type="button" className="btn" autoFocus={danger} onClick={() => onAnswer(false)}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -123,6 +125,7 @@ function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswe
 }
 
 function PromptDialog({ options, onAnswer }: { options: PromptOptions; onAnswer: (value: string | null) => void }) {
+  const t = useT();
   const { title, message, defaultValue = "", confirmLabel } = options;
   const [value, setValue] = useState(defaultValue);
   return (
@@ -151,7 +154,7 @@ function PromptDialog({ options, onAnswer }: { options: PromptOptions; onAnswer:
         </label>
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={() => onAnswer(null)}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn--primary">
             {confirmLabel}
