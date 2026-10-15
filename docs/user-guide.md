@@ -280,6 +280,6 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Ctrl+Alt+1 … Ctrl+Alt+9 | Play the macro bound to that key in the focused terminal |
 | Escape (while a macro plays) | Stop the macro |
 | Middle click on a tab | Close that tab |
-| Right click on a tab | Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
+| Right click on a tab | Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 
 These shortcuts are handled by the app and never reach the shell.

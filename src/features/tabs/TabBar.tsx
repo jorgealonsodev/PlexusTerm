@@ -15,14 +15,26 @@ interface TabBarProps {
   onCloseOthers?: (key: string) => void;
   onCloseRight?: (key: string) => void;
   onCloseAll?: () => void;
+  /** Copies a tab's host address (SSH, Telnet and Mosh tabs). */
+  onCopyHost?: (host: string) => void;
+}
+
+/** The host a tab connects to, or null for local and serial terminals. */
+function hostOf(tab: Tab): string | null {
+  const t = tab.target;
+  if (t.type === "ssh" || t.type === "telnet") return t.host;
+  if (t.type === "mosh") return t.ssh.host;
+  return null;
 }
 
 export function TabBar(props: TabBarProps) {
   const { tabs, activeKey, logging, onActivate, onClose, onNew } = props;
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const menuIndex = menu ? tabs.findIndex((t) => t.key === menu.key) : -1;
-  const menuItems = (key: string) =>
-    [
+  const menuItems = (key: string) => {
+    const host = hostOf(tabs.find((t) => t.key === key)!);
+    return [
+      props.onCopyHost && host && { label: `Copy host address (${host})`, onSelect: () => props.onCopyHost!(host) },
       props.onDuplicate && { label: "Duplicate tab", onSelect: () => props.onDuplicate!(key) },
       { label: "Close tab", onSelect: () => onClose(key) },
       props.onCloseOthers && {
@@ -37,6 +49,7 @@ export function TabBar(props: TabBarProps) {
       },
       props.onCloseAll && { label: "Close all tabs", onSelect: props.onCloseAll },
     ].filter((item) => !!item);
+  };
   return (
     <div className="tabbar" role="tablist">
       {tabs.map((tab) => (
