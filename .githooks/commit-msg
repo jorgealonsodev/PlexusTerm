@@ -1,0 +1,9 @@
+#!/bin/sh
+# Reject AI attribution trailers so Claude never appears as a co-author or contributor.
+msg_file="$1"
+pattern='^(Co-Authored-By:.*(claude|anthropic)|Claude-Session:|.*Generated with \[?Claude Code)'
+if grep -qiE "$pattern" "$msg_file"; then
+  echo "commit-msg: AI attribution is not allowed in commit messages. Remove these lines:" >&2
+  grep -inE "$pattern" "$msg_file" >&2
+  exit 1
+fi
