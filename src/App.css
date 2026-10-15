@@ -6,6 +6,12 @@
   --text: #d8dee9;
   --muted: #7a8794;
   --accent: #5ec4ff;
+  --on-accent: #08131c;
+  --danger: #ef6b73;
+  --warning: #f0b45e;
+  --on-warning: #0f1419;
+  --success: #7fd88f;
+  /* Overridden at runtime from the colour scheme (features/settings/uiTheme.ts). */
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 13px;
@@ -214,15 +220,15 @@ body,
   justify-content: center;
   gap: 12px;
   padding: 4px 12px;
-  color: var(--bg);
-  background: #f0b45e;
+  color: var(--on-warning);
+  background: var(--warning);
   font-weight: 600;
 }
 
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #08131c;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -317,7 +323,7 @@ body,
 }
 
 .form-error {
-  color: #ef6b73;
+  color: var(--danger);
 }
 
 .fingerprint {
@@ -644,15 +650,15 @@ body,
 }
 
 .tunnel__dot--starting {
-  background: #e5c07b;
+  background: var(--warning);
 }
 
 .tunnel__dot--running {
-  background: #7fd88f;
+  background: var(--success);
 }
 
 .tunnel__dot--error {
-  background: #ef6b73;
+  background: var(--danger);
 }
 
 .tunnel__detail {
@@ -664,7 +670,7 @@ body,
 }
 
 .tunnel__detail.form-error {
-  color: #ef6b73;
+  color: var(--danger);
 }
 
 .serial-ports {
@@ -719,8 +725,8 @@ body,
   justify-content: space-between;
   gap: 12px;
   padding: 4px 12px;
-  color: var(--bg);
-  background: #f0b45e;
+  color: var(--on-warning);
+  background: var(--warning);
 }
 
 /* Jump hosts of a saved SSH session (session edit dialog). */
@@ -772,7 +778,7 @@ body,
 }
 
 .tab__log {
-  color: #ef6b73;
+  color: var(--danger);
   font-size: 9px;
 }
 
@@ -808,7 +814,7 @@ body,
 }
 
 .find-bar__status {
-  color: #ef6b73;
+  color: var(--danger);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -883,8 +889,8 @@ body,
 
 /* Macros (S16) */
 .btn--recording {
-  border-color: #e06c75;
-  color: #e06c75;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .recording-banner,

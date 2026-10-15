@@ -85,7 +85,7 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
                 {describeTunnel(tunnel)} · {sessionName(tunnel.sessionId)}
               </div>
               {current.state === "running" && current.warning && (
-                <div className="tunnel__detail" role="status" style={{ color: "#e5c07b" }}>
+                <div className="tunnel__detail" role="status" style={{ color: "var(--warning)" }}>
                   {current.warning}
                 </div>
               )}
