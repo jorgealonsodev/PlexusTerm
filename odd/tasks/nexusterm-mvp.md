@@ -34,6 +34,13 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
   - S10.6 Encoding: decode as UTF-8 when valid, otherwise as Windows-1252 (MobaXterm writes the ANSI code page).
   - Source for the line layout: open-source parser bobzzgm/mobaxterm-mcp (src/services/ini-parser.ts); no real MobaXterm.ini was available to verify against.
 
+- S11 (decided by the parent under "haz lo que te creas mas optimo"): split panes and multi-execution, like MobaXterm's split and MultiExec modes.
+  - S11.1 A tab can be split into panes: split right (side by side) and split down (stacked), as a binary layout tree with at most 4 panes per tab. A new pane opens a new terminal for the same target as the pane it was split from (local shell, or a new SSH connection with the same target, reusing the credentials already held in memory for that tab; nothing new is stored).
+  - S11.2 Panes have a draggable divider (ratio clamped to 15%-85%); the focused pane is highlighted; clicking a pane focuses it; Alt+Arrow moves focus to the neighbouring pane. Closing a pane (its shell exits, or Ctrl+Shift+W) closes only that pane; the tab closes when its last pane closes.
+  - S11.3 Shortcuts: Ctrl+Shift+D split right, Ctrl+Shift+E split down, Ctrl+Shift+W close the focused pane (previously closed the whole tab), Ctrl+Shift+M toggle multi-execution. The toolbar gets "Split right", "Split down" and "Multi-exec" buttons; README shortcut table updated.
+  - S11.4 Multi-execution: when on, what is typed in the focused pane is also sent to every other open terminal pane in every tab. A clear banner shows "Multi-execution ON — input goes to N terminals" with a button to turn it off; each pane shows a small "excluded" toggle so a pane can be left out; excluded panes and panes still connecting do not receive input. Multi-execution is off at start and is never persisted.
+  - S11.5 SFTP and OSC 7 cwd follow the focused pane of the active tab.
+
 ## Tasks
 
 - [x] T1 — S1-S4 — inline — Scaffold Tauri 2 + React + xterm.js app with local PTY tabs. RED→GREEN: cargo 8/8, vitest 7/7; smoke test via `pnpm tauri dev` (UTF-8 + colors OK).
@@ -47,6 +54,8 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - [x] T5c — S9.5 — delegated (context backstop) — Native review warnings for T5: SOCKS5 handshake timeout (R1-001/R4/R3), Running/Stopped notification ordering (R4/R3-start-notify-race), status snapshot vs newer events (R3-snapshot-overwrite), delete during password/host-key prompt (R4/R3-delete-during-prompt), silent start failures (R3-silent-start-failure), connection-drop watcher test (R3-watch-fail-untested). Done: SOCKS 10 s handshake deadline, notifications sent under the entries lock (ordered), snapshot only fills tunnels without live events, prompts re-check the tunnel before starting, IPC failures surfaced; watcher test via aborted TCP proxy. RED→GREEN per finding; cargo 67/67 (+3 ignored), vitest 86/86.
 
 - [x] T6 — S10 (S10.1-S10.6) — delegated (writer trigger: long-session context backstop) — Import sessions from MobaXterm.ini. Writer: parser/planner/saveSessions/dialog RED→GREEN (vitest 101). Parent: hidden <input type=file> could not be confirmed in WebKitGTK → switched to the native dialog (plugin-dialog open) + bounded backend read `import_read_file` (5 MiB; storage::read_bounded RED→GREEN); header layout fix (buttons wrap). Smoke with a cp1252/CRLF ini: native dialog → preview "2 SSH sessions to import; RDP 1, Serial 1, SSH without a host 1" (correct). Confirm click not exercised in the GUI (user was using the desktop); covered by component + reducer tests. cargo 69/69, vitest 103/103.
+
+- [ ] T7 — S11 (S11.1-S11.5) — delegated (writer trigger: long-session context backstop) — Split panes and multi-execution.
 
 ## Log
 
@@ -69,3 +78,4 @@ Stack: Tauri 2 + Rust backend + React/TypeScript + xterm.js. Delivery: ask-on-ri
 - L17 (2026-10-15): Process mistake: a parent docs commit used `git commit -a` while the T5c writer was editing, sweeping part of its code into 76e2454 (local, never pushed). Fixed with `git reset --soft` and two clean commits. Parent now stages explicit paths only.
 - L18 (2026-10-15): "haz lo que te creas mas optimo" — next unit T6 (MobaXterm.ini import), chosen because migrating existing sessions is the main adoption blocker.
 - L19 (2026-10-15): GUI automation incidents: (1) a title-based xdotool search matched the user's Thorium browser window and typed Ctrl+L + a scratch file path + Enter into it (tab navigated to a local test file; nothing destructive); (2) a pid+name search returned the app main window. Rule adopted: only interact with windows detected as new after the click and owned by the app pid, and never steal focus while the user is active.
+- L20 (2026-10-15): "haz lo que te creas mas optimo" — next unit T7 (split panes + multi-exec). GUI smoke tests only when the user is not using the desktop.
