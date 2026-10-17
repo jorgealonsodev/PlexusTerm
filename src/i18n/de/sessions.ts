@@ -9,8 +9,8 @@ export const sessions: Messages<typeof en> = {
     new: "Neu",
     folder: "Ordner",
     import: "Importieren",
-    importTitle: "Sitzungen aus sessions.ini importieren",
-    importFilter: "Sitzungsdatei",
+    importTitle: "Sitzungen aus einer .ini-Datei importieren",
+    importFilter: "Sitzungsdatei (.ini)",
     search: "Sitzungen durchsuchen",
     readError:
       "Gespeicherte Sitzungen konnten nicht gelesen werden: {error}. Bearbeiten ist deaktiviert, um die Datei zu schützen.",
@@ -103,7 +103,7 @@ export const sessions: Messages<typeof en> = {
       "Kein Systemschlüsselbund (Secret Service) verfügbar, daher kann das Passwort nicht gespeichert werden.",
   },
   import: {
-    title: "Aus another app importieren",
+    title: "Sitzungen importieren",
     readError: "Die Datei konnte nicht gelesen werden: {error}",
     toImport: { one: "{count} Sitzung zum Importieren.", other: "{count} Sitzungen zum Importieren." },
     none: "Keine Sitzungen zum Importieren.",

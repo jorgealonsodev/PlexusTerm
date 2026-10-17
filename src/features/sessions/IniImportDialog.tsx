@@ -10,7 +10,7 @@ interface IniImportDialogProps {
   onClose: () => void;
 }
 
-/** Preview of a sessions.ini import; nothing is saved until the user confirms. */
+/** Preview of a sessions .ini import; nothing is saved until the user confirms. */
 export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogProps) {
   const t = useT();
   const plan = result.ok ? result.plan : null;

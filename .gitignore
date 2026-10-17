@@ -28,3 +28,7 @@ dist-release/
 
 # CodeGraph local index
 .codegraph/
+
+# Internal planning notes and research, kept locally only
+odd/
+docs/reference/

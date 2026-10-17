@@ -162,7 +162,7 @@ describe("SessionsPanel", () => {
     expect(screen.getByText("No matches.")).toBeTruthy();
   });
 
-  it("imports new sessions from a sessions.ini file after the preview", async () => {
+  it("imports new sessions from a sessions .ini file after the preview", async () => {
     const props = renderPanel();
     const ini = "[Bookmarks]\r\nSubRep=Prod\r\nrdp=#1#0%10.0.0.1%3389%\r\nnew=#109#0%10.0.0.2%%root%\r\n";
     vi.mocked(open).mockResolvedValue("/home/u/sessions.ini");

@@ -28,7 +28,7 @@ interface SessionsPanelProps {
   onDelete: (session: LibrarySession) => void;
   onNewFolder: (parent: string) => void;
   onDeleteFolder: (path: string) => void;
-  /** Saves the sessions confirmed in the another app import preview. */
+  /** Saves the sessions confirmed in the import preview. */
   onImport: (sessions: LibrarySession[]) => void;
   /** Saves a copy of the session next to it. */
   onDuplicate: (session: LibrarySession) => void;

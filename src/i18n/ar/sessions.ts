@@ -9,8 +9,8 @@ export const sessions: Messages<typeof en> = {
     new: "جديد",
     folder: "مجلد",
     import: "استيراد",
-    importTitle: "استيراد الجلسات من sessions.ini",
-    importFilter: "إعدادات another app",
+    importTitle: "استيراد الجلسات من ملف .ini",
+    importFilter: "ملف الجلسات (.ini)",
     search: "البحث في الجلسات",
     readError: "تعذّرت قراءة الجلسات المحفوظة: {error}. تم تعطيل التحرير لحماية الملف.",
     saveError: "تعذّر حفظ الجلسات: {error}",
@@ -102,7 +102,7 @@ export const sessions: Messages<typeof en> = {
     noKeyring: "لا تتوفر حلقة مفاتيح للنظام (Secret Service)، لذا لا يمكن حفظ كلمة المرور.",
   },
   import: {
-    title: "استيراد من another app",
+    title: "استيراد الجلسات",
     readError: "تعذّرت قراءة الملف: {error}",
     toImport: {
       zero: "لا توجد جلسات للاستيراد.",

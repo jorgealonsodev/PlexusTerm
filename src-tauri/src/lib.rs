@@ -335,7 +335,7 @@ fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, SESSIONS_FILE)?, &contents)
 }
 
-/// Upper bound for files picked for import (a sessions.ini is a few kilobytes).
+/// Upper bound for files picked for import (a sessions .ini file is a few kilobytes).
 const IMPORT_MAX_BYTES: u64 = 5 * 1024 * 1024;
 
 #[tauri::command]

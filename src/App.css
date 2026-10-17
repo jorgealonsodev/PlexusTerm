@@ -735,7 +735,7 @@ body.is-resizing {
   background: none;
   border: none;
   cursor: pointer;
-  /* Icon above the label, like another app's side tabs. */
+  /* Icon above the label. */
   display: flex;
   flex-direction: column;
   align-items: center;

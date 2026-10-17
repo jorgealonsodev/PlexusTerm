@@ -21,7 +21,7 @@
   <img src="assets/screenshots/plexusterm-overview.png" alt="PlexusTerm with a local terminal, the saved-sessions sidebar and the AI chat open below the terminal" width="900">
 </p>
 
-PlexusTerm brings the everyday feature set of another app to Linux as a native app (tabs and split panes, a saved-session library, an SFTP browser next to each SSH tab, port forwards, serial consoles, macros) and adds an **AI chat next to every terminal** that explains, diagnoses and suggests commands. It is a clean-room implementation built with Tauri 2 (Rust), React/TypeScript and xterm.js, and speaks ten languages.
+PlexusTerm is a native terminal and remote-session manager for Linux and Windows (tabs and split panes, a saved-session library, an SFTP browser next to each SSH tab, port forwards, serial consoles, macros) and adds an **AI chat next to every terminal** that explains, diagnoses and suggests commands. It is a clean-room implementation built with Tauri 2 (Rust), React/TypeScript and xterm.js, and speaks ten languages.
 
 ## Quick path
 
@@ -60,7 +60,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | --- | --- | --- |
 | Local terminals | Tabs with your shell or the one you choose (PowerShell, cmd, WSL, Git Bash, zsh, fish...), up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |
 | SSH | Password, key or agent login, `known_hosts` checks, up to 3 jump hosts | [SSH sessions](docs/user-guide.md#ssh-sessions) |
-| Saved sessions | Folders, search, passwords in the system keyring, import from `sessions.ini` | [Saved sessions](docs/user-guide.md#saved-sessions) |
+| Saved sessions | Folders, search, passwords in the system keyring, import from `.ini` session files | [Saved sessions](docs/user-guide.md#saved-sessions) |
 | SFTP | File browser for the active SSH tab: drag-and-drop upload, open, edit and re-upload, permissions, follows the shell's folder | [SFTP browser](docs/user-guide.md#sftp-browser) |
 | Tunnels | Local (-L), remote (-R) and SOCKS5 (-D) forwards | [SSH tunnels](docs/user-guide.md#ssh-tunnels) |
 | Serial, Telnet, Mosh | Serial consoles with line settings, a built-in Telnet client, Mosh over SSH | [Serial](docs/user-guide.md#serial-consoles), [Telnet and Mosh](docs/user-guide.md#telnet-and-mosh) |

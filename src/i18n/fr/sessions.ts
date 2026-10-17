@@ -9,8 +9,8 @@ export const sessions: Messages<typeof en> = {
     new: "Nouvelle",
     folder: "Dossier",
     import: "Importer",
-    importTitle: "Importer des sessions depuis sessions.ini",
-    importFilter: "Configuration another app",
+    importTitle: "Importer des sessions depuis un fichier .ini",
+    importFilter: "Fichier de sessions (.ini)",
     search: "Rechercher des sessions",
     readError:
       "Impossible de lire les sessions enregistrées : {error}. La modification est désactivée pour protéger le fichier.",
@@ -102,7 +102,7 @@ export const sessions: Messages<typeof en> = {
       "Aucun trousseau du système (Secret Service) n'est disponible ; le mot de passe ne peut donc pas être enregistré.",
   },
   import: {
-    title: "Importer depuis another app",
+    title: "Importer des sessions",
     readError: "Impossible de lire le fichier : {error}",
     toImport: {
       one: "{count} session à importer.",

@@ -9,8 +9,8 @@ export const sessions: Messages<typeof en> = {
     new: "Nueva",
     folder: "Carpeta",
     import: "Importar",
-    importTitle: "Importar sesiones de sessions.ini",
-    importFilter: "Configuración de another app",
+    importTitle: "Importar sesiones de un fichero .ini",
+    importFilter: "Fichero de sesiones (.ini)",
     search: "Buscar sesiones",
     readError: "No se pudieron leer las sesiones guardadas: {error}. La edición está desactivada para proteger el archivo.",
     saveError: "No se pudieron guardar las sesiones: {error}",
@@ -100,7 +100,7 @@ export const sessions: Messages<typeof en> = {
     noKeyring: "No hay ningún llavero del sistema (Secret Service) disponible, así que no se puede guardar la contraseña.",
   },
   import: {
-    title: "Importar de another app",
+    title: "Importar sesiones",
     readError: "No se pudo leer el archivo: {error}",
     toImport: {
       one: "{count} sesión para importar.",

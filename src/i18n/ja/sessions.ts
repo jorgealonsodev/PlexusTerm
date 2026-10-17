@@ -9,8 +9,8 @@ export const sessions: Messages<typeof en> = {
     new: "新規",
     folder: "フォルダー",
     import: "インポート",
-    importTitle: "sessions.ini からセッションをインポート",
-    importFilter: "another app 設定ファイル",
+    importTitle: ".ini ファイルからセッションをインポート",
+    importFilter: "セッションファイル (.ini)",
     search: "セッションを検索",
     readError:
       "保存済みセッションを読み込めませんでした: {error}。ファイルを保護するため、編集は無効になっています。",
@@ -96,7 +96,7 @@ export const sessions: Messages<typeof en> = {
     noKeyring: "システムのキーリング (Secret Service) を利用できないため、パスワードを保存できません。",
   },
   import: {
-    title: "another app からインポート",
+    title: "セッションをインポート",
     readError: "ファイルを読み込めませんでした: {error}",
     toImport: { other: "{count} 件のセッションをインポートします。" },
     none: "インポートするセッションはありません。",

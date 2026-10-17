@@ -8,7 +8,7 @@ import {
   type SessionLibrary,
 } from "./library";
 
-/** An SSH or Telnet bookmark read from sessions.ini; secrets and key paths are never read. */
+/** An SSH or Telnet bookmark read from a sessions .ini file; secrets and key paths are never read. */
 export type ImportedSession =
   | {
       kind: "ssh";
@@ -49,7 +49,7 @@ const TYPE_LABELS: Record<number, string> = {
 const SESSION_VALUE = /^#(\d+)#\d*%(.*)$/;
 const BOOKMARKS_SECTION = /^\[Bookmarks(_\d+)?\]$/i;
 
-/** another app writes the ANSI code page; newer files may be UTF-8 (with or without a BOM). */
+/** These files are often in the Windows ANSI code page; newer ones may be UTF-8 (with or without a BOM). */
 export function decodeIni(bytes: Uint8Array): string {
   let text: string;
   try {

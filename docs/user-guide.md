@@ -7,7 +7,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [SSH sessions](#ssh-sessions) | Quick connect, authentication, host-key checks |
 | [Serial consoles](#serial-consoles) | Ports, line settings, permissions |
 | [Telnet and Mosh](#telnet-and-mosh) | Built-in Telnet client, Mosh over SSH |
-| [Saved sessions](#saved-sessions) | Folders, saved passwords, jump hosts, another app import |
+| [Saved sessions](#saved-sessions) | Folders, saved passwords, jump hosts, session import |
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
@@ -113,11 +113,11 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 - The SFTP browser of the tab uses the same connection, and SSH tunnels whose session has jump hosts go through them too. Closing the tab (or stopping the tunnel) closes every connection of the chain.
 - Deleting a session that other sessions use as a jump host asks for confirmation and removes it from their jump hosts.
 
-### Import from another app
+### Import sessions from an .ini file
 
-**Import** in the Sessions panel reads a `sessions.ini` file (UTF-8, or the Windows-1252 code page another app usually writes) and shows a preview before anything is saved:
+**Import** in the Sessions panel reads a sessions `.ini` file with `[Bookmarks]` sections (UTF-8, or the Windows-1252 code page these files are often written in) and shows a preview before anything is saved:
 
-- SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, and Telnet sessions with their host and port (23 when missing or invalid), under a **Imported** folder that keeps the folder path saved in the file.
+- SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, and Telnet sessions with their host and port (23 when missing or invalid), under an **Imported** folder that keeps the folder path saved in the file.
 - Imported SSH sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
 - Other session types (RDP, VNC, Serial, WSL, FTP, ...), entries without a host and unrecognized lines are skipped and counted per type in the preview.
 - Sessions already saved with the same type, folder, name, host, port and username are skipped as duplicates.

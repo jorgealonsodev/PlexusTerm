@@ -39,7 +39,7 @@
     ],
     "category": "Utility",
     "shortDescription": "Terminal and remote-session manager for Linux",
-    "longDescription": "PlexusTerm is a terminal and remote-session manager: local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with another app import).",
+    "longDescription": "PlexusTerm is a terminal and remote-session manager: local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with import from .ini session files).",
     "publisher": "Jorge Alonso",
     "copyright": "\u00a9 2026 Jorge Alonso",
     "linux": {
