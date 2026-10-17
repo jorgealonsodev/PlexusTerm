@@ -105,20 +105,14 @@ export function Sidebar({
       aria-label={label}
       className={`sidebar__tab${shown === id ? " sidebar__tab--active" : ""}`}
       disabled={unavailable !== null}
-      title={
-        unavailable !== null
-          ? unavailable
-          : collapsed
-            ? label
-            : undefined
-      }
+      title={unavailable ?? label}
       onClick={() => {
         onViewChange(id);
         if (collapsed) onExpand();
       }}
     >
       <Icon size={16} />
-      {!collapsed && label}
+      {!collapsed && <span className="sidebar__tab-label">{label}</span>}
     </button>
   );
   const panels: Record<SidebarView, ReactNode> = { sessions, sftp, explorer: local, tunnels, macros };

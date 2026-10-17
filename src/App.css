@@ -717,7 +717,7 @@ body.is-resizing {
 
 .sidebar__tabs {
   display: flex;
-  gap: 2px;
+  gap: 0;
   margin: -8px -8px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -726,10 +726,11 @@ body.is-resizing {
   flex: 1;
   min-width: 0;
   /* Five tabs share the 240px sidebar. */
-  padding: 6px 2px 5px;
+  padding: 6px 1px 5px;
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: -0.2px;
   white-space: nowrap;
   color: var(--muted);
   background: none;
@@ -740,6 +741,13 @@ body.is-resizing {
   flex-direction: column;
   align-items: center;
   gap: 3px;
+}
+
+/* A label that still does not fit ends with "…"; the tooltip names the tab. */
+.sidebar__tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar__tab:hover:not(:disabled) {
