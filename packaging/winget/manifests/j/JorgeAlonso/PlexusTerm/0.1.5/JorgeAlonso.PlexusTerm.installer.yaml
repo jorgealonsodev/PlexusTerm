@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 
 PackageIdentifier: JorgeAlonso.PlexusTerm
 PackageVersion: 0.1.5
@@ -25,4 +25,4 @@ Installers:
   InstallerUrl: https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.1.5/plexusterm_0.1.5_windows_x86_64-setup.exe
   InstallerSha256: 6E17F927DE99554A4FFE16915BAAAE4B5B9A1AC670B658FBDC358CDC6BDFF4E8
 ManifestType: installer
-ManifestVersion: 1.28.0
+ManifestVersion: 1.12.0
