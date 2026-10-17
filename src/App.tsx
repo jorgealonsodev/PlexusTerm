@@ -282,6 +282,7 @@ function AppContent() {
   const [running, setRunning] = useState<RunningMacro | null>(null);
   const runRef = useRef<MacroRun | null>(null);
   const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
+  const [chatDrops] = useState(() => createTargetRegistry<(drag: PathDrag) => void>());
   const [aiLimit] = useState(() => createAiLimiter());
   const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
   /** Bumped on every assistant open: a new key restarts the X's spin (S5); 0 = not spinning. */
@@ -606,7 +607,10 @@ function AppContent() {
   const dropRef = useRef<(drag: PathDrag, target: Element | null) => void>(() => {});
   dropRef.current = (drag, target) => {
     const paneId = target?.getAttribute("data-drop-pane");
-    if (paneId) dropOnPane(paneId, drag);
+    if (paneId) return dropOnPane(paneId, drag);
+    // Files dropped on an AI chat are attached to its next question (S6).
+    const chatId = target?.getAttribute("data-drop-chat");
+    if (chatId) chatDrops.get(chatId)?.(drag);
   };
   useEffect(() => setDropHandler((drag, target) => dropRef.current(drag, target)), []);
 
@@ -967,7 +971,7 @@ function AppContent() {
                       if (link) {
                         return (
                           <div className="pane-stack">
-                            <div className="pane-stack__terminal">
+                            <div className="pane-stack__terminal" data-drop-chat={paneId}>
                               <ChatPane
                                 conversationKey={link.terminalPaneId}
                                 settings={settings}
@@ -979,6 +983,7 @@ function AppContent() {
                                 onSelectModel={(aiProvider, aiModel) => terminalSettings.update({ aiProvider, aiModel })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
                                 onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                                registerDropTarget={(attach) => chatDrops.register(paneId, attach)}
                               />
                             </div>
                           </div>

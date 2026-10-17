@@ -266,6 +266,16 @@ async fn sftp_list(
     sftp::list(&*ssh.sftp(id).await?, &path).await
 }
 
+/// A remote file's text (or a folder's listing) to attach to an AI question.
+#[tauri::command]
+async fn sftp_read_text(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<localfs::TextFile, SftpError> {
+    sftp::read_text(&*ssh.sftp(id).await?, &path).await
+}
+
 #[tauri::command]
 async fn sftp_download(
     id: u32,
@@ -482,6 +492,7 @@ pub fn run() {
             secret_delete,
             sftp_home,
             sftp_list,
+            sftp_read_text,
             sftp_download,
             sftp_upload,
             sftp_mkdir,
@@ -538,7 +549,8 @@ pub fn run() {
             localfs::local_rename,
             localfs::local_remove,
             localfs::local_chmod,
-            localfs::local_open
+            localfs::local_open,
+            localfs::local_read_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

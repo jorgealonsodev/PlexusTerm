@@ -136,6 +136,17 @@ pub struct AssistRequest {
     /// (at most the last `text::MAX_TURNS`, `text::MAX_CONVERSATION` characters in all).
     #[serde(default)]
     pub conversation: Vec<Turn>,
+    /// Files dropped on the chat for this question (at most `text::MAX_FILES`,
+    /// `text::MAX_FILES_TOTAL` characters in all).
+    #[serde(default)]
+    pub files: Vec<AttachedFile>,
+}
+
+/// A file's text attached to a question.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AttachedFile {
+    pub path: String,
+    pub content: String,
 }
 
 /// One earlier question of a chat and the answer it got.

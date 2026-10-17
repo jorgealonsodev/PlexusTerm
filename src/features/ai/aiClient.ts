@@ -62,6 +62,8 @@ export interface AiAssistRequest {
   history: string[];
   /** Earlier turns of the chat, oldest first. */
   conversation?: AiTurn[];
+  /** Text of files dropped on the chat for this question (S6). */
+  files?: { path: string; content: string }[];
 }
 
 /** The assistant's plain-text answer (line breaks kept) and, when one fits, one single-line command; nothing is ever executed. */

@@ -3,6 +3,8 @@ export interface ChatTurn {
   id: number;
   question: string;
   selection: string | null;
+  /** Paths of the files attached to the question. */
+  files?: string[];
   state: "loading" | "answer" | "error";
   answer: string;
   command: string | null;

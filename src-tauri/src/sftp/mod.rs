@@ -156,6 +156,36 @@ pub async fn list(sftp: &SftpSession, path: &str) -> Result<Vec<Entry>, SftpErro
     Ok(entries)
 }
 
+/// The first [`crate::localfs::MAX_ATTACH_BYTES`] of a remote text file, or a folder's listing,
+/// to attach to an AI question.
+pub async fn read_text(
+    sftp: &SftpSession,
+    path: &str,
+) -> Result<crate::localfs::TextFile, SftpError> {
+    use crate::localfs::{MAX_ATTACH_BYTES, listing_text, text_from};
+    use tokio::io::AsyncReadExt;
+
+    let meta = sftp
+        .metadata(path)
+        .await
+        .map_err(|err| failure("read", path, err))?;
+    if meta.is_dir() {
+        return Ok(listing_text(path, &list(sftp, path).await?));
+    }
+    let file = sftp
+        .open(path)
+        .await
+        .map_err(|err| failure("read", path, err))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_ATTACH_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .await
+        .map_err(|err| failure("read", path, err))?;
+    let truncated = bytes.len() > MAX_ATTACH_BYTES;
+    bytes.truncate(MAX_ATTACH_BYTES);
+    text_from(path, bytes, truncated).map_err(|message| SftpError::Sftp { message })
+}
+
 /// Streams the remote file `remote` into the local file `local` (created or truncated).
 /// A partially written local file is removed when the transfer fails.
 pub async fn download(sftp: &SftpSession, remote: &str, local: &Path) -> Result<(), SftpError> {

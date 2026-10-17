@@ -29,6 +29,11 @@ export function setDropHandler(next: DropHandler): () => void {
   };
 }
 
+/** Hands a drop to the app's handler, as a released drag does. */
+export function deliverDrop(drag: PathDrag, target: Element | null) {
+  handler?.(drag, target);
+}
+
 /** The element marked as a drop target (`data-drop-pane` or `data-drop-chat`) under a point. */
 export function dropTargetAt(x: number, y: number): Element | null {
   const hit = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
@@ -75,7 +80,7 @@ export function startPathDrag(e: ReactPointerEvent, drag: PathDrag, label: strin
     const started = ghost !== null;
     ghost?.remove();
     document.body.classList.remove("is-dragging-path");
-    if (started && dropped) handler?.(drag, dropTargetAt(ev.clientX, ev.clientY));
+    if (started && dropped) deliverDrop(drag, dropTargetAt(ev.clientX, ev.clientY));
   };
   const up = (ev: PointerEvent) => end(ev, true);
   const cancel = (ev: PointerEvent) => end(ev, false);

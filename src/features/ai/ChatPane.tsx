@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Play, X } from "lucide-react";
+import { FileText, MessageSquarePlus, Play, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import type { TerminalSettings } from "../settings/settings";
@@ -8,6 +8,8 @@ import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiProvider, typ
 import { aiConfigOf, needsApiKey, newAiSessionId, truncateSelection } from "./aiContext";
 import { recallChat, rememberChat, type ChatTurn } from "./chatMemory";
 import { ModelPicker } from "./ModelPicker";
+import type { PathDrag } from "../drop/pathDrag";
+import { MAX_ATTACHED_FILES, describeAttachError, fileName, readAttachment, type AttachedText } from "./attachments";
 
 const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible">, string> = {
   anthropic: "Anthropic",
@@ -47,6 +49,8 @@ interface ChatPaneProps {
   onClose: () => void;
   /** Makes `model` of `provider` the AI provider and model (S10). */
   onSelectModel: (provider: AiProvider, model: string) => void;
+  /** Hands out what to do with files dropped on the chat (S6); returns its unregister function. */
+  registerDropTarget?: (attach: (drag: PathDrag) => void) => () => void;
 }
 
 
@@ -105,12 +109,19 @@ function CommandBox({
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel }: ChatPaneProps) {
+export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel, registerDropTarget }: ChatPaneProps) {
   const t = useT();
   const [sessionId, setSessionId] = useState(() => recallChat(conversationKey)?.sessionId ?? newAiSessionId());
   const [input, setInput] = useState("");
   /** The selection still attached to the next question; dropped once sent or removed. */
   const [chip, setChip] = useState(() => truncateSelection(selection));
+  /** Files dropped on the chat, sent with the next question (S6). */
+  const [files, setFiles] = useState<AttachedText[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  /** The files of the question in flight, given back when it is stopped. */
+  const pendingFiles = useRef<AttachedText[]>([]);
+  const filesRef = useRef(files);
+  filesRef.current = files;
   const [turns, setTurns] = useState<ChatTurn[]>(() => recallChat(conversationKey)?.turns ?? []);
   const [keyMissing, setKeyMissing] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -148,6 +159,27 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
 
   useEffect(() => () => void seq.current++, []);
 
+  const attach = async (drag: PathDrag) => {
+    setAttachError(null);
+    const known = new Set(filesRef.current.map((f) => f.path));
+    const paths = drag.paths.map((p) => p.path).filter((path) => !known.has(path));
+    if (filesRef.current.length + paths.length > MAX_ATTACHED_FILES) {
+      return setAttachError(t("ai.chat.tooManyFiles", { max: MAX_ATTACHED_FILES }));
+    }
+    for (const path of paths) {
+      try {
+        const file = await readAttachment(drag.origin, path);
+        setFiles((prev) => (prev.some((f) => f.path === file.path) ? prev : [...prev, file]));
+      } catch (err) {
+        setAttachError(describeAttachError(err));
+      }
+    }
+    inputRef.current?.focus();
+  };
+  const attachRef = useRef(attach);
+  attachRef.current = attach;
+  useEffect(() => registerDropTarget?.((drag) => void attachRef.current(drag)), [registerDropTarget]);
+
   useEffect(() => {
     if (focused) inputRef.current?.focus();
   }, [focused]);
@@ -163,16 +195,29 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
     const mine = ++seq.current;
     const id = nextId.current++;
     const attached = chip || null;
+    const sentFiles = files;
+    pendingFiles.current = sentFiles;
     const conversation: AiTurn[] = turns
       .filter((t) => t.state === "answer")
       .slice(-10)
       .map((t) => ({ question: t.question, selection: t.selection, answer: t.answer, command: t.command }));
     setTurns((prev) => [
       ...prev,
-      { id, question, selection: attached, state: "loading", answer: "", command: null, error: "" },
+      {
+        id,
+        question,
+        selection: attached,
+        ...(sentFiles.length ? { files: sentFiles.map((f) => f.path) } : {}),
+        state: "loading",
+        answer: "",
+        command: null,
+        error: "",
+      },
     ]);
     setInput("");
     setChip("");
+    setFiles([]);
+    setAttachError(null);
     const update = (patch: Partial<ChatTurn>) =>
       setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
     aiAssist(aiConfigOf(settings, sessionId), {
@@ -183,6 +228,7 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
       history: context.history(),
       selection: attached,
       conversation,
+      ...(sentFiles.length ? { files: sentFiles.map(({ path, content }) => ({ path, content })) } : {}),
     })
       .then((reply) => mine === seq.current && update({ state: "answer", answer: reply.answer, command: reply.command }))
       .catch((err) => {
@@ -200,6 +246,7 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
     setTurns((prev) => prev.filter((t) => t.id !== pending.id));
     setInput(pending.question);
     if (pending.selection) setChip(pending.selection);
+    setFiles(pendingFiles.current);
     inputRef.current?.focus();
   };
 
@@ -244,6 +291,11 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
           <div key={turn.id} className="chat__turn">
             <div className="chat__question" aria-label={t("ai.chat.question")}>
               {turn.selection && <pre className="assistant__selection">{turn.selection}</pre>}
+              {turn.files?.map((path) => (
+                <p key={path} className="chat__file chat__file--sent" title={path}>
+                  <FileText size={12} /> {fileName(path)}
+                </p>
+              ))}
               <p className="assistant__text">{turn.question}</p>
             </div>
             {turn.state === "loading" && <p className="muted">{t("ai.chat.asking")}</p>}
@@ -284,6 +336,26 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
             <X size={12} />
           </button>
         </div>
+      )}
+      {files.map((file) => (
+        <div key={file.path} className="chat__chip chat__file" title={file.path} aria-label={t("ai.chat.attachedFile", { name: fileName(file.path) })}>
+          <FileText size={12} />
+          <span className="chat__file-name">{fileName(file.path)}</span>
+          {file.truncated && <span className="muted">{t("ai.chat.fileTruncated")}</span>}
+          <button
+            type="button"
+            className="chat__chip-remove"
+            aria-label={t("ai.chat.removeFile", { name: fileName(file.path) })}
+            onClick={() => setFiles((prev) => prev.filter((f) => f.path !== file.path))}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+      {attachError && (
+        <p className="form-error chat__attach-error" role="alert">
+          {attachError}
+        </p>
       )}
       <div className="chat__input-row">
         <textarea

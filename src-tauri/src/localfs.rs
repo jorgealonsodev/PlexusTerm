@@ -156,6 +156,79 @@ pub fn chmod(path: &Path, mode: u32) -> Result<(), String> {
     }
 }
 
+/// Bytes read from one file attached to an AI question; the rest is left out.
+pub const MAX_ATTACH_BYTES: usize = 64 * 1024;
+/// Entries of a folder attached to an AI question.
+const MAX_ATTACH_ENTRIES: usize = 500;
+
+/// A file's text (or a folder's listing) attached to an AI question.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextFile {
+    pub path: String,
+    pub content: String,
+    /// The file is longer than what was read.
+    pub truncated: bool,
+}
+
+/// The text of the first bytes of a file; refused when they hold a NUL byte or invalid UTF-8
+/// (a character cut by the size limit is dropped, not refused).
+pub fn text_from(path: &str, bytes: Vec<u8>, truncated: bool) -> Result<TextFile, String> {
+    let not_text = || format!("cannot attach {path}: it is not a text file");
+    if bytes.contains(&0) {
+        return Err(not_text());
+    }
+    let content = match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(err) if truncated && err.utf8_error().error_len().is_none() => {
+            let valid = err.utf8_error().valid_up_to();
+            let mut bytes = err.into_bytes();
+            bytes.truncate(valid);
+            String::from_utf8(bytes).map_err(|_| not_text())?
+        }
+        Err(_) => return Err(not_text()),
+    };
+    Ok(TextFile {
+        path: path.to_string(),
+        content,
+        truncated,
+    })
+}
+
+/// A folder's entries as text, one per line, folders ending in `/`.
+pub fn listing_text(path: &str, entries: &[Entry]) -> TextFile {
+    let lines: Vec<String> = entries
+        .iter()
+        .take(MAX_ATTACH_ENTRIES)
+        .map(|entry| match entry.kind {
+            EntryKind::Dir => format!("{}/", entry.name),
+            _ => entry.name.clone(),
+        })
+        .collect();
+    TextFile {
+        path: path.to_string(),
+        content: lines.join("\n"),
+        truncated: entries.len() > MAX_ATTACH_ENTRIES,
+    }
+}
+
+/// The first [`MAX_ATTACH_BYTES`] of a text file, or a folder's listing.
+pub fn read_text(path: &Path) -> Result<TextFile, String> {
+    use std::io::Read;
+    let label = path.to_string_lossy().into_owned();
+    if fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false) {
+        return Ok(listing_text(&label, &list(path)?));
+    }
+    let file = fs::File::open(path).map_err(|err| failure("read", path, err))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_ATTACH_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|err| failure("read", path, err))?;
+    let truncated = bytes.len() > MAX_ATTACH_BYTES;
+    bytes.truncate(MAX_ATTACH_BYTES);
+    text_from(&label, bytes, truncated)
+}
+
 fn native(path: &str) -> PathBuf {
     platform::expand_home(path)
 }
@@ -198,6 +271,12 @@ pub fn local_remove(path: String, is_dir: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn local_chmod(path: String, mode: u32) -> Result<(), String> {
     chmod(&native(&path), mode)
+}
+
+/// A local file's text (or a folder's listing) to attach to an AI question.
+#[tauri::command]
+pub fn local_read_text(path: String) -> Result<TextFile, String> {
+    read_text(&native(&path))
 }
 
 /// Opens a local file in its default program, the text editor or a chosen program.
@@ -304,6 +383,52 @@ mod tests {
                 .unwrap_err()
                 .starts_with("cannot delete ")
         );
+    }
+
+    #[test]
+    fn reads_text_files_up_to_the_limit_and_refuses_binary_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        let small = dir.path().join("notes.txt");
+        fs::write(&small, "line 1\nline 2").unwrap();
+        let read = read_text(&small).unwrap();
+        assert_eq!(read.content, "line 1\nline 2");
+        assert!(!read.truncated);
+        assert_eq!(read.path, small.to_string_lossy());
+
+        // A two-byte character cut by the limit is dropped, not refused.
+        let big = dir.path().join("big.txt");
+        let mut text = "a".repeat(MAX_ATTACH_BYTES - 1);
+        text.push('ñ');
+        text.push_str("tail");
+        fs::write(&big, &text).unwrap();
+        let read = read_text(&big).unwrap();
+        assert!(read.truncated);
+        assert_eq!(read.content, "a".repeat(MAX_ATTACH_BYTES - 1));
+
+        let binary = dir.path().join("a.bin");
+        fs::write(&binary, [0x7f, b'E', b'L', b'F', 0, 1]).unwrap();
+        let err = read_text(&binary).unwrap_err();
+        assert_eq!(
+            err,
+            format!("cannot attach {}: it is not a text file", binary.display())
+        );
+        fs::write(&binary, [0xff, 0xfe, b'a']).unwrap();
+        assert!(read_text(&binary).unwrap_err().contains("not a text file"));
+        assert!(
+            read_text(&dir.path().join("x"))
+                .unwrap_err()
+                .starts_with("cannot read ")
+        );
+    }
+
+    #[test]
+    fn a_folder_is_attached_as_its_listing() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join("src")).unwrap();
+        fs::write(dir.path().join("README.md"), "").unwrap();
+        let read = read_text(dir.path()).unwrap();
+        assert_eq!(read.content, "src/\nREADME.md");
+        assert!(!read.truncated);
     }
 
     #[cfg(unix)]

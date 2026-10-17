@@ -6,6 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import App from "../../App";
 import type { AiSuggestContext, AssistTarget } from "../terminal/TerminalView";
 import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
+import { deliverDrop } from "../drop/pathDrag";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
@@ -499,6 +500,56 @@ describe("AI chat pane (S3, S5, S9)", () => {
       "error: permission denied",
       null,
     ]);
+  });
+
+  it("attaches files dropped on the chat to the next question only, and refuses binary ones (S6)", async () => {
+    answers.ai_assist = () => ({ answer: "Port 80 is taken.", command: null });
+    answers.local_read_text = (args) => {
+      const path = (args as { path: string }).path;
+      if (path.endsWith(".bin")) throw `cannot attach ${path}: it is not a text file`;
+      return { path, content: `text of ${path}`, truncated: path.endsWith("big.log") };
+    };
+    answers.sftp_read_text = (args) => {
+      const { id, path } = args as { id: number; path: string };
+      return { path, content: `remote ${id} ${path}`, truncated: false };
+    };
+    await renderApp();
+    pressShortcut();
+    const target = chat().closest("[data-drop-chat]");
+    expect(target).not.toBeNull();
+    await act(async () =>
+      deliverDrop({ origin: { kind: "local" }, paths: [{ path: "/etc/app.conf", isDir: false }, { path: "/var/big.log", isDir: false }] }, target),
+    );
+    await settle();
+    expect(within(chat()).getByLabelText("Attached file app.conf")).toBeTruthy();
+    expect(within(chat()).getByLabelText("Attached file big.log").textContent).toContain("(first 64 KB)");
+    await act(async () => deliverDrop({ origin: { kind: "sftp", sessionId: 9 }, paths: [{ path: "/srv/x.txt", isDir: false }] }, target));
+    await act(async () => deliverDrop({ origin: { kind: "local" }, paths: [{ path: "/a.bin", isDir: false }] }, target));
+    await settle();
+    expect(within(chat()).getByRole("alert").textContent).toBe("cannot attach /a.bin: it is not a text file");
+    fireEvent.click(within(chat()).getByRole("button", { name: "Remove big.log" }));
+    await ask("why does it fail?");
+    expect(screen.queryByLabelText("Attached file app.conf")).toBeNull();
+    await ask("and now?");
+    expect(calls("ai_assist").map((c) => (c.request as { files?: unknown }).files)).toEqual([
+      [
+        { path: "/etc/app.conf", content: "text of /etc/app.conf" },
+        { path: "/srv/x.txt", content: "remote 9 /srv/x.txt" },
+      ],
+      undefined,
+    ]);
+  });
+
+  it("attaches at most five files to one question (S6)", async () => {
+    answers.local_read_text = (args) => ({ path: (args as { path: string }).path, content: "x", truncated: false });
+    await renderApp();
+    pressShortcut();
+    const target = chat().closest("[data-drop-chat]");
+    const paths = ["/1", "/2", "/3", "/4", "/5", "/6"].map((path) => ({ path, isDir: false }));
+    await act(async () => deliverDrop({ origin: { kind: "local" }, paths }, target));
+    await settle();
+    expect(within(chat()).getByRole("alert").textContent).toBe("Attach at most 5 files to one question.");
+    expect(calls("local_read_text")).toEqual([]);
   });
 
   it("sends no selection once its chip is removed, and cuts it to 2000 characters", async () => {

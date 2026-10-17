@@ -26,6 +26,9 @@ const MAX_HISTORY: usize = 20;
 const MAX_FIELD: usize = 500;
 const MAX_PROMPT: usize = 4000;
 const MAX_SELECTION: usize = 8000;
+/// Files attached to one question, and the characters of their text in all.
+pub const MAX_FILES: usize = 5;
+pub const MAX_FILES_TOTAL: usize = 100_000;
 const MAX_DETAIL: usize = 200;
 const MAX_COMPLETION: usize = 300;
 /// Longest assistant command accepted; a longer one is dropped (never cut), the answer kept.
@@ -101,6 +104,19 @@ pub fn assist_prompt(request: &AssistRequest) -> String {
         out.push_str(&format!(
             "Selected terminal text:\n{}\n",
             cap(selection, MAX_SELECTION)
+        ));
+    }
+    let mut budget = MAX_FILES_TOTAL;
+    for file in request.files.iter().take(MAX_FILES) {
+        if budget == 0 {
+            break;
+        }
+        let content = cap(&file.content, budget);
+        budget -= content.chars().count();
+        out.push_str(&format!(
+            "Attached file {}:\n{}\n\n",
+            single_line(cap(&file.path, MAX_FIELD)),
+            content
         ));
     }
     out.push_str(&format!(
@@ -452,6 +468,58 @@ mod tests {
             ..request
         });
         assert!(!prompt.contains("Selected terminal text"), "{prompt}");
+    }
+
+    #[test]
+    fn assist_prompt_includes_attached_files_within_their_limits() {
+        use crate::ai::AttachedFile;
+        let file = |path: &str, content: String| AttachedFile {
+            path: path.into(),
+            content,
+        };
+        let request = AssistRequest {
+            prompt: "why does it fail?".into(),
+            os: "linux".into(),
+            files: vec![file("/etc/app.conf", "port = 80".into())],
+            ..Default::default()
+        };
+        let prompt = assist_prompt(&request);
+        assert!(
+            prompt
+                .contains("Attached file /etc/app.conf:\nport = 80\n\nRequest: why does it fail?"),
+            "{prompt}"
+        );
+        assert!(
+            !assist_prompt(&AssistRequest {
+                files: vec![],
+                ..request.clone()
+            })
+            .contains("Attached file")
+        );
+
+        let many: Vec<AttachedFile> = (0..7)
+            .map(|i| file(&format!("/f{i}"), "x".into()))
+            .collect();
+        let prompt = assist_prompt(&AssistRequest {
+            files: many,
+            ..request.clone()
+        });
+        assert_eq!(prompt.matches("Attached file").count(), MAX_FILES);
+
+        let big = vec![
+            file("/a", "a".repeat(MAX_FILES_TOTAL - 10)),
+            file("/b", "b".repeat(50)),
+            file("/c", "c".repeat(5)),
+        ];
+        let prompt = assist_prompt(&AssistRequest {
+            files: big,
+            ..request
+        });
+        assert!(
+            prompt.contains(&format!("Attached file /b:\n{}\n\nRequest", "b".repeat(10))),
+            "the last file gets what is left of the budget"
+        );
+        assert!(!prompt.contains("Attached file /c"), "the budget is spent");
     }
 
     #[test]
