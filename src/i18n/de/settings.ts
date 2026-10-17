@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "Argumente",
     chooseShell: "Shell auswählen",
     shellHelp: "Neue lokale Terminals starten diese Shell. Argumente werden durch Leerzeichen getrennt; setze ein Argument mit Leerzeichen in Anführungszeichen.",
+    startDir: "Startordner lokaler Terminals",
     copyOnSelect: "Beim Markieren kopieren",
     rightClickPastes: "Rechtsklick fügt ein",
     confirmMultilinePaste: "Mehrzeiliges Einfügen bestätigen",

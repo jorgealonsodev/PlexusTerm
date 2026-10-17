@@ -44,6 +44,16 @@ describe("localTargetOf", () => {
     });
     expect(localTargetOf({ ...DEFAULT_SETTINGS, localShell: "wsl.exe" })).toEqual({ type: "local", program: "wsl.exe" });
   });
+
+  it("starts in the folder chosen in Settings (S8)", () => {
+    expect(localTargetOf({ ...DEFAULT_SETTINGS, localCwd: "~/projects" })).toEqual({ type: "local", cwd: "~/projects" });
+    expect(localTargetOf({ ...DEFAULT_SETTINGS, localShell: "fish", localCwd: "/srv" })).toEqual({
+      type: "local",
+      program: "fish",
+      cwd: "/srv",
+    });
+    expect(localTargetOf({ ...DEFAULT_SETTINGS, localCwd: "  " })).toEqual({ type: "local" });
+  });
 });
 
 describe("runningShellOf", () => {

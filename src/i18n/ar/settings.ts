@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "الوسائط",
     chooseShell: "اختر صدفة",
     shellHelp: "تفتح الطرفيات المحلية الجديدة هذه الصدفة. تُفصل الوسائط بمسافات؛ ضع الوسيطة التي تحتوي على مسافات بين علامتي اقتباس.",
+    startDir: "مجلد البدء للطرفيات المحلية",
     copyOnSelect: "النسخ عند التحديد",
     rightClickPastes: "اللصق بالنقر بزر الماوس الأيمن",
     confirmMultilinePaste: "تأكيد لصق عدة أسطر",

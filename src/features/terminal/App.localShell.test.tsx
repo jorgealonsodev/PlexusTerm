@@ -47,6 +47,16 @@ describe("Shell of new local terminals", () => {
     expect(targets()).toEqual([fish, fish]);
   });
 
+  it("starts the first terminal and every new one in the folder from Settings (S8)", async () => {
+    await renderApp({ localCwd: "~/projects" });
+    expect(targets()).toEqual([{ type: "local", cwd: "~/projects" }]);
+    newTerminal();
+    expect(targets()).toEqual([
+      { type: "local", cwd: "~/projects" },
+      { type: "local", cwd: "~/projects" },
+    ]);
+  });
+
   it("opens plain local terminals with the system default shell", async () => {
     await renderApp({});
     expect(targets()).toEqual([{ type: "local" }]);

@@ -462,6 +462,19 @@ describe("Shell for local terminals", () => {
     expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
   });
 
+  it("saves the starting folder of local terminals, typed or chosen (S8)", async () => {
+    vi.mocked(open).mockResolvedValueOnce("/home/me/work");
+    const onSave = renderWith();
+    const folder = screen.getByLabelText("Starting folder for local terminals") as HTMLInputElement;
+    expect(folder.value).toBe("");
+    expect(folder.placeholder).toBe("Home directory");
+    fireEvent.click(screen.getByRole("button", { name: "Choose the starting directory" }));
+    await waitFor(() => expect(folder.value).toBe("/home/me/work"));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }));
+    save();
+    expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, localCwd: "/home/me/work" });
+  });
+
   it("offers the system default and Other… before the shells are known", () => {
     renderWith({}, null);
     expect(Array.from(shellSelect().options).map((o) => o.textContent)).toEqual(["System default", "Other…"]);

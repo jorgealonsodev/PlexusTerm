@@ -52,11 +52,13 @@ export function shellNameOf(program: string): string {
 }
 
 /** The target of a new local terminal: the shell chosen in Settings, or the system default. */
-export function localTargetOf(settings: Pick<TerminalSettings, "localShell" | "localShellArgs">): LocalTarget {
+export function localTargetOf(settings: Pick<TerminalSettings, "localShell" | "localShellArgs" | "localCwd">): LocalTarget {
   const program = settings.localShell.trim();
-  if (!program) return { type: "local" };
+  const cwd = settings.localCwd.trim();
+  const start = cwd ? { cwd } : {};
+  if (!program) return { type: "local", ...start };
   const args = splitArgs(settings.localShellArgs);
-  return { type: "local", program, ...(args.length ? { args } : {}) };
+  return { type: "local", program, ...(args.length ? { args } : {}), ...start };
 }
 
 /** The name of the shell a tab runs: its own, or the default one; null when unknown or remote. */

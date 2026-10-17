@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "引数",
     chooseShell: "シェルを選択",
     shellHelp: "新しいローカル端末はこのシェルで開きます。引数はスペースで区切ります。スペースを含む引数は引用符で囲んでください。",
+    startDir: "ローカル端末の開始フォルダー",
     copyOnSelect: "選択時にコピー",
     rightClickPastes: "右クリックで貼り付け",
     confirmMultilinePaste: "複数行の貼り付けを確認",

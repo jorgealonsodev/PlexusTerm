@@ -37,6 +37,7 @@ export const settings = {
     shellArgs: "Arguments",
     chooseShell: "Choose a shell",
     shellHelp: "New local terminals run this shell. Arguments are separated by spaces; quote an argument that has spaces.",
+    startDir: "Starting folder for local terminals",
     copyOnSelect: "Copy on select",
     rightClickPastes: "Right click pastes",
     confirmMultilinePaste: "Confirm multi-line paste",

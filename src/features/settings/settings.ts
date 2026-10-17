@@ -59,6 +59,8 @@ export interface TerminalSettings {
   localShell: string;
   /** Its arguments as typed, split like a shell when a terminal opens. */
   localShellArgs: string;
+  /** Folder new local terminals start in (`~` is the home folder); "" starts in the home folder. */
+  localCwd: string;
   /** Width in px dragged by the user; null keeps the default width of each sidebar tab. */
   sidebarWidth: number | null;
   /** Ask GitHub for a newer release when PlexusTerm starts. */
@@ -98,6 +100,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   sidebarHideWhenCollapsed: false,
   localShell: "",
   localShellArgs: "",
+  localCwd: "",
   sidebarWidth: null,
   checkUpdates: true,
   language: "system",
@@ -201,6 +204,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),
+    localCwd: cleanLocalShell(value.localCwd),
     sidebarWidth:
       typeof value.sidebarWidth === "number" && Number.isFinite(value.sidebarWidth)
         ? clampSidebarWidth(value.sidebarWidth)

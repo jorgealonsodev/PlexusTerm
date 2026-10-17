@@ -39,6 +39,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "参数",
     chooseShell: "选择 Shell",
     shellHelp: "新的本地终端会运行此 Shell。参数以空格分隔；含空格的参数请用引号括起来。",
+    startDir: "本地终端的起始文件夹",
     copyOnSelect: "选中即复制",
     rightClickPastes: "右键粘贴",
     confirmMultilinePaste: "确认多行粘贴",

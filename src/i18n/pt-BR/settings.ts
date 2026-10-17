@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "Argumentos",
     chooseShell: "Escolher um shell",
     shellHelp: "Novos terminais locais abrem este shell. Os argumentos são separados por espaços; coloque entre aspas um argumento que tenha espaços.",
+    startDir: "Pasta inicial dos terminais locais",
     copyOnSelect: "Copiar ao selecionar",
     rightClickPastes: "Clique com o botão direito cola",
     confirmMultilinePaste: "Confirmar ao colar várias linhas",

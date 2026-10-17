@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "आर्ग्युमेंट",
     chooseShell: "शेल चुनें",
     shellHelp: "नए लोकल टर्मिनल यही शेल चलाते हैं। आर्ग्युमेंट स्पेस से अलग होते हैं; जिस आर्ग्युमेंट में स्पेस हो उसे उद्धरण चिह्नों में रखें।",
+    startDir: "स्थानीय टर्मिनलों का प्रारंभिक फ़ोल्डर",
     copyOnSelect: "चुनने पर कॉपी करें",
     rightClickPastes: "राइट-क्लिक से पेस्ट करें",
     confirmMultilinePaste: "कई पंक्तियाँ पेस्ट करने की पुष्टि करें",

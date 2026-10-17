@@ -347,6 +347,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
+  const [localCwd, setLocalCwd] = useState(settings.localCwd);
   const [inlineSuggestions, setInlineSuggestions] = useState(settings.inlineSuggestions);
   const [history, setHistory] = useState(settings.commandHistory);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
@@ -414,6 +415,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       sidebarHideWhenCollapsed,
       localShell: cleanLocalShell(localShell),
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
+      localCwd: cleanLocalShell(localCwd),
       sidebarWidth: settings.sidebarWidth,
       checkUpdates,
       language,
@@ -545,6 +547,30 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               }}
             />
             <p className="muted">{t("settings.terminal.shellHelp")}</p>
+            <div className="field">
+              <label htmlFor="settings-local-cwd">{t("settings.terminal.startDir")}</label>
+              <div className="form-row field__picker">
+                <input
+                  id="settings-local-cwd"
+                  value={localCwd}
+                  placeholder={t("sessions.edit.startDirPlaceholder")}
+                  spellCheck={false}
+                  onChange={(e) => setLocalCwd(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={t("sessions.edit.chooseStartDir")}
+                  onClick={() =>
+                    void open({ title: t("sessions.edit.chooseStartDir"), multiple: false, directory: true })
+                      .then((dir) => typeof dir === "string" && setLocalCwd(dir))
+                      .catch(() => {})
+                  }
+                >
+                  {t("common.browse")}
+                </button>
+              </div>
+            </div>
             <label className="check">
               <input type="checkbox" checked={copyOnSelect} onChange={(e) => setCopyOnSelect(e.target.checked)} />
               {t("settings.terminal.copyOnSelect")}

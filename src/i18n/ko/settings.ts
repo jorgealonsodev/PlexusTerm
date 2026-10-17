@@ -40,6 +40,7 @@ export const settings: Messages<typeof en> = {
     shellArgs: "인수",
     chooseShell: "셸 선택",
     shellHelp: "새 로컬 터미널은 이 셸로 열립니다. 인수는 공백으로 구분하며, 공백이 있는 인수는 따옴표로 묶으세요.",
+    startDir: "로컬 터미널의 시작 폴더",
     copyOnSelect: "선택 시 복사",
     rightClickPastes: "마우스 오른쪽 클릭으로 붙여넣기",
     confirmMultilinePaste: "여러 줄 붙여넣기 확인",

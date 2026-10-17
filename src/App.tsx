@@ -421,10 +421,10 @@ function AppContent() {
   }, [isRunning]);
 
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
-  const { localShell, localShellArgs } = terminalSettings.settings;
+  const { localShell, localShellArgs, localCwd: localStart } = terminalSettings.settings;
   const openLocal = useCallback(
-    () => open(localTargetOf({ localShell, localShellArgs })),
-    [open, localShell, localShellArgs],
+    () => open(localTargetOf({ localShell, localShellArgs, localCwd: localStart })),
+    [open, localShell, localShellArgs, localStart],
   );
 
   /**
