@@ -8,6 +8,8 @@ import { useMacros } from "./features/macros/useMacros";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
+import { ShellsProvider, useShells } from "./features/platform/useShells";
+import { localTargetOf, runningShellOf } from "./features/terminal/localShell";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
 import { forgetChatsExcept } from "./features/ai/chatMemory";
@@ -90,7 +92,6 @@ import {
 import { themeById } from "./features/terminal/themes";
 import "./App.css";
 
-const LOCAL: SessionTarget = { type: "local" };
 
 type Modal =
   | { kind: "quickConnect" }
@@ -214,12 +215,17 @@ function ToolsMenu(props: {
 }
 
 function AppContent() {
-  // Start with one local terminal open.
-  const [state, dispatch] = useReducer(tabsReducer, initialTabs, (s) =>
-    tabsReducer(s, { type: "open", target: LOCAL }),
-  );
+  const [state, dispatch] = useReducer(tabsReducer, initialTabs);
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  // Start with one local terminal open, once the settings say which shell it runs.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!terminalSettings.loaded || started.current) return;
+    started.current = true;
+    dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
+  }, [terminalSettings.loaded, terminalSettings.settings]);
+  const shells = useShells();
   const dialogs = useDialogs();
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
@@ -389,7 +395,11 @@ function AppContent() {
   }, [isRunning]);
 
   const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
-  const openLocal = useCallback(() => open(LOCAL), [open]);
+  const { localShell, localShellArgs } = terminalSettings.settings;
+  const openLocal = useCallback(
+    () => open(localTargetOf({ localShell, localShellArgs })),
+    [open, localShell, localShellArgs],
+  );
 
   /**
    * The login of a saved SSH session, through its jump hosts (S14). Password hops connect
@@ -469,9 +479,16 @@ function AppContent() {
   };
 
   /** Completes the typed line of `paneId` with the AI provider (S2); errors only leave a hint. */
-  const aiSuggestFor = (paneId: string) => async (context: AiSuggestContext) => {
+  const aiSuggestFor = (paneId: string, target: SessionTarget) => async (context: AiSuggestContext) => {
     const config = aiConfigOf(settings, aiSessionOf(paneId));
-    const request = { line: context.line, os: platform, cwd: context.cwd, history: context.history };
+    const shell = runningShellOf(target, shells);
+    const request = {
+      line: context.line,
+      os: platform,
+      ...(shell ? { shell } : {}),
+      cwd: context.cwd,
+      history: context.history,
+    };
     try {
       const completion = await aiLimit(paneId, () => aiComplete(config, request));
       setAiHints((prev) => {
@@ -535,6 +552,7 @@ function AppContent() {
     const { commandHistory: historyOn, aiHistoryContext } = settings;
     return {
       os: platform,
+      shell: runningShellOf(tab.target, shells),
       cwd: paneMeta[terminalPaneId]?.cwd ?? null,
       history: () => (historyOn ? commandHistory.recent(hostKey, aiHistoryContext) : []),
     };
@@ -878,7 +896,7 @@ function AppContent() {
                             registerWriter={(write) => writers.register(paneId, write)}
                             registerMacroTarget={(target) => macroTargets.register(paneId, target)}
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
-                            aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId) : undefined}
+                            aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
@@ -918,7 +936,7 @@ function AppContent() {
                 </div>
               );
             })}
-            {state.tabs.length === 0 && (
+            {state.tabs.length === 0 && terminalSettings.loaded && (
               <div className="empty">
                 <p>{t("app.empty.noSessions")}</p>
                 <div className="empty__actions">
@@ -1062,9 +1080,11 @@ function AppContent() {
 export default function App() {
   return (
     <PlatformProvider>
-      <DialogProvider>
-        <AppContent />
-      </DialogProvider>
+      <ShellsProvider>
+        <DialogProvider>
+          <AppContent />
+        </DialogProvider>
+      </ShellsProvider>
     </PlatformProvider>
   );
 }

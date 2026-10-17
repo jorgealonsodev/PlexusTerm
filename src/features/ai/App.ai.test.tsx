@@ -685,3 +685,29 @@ describe("AI suggestions (S2)", () => {
     expect(screen.queryByText("AI: no API key")).toBeNull();
   });
 });
+
+describe("AI requests name the local shell (local shells S5)", () => {
+  const shells = () => ({ default: { name: "zsh", program: "/usr/bin/zsh" }, available: [] });
+
+  it("sends the default shell's name with inline suggestions and chat questions", async () => {
+    withSettings({ aiSuggestions: true });
+    answers.shells = shells;
+    answers.ai_complete = () => ({ completion: "" });
+    answers.ai_assist = () => ({ answer: "Hi.", command: null });
+    await renderApp();
+    await act(async () => void (await pane.aiSuggest!({ line: "ls", hostKey: "local", cwd: "/srv/app", history: [] })));
+    expect((calls("ai_complete")[0].request as { shell?: string }).shell).toBe("zsh");
+    pressShortcut();
+    await ask("hola");
+    expect((calls("ai_assist")[0].request as { shell?: string }).shell).toBe("zsh");
+  });
+
+  it("sends the shell chosen in Settings", async () => {
+    withSettings({ aiSuggestions: true, localShell: "/usr/bin/fish" });
+    answers.shells = shells;
+    answers.ai_complete = () => ({ completion: "" });
+    await renderApp();
+    await act(async () => void (await pane.aiSuggest!({ line: "ls", hostKey: "local", cwd: "/srv/app", history: [] })));
+    expect((calls("ai_complete")[0].request as { shell?: string }).shell).toBe("fish");
+  });
+});

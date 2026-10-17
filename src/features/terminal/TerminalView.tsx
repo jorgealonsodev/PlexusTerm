@@ -29,6 +29,8 @@ import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
 import { backendFor } from "./backend";
+import { runningShellOf } from "./localShell";
+import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
 import { usePlatform } from "../platform/usePlatform";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
@@ -239,6 +241,9 @@ export function TerminalView({
   const platform = usePlatform();
   const platformRef = useRef(platform);
   platformRef.current = platform;
+  const shells = useShells();
+  const shellsRef = useRef(shells);
+  shellsRef.current = shells;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -546,7 +551,7 @@ export function TerminalView({
         if (fullScreen() || atSecretPrompt()) return false;
         // Clear the line first: whatever was half typed (even after Tab or arrows) is removed,
         // so the line sent is exactly the command.
-        write(`${clearLineKeys(platformRef.current, target.type)}${text}\r`);
+        write(`${clearLineKeys(platformRef.current, target.type, runningShellOf(target, shellsRef.current))}${text}\r`);
         line = EMPTY_LINE;
         track(`${text}\r`);
         return true;

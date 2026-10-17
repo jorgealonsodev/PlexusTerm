@@ -58,7 +58,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 
 | Feature | What you get | Guide |
 | --- | --- | --- |
-| Local terminals | Tabs with your shell, up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |
+| Local terminals | Tabs with your shell or the one you choose (PowerShell, cmd, WSL, Git Bash, zsh, fish...), up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |
 | SSH | Password, key or agent login, `known_hosts` checks, up to 3 jump hosts | [SSH sessions](docs/user-guide.md#ssh-sessions) |
 | Saved sessions | Folders, search, passwords in the system keyring, import from `sessions.ini` | [Saved sessions](docs/user-guide.md#saved-sessions) |
 | SFTP | File browser for the active SSH tab: drag-and-drop upload, open, edit and re-upload, permissions, follows the shell's folder | [SFTP browser](docs/user-guide.md#sftp-browser) |

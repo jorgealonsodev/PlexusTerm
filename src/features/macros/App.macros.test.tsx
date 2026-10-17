@@ -97,6 +97,8 @@ async function renderApp() {
   // Wait for macros.json to load.
   fireEvent.click(screen.getByRole("tab", { name: "Macros" }));
   await screen.findByText("Login");
+  // And for the first local terminal (it opens once the settings are read).
+  await screen.findAllByTestId("terminal");
 }
 
 describe("App macros (S16)", () => {

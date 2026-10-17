@@ -23,6 +23,8 @@ const providerName = (provider: TerminalSettings["aiProvider"]) =>
 /** What the chat knows about its linked terminal. Terminal output is never part of it. */
 export interface ChatContext {
   os: string;
+  /** Name of the local shell (e.g. pwsh); null or missing when unknown or remote. */
+  shell?: string | null;
   cwd: string | null;
   /** The host's recent commands, read when a question is sent. */
   history: () => string[];
@@ -176,6 +178,7 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
     aiAssist(aiConfigOf(settings, sessionId), {
       prompt: question,
       os: context.os,
+      ...(context.shell ? { shell: context.shell } : {}),
       cwd: context.cwd,
       history: context.history(),
       selection: attached,

@@ -12,8 +12,10 @@ import { aiProviderLabel } from "../ai/ModelPicker";
 import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
+import { ShellPicker } from "../terminal/ShellPicker";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
 import {
+  cleanLocalShell,
   clampAiHistoryContext,
   clampFontSize,
   cleanAiBaseUrl,
@@ -326,6 +328,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [textEditor, setTextEditor] = useState(settings.textEditor);
+  const [localShell, setLocalShell] = useState(settings.localShell);
+  const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
   const [inlineSuggestions, setInlineSuggestions] = useState(settings.inlineSuggestions);
   const [history, setHistory] = useState(settings.commandHistory);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
@@ -391,6 +395,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       assistantShortcut,
       sidebarCollapsed: settings.sidebarCollapsed,
       sidebarHideWhenCollapsed,
+      localShell: cleanLocalShell(localShell),
+      localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
       language,
     });
   };
@@ -509,6 +515,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("terminal")}>
+            <ShellPicker
+              id="settings-local-shell"
+              label={t("settings.terminal.shell")}
+              program={localShell}
+              args={localShellArgs}
+              onChange={(program, args) => {
+                setLocalShell(program);
+                setLocalShellArgs(args);
+              }}
+            />
+            <p className="muted">{t("settings.terminal.shellHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={copyOnSelect} onChange={(e) => setCopyOnSelect(e.target.checked)} />
               {t("settings.terminal.copyOnSelect")}

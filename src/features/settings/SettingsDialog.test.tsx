@@ -5,7 +5,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
 import packageJson from "../../../package.json";
-import { DEFAULT_SETTINGS } from "./settings";
+import { DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
+import { ShellsContext } from "../platform/useShells";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 /** The keyring of the AI key commands, by provider. */
@@ -380,5 +381,77 @@ describe("SettingsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+J" });
     });
+  });
+});
+
+describe("Shell for local terminals", () => {
+  const SHELLS = {
+    default: { name: "bash", program: "/bin/bash" },
+    available: [
+      { name: "bash", program: "/bin/bash" },
+      { name: "fish", program: "/usr/bin/fish" },
+    ],
+  };
+  const renderWith = (patch: Partial<TerminalSettings> = {}, shells: typeof SHELLS | null = SHELLS) => {
+    const onSave = vi.fn();
+    render(
+      <ShellsContext.Provider value={shells}>
+        <SettingsDialog settings={{ ...DEFAULT_SETTINGS, ...patch }} onSave={onSave} onCancel={vi.fn()} initialSection="terminal" />
+      </ShellsContext.Provider>,
+    );
+    return onSave;
+  };
+  const shellSelect = () => screen.getByLabelText("Shell for local terminals") as HTMLSelectElement;
+  const optionValue = (text: string) => Array.from(shellSelect().options).find((o) => o.textContent === text)!.value;
+  const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  it("lists the system default and the detected shells, and saves the chosen one with its arguments", () => {
+    const onSave = renderWith();
+    expect(Array.from(shellSelect().options).map((o) => o.textContent)).toEqual([
+      "System default (bash)",
+      "bash — /bin/bash",
+      "fish — /usr/bin/fish",
+      "Other…",
+    ]);
+    expect(shellSelect().value).toBe("");
+    expect(screen.queryByLabelText("Arguments")).toBeNull();
+    fireEvent.change(shellSelect(), { target: { value: "/usr/bin/fish" } });
+    expect(screen.queryByLabelText("Program")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Arguments"), { target: { value: " --login " } });
+    save();
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, localShell: "/usr/bin/fish", localShellArgs: "--login" });
+  });
+
+  it("Other… takes any program, typed or chosen with Browse…", async () => {
+    vi.mocked(open).mockResolvedValueOnce("/opt/nu/bin/nu");
+    const onSave = renderWith();
+    fireEvent.change(shellSelect(), { target: { value: optionValue("Other…") } });
+    expect((screen.getByLabelText("Program") as HTMLInputElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
+    await waitFor(() => expect((screen.getByLabelText("Program") as HTMLInputElement).value).toBe("/opt/nu/bin/nu"));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, directory: false }));
+    fireEvent.change(screen.getByLabelText("Arguments"), { target: { value: "-l" } });
+    save();
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, localShell: "/opt/nu/bin/nu", localShellArgs: "-l" });
+  });
+
+  it("shows a saved shell that was not detected under Other…", () => {
+    renderWith({ localShell: "/opt/nu/bin/nu", localShellArgs: "-l" });
+    expect(shellSelect().value).toBe(optionValue("Other…"));
+    expect((screen.getByLabelText("Program") as HTMLInputElement).value).toBe("/opt/nu/bin/nu");
+    expect((screen.getByLabelText("Arguments") as HTMLInputElement).value).toBe("-l");
+  });
+
+  it("going back to the system default forgets the program and its arguments", () => {
+    const onSave = renderWith({ localShell: "/usr/bin/fish", localShellArgs: "--login" });
+    expect(shellSelect().value).toBe("/usr/bin/fish");
+    fireEvent.change(shellSelect(), { target: { value: "" } });
+    save();
+    expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
+  });
+
+  it("offers the system default and Other… before the shells are known", () => {
+    renderWith({}, null);
+    expect(Array.from(shellSelect().options).map((o) => o.textContent)).toEqual(["System default", "Other…"]);
   });
 });

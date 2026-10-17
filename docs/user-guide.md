@@ -186,7 +186,7 @@ PlexusTerm's interface comes in English, Spanish, German, French, Japanese, Port
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version and project links); **Save** keeps the changes of every section:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (shell of local terminals, copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version and project links); **Save** keeps the changes of every section:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
 - **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
@@ -213,6 +213,7 @@ The gear button at the right of the toolbar opens **Settings**, shared by every 
 The palettes come from iTerm2-Color-Schemes (MIT); [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) credits each scheme's author and original project. The whole window follows the colour scheme, like an editor theme: the toolbar, sidebar, tabs and dialogs take their background, text and accent colours from it, and light schemes switch the window and the logo to their light versions.
 
 Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `robbyrussell` or `agnoster`) are configured in the shell, on the machine where it runs (`~/.zshrc`, `~/.config/starship.toml`), not in PlexusTerm. Their colours follow the colour scheme. Themes that draw icons or powerline arrows need a [Nerd Font](https://www.nerdfonts.com/) installed on this machine and set as the font family.
+- **Shell for local terminals** (default: the system default shell): the shells found on this computer are listed (Linux and macOS: `$SHELL` and `/etc/shells`; Windows: PowerShell 7, Windows PowerShell, cmd, WSL and Git Bash when installed), or **Other…** runs any program, typed or chosen with **Browse…**. **Arguments** are separated by spaces; quote an argument that has spaces, e.g. `-NoLogo -Command "Set-Location 'C:\My Files'"`. New local terminals use it; terminals already open keep their shell. Command suggestions name it to the AI provider, and **Run** clears the line with the keys that shell understands.
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
 - **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it.
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
@@ -337,7 +338,7 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 
 PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 
-- **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`.
+- **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`. Settings → Terminal → **Shell for local terminals** picks another one, such as cmd, WSL or Git Bash.
 - **Home directory**: `~` is `%USERPROFILE%`, so host keys go to `%USERPROFILE%\.ssh\known_hosts` and key paths accept both `~/` and `~\`.
 - **SSH agent**: `SSH_AUTH_SOCK` when set, otherwise the Windows OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent` (start the "OpenSSH Authentication Agent" service and add keys with `ssh-add`).
 - **Saved files** (sessions, settings, macros) rely on the permissions of your user profile instead of Unix file modes.

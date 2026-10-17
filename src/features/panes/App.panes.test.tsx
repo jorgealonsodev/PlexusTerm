@@ -55,9 +55,15 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+/** Renders the app and waits for its first local terminal (it opens once the settings are read). */
+const renderApp = async () => {
+  render(<App />);
+  await screen.findByTestId("terminal");
+};
+
 describe("App panes", () => {
   it("splits the tab into a second pane without restarting the first one", async () => {
-    render(<App />);
+    await renderApp();
     expect(terminals()).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Split right" }));
     expect(terminals()).toHaveLength(2);
@@ -67,8 +73,8 @@ describe("App panes", () => {
     expect(terminals().map((t) => t.dataset.focused)).toEqual(["false", "false", "true"]);
   });
 
-  it("offers a close button on each pane only while the tab is split, closing that pane", () => {
-    render(<App />);
+  it("offers a close button on each pane only while the tab is split, closing that pane", async () => {
+    await renderApp();
     expect(document.querySelectorAll(".pane__corner")).toHaveLength(0);
     press("D");
     const corners = document.querySelectorAll(".pane__corner");
@@ -81,8 +87,8 @@ describe("App panes", () => {
     expect(document.querySelectorAll(".pane__corner")).toHaveLength(0);
   });
 
-  it("closes only the focused pane, and the tab with its last pane", () => {
-    render(<App />);
+  it("closes only the focused pane, and the tab with its last pane", async () => {
+    await renderApp();
     press("D");
     expect(terminals()).toHaveLength(2);
     press("W");
@@ -93,8 +99,8 @@ describe("App panes", () => {
     expect(screen.getByText("No open sessions.")).toBeTruthy();
   });
 
-  it("multi-execution mirrors the focused pane to the other panes except excluded ones", () => {
-    render(<App />);
+  it("multi-execution mirrors the focused pane to the other panes except excluded ones", async () => {
+    await renderApp();
     press("D");
     press("D");
     // Typing with multi-execution off stays in its own pane.

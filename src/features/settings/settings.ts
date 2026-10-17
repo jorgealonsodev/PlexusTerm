@@ -55,6 +55,10 @@ export interface TerminalSettings {
   sidebarCollapsed: boolean;
   /** Folding hides the sidebar completely instead of leaving its tab icons. */
   sidebarHideWhenCollapsed: boolean;
+  /** Shell of new local terminals: a path or a name on PATH; "" runs the system default. */
+  localShell: string;
+  /** Its arguments as typed, split like a shell when a terminal opens. */
+  localShellArgs: string;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
 }
@@ -88,6 +92,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   assistantShortcut: DEFAULT_ASSISTANT_SHORTCUT,
   sidebarCollapsed: false,
   sidebarHideWhenCollapsed: false,
+  localShell: "",
+  localShellArgs: "",
   language: "system",
 };
 
@@ -105,6 +111,14 @@ export function cleanFontFamily(value: unknown): string {
 export function cleanTextEditor(value: unknown): string {
   const editor = typeof value === "string" ? value.trim() : "";
   return editor.length <= MAX_TEXT_EDITOR_LENGTH ? editor : "";
+}
+
+export const MAX_LOCAL_SHELL_LENGTH = 1024;
+
+/** A trimmed text of at most 1024 characters (the local shell and its arguments), or "". */
+export function cleanLocalShell(value: unknown): string {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length <= MAX_LOCAL_SHELL_LENGTH ? text : "";
 }
 
 export const isAiProvider = (value: unknown): value is AiProvider =>
@@ -172,6 +186,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
     sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
+    localShell: cleanLocalShell(value.localShell),
+    localShellArgs: cleanLocalShell(value.localShellArgs),
     language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }
