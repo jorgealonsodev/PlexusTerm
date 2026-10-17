@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "貼り付け",
   },
   menu: {
+    askAi: "AI に質問",
+    typeSelection: "プロンプトに入力",
+    findSelection: "端末内を検索",
+    openLink: "リンクを開く",
     paste: "貼り付け",
     selectAll: "すべて選択",
     clear: "スクロールバックを消去",

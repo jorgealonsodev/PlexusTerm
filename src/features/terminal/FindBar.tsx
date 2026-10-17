@@ -12,12 +12,14 @@ interface FindBarProps {
   /** Searches the scrollback; returns whether a match was found. */
   onFind: (text: string, options: FindOptions, direction: FindDirection) => boolean;
   onClose: () => void;
+  /** Text the bar opens with (e.g. the selection it was opened from). */
+  initialText?: string;
 }
 
 /** Search bar shown over the focused pane (S15.1). */
-export function FindBar({ onFind, onClose }: FindBarProps) {
+export function FindBar({ onFind, onClose, initialText = "" }: FindBarProps) {
   const t = useT();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [regex, setRegex] = useState(false);
   const [notFound, setNotFound] = useState(false);

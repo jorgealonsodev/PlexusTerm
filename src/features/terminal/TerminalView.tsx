@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
@@ -39,7 +40,7 @@ import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
-import { TerminalContextMenu, type MenuAction } from "./TerminalContextMenu";
+import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
 import { themeById } from "./themes";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
@@ -77,6 +78,8 @@ interface TerminalViewProps {
   history?: HistoryStore;
   /** Hands out what the assistant needs from this pane (S3); returns its unregister function. */
   registerAssistTarget?: (target: AssistTarget) => () => void;
+  /** Opens this pane's AI chat with its selection attached; without it the menu has no "Ask the AI". */
+  onAskAi?: () => void;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -195,8 +198,11 @@ export function TerminalView({
   aiSuggest,
   history = commandHistory,
   registerAssistTarget,
+  onAskAi,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
+  const onAskAiRef = useRef(onAskAi);
+  onAskAiRef.current = onAskAi;
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -216,7 +222,9 @@ export function TerminalView({
   /** Accepts the drawn suggestion for a key event; true when the key was used. */
   const acceptRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   const [findOpen, setFindOpen] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
+  /** What the find bar opens with: the selection it was opened from, or nothing. */
+  const [findText, setFindText] = useState("");
   const [pendingPaste, setPendingPaste] = useState<PendingPaste | null>(null);
   const logRef = useRef<SessionLog | null>(null);
   const [logPath, setLogPath] = useState<string | null>(null);
@@ -733,12 +741,31 @@ export function TerminalView({
     callbacks.current.onLogging?.(path);
   };
 
+  const openFind = (text = "") => {
+    setFindText(text);
+    setFindOpen(true);
+  };
+
   const runMenuAction = (action: MenuAction) => {
     const term = termRef.current;
+    const selection = menu?.selection ?? "";
     switch (action) {
       case "copy":
         copySelection();
         break;
+      case "askAi":
+        // The chat takes the focus and the selection with it.
+        return onAskAiRef.current?.();
+      case "typeSelection":
+        pasteText(selection);
+        break;
+      case "findSelection":
+        return openFind(selection.split(/\r?\n/)[0]);
+      case "openLink": {
+        const url = linkOf(selection);
+        if (url) void openUrl(url).catch(() => {});
+        break;
+      }
       case "paste":
         pasteFromClipboard();
         break;
@@ -749,7 +776,7 @@ export function TerminalView({
         term?.clear();
         break;
       case "find":
-        return setFindOpen(true);
+        return openFind();
       case "save":
         void saveOutput();
         break;
@@ -761,16 +788,21 @@ export function TerminalView({
   };
 
   paneShortcutRef.current = (shortcut) => {
-    if (shortcut.type === "find") setFindOpen(true);
+    if (shortcut.type === "find") openFind();
     else if (shortcut.type === "copy") copySelection();
     else if (shortcut.type === "paste") pasteFromClipboard();
   };
 
-  /** Right click pastes, or opens the menu when that is turned off; Ctrl+right click always opens it (S15.4). */
+  /**
+   * Right click pastes, or opens the menu when that is turned off; Ctrl+right click always opens it
+   * (S15.4), and so does a right click on selected text, with the selection's actions (S7).
+   */
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
-    if (settingsRef.current.rightClickPastes && !e.ctrlKey) pasteFromClipboard();
-    else setMenu({ x: e.clientX, y: e.clientY });
+    const term = termRef.current;
+    const selection = term?.hasSelection() ? term.getSelection() : "";
+    if (settingsRef.current.rightClickPastes && !e.ctrlKey && !selection) pasteFromClipboard();
+    else setMenu({ x: e.clientX, y: e.clientY, selection });
   };
 
   return (
@@ -786,12 +818,14 @@ export function TerminalView({
           {ghost.text}
         </div>
       )}
-      {findOpen && <FindBar onFind={find} onClose={closeFind} />}
+      {findOpen && <FindBar key={findText} initialText={findText} onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu
           x={menu.x}
           y={menu.y}
           logging={logPath !== null}
+          selection={menu.selection}
+          canAskAi={onAskAi !== undefined}
           onAction={runMenuAction}
           onClose={() => {
             setMenu(null);

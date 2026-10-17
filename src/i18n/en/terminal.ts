@@ -18,6 +18,10 @@ export const terminal = {
     paste: "Paste",
   },
   menu: {
+    askAi: "Ask the AI about it",
+    typeSelection: "Type at the prompt",
+    findSelection: "Find in terminal",
+    openLink: "Open link",
     paste: "Paste",
     selectAll: "Select all",
     clear: "Clear scrollback",

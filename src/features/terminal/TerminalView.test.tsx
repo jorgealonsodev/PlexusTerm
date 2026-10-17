@@ -17,6 +17,8 @@ vi.mock("./clipboard", () => clipboard);
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => true) }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/session.log") }));
+const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/plugin-opener", () => opener);
 
 /** Every fake xterm created, newest last. */
 const terms = vi.hoisted(() => [] as FakeTerminal[]);
@@ -235,6 +237,63 @@ describe("TerminalView", () => {
       fireEvent.click(screen.getByRole("menuitem", { name: "Select all" }));
       expect(term().selectAll).toHaveBeenCalled();
       expect(clipboard.readText).not.toHaveBeenCalled();
+    });
+
+    it("opens the menu on right click over selected text even when right click pastes (S7)", async () => {
+      const onAskAi = vi.fn();
+      const { container } = renderView({ onAskAi });
+      const select = (text: string) => {
+        const t = term() as unknown as { hasSelection: () => boolean; getSelection: () => string };
+        t.hasSelection = () => text !== "";
+        t.getSelection = () => text;
+      };
+      const items = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+      select("https://example.com/docs");
+      rightClick(container);
+      expect(clipboard.readText).not.toHaveBeenCalled();
+      expect(items().slice(0, 6)).toEqual([
+        "Copy",
+        "Ask the AI about it",
+        "Type at the prompt",
+        "Find in terminal",
+        "Open link",
+        "Paste",
+      ]);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Open link" }));
+      expect(opener.openUrl).toHaveBeenCalledWith("https://example.com/docs");
+
+      select("error: disk full\nsecond line");
+      rightClick(container);
+      expect(items()).not.toContain("Open link");
+      fireEvent.click(screen.getByRole("menuitem", { name: "Ask the AI about it" }));
+      expect(onAskAi).toHaveBeenCalledTimes(1);
+
+      rightClick(container);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Find in terminal" }));
+      expect((screen.getByRole("textbox", { name: "Find in terminal" }) as HTMLInputElement).value).toBe("error: disk full");
+
+      select("make test");
+      rightClick(container);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Type at the prompt" }));
+      expect(term().paste).toHaveBeenCalledWith("make test");
+
+      // Without a selection, right click still pastes; the menu has no selection items.
+      select("");
+      clipboard.readText.mockResolvedValueOnce("ls");
+      rightClick(container);
+      await settle();
+      expect(term().paste).toHaveBeenLastCalledWith("ls");
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("has no Ask the AI item without a chat to open", () => {
+      const { container } = renderView({ settings: { ...DEFAULT_SETTINGS, rightClickPastes: false } });
+      const t = term() as unknown as { hasSelection: () => boolean; getSelection: () => string };
+      t.hasSelection = () => true;
+      t.getSelection = () => "x";
+      rightClick(container);
+      expect(screen.queryByRole("menuitem", { name: "Ask the AI about it" })).toBeNull();
+      expect(screen.getByRole("menuitem", { name: "Type at the prompt" })).toBeTruthy();
     });
 
     it("keeps Ctrl+Shift+F from the shell and opens the find bar; Escape closes it", async () => {

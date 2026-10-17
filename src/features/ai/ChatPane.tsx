@@ -22,6 +22,14 @@ const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-com
 const providerName = (provider: TerminalSettings["aiProvider"]) =>
   provider === "openai-compatible" ? translate("ai.providers.openaiCompatibleEndpoint") : PROVIDER_NAMES[provider];
 
+/** What the app can attach to an open chat's next question. */
+export interface ChatTarget {
+  /** Files dropped on the chat (S6). */
+  attachFiles: (drag: PathDrag) => void;
+  /** Selected terminal text from "Ask the AI" (S7); replaces the selection chip. */
+  attachSelection: (text: string) => void;
+}
+
 /** What the chat knows about its linked terminal. Terminal output is never part of it. */
 export interface ChatContext {
   os: string;
@@ -49,8 +57,8 @@ interface ChatPaneProps {
   onClose: () => void;
   /** Makes `model` of `provider` the AI provider and model (S10). */
   onSelectModel: (provider: AiProvider, model: string) => void;
-  /** Hands out what to do with files dropped on the chat (S6); returns its unregister function. */
-  registerDropTarget?: (attach: (drag: PathDrag) => void) => () => void;
+  /** Hands out how to attach dropped files (S6) and a selection (S7); returns its unregister function. */
+  registerDropTarget?: (target: ChatTarget) => () => void;
 }
 
 
@@ -178,7 +186,17 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
   };
   const attachRef = useRef(attach);
   attachRef.current = attach;
-  useEffect(() => registerDropTarget?.((drag) => void attachRef.current(drag)), [registerDropTarget]);
+  useEffect(
+    () =>
+      registerDropTarget?.({
+        attachFiles: (drag) => void attachRef.current(drag),
+        attachSelection: (text) => {
+          if (text) setChip(truncateSelection(text));
+          inputRef.current?.focus();
+        },
+      }),
+    [registerDropTarget],
+  );
 
   useEffect(() => {
     if (focused) inputRef.current?.focus();

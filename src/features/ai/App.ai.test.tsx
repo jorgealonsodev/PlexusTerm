@@ -24,6 +24,7 @@ interface StubProps {
   registerWriter?: (write: (data: string) => void) => () => void;
   registerAssistTarget?: (target: AssistTarget) => () => void;
   aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
+  onAskAi?: () => void;
 }
 
 /** What the fake terminals were sent (by terminal number), their selection, and the latest aiSuggest. */
@@ -47,6 +48,7 @@ vi.mock("../terminal/TerminalView", () => ({
     registerWriter,
     registerAssistTarget,
     aiSuggest,
+    onAskAi,
   }: StubProps) {
     const [id] = useState(() => pane.next++);
     pane.aiSuggest = aiSuggest ?? null;
@@ -71,6 +73,7 @@ vi.mock("../terminal/TerminalView", () => ({
       <div data-testid="terminal" data-focused={focused}>
         <button onClick={() => onInput?.(`typed in ${id}`)}>type in {id}</button>
         <button onClick={() => onExit?.(0)}>exit {id}</button>
+        <button onClick={() => onAskAi?.()}>ask ai in {id}</button>
       </div>
     );
   },
@@ -550,6 +553,20 @@ describe("AI chat pane (S3, S5, S9)", () => {
     await settle();
     expect(within(chat()).getByRole("alert").textContent).toBe("Attach at most 5 files to one question.");
     expect(calls("local_read_text")).toEqual([]);
+  });
+
+  it("Ask the AI from a terminal's menu opens its chat with the selection, or puts it in the open chat (S7)", async () => {
+    await renderApp();
+    pane.selection = "error: disk full";
+    fireEvent.click(screen.getByRole("button", { name: "ask ai in 1" }));
+    await settle();
+    expect(chats()).toHaveLength(1);
+    expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("error: disk full");
+    pane.selection = "permission denied";
+    fireEvent.click(screen.getByRole("button", { name: "ask ai in 1" }));
+    await settle();
+    expect(chats()).toHaveLength(1);
+    expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("permission denied");
   });
 
   it("sends no selection once its chip is removed, and cuts it to 2000 characters", async () => {

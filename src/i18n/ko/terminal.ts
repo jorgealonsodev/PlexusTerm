@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "붙여넣기",
   },
   menu: {
+    askAi: "AI에게 묻기",
+    typeSelection: "프롬프트에 입력",
+    findSelection: "터미널에서 찾기",
+    openLink: "링크 열기",
     paste: "붙여넣기",
     selectAll: "모두 선택",
     clear: "스크롤백 지우기",

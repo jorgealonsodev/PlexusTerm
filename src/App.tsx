@@ -57,7 +57,7 @@ import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { chatAction, initialTabs, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
-import { ChatPane } from "./features/ai/ChatPane";
+import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
 import { aiConfigOf, aiHint, newAiSessionId, truncateSelection } from "./features/ai/aiContext";
 import { createAiLimiter } from "./features/ai/aiLimiter";
@@ -282,7 +282,7 @@ function AppContent() {
   const [running, setRunning] = useState<RunningMacro | null>(null);
   const runRef = useRef<MacroRun | null>(null);
   const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
-  const [chatDrops] = useState(() => createTargetRegistry<(drag: PathDrag) => void>());
+  const [chatDrops] = useState(() => createTargetRegistry<ChatTarget>());
   const [aiLimit] = useState(() => createAiLimiter());
   const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
   /** Bumped on every assistant open: a new key restarts the X's spin (S5); 0 = not spinning. */
@@ -536,20 +536,38 @@ function AppContent() {
    */
   const openAssistant = () => {
     if (!activeTab) return setNotice(t("app.notice.noTerminalForAi"));
-    const next = chatAction(activeTab);
+    openAssistantFor(activeTab);
+  };
+
+  /** Opens (or focuses) the AI chat of `tab`'s focused pane, with that pane's selection attached. */
+  const openAssistantFor = (tab: Tab) => {
+    const next = chatAction(tab);
     if (next.kind === "full") {
       return setNotice(t("app.notice.tabFull", { max: MAX_PANES }));
     }
     if (next.kind === "terminal") {
-      dispatch({ type: "focusPane", key: activeTab.key, paneId: next.paneId });
+      dispatch({ type: "focusPane", key: tab.key, paneId: next.paneId });
       assistTargets.get(next.paneId)?.focus();
       return;
     }
     const selection =
       next.kind === "open" ? truncateSelection(assistTargets.get(next.terminalPaneId)?.selection() ?? "") : "";
     void commandHistory.ready();
-    dispatch({ type: "openChat", key: activeTab.key, selection });
+    dispatch({ type: "openChat", key: tab.key, selection });
     if (!prefersReducedMotion()) setSpin((n) => n + 1);
+  };
+
+  /** "Ask the AI" from a terminal's menu (S7): that pane's chat, with the selection it was opened on. */
+  const askAiFrom = (tab: Tab, paneId: string) => {
+    const open = Object.keys(tab.chats).find((id) => tab.chats[id].terminalPaneId === paneId);
+    if (open) {
+      // Its chat is already open: the selection goes to its next question.
+      dispatch({ type: "focusPane", key: tab.key, paneId: open });
+      chatDrops.get(open)?.attachSelection(assistTargets.get(paneId)?.selection() ?? "");
+      return;
+    }
+    dispatch({ type: "focusPane", key: tab.key, paneId });
+    openAssistantFor({ ...tab, focusedPane: paneId });
   };
 
   /**
@@ -610,7 +628,7 @@ function AppContent() {
     if (paneId) return dropOnPane(paneId, drag);
     // Files dropped on an AI chat are attached to its next question (S6).
     const chatId = target?.getAttribute("data-drop-chat");
-    if (chatId) chatDrops.get(chatId)?.(drag);
+    if (chatId) chatDrops.get(chatId)?.attachFiles(drag);
   };
   useEffect(() => setDropHandler((drag, target) => dropRef.current(drag, target)), []);
 
@@ -983,7 +1001,7 @@ function AppContent() {
                                 onSelectModel={(aiProvider, aiModel) => terminalSettings.update({ aiProvider, aiModel })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
                                 onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
-                                registerDropTarget={(attach) => chatDrops.register(paneId, attach)}
+                                registerDropTarget={(target) => chatDrops.register(paneId, target)}
                               />
                             </div>
                           </div>
@@ -1018,6 +1036,7 @@ function AppContent() {
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
+                            onAskAi={() => askAiFrom(tab, paneId)}
                           />
                           {aiHints[paneId] && (
                             <div className="pane__ai-hint" title={aiHints[paneId].detail}>

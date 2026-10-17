@@ -27,6 +27,10 @@ export const terminal: Messages<typeof en> = {
     paste: "لصق",
   },
   menu: {
+    askAi: "اسأل الذكاء الاصطناعي",
+    typeSelection: "اكتب في سطر الأوامر",
+    findSelection: "البحث في الطرفية",
+    openLink: "فتح الرابط",
     paste: "لصق",
     selectAll: "تحديد الكل",
     clear: "مسح سجل التمرير",
