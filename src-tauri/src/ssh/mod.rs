@@ -21,6 +21,7 @@
 mod interop_tests;
 #[cfg(test)]
 pub(crate) mod test_server;
+pub mod cwd;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

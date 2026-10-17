@@ -5,18 +5,23 @@ import { local } from "./localClient";
 export const SHELL_CWD_POLL_MS = 1000;
 
 /**
- * The folder of a local terminal: the one its shell reports through OSC 7, otherwise the shell's
- * working folder read by the backend every second while `enabled`. Null until known.
+ * The folder of a terminal: the one its shell reports through OSC 7, otherwise the shell's
+ * working folder that `read` gets from the backend every second while `enabled` (by default
+ * that of a local terminal's pty). Null until known.
  */
-export function useShellCwd(ptyId: number | null, oscCwd: string | null, enabled: boolean): string | null {
+export function useShellCwd(
+  ptyId: number | null,
+  oscCwd: string | null,
+  enabled: boolean,
+  read: (id: number) => Promise<string | null> = local.shellCwd,
+): string | null {
   const [polled, setPolled] = useState<string | null>(null);
   useEffect(() => {
     setPolled(null);
     if (!enabled || oscCwd !== null || ptyId === null) return;
     let live = true;
     const ask = () =>
-      local
-        .shellCwd(ptyId)
+      read(ptyId)
         .then((dir) => live && dir !== null && setPolled(dir))
         .catch(() => {});
     void ask();
@@ -25,6 +30,6 @@ export function useShellCwd(ptyId: number | null, oscCwd: string | null, enabled
       live = false;
       window.clearInterval(timer);
     };
-  }, [ptyId, oscCwd, enabled]);
+  }, [ptyId, oscCwd, enabled, read]);
   return oscCwd ?? polled;
 }

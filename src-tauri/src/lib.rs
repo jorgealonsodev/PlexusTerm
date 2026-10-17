@@ -252,6 +252,12 @@ fn ssh_close(
     ssh.close(id)
 }
 
+/// The working folder of an SSH session's remote shell, or null when the server cannot tell.
+#[tauri::command]
+async fn ssh_shell_cwd(id: u32, ssh: State<'_, SshManager>) -> Result<Option<String>, SshError> {
+    ssh::cwd::shell_cwd(&ssh, id).await
+}
+
 #[tauri::command]
 async fn sftp_home(id: u32, ssh: State<'_, SshManager>) -> Result<String, SftpError> {
     sftp::home(&*ssh.sftp(id).await?).await
@@ -500,6 +506,7 @@ pub fn run() {
             ssh_write,
             ssh_resize,
             ssh_close,
+            ssh_shell_cwd,
             secret_available,
             secret_exists,
             secret_delete,

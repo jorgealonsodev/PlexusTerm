@@ -25,6 +25,7 @@ import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
+import { sftp } from "./features/sftp/sftpClient";
 import { quotePath, shellFlavor } from "./features/terminal/shellPath";
 import { dropAction, sameMachine } from "./features/drop/dropAction";
 import { dropTargetAt, setDropHandler, type PathDrag, type PathOrigin } from "./features/drop/pathDrag";
@@ -329,6 +330,11 @@ function AppContent() {
   const localPtyId = activeTab?.target.type === "local" ? activeSession.sessionId : null;
   const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
   const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd);
+  // SFTP follows a remote shell without OSC 7 by reading its folder on the server; the sidebar
+  // shows SFTP for an SSH tab on either file tab.
+  const sftpShown =
+    sftpSessionId !== null && (sidebarView === "sftp" || sidebarView === "explorer") && !terminalSettings.settings.sidebarCollapsed;
+  const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd, sftp.shellCwd);
   const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
   const loggingTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
@@ -904,7 +910,7 @@ function AppContent() {
                 <SftpPanel
                   key={`${activePane}:${sftpSessionId}`}
                   sessionId={sftpSessionId}
-                  cwd={activeSession.cwd}
+                  cwd={sftpCwd}
                   follow={followCwd}
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}

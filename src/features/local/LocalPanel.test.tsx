@@ -209,4 +209,15 @@ describe("useShellCwd", () => {
     await act(async () => vi.advanceTimersByTime(3 * SHELL_CWD_POLL_MS));
     expect(mocked.shellCwd.mock.calls.length).toBe(calls);
   });
+
+  it("asks the given reader instead, e.g. the remote shell of an SSH session", async () => {
+    vi.useFakeTimers();
+    const read = vi.fn().mockResolvedValue("/home/remote");
+    const calls = mocked.shellCwd.mock.calls.length;
+    const { result } = renderHook(() => useShellCwd(3, null, true, read));
+    await act(async () => {});
+    expect(result.current).toBe("/home/remote");
+    expect(read).toHaveBeenCalledWith(3);
+    expect(mocked.shellCwd.mock.calls.length).toBe(calls);
+  });
 });

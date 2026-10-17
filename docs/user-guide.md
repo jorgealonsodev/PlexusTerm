@@ -152,7 +152,7 @@ Right-click an entry for more:
 - **Permissions…** changes the mode (`chmod`) with read/write/execute checkboxes for owner, group and others, kept in sync with the octal value.
 - For files: **Open with default text editor** (the **Text editor** chosen in [Settings](#terminal-settings), or the system's default one), **Open with default program**, **Open with…** (choose a program) and **Compare file with…** (choose a local file; opens both in Meld, KDiff3, Kompare or Visual Studio Code, the first one installed). The open options download the file to a private temporary folder and watch it: each time the copy is saved, PlexusTerm asks the first time whether to upload it to the same remote path, then uploads it and reports the result. The temporary copies are deleted when the SSH session closes.
 
-With **Follow terminal folder** on (the default), the browser follows the shell's working directory. This needs the remote shell to report it with an OSC 7 sequence; for bash, add this to the remote `~/.bashrc`:
+With **Follow terminal folder** on (the default), the browser follows the shell's working directory. A remote shell that reports it with an OSC 7 sequence is followed at once. Otherwise, while the SFTP tab is shown, PlexusTerm reads the folder of the session's shell on the server every second over the same connection, without typing anything in the terminal; this works on Linux servers (it needs `/proc`) and follows the shell's own folder, not that of a program it runs or of a shell started inside it with `sudo -s` or `ssh`. On other servers, make the shell report OSC 7; for bash, add this to the remote `~/.bashrc`:
 
 ```bash
 PROMPT_COMMAND='printf "\033]7;file://%s%s\007" "$HOSTNAME" "$PWD"'

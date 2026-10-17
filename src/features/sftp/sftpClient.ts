@@ -37,6 +37,8 @@ export const EDIT_SAVED_EVENT = "sftp-edit-saved";
 /** Wrappers around the `sftp_*` commands; `id` is the SSH terminal session id. */
 export const sftp = {
   home: (id: number) => invoke<string>("sftp_home", { id }),
+  /** The folder of the session's remote shell, read on the server (Linux only); null when unknown. */
+  shellCwd: (id: number) => invoke<string | null>("ssh_shell_cwd", { id }),
   list: (id: number, path: string) => invoke<SftpEntry[]>("sftp_list", { id, path }),
   download: (id: number, remote: string, local: string) =>
     invoke<void>("sftp_download", { id, remote, local }),
