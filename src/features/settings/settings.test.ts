@@ -29,6 +29,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Shift+Space",
       sidebarCollapsed: false,
       sidebarHideWhenCollapsed: false,
+      sidebarWidth: null,
       language: "system",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
@@ -45,7 +46,7 @@ describe("parseSettings", () => {
       '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
-      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"language":"ja"}';
+      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"sidebarWidth":320,"language":"ja"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -65,6 +66,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Alt+K",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      sidebarWidth: 320,
       language: "ja",
     });
   });
@@ -173,6 +175,7 @@ describe("serializeSettings", () => {
       assistantShortcut: "Ctrl+Alt+Space",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      sidebarWidth: 480,
       language: "pt-BR" as const,
     };
     const json = serializeSettings(settings);
@@ -198,6 +201,17 @@ describe("sidebar settings", () => {
     const parsed = parseSettings(JSON.stringify({ sidebarCollapsed: true, sidebarHideWhenCollapsed: "yes" }));
     expect(parsed.sidebarCollapsed).toBe(true);
     expect(parsed.sidebarHideWhenCollapsed).toBe(false);
+  });
+
+  it("keeps a dragged width within 160..640 px and forgets anything else", () => {
+    expect(DEFAULT_SETTINGS.sidebarWidth).toBeNull();
+    expect(parseSettings(JSON.stringify({ sidebarWidth: 300 })).sidebarWidth).toBe(300);
+    expect(parseSettings(JSON.stringify({ sidebarWidth: 300.6 })).sidebarWidth).toBe(301);
+    expect(parseSettings(JSON.stringify({ sidebarWidth: 20 })).sidebarWidth).toBe(160);
+    expect(parseSettings(JSON.stringify({ sidebarWidth: 5000 })).sidebarWidth).toBe(640);
+    for (const bad of ["300", null, true]) {
+      expect(parseSettings(JSON.stringify({ sidebarWidth: bad })).sidebarWidth).toBeNull();
+    }
   });
 });
 

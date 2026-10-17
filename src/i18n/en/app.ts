@@ -91,5 +91,7 @@ export const app = {
     tunnels: "Tunnels",
     macros: "Macros",
     sftpUnavailable: "Available when the focused pane of the active tab is a connected SSH session",
+    resize: "Resize sidebar",
+    resizeHint: "Drag to change the sidebar width; double-click to restore the default width",
   },
 };

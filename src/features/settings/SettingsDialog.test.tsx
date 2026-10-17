@@ -73,6 +73,13 @@ describe("SettingsDialog", () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fontSize: 18, copyOnSelect: false, remoteMonitor: false }));
   });
 
+  it("keeps the dragged sidebar width, which has no field, when saving", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, sidebarWidth: 400 }} onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidth: 400 }));
+  });
+
   it("shows the logo, the version and the project in About, light for light schemes", async () => {
     const { unmount } = render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("tab", { name: "About" }));

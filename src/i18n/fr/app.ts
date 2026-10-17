@@ -95,5 +95,7 @@ export const app: Messages<typeof en> = {
     tunnels: "Tunnels",
     macros: "Macros",
     sftpUnavailable: "Disponible lorsque le volet actif de l'onglet actif est une session SSH connectée",
+    resize: "Redimensionner la barre latérale",
+    resizeHint: "Faites glisser pour changer la largeur de la barre latérale ; double-cliquez pour revenir à la largeur par défaut",
   },
 };

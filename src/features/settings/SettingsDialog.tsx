@@ -391,6 +391,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       assistantShortcut,
       sidebarCollapsed: settings.sidebarCollapsed,
       sidebarHideWhenCollapsed,
+      sidebarWidth: settings.sidebarWidth,
       language,
     });
   };

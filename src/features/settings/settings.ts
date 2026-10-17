@@ -55,6 +55,8 @@ export interface TerminalSettings {
   sidebarCollapsed: boolean;
   /** Folding hides the sidebar completely instead of leaving its tab icons. */
   sidebarHideWhenCollapsed: boolean;
+  /** Width in px dragged by the user; null keeps the default width of each sidebar tab. */
+  sidebarWidth: number | null;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
 }
@@ -88,6 +90,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   assistantShortcut: DEFAULT_ASSISTANT_SHORTCUT,
   sidebarCollapsed: false,
   sidebarHideWhenCollapsed: false,
+  sidebarWidth: null,
   language: "system",
 };
 
@@ -134,6 +137,13 @@ export const cleanAssistantShortcut = (value: unknown): string =>
 /** The CSS font list for a setting: a single name is quoted and falls back to monospace. */
 export const cssFontFamily = (family: string) => (/[,"']/.test(family) ? family : `"${family}", monospace`);
 
+export const SIDEBAR_MIN_WIDTH = 160;
+export const SIDEBAR_MAX_WIDTH = 640;
+
+/** Rounds a dragged sidebar width and keeps it within the sidebar's limits. */
+export const clampSidebarWidth = (width: number) =>
+  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)));
+
 /**
  * Reads settings.json. A missing or unreadable file gives the defaults; every invalid value
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
@@ -172,6 +182,10 @@ export function parseSettings(json: string | null): TerminalSettings {
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
     sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
+    sidebarWidth:
+      typeof value.sidebarWidth === "number" && Number.isFinite(value.sidebarWidth)
+        ? clampSidebarWidth(value.sidebarWidth)
+        : d.sidebarWidth,
     language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }

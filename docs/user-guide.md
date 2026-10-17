@@ -123,7 +123,7 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ## SFTP browser
 
-The sidebar has four tabs, **Sessions**, **SFTP**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+The sidebar has four tabs, **Sessions**, **SFTP**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. Drag the sidebar's edge to change its width (between 160 and 640 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width too. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).

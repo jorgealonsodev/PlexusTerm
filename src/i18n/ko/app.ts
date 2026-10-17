@@ -92,5 +92,7 @@ export const app: Messages<typeof en> = {
     tunnels: "터널",
     macros: "매크로",
     sftpUnavailable: "활성 탭의 포커스된 창이 연결된 SSH 세션일 때 사용할 수 있습니다",
+    resize: "사이드바 너비 조절",
+    resizeHint: "드래그하여 사이드바 너비를 바꾸고, 더블 클릭하면 기본 너비로 돌아갑니다",
   },
 };

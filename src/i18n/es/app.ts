@@ -95,5 +95,7 @@ export const app: Messages<typeof en> = {
     tunnels: "Túneles",
     macros: "Macros",
     sftpUnavailable: "Disponible cuando el panel con el foco de la pestaña activa es una sesión SSH conectada",
+    resize: "Cambiar el ancho de la barra lateral",
+    resizeHint: "Arrastra para cambiar el ancho de la barra lateral; doble clic para volver al ancho por defecto",
   },
 };

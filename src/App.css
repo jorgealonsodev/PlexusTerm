@@ -666,6 +666,23 @@ textarea::placeholder {
   width: 340px;
 }
 
+/* Drag handle over the sidebar's edge; the inline width of the sidebar follows it. */
+.sidebar__resizer {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 6px;
+  margin-inline: -3px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sidebar__resizer:hover,
+.sidebar__resizer:active {
+  background: var(--accent);
+  opacity: 0.6;
+}
+
 /* Folded: a narrow strip of the tab icons, stacked. */
 .sidebar--collapsed {
   width: 44px;
