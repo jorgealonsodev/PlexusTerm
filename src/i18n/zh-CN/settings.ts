@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 可调整字号。会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
     hideSidebar: "折叠时完全隐藏侧边栏",
+    sidebarAtStartup: "PlexusTerm 启动时的侧边栏",
+    sidebarLast: "保持上次状态",
+    sidebarExpanded: "展开",
+    sidebarCollapsed: "折叠",
     sidebarHelp: "Ctrl+Shift+B 或工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
   },
   terminal: {

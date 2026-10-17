@@ -35,8 +35,7 @@ import {
   MAX_TEXT_EDITOR_LENGTH,
   MIN_FONT_SIZE,
   type AiProvider,
-  type TerminalSettings,
-} from "./settings";
+  type TerminalSettings, type SidebarAtStartup } from "./settings";
 import { appShortcutConflict, isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
 
 interface SettingsDialogProps {
@@ -328,6 +327,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
+  const [sidebarAtStartup, setSidebarAtStartup] = useState(settings.sidebarAtStartup);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
   const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
   const [updateState, setUpdateState] = useState<
@@ -418,6 +418,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       assistantShortcut,
       sidebarCollapsed: settings.sidebarCollapsed,
       sidebarHideWhenCollapsed,
+      sidebarAtStartup,
       localShell: cleanLocalShell(localShell),
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
       localCwd: cleanLocalShell(localCwd),
@@ -539,6 +540,14 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.appearance.hideSidebar")}
             </label>
             <p className="muted">{t("settings.appearance.sidebarHelp")}</p>
+            <label className="field">
+              {t("settings.appearance.sidebarAtStartup")}
+              <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
+                <option value="last">{t("settings.appearance.sidebarLast")}</option>
+                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
+                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
+              </select>
+            </label>
           </div>
 
           <div {...panel("terminal")}>

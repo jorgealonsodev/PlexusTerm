@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 でフォントサイズを変更できます。アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
     hideSidebar: "折りたたみ時にサイドバーを完全に隠す",
+    sidebarAtStartup: "PlexusTerm 起動時のサイドバー",
+    sidebarLast: "前回のまま",
+    sidebarExpanded: "開く",
+    sidebarCollapsed: "折りたたむ",
     sidebarHelp:
       "Ctrl+Shift+B またはツールバーのボタンで、サイドバーをタブアイコンだけに折りたたみます。このオプションを有効にすると完全に隠します。",
   },

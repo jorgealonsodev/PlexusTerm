@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "تغيّر Ctrl+= / Ctrl+- / Ctrl+0 حجم الخط. تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
     hideSidebar: "إخفاء الشريط الجانبي تمامًا عند طيّه",
+    sidebarAtStartup: "الشريط الجانبي عند فتح PlexusTerm",
+    sidebarLast: "كما تركته",
+    sidebarExpanded: "مفتوح",
+    sidebarCollapsed: "مطوي",
     sidebarHelp:
       "يطوي Ctrl+Shift+B أو زر شريط الأدوات الشريط الجانبي إلى أيقونات علاماته، أو يخفيه تمامًا مع هذا الخيار.",
   },

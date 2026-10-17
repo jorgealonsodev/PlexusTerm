@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0으로 글꼴 크기를 변경합니다. 아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
     hideSidebar: "접을 때 사이드바를 완전히 숨기기",
+    sidebarAtStartup: "PlexusTerm을 열 때 사이드바",
+    sidebarLast: "마지막 상태 그대로",
+    sidebarExpanded: "펼침",
+    sidebarCollapsed: "접힘",
     sidebarHelp:
       "Ctrl+Shift+B 또는 도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
   },

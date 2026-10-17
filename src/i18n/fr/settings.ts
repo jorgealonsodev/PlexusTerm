@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 modifient la taille de police. Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
     hideSidebar: "Masquer complètement la barre latérale une fois repliée",
+    sidebarAtStartup: "Barre latérale à l’ouverture de PlexusTerm",
+    sidebarLast: "Comme je l’ai laissée",
+    sidebarExpanded: "Ouverte",
+    sidebarCollapsed: "Repliée",
     sidebarHelp:
       "Ctrl+Shift+B ou le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
   },

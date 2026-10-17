@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 alteram o tamanho da fonte. Temas de prompt que desenham ícones (Powerlevel10k, agnoster, Starship) precisam de uma Nerd Font como fonte.",
     hideSidebar: "Ocultar completamente a barra lateral quando recolhida",
+    sidebarAtStartup: "Barra lateral ao abrir o PlexusTerm",
+    sidebarLast: "Como deixei",
+    sidebarExpanded: "Aberta",
+    sidebarCollapsed: "Recolhida",
     sidebarHelp:
       "Ctrl+Shift+B ou o botão da barra de ferramentas recolhe a barra lateral aos ícones das abas, ou a oculta completamente com esta opção.",
   },

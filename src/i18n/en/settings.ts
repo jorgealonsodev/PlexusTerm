@@ -25,6 +25,10 @@ export const settings = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
     hideSidebar: "Hide the sidebar completely when folded",
+    sidebarAtStartup: "Sidebar when PlexusTerm opens",
+    sidebarLast: "As I left it",
+    sidebarExpanded: "Open",
+    sidebarCollapsed: "Folded",
     sidebarHelp:
       "Ctrl+Shift+B or the toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
   },

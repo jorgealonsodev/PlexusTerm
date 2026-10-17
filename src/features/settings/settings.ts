@@ -40,6 +40,8 @@ export interface TerminalSettings {
   fileDetails: boolean;
   /** Opening a folder in the SFTP browser or the Explorer runs `cd` to it in the terminal (L16). */
   terminalFollowsBrowser: boolean;
+  /** How the sidebar opens with PlexusTerm: as it was left, always open or always folded (L17). */
+  sidebarAtStartup: SidebarAtStartup;
   /** Grey inline suggestions of the rest of the command while typing (S1). */
   inlineSuggestions: boolean;
   /** Commands sent with Enter are recorded in history.json and suggested (S1). */
@@ -96,6 +98,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   textEditor: "",
   fileDetails: false,
   terminalFollowsBrowser: true,
+  sidebarAtStartup: "last",
   inlineSuggestions: true,
   commandHistory: true,
   aiSuggestions: false,
@@ -177,6 +180,11 @@ export const clampSidebarWidth = (width: number) =>
  * Reads settings.json. A missing or unreadable file gives the defaults; every invalid value
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
  */
+export const SIDEBAR_AT_STARTUP = ["last", "expanded", "collapsed"] as const;
+export type SidebarAtStartup = (typeof SIDEBAR_AT_STARTUP)[number];
+const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
+  (SIDEBAR_AT_STARTUP as readonly unknown[]).includes(value) ? (value as SidebarAtStartup) : "last";
+
 export function parseSettings(json: string | null): TerminalSettings {
   let raw: unknown = null;
   try {
@@ -200,6 +208,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
     terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),
+    sidebarAtStartup: sidebarAtStartupOf(value.sidebarAtStartup),
     inlineSuggestions: bool(value.inlineSuggestions, d.inlineSuggestions),
     commandHistory: bool(value.commandHistory, d.commandHistory),
     aiSuggestions: bool(value.aiSuggestions, d.aiSuggestions),
@@ -211,7 +220,11 @@ export function parseSettings(json: string | null): TerminalSettings {
         ? clampAiHistoryContext(value.aiHistoryContext)
         : d.aiHistoryContext,
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
-    sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
+    // The sidebar opens folded or not as Settings choose, or as it was left (L17).
+    sidebarCollapsed:
+      sidebarAtStartupOf(value.sidebarAtStartup) === "last"
+        ? bool(value.sidebarCollapsed, d.sidebarCollapsed)
+        : sidebarAtStartupOf(value.sidebarAtStartup) === "collapsed",
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),

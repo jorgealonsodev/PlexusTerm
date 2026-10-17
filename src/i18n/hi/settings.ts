@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 फ़ॉन्ट आकार बदलते हैं। आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
     hideSidebar: "फ़ोल्ड करने पर साइडबार को पूरी तरह छिपाएँ",
+    sidebarAtStartup: "PlexusTerm खुलने पर साइडबार",
+    sidebarLast: "जैसा छोड़ा था",
+    sidebarExpanded: "खुला",
+    sidebarCollapsed: "मुड़ा हुआ",
     sidebarHelp:
       "Ctrl+Shift+B या टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
   },

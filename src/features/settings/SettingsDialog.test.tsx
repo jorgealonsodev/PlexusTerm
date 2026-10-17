@@ -365,6 +365,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("chooses how the sidebar opens at startup (L17)", () => {
+      const { onSave } = setup();
+      const select = screen.getByLabelText("Sidebar when PlexusTerm opens") as HTMLSelectElement;
+      expect(select.value).toBe("last");
+      expect([...select.options].map((o) => o.textContent)).toEqual(["As I left it", "Open", "Folded"]);
+      fireEvent.change(select, { target: { value: "collapsed" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarAtStartup: "collapsed" }));
+    });
+
     it("changes the terminal's folder with the file browser by default, and saves the choice (L16)", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Files" }));

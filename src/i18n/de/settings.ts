@@ -28,6 +28,10 @@ export const settings: Messages<typeof en> = {
     fontHelp:
       "Ctrl+= / Ctrl+- / Ctrl+0 ändern die Schriftgröße. Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
     hideSidebar: "Seitenleiste beim Einklappen vollständig ausblenden",
+    sidebarAtStartup: "Seitenleiste beim Start von PlexusTerm",
+    sidebarLast: "Wie ich sie verlassen habe",
+    sidebarExpanded: "Geöffnet",
+    sidebarCollapsed: "Eingeklappt",
     sidebarHelp:
       "Ctrl+Shift+B oder die Schaltfläche in der Symbolleiste klappt die Seitenleiste auf ihre Tab-Symbole ein oder blendet sie mit dieser Option vollständig aus.",
   },
