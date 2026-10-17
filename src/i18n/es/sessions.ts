@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "Shell predeterminada del sistema",
+    localTooltip: "{shell} en {dir}",
     title: "Sesiones guardadas",
     new: "Nueva",
     folder: "Carpeta",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "Eliminar carpeta",
   },
   edit: {
+    local: "Terminal local",
+    shell: "Shell",
+    startDir: "Directorio inicial",
+    startDirPlaceholder: "Directorio personal",
+    chooseStartDir: "Elige el directorio inicial",
     newTitle: "Nueva sesión",
     editTitle: "Editar sesión",
     type: "Tipo de sesión",

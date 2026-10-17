@@ -76,6 +76,8 @@ describe("SessionsPanel", () => {
     const withMore = [
       { kind: "serial" as const, id: "2", name: "switch", folder: "Prod", path: "/dev/ttyUSB0", baud: 9600, dataBits: 8 as const, parity: "none" as const, stopBits: 1 as const, flow: "none" as const },
       { kind: "telnet" as const, id: "3", name: "router", folder: "Prod", host: "10.0.0.9", port: 23 },
+      { kind: "local" as const, id: "4", name: "dev shell", folder: "Prod", program: "/usr/bin/fish", cwd: "~/src" },
+      { kind: "local" as const, id: "5", name: "plain", folder: "Prod" },
     ].reduce((lib, session) => libraryReducer(lib, { type: "saveSession", session }), library);
     const { container } = render(
       <SessionsPanel
@@ -97,6 +99,9 @@ describe("SessionsPanel", () => {
     expect(iconOf("web")).toBe("ssh");
     expect(iconOf("switch")).toBe("serial");
     expect(iconOf("router")).toBe("telnet");
+    expect(iconOf("dev shell")).toBe("local");
+    expect(screen.getByTitle("/usr/bin/fish in ~/src")).toBeTruthy();
+    expect(screen.getByTitle("System default shell")).toBeTruthy();
     expect(container.querySelector(".tree-row--folder svg.tree-row__icon")?.getAttribute("data-kind")).toBe("folder");
   });
 

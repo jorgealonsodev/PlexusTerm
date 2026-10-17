@@ -5,9 +5,13 @@ import { invoke } from "@tauri-apps/api/core";
 import type { LibrarySession, SavedSession } from "./library";
 import { PlatformContext } from "../platform/usePlatform";
 import { SessionEditDialog } from "./SessionEditDialog";
+import { ShellsContext } from "../platform/useShells";
+import { open } from "@tauri-apps/plugin-dialog";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockedInvoke = vi.mocked(invoke);
+
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 
 const web: SavedSession = {
   kind: "ssh",
@@ -148,7 +152,7 @@ describe("SessionEditDialog Telnet and Mosh (S17.3)", () => {
   it("offers every session type", () => {
     renderKinds(web, true);
     const options = Array.from(screen.getByLabelText<HTMLSelectElement>("Session type").options).map((o) => o.text);
-    expect(options).toEqual(["SSH", "Serial", "Telnet", "Mosh"]);
+    expect(options).toEqual(["SSH", "Serial", "Telnet", "Mosh", "Local terminal"]);
   });
 
   it("does not offer Mosh on Windows, except to keep an existing Mosh session (S18.3)", () => {
@@ -161,10 +165,10 @@ describe("SessionEditDialog Telnet and Mosh (S17.3)", () => {
         </PlatformContext.Provider>,
       );
     renderOn(web, true);
-    expect(kinds()).toEqual(["SSH", "Serial", "Telnet"]);
+    expect(kinds()).toEqual(["SSH", "Serial", "Telnet", "Local terminal"]);
     cleanup();
     renderOn({ kind: "mosh", id: "m", name: "m", folder: "", sshSessionId: "s1" }, false);
-    expect(kinds()).toEqual(["SSH", "Serial", "Telnet", "Mosh"]);
+    expect(kinds()).toEqual(["SSH", "Serial", "Telnet", "Mosh", "Local terminal"]);
   });
 
   it("saves a Telnet session", () => {
@@ -191,5 +195,34 @@ describe("SessionEditDialog Telnet and Mosh (S17.3)", () => {
     renderKinds({ kind: "mosh", id: "m", name: "m", folder: "", sshSessionId: "s1" }, false);
     await settle();
     expect(mockedInvoke).not.toHaveBeenCalled();
+  });
+});
+
+describe("SessionEditDialog local terminal (local shells S4)", () => {
+  it("saves a local session with its shell, arguments and starting directory", () => {
+    const onSave = vi.fn();
+    render(
+      <ShellsContext.Provider value={{ default: { name: "bash", program: "/bin/bash" }, available: [{ name: "zsh", program: "/usr/bin/zsh" }] }}>
+        <SessionEditDialog session={{ ...web, id: "new" }} isNew folders={[]} onSave={onSave} onCancel={() => {}} />
+      </ShellsContext.Provider>,
+    );
+    fireEvent.change(screen.getByLabelText("Session type"), { target: { value: "local" } });
+    expect(screen.queryByLabelText("Host")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Dev" } });
+    fireEvent.change(screen.getByLabelText("Shell"), { target: { value: "/usr/bin/zsh" } });
+    fireEvent.change(screen.getByLabelText("Arguments"), { target: { value: "-l" } });
+    fireEvent.change(screen.getByLabelText("Starting directory"), { target: { value: "~/src" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith({ kind: "local", id: "new", name: "Dev", folder: "", program: "/usr/bin/zsh", args: ["-l"], cwd: "~/src" });
+  });
+
+  it("chooses the starting directory with Browse…", async () => {
+    vi.mocked(open).mockResolvedValueOnce("/home/me/projects");
+    render(<SessionEditDialog session={{ kind: "local", id: "l", name: "Dev", folder: "" }} isNew={false} folders={[]} onSave={vi.fn()} onCancel={() => {}} />);
+    expect((screen.getByLabelText("Session type") as HTMLSelectElement).value).toBe("local");
+    fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
+    await act(() => Promise.resolve());
+    expect((screen.getByLabelText("Starting directory") as HTMLInputElement).value).toBe("/home/me/projects");
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }));
   });
 });

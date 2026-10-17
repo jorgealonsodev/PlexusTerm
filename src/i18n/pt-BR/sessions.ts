@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "Shell padrão do sistema",
+    localTooltip: "{shell} em {dir}",
     title: "Sessões salvas",
     new: "Nova",
     folder: "Pasta",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "Excluir pasta",
   },
   edit: {
+    local: "Terminal local",
+    shell: "Shell",
+    startDir: "Pasta inicial",
+    startDirPlaceholder: "Pasta pessoal",
+    chooseStartDir: "Escolher a pasta inicial",
     newTitle: "Nova sessão",
     editTitle: "Editar sessão",
     type: "Tipo de sessão",

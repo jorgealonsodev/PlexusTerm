@@ -630,6 +630,10 @@ textarea::placeholder {
   color: var(--accent);
 }
 
+.tree-row__icon--local {
+  color: var(--text);
+}
+
 .tree-row__label {
   flex: 1;
   overflow: hidden;

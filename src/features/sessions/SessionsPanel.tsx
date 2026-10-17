@@ -1,9 +1,10 @@
-import { Folder, FolderOpen, Globe, KeyRound, Usb, Waypoints } from "lucide-react";
+import { Folder, FolderOpen, Globe, KeyRound, SquareTerminal, Usb, Waypoints } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   buildTree,
+  isLocalSession,
   isMoshSession,
   isSerialSession,
   isTelnetSession,
@@ -46,6 +47,10 @@ function sessionsUnder(node: TreeNode): LibrarySession[] {
 function sessionTooltip(session: LibrarySession, library: SessionLibrary): string {
   if (isSerialSession(session)) return `${session.path} @ ${session.baud}`;
   if (isTelnetSession(session)) return `telnet ${session.host}:${session.port}`;
+  if (isLocalSession(session)) {
+    const shell = session.program ?? t("sessions.panel.localDefaultShell");
+    return session.cwd ? t("sessions.panel.localTooltip", { shell, dir: session.cwd }) : shell;
+  }
   if (isMoshSession(session)) {
     const ssh = library.sessions.find((s) => s.id === session.sshSessionId);
     return ssh ? t("sessions.panel.moshTooltip", { name: ssh.name }) : t("sessions.panel.moshOrphanTooltip");
@@ -53,9 +58,9 @@ function sessionTooltip(session: LibrarySession, library: SessionLibrary): strin
   return `${session.username}@${session.host}:${session.port}`;
 }
 
-const KIND_ICONS = { ssh: KeyRound, serial: Usb, telnet: Globe, mosh: Waypoints } as const;
+const KIND_ICONS = { ssh: KeyRound, serial: Usb, telnet: Globe, mosh: Waypoints, local: SquareTerminal } as const;
 
-/** The session's type as an icon coloured by type (SSH, serial, Telnet or Mosh). */
+/** The session's type as an icon coloured by type (SSH, serial, Telnet, Mosh or local). */
 function SessionIcon({ session }: { session: LibrarySession }) {
   const kind = session.kind ?? "ssh";
   const Icon = KIND_ICONS[kind];

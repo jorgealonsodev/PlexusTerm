@@ -22,9 +22,13 @@ afterEach(() => {
 
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-async function renderApp(settings: Partial<TerminalSettings>) {
+async function renderApp(settings: Partial<TerminalSettings>, sessions: object[] = []) {
   vi.mocked(invoke).mockImplementation(async (cmd: string) =>
-    cmd === "settings_load" ? JSON.stringify({ ...DEFAULT_SETTINGS, ...settings }) : null,
+    cmd === "settings_load"
+      ? JSON.stringify({ ...DEFAULT_SETTINGS, ...settings })
+      : cmd === "sessions_load"
+        ? JSON.stringify({ version: 1, folders: [], sessions })
+        : null,
   );
   render(<App />);
   await settle();
@@ -48,5 +52,16 @@ describe("Shell of new local terminals", () => {
     expect(targets()).toEqual([{ type: "local" }]);
     newTerminal();
     expect(targets()).toEqual([{ type: "local" }, { type: "local" }]);
+  });
+});
+
+describe("Saved local sessions", () => {
+  it("open a tab with their own shell, arguments and starting directory, titled with the shell", async () => {
+    await renderApp({ localShell: "/usr/bin/fish" }, [
+      { kind: "local", id: "l1", name: "Dev", folder: "", program: "/usr/bin/zsh", args: ["-l"], cwd: "~/src" },
+    ]);
+    fireEvent.doubleClick(await screen.findByText("Dev"));
+    expect(targets()[1]).toEqual({ type: "local", program: "/usr/bin/zsh", args: ["-l"], cwd: "~/src" });
+    expect(screen.getAllByRole("tab", { name: /zsh/ }).length).toBeGreaterThan(0);
   });
 });

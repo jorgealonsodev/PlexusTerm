@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "系统默认 Shell",
+    localTooltip: "{shell}，位于 {dir}",
     title: "已保存的会话",
     new: "新建",
     folder: "文件夹",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "删除文件夹",
   },
   edit: {
+    local: "本地终端",
+    shell: "Shell",
+    startDir: "起始目录",
+    startDirPlaceholder: "主目录",
+    chooseStartDir: "选择起始目录",
     newTitle: "新建会话",
     editTitle: "编辑会话",
     type: "会话类型",

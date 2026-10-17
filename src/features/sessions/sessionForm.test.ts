@@ -17,6 +17,7 @@ const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
   serial: defaultSerialForm,
   telnet: { host: "", port: "" },
   mosh: { sshSessionId: "", serverCommand: "" },
+  local: { program: "", args: "", cwd: "" },
   ...overrides,
 });
 
@@ -208,5 +209,40 @@ describe("parseSessionForm (jump hosts)", () => {
       ok: false,
       error: "A session cannot be its own jump host",
     });
+  });
+});
+
+describe("local session form (local shells S4)", () => {
+  it("saves the shell, its split arguments and the starting directory", () => {
+    const result = parseSessionForm(
+      form({ kind: "local", name: " ", local: { program: " /usr/bin/fish ", args: "--login -C 'cd /srv'", cwd: " ~/src " } }),
+      "l-1",
+    );
+    expect(result).toEqual({
+      ok: true,
+      session: { kind: "local", id: "l-1", name: "fish", folder: "Prod/Web", program: "/usr/bin/fish", args: ["--login", "-C", "cd /srv"], cwd: "~/src" },
+    });
+  });
+
+  it("saves the system default shell without program or arguments, named Local shell", () => {
+    expect(parseSessionForm(form({ kind: "local", name: "", folder: "", local: { program: "", args: "-x", cwd: "" } }), "l-2")).toEqual({
+      ok: true,
+      session: { kind: "local", id: "l-2", name: "Local shell", folder: "" },
+    });
+  });
+
+  it("fills the form back, quoting arguments that have spaces", () => {
+    const f = formFromSession({
+      kind: "local",
+      id: "l",
+      name: "WSL",
+      folder: "",
+      program: "wsl.exe",
+      args: ["-d", "Ubuntu 24.04", ""],
+      cwd: "~",
+    });
+    expect(f.kind).toBe("local");
+    expect(f.local).toEqual({ program: "wsl.exe", args: '-d "Ubuntu 24.04" ""', cwd: "~" });
+    expect(parseSessionForm(f, "l")).toMatchObject({ ok: true, session: { args: ["-d", "Ubuntu 24.04", ""] } });
   });
 });

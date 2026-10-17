@@ -9,6 +9,7 @@ import {
   toTarget,
   isSshSession,
   resolveChain,
+  type SavedLocalSession,
   type SavedMoshSession,
   type SavedSerialSession,
   type SavedSession,
@@ -60,7 +61,7 @@ const mosh = (overrides: Partial<SavedMoshSession> = {}): SavedMoshSession => ({
   ...overrides,
 });
 
-const save = (lib: SessionLibrary, s: SavedSession | SavedSerialSession | SavedTelnetSession | SavedMoshSession) =>
+const save = (lib: SessionLibrary, s: SavedSession | SavedSerialSession | SavedTelnetSession | SavedMoshSession | SavedLocalSession) =>
   libraryReducer(lib, { type: "saveSession", session: s });
 
 describe("normalizeFolder", () => {
@@ -304,5 +305,59 @@ describe("toTarget", () => {
       stopBits: 1,
       flow: "hardware",
     });
+  });
+});
+
+describe("saved local sessions (local shells S4)", () => {
+  const local = (overrides: Partial<SavedLocalSession> = {}): SavedLocalSession => ({
+    kind: "local",
+    id: "l1",
+    name: "PowerShell admin",
+    folder: "Local",
+    program: "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+    args: ["-NoLogo"],
+    cwd: "~\\src",
+    ...overrides,
+  });
+
+  it("round-trips a local session and writes its kind", () => {
+    const lib = save(emptyLibrary, local());
+    const json = serializeLibrary(lib);
+    expect(JSON.parse(json).sessions[0]).toEqual(local());
+    expect(parseLibrary(json)).toEqual({ ok: true, library: lib });
+  });
+
+  it("keeps a local session with the system default shell as just its name and folder", () => {
+    const json = serializeLibrary(save(emptyLibrary, local({ program: "  ", args: [], cwd: " " })));
+    expect(JSON.parse(json).sessions[0]).toEqual({ kind: "local", id: "l1", name: "PowerShell admin", folder: "Local" });
+  });
+
+  it("rejects local sessions with invalid fields", () => {
+    const file = (s: object) => JSON.stringify({ version: 1, folders: [], sessions: [s] });
+    for (const bad of [
+      local({ program: 7 as unknown as string }),
+      local({ args: "-NoLogo" as unknown as string[] }),
+      local({ args: [1] as unknown as string[] }),
+      local({ cwd: false as unknown as string }),
+      local({ name: undefined as unknown as string }),
+    ]) {
+      expect(parseLibrary(file(bad)), JSON.stringify(bad)).toMatchObject({ ok: false });
+    }
+  });
+
+  it("finds local sessions by name or program, and opens them as local targets", () => {
+    const lib = save(save(emptyLibrary, local()), session());
+    const names = (filter: string) =>
+      buildTree(lib, filter).flatMap((n) => (n.kind === "folder" ? n.children : [n])).map((n) => n.name);
+    expect(names("admin")).toEqual(["PowerShell admin"]);
+    expect(names("pwsh")).toEqual(["PowerShell admin"]);
+    expect(toTarget(local())).toEqual({
+      type: "local",
+      program: "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+      args: ["-NoLogo"],
+      cwd: "~\\src",
+    });
+    expect(toTarget(local({ program: undefined, args: undefined, cwd: undefined }))).toEqual({ type: "local" });
+    expect(isSshSession(local())).toBe(false);
   });
 });

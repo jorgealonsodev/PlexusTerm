@@ -31,6 +31,13 @@ export function splitArgs(text: string): string[] {
   return args;
 }
 
+/** Joins arguments back into text that {@link splitArgs} reads the same way. */
+export function joinArgs(args: readonly string[]): string {
+  return args
+    .map((arg) => (arg === "" || /[\s"']/.test(arg) ? (arg.includes('"') ? `'${arg}'` : `"${arg}"`) : arg))
+    .join(" ");
+}
+
 /** The file name of a program without its directory or a `.exe` extension (like the backend's). */
 export function shellNameOf(program: string): string {
   const file = program.trim().split(/[/\\]/).pop() ?? "";

@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "시스템 기본 셸",
+    localTooltip: "{dir}에서 {shell}",
     title: "저장된 세션",
     new: "새로 만들기",
     folder: "폴더",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "폴더 삭제",
   },
   edit: {
+    local: "로컬 터미널",
+    shell: "셸",
+    startDir: "시작 디렉터리",
+    startDirPlaceholder: "홈 디렉터리",
+    chooseStartDir: "시작 디렉터리 선택",
     newTitle: "새 세션",
     editTitle: "세션 편집",
     type: "세션 유형",

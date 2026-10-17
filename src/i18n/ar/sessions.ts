@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "الصدفة الافتراضية للنظام",
+    localTooltip: "{shell} في {dir}",
     title: "الجلسات المحفوظة",
     new: "جديد",
     folder: "مجلد",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "حذف المجلد",
   },
   edit: {
+    local: "طرفية محلية",
+    shell: "الصدفة",
+    startDir: "مجلد البدء",
+    startDirPlaceholder: "المجلد الرئيسي",
+    chooseStartDir: "اختر مجلد البدء",
     newTitle: "جلسة جديدة",
     editTitle: "تحرير الجلسة",
     type: "نوع الجلسة",

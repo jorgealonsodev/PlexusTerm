@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "सिस्टम का डिफ़ॉल्ट शेल",
+    localTooltip: "{dir} में {shell}",
     title: "सहेजे गए सेशन",
     new: "नया",
     folder: "फ़ोल्डर",
@@ -30,6 +32,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "फ़ोल्डर हटाएँ",
   },
   edit: {
+    local: "लोकल टर्मिनल",
+    shell: "शेल",
+    startDir: "शुरुआती डायरेक्टरी",
+    startDirPlaceholder: "होम डायरेक्टरी",
+    chooseStartDir: "शुरुआती डायरेक्टरी चुनें",
     newTitle: "नया सेशन",
     editTitle: "सेशन संपादित करें",
     type: "सेशन प्रकार",

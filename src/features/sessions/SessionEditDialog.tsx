@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { MoshFields } from "../mosh/MoshFields";
+import { ShellPicker } from "../terminal/ShellPicker";
 import { usePlatform } from "../platform/usePlatform";
 import { SerialFields } from "../serial/SerialFields";
 import { TelnetFields } from "../telnet/TelnetFields";
@@ -27,6 +29,7 @@ const namePlaceholder = (kind: SessionForm["kind"]): string =>
     serial: t("sessions.edit.devicePath"),
     telnet: t("common.host"),
     mosh: t("sessions.edit.moshNamePlaceholder"),
+    local: t("sessions.target.local"),
   })[kind];
 
 export function SessionEditDialog({
@@ -70,6 +73,15 @@ export function SessionEditDialog({
       });
   };
 
+  const browseStartDir = async () => {
+    try {
+      const dir = await open({ title: t("sessions.edit.chooseStartDir"), multiple: false, directory: true });
+      if (typeof dir === "string") setForm((f) => ({ ...f, local: { ...f.local, cwd: dir } }));
+    } catch {
+      // No folder picker (e.g. outside Tauri): the field can still be typed.
+    }
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const result = parseSessionForm(form, session.id, { sessions: jumpCandidates ?? [] });
@@ -88,6 +100,7 @@ export function SessionEditDialog({
             <option value="serial">{t("sessions.edit.serial")}</option>
             <option value="telnet">Telnet</option>
             {offerMosh && <option value="mosh">Mosh</option>}
+            <option value="local">{t("sessions.edit.local")}</option>
           </select>
         </label>
         <div className="form-row">
@@ -115,6 +128,35 @@ export function SessionEditDialog({
         )}
         {form.kind === "telnet" && (
           <TelnetFields form={form.telnet} onChange={(telnet) => setForm((f) => ({ ...f, telnet }))} />
+        )}
+        {form.kind === "local" && (
+          <>
+            <ShellPicker
+              id="session-local-shell"
+              label={t("sessions.edit.shell")}
+              program={form.local.program}
+              args={form.local.args}
+              onChange={(program, args) => setForm((f) => ({ ...f, local: { ...f.local, program, args } }))}
+            />
+            <div className="field">
+              <label htmlFor="session-start-dir">{t("sessions.edit.startDir")}</label>
+              <div className="form-row field__picker">
+                <input
+                  id="session-start-dir"
+                  value={form.local.cwd}
+                  placeholder={t("sessions.edit.startDirPlaceholder")}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    const cwd = e.target.value;
+                    setForm((f) => ({ ...f, local: { ...f.local, cwd } }));
+                  }}
+                />
+                <button type="button" className="btn" onClick={() => void browseStartDir()}>
+                  {t("common.browse")}
+                </button>
+              </div>
+            </div>
+          </>
         )}
         {form.kind === "mosh" && (
           <MoshFields

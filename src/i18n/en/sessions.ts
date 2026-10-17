@@ -1,6 +1,8 @@
 /** Saved sessions, the connection dialogs (SSH, Telnet, serial, Mosh) and their messages. */
 export const sessions = {
   panel: {
+    localDefaultShell: "System default shell",
+    localTooltip: "{shell} in {dir}",
     title: "Saved sessions",
     new: "New",
     folder: "Folder",
@@ -28,6 +30,11 @@ export const sessions = {
     deleteFolder: "Delete folder",
   },
   edit: {
+    local: "Local terminal",
+    shell: "Shell",
+    startDir: "Starting directory",
+    startDirPlaceholder: "Home directory",
+    chooseStartDir: "Choose the starting directory",
     newTitle: "New session",
     editTitle: "Edit session",
     type: "Session type",

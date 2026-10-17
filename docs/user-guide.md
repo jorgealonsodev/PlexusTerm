@@ -77,13 +77,14 @@ The toolbar **More** menu opens **Telnet…** and **Mosh…** quick-connect dial
 
 Confirmations and questions (deleting sessions, folders, tunnels and macros, naming a new folder, the SFTP actions) open in PlexusTerm's own dialogs: Enter submits a typed name and presses the focused button of a confirmation, Escape cancels, and Cancel has the focus when the action deletes something. Cancelling never performs the action.
 
-The **Sessions** panel on the left keeps SSH, serial, Telnet and Mosh sessions in folders (`Prod/DB` style paths).
-Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host or serial device.
+The **Sessions** panel on the left keeps SSH, serial, Telnet, Mosh and local terminal sessions in folders (`Prod/DB` style paths).
+Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host, serial device or shell.
 Right-click a session for **Connect**, **Edit…**, **Duplicate** (a copy named "<name> (copy)" next to it; a saved keyring password is not copied) and **Delete**. Right-click a folder for **New session here…**, **New folder here…**, **Connect all** (every session in it and its subfolders, each in its own tab) and **Delete folder**. While the sessions file cannot be read, the menus only offer connecting.
-The edit dialog has a **Session type** selector (SSH, Serial, Telnet or Mosh) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command.
+The edit dialog has a **Session type** selector (SSH, Serial, Telnet, Mosh or Local terminal) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command. Local terminal sessions keep a shell (the system default, a detected one or any program, as in [Terminal settings](#terminal-settings)), its arguments and a **Starting directory** (`~` is your home directory; empty starts there too), so a PowerShell, a WSL distribution or a project folder is one double-click away; their tabs are titled with the shell's name.
 
-Sessions are stored in `~/.config/dev.plexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet` or `mosh`), and entries written by earlier versions without it load as SSH sessions.
+Sessions are stored in `~/.config/dev.plexusterm.app/sessions.json` (written atomically, mode `0600`); each entry has a `kind` (`ssh`, `serial`, `telnet`, `mosh` or `local`), and entries written by earlier versions without it load as SSH sessions.
 The file never contains passwords or key passphrases (see [Saved passwords](#saved-passwords)).
+Versions before local terminal sessions cannot read a file that holds one, so they show the error below instead of the sessions.
 If the file cannot be read, the panel shows the error and disables editing so the file is never overwritten.
 
 ### Saved passwords

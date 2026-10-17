@@ -3,6 +3,8 @@ import type { Messages } from "../types";
 
 export const sessions: Messages<typeof en> = {
   panel: {
+    localDefaultShell: "システムの既定のシェル",
+    localTooltip: "{dir} で {shell}",
     title: "保存済みセッション",
     new: "新規",
     folder: "フォルダー",
@@ -31,6 +33,11 @@ export const sessions: Messages<typeof en> = {
     deleteFolder: "フォルダーを削除",
   },
   edit: {
+    local: "ローカル端末",
+    shell: "シェル",
+    startDir: "開始ディレクトリ",
+    startDirPlaceholder: "ホームディレクトリ",
+    chooseStartDir: "開始ディレクトリを選択",
     newTitle: "新しいセッション",
     editTitle: "セッションの編集",
     type: "セッションの種類",

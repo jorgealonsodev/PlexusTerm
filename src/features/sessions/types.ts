@@ -1,4 +1,5 @@
 import { t } from "../../i18n/i18n";
+import { shellNameOf } from "../terminal/localShell";
 
 export type SshAuth =
   | { method: "password"; password: string }
@@ -101,7 +102,7 @@ export function sshLoginOf(target: SessionTarget): SshTarget | null {
 export function targetTitle(target: SessionTarget): string {
   switch (target.type) {
     case "local":
-      return t("sessions.target.local");
+      return target.program?.trim() ? shellNameOf(target.program) : t("sessions.target.local");
     case "serial":
       return `${target.path} @ ${target.baud}`;
     case "telnet":

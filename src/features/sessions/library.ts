@@ -1,5 +1,5 @@
 import { t } from "../../i18n/i18n";
-import type { SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
+import type { LocalTarget, SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
 
 /** Saved auth never contains secrets: passwords are asked at connect time. */
 export type SavedAuth = { method: "password" } | { method: "key"; path: string } | { method: "agent" };
@@ -57,12 +57,25 @@ export interface SavedMoshSession {
   serverCommand?: string;
 }
 
+/** A saved local terminal: its shell, arguments and starting directory; absent ones keep the defaults. */
+export interface SavedLocalSession {
+  kind: "local";
+  id: string;
+  name: string;
+  /** Slash-separated folder path; "" is the root. */
+  folder: string;
+  program?: string;
+  args?: string[];
+  cwd?: string;
+}
+
 /** Any entry of the session library. */
-export type LibrarySession = SavedSession | SavedSerialSession | SavedTelnetSession | SavedMoshSession;
+export type LibrarySession = SavedSession | SavedSerialSession | SavedTelnetSession | SavedMoshSession | SavedLocalSession;
 
 export const isSerialSession = (s: LibrarySession): s is SavedSerialSession => s.kind === "serial";
 export const isTelnetSession = (s: LibrarySession): s is SavedTelnetSession => s.kind === "telnet";
 export const isMoshSession = (s: LibrarySession): s is SavedMoshSession => s.kind === "mosh";
+export const isLocalSession = (s: LibrarySession): s is SavedLocalSession => s.kind === "local";
 /** Sessions without `kind` were written before other kinds existed and are SSH. */
 export const isSshSession = (s: LibrarySession): s is SavedSession => s.kind === undefined || s.kind === "ssh";
 
@@ -128,6 +141,17 @@ function sanitizeSession(s: LibrarySession): LibrarySession {
     return { kind: "serial", ...base, path, baud, dataBits, parity, stopBits, flow };
   }
   if (isTelnetSession(s)) return { kind: "telnet", ...base, host: s.host, port: s.port };
+  if (isLocalSession(s)) {
+    const program = s.program?.trim();
+    const cwd = s.cwd?.trim();
+    return {
+      kind: "local",
+      ...base,
+      ...(program ? { program } : {}),
+      ...(program && s.args?.length ? { args: [...s.args] } : {}),
+      ...(cwd ? { cwd } : {}),
+    };
+  }
   if (isMoshSession(s)) {
     const serverCommand = s.serverCommand?.trim();
     return { kind: "mosh", ...base, sshSessionId: s.sshSessionId, ...(serverCommand ? { serverCommand } : {}) };
@@ -285,6 +309,17 @@ function isSavedMoshSession(s: Record<string, unknown>): boolean {
   );
 }
 
+function isSavedLocalSession(s: Record<string, unknown>): boolean {
+  return (
+    isString(s.id) &&
+    isString(s.name) &&
+    isString(s.folder) &&
+    (s.program === undefined || isString(s.program)) &&
+    (s.args === undefined || (Array.isArray(s.args) && s.args.every(isString))) &&
+    (s.cwd === undefined || isString(s.cwd))
+  );
+}
+
 /** Sessions without `kind` come from files written before serial sessions and are SSH. */
 function isLibrarySession(v: unknown): v is LibrarySession {
   if (typeof v !== "object" || v === null) return false;
@@ -292,6 +327,7 @@ function isLibrarySession(v: unknown): v is LibrarySession {
   if (s.kind === "serial") return isSavedSerialSession(s);
   if (s.kind === "telnet") return isSavedTelnetSession(s);
   if (s.kind === "mosh") return isSavedMoshSession(s);
+  if (s.kind === "local") return isSavedLocalSession(s);
   if (s.kind !== undefined && s.kind !== "ssh") return false;
   return (
     isString(s.id) &&
@@ -338,7 +374,8 @@ const byName = (a: TreeNode, b: TreeNode) => a.name.localeCompare(b.name, undefi
 /** Folders first, then sessions, both sorted; a filter keeps matches and the folders leading to them. */
 export function buildTree(lib: SessionLibrary, filter: string): TreeNode[] {
   const needle = filter.trim().toLowerCase();
-  const address = (s: LibrarySession) => (isSerialSession(s) ? s.path : isMoshSession(s) ? "" : s.host);
+  const address = (s: LibrarySession) =>
+    isSerialSession(s) ? s.path : isMoshSession(s) ? "" : isLocalSession(s) ? (s.program ?? "") : s.host;
   const matches = (s: LibrarySession) =>
     !needle || s.name.toLowerCase().includes(needle) || address(s).toLowerCase().includes(needle);
 
@@ -363,13 +400,19 @@ export function buildTree(lib: SessionLibrary, filter: string): TreeNode[] {
 }
 
 /** Mosh sessions need their SSH login resolved first, so they have no direct target. */
-type DirectSession = SavedSession | SavedSerialSession | SavedTelnetSession;
+type DirectSession = SavedSession | SavedSerialSession | SavedTelnetSession | SavedLocalSession;
+type DirectTarget = SshTarget | SerialTarget | TelnetTarget | LocalTarget;
 
 export function toTarget(saved: SavedSession, password?: string): SshTarget;
 export function toTarget(saved: SavedSerialSession): SerialTarget;
 export function toTarget(saved: SavedTelnetSession): TelnetTarget;
-export function toTarget(saved: DirectSession, password?: string): SshTarget | SerialTarget | TelnetTarget;
-export function toTarget(saved: DirectSession, password?: string): SshTarget | SerialTarget | TelnetTarget {
+export function toTarget(saved: SavedLocalSession): LocalTarget;
+export function toTarget(saved: DirectSession, password?: string): DirectTarget;
+export function toTarget(saved: DirectSession, password?: string): DirectTarget {
+  if (isLocalSession(saved)) {
+    const { program, args, cwd } = saved;
+    return { type: "local", ...(program ? { program } : {}), ...(args?.length ? { args } : {}), ...(cwd ? { cwd } : {}) };
+  }
   if (isTelnetSession(saved)) return { type: "telnet", host: saved.host, port: saved.port };
   if (isSerialSession(saved)) {
     const { path, baud, dataBits, parity, stopBits, flow } = saved;
