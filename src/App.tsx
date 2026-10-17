@@ -633,10 +633,11 @@ function AppContent() {
   };
   /**
    * A folder opened in the SFTP browser or the Explorer (L16): the pane's shell changes to it when
-   * Settings ask for it, the command line is empty and the folder is on the pane's machine.
+   * Settings ask for it, the panel's Follow terminal folder is on (off unlinks both ways), the
+   * command line is empty and the folder is on the pane's machine.
    */
-  const cdFromBrowser = (paneId: string | null, origin: PathOrigin, path: string) => {
-    if (!paneId || !terminalSettings.settings.terminalFollowsBrowser) return;
+  const cdFromBrowser = (paneId: string | null, origin: PathOrigin, path: string, follow: boolean) => {
+    if (!paneId || !follow || !terminalSettings.settings.terminalFollowsBrowser) return;
     const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && !t.chats[paneId]);
     const pane = assistTargets.get(paneId);
     if (!tab || !pane?.lineEmpty?.()) return;
@@ -893,7 +894,7 @@ function AppContent() {
                   cwd={localCwd}
                   follow={followLocalCwd}
                   onFollowChange={setFollowLocalCwd}
-                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "local" }, path)}
+                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {
                     const flavor = shellFlavor(platform, activeTab.target.type, runningShellOf(activeTab.target, shells));
                     const text = quotePath(path, flavor);
@@ -914,7 +915,7 @@ function AppContent() {
                   follow={followCwd}
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
-                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path)}
+                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path, followCwd)}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                 />

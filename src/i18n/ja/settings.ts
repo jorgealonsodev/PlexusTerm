@@ -61,7 +61,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "システムの既定を使用",
     details: "ファイル一覧にサイズと日付を表示",
     terminalFollows: "ファイルブラウザーでフォルダーを開いたら端末のフォルダーも変更する",
-    terminalFollowsHelp: "SFTP ブラウザーやエクスプローラーでフォルダーを開くと、コマンドラインに何も入力されていない場合に限り、その端末で cd を実行します。",
+    terminalFollowsHelp: "SFTP ブラウザーやエクスプローラーでフォルダーを開くと、パネルの「ターミナルのフォルダーに追従」がオンで、コマンドラインに何も入力されていない場合に限り、その端末で cd を実行します。",
     chooseEditor: "テキストエディターを選択",
     textEditorHelp:
       "SFTP ブラウザーのファイルを開くテキストエディターです。プログラム、または {command} のようなコマンドを指定します。空欄にするとシステムの既定を使用します。",

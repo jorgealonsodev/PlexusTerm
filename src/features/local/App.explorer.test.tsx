@@ -141,6 +141,26 @@ describe("Explorer tab", () => {
     expect(pane.ran).toEqual([]);
   });
 
+  it("leaves the terminal's folder alone when Follow terminal folder is off", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "local_list") return [entry("/home/me/my src", "dir")];
+      return null;
+    });
+    render(<App />);
+    await screen.findByTestId("terminal");
+    const tab = await screen.findByRole("tab", { name: "Explorer" });
+    await waitFor(() => expect((tab as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(tab);
+    pane.ran = [];
+    pane.lineEmpty = true;
+    fireEvent.click(screen.getByRole("checkbox", { name: "Follow terminal folder" }));
+    fireEvent.doubleClick(await screen.findByText("my src"));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/home/me/my src" }));
+    expect(pane.ran).toEqual([]);
+  });
+
   it("opens on the Explorer for a local terminal, and leaves another chosen tab alone (L18)", async () => {
     vi.mocked(invoke).mockImplementation(async (cmd: string) => {
       if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);

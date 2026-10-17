@@ -58,7 +58,7 @@ export const settings = {
     useSystemDefault: "Use system default",
     details: "Show size and date in file lists",
     terminalFollows: "Change the terminal's folder when you open a folder in the file browser",
-    terminalFollowsHelp: "Opening a folder in the SFTP browser or the Explorer runs cd in its terminal, only when nothing is typed on the command line.",
+    terminalFollowsHelp: "Opening a folder in the SFTP browser or the Explorer runs cd in its terminal, only when the panel's Follow terminal folder is on and nothing is typed on the command line.",
     chooseEditor: "Choose a text editor",
     /** `{command}` is shown as code. */
     textEditorHelp:

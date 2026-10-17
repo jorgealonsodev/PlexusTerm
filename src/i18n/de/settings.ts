@@ -61,7 +61,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "Systemstandard verwenden",
     details: "Größe und Datum in Dateilisten anzeigen",
     terminalFollows: "Den Ordner des Terminals wechseln, wenn Sie im Dateibrowser einen Ordner öffnen",
-    terminalFollowsHelp: "Wenn Sie im SFTP-Browser oder im Explorer einen Ordner öffnen, wird in seinem Terminal cd ausgeführt, nur wenn die Befehlszeile leer ist.",
+    terminalFollowsHelp: "Wenn Sie im SFTP-Browser oder im Explorer einen Ordner öffnen, wird in seinem Terminal cd ausgeführt, nur wenn „Terminal-Ordner folgen“ im Bereich aktiv und die Befehlszeile leer ist.",
     chooseEditor: "Texteditor auswählen",
     textEditorHelp:
       "Der Texteditor öffnet Dateien aus dem SFTP-Browser: ein Programm oder ein Befehl wie {command}; leer lassen, um den Systemstandard zu verwenden.",
