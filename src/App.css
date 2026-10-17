@@ -572,10 +572,13 @@ textarea::placeholder {
 /* The panel's help "?" in the bottom-right corner of the sidebar, also while its list scrolls. */
 .sidebar__help {
   position: sticky;
-  bottom: 0;
+  bottom: -8px;
   display: flex;
   justify-content: flex-end;
-  margin-top: auto;
+  margin: auto -8px -8px;
+  padding: 4px 8px 6px;
+  /* Covers the list scrolling under it, so the icon never sits on a row's text. */
+  background: var(--surface);
   pointer-events: none;
 }
 
