@@ -346,6 +346,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       .catch((error: string) => setUpdateState({ state: "failed", error }));
   };
   const [textEditor, setTextEditor] = useState(settings.textEditor);
+  const [fileDetails, setFileDetails] = useState(settings.fileDetails);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
   const [localCwd, setLocalCwd] = useState(settings.localCwd);
@@ -404,6 +405,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
       textEditor: cleanTextEditor(textEditor),
+      fileDetails,
       inlineSuggestions,
       commandHistory: history,
       aiSuggestions,
@@ -625,6 +627,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <code>code --wait</code>
               {editorHelpAfter}
             </p>
+            <label className="check">
+              <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
+              {t("settings.files.details")}
+            </label>
           </div>
 
           <div {...panel("ai")}>

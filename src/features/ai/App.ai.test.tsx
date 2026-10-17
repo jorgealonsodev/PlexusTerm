@@ -589,7 +589,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     await renderApp();
     pressShortcut();
     await ask("first topic question");
-    const sessionOf = () => (calls("ai_assist").at(-1)!.config as { sessionId?: string }).sessionId;
+    const sessionOf = () => (calls("ai_assist").slice(-1)[0].config as { sessionId?: string }).sessionId;
     const firstSession = sessionOf();
     fireEvent.click(within(chat()).getByRole("button", { name: "New conversation" }));
     await ask("second topic question");
@@ -602,7 +602,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(within(chat()).getByText("re: first topic question")).toBeTruthy();
     expect(within(chat()).queryByText("re: second topic question")).toBeNull();
     await ask("follow-up");
-    const last = calls("ai_assist").at(-1)!;
+    const last = calls("ai_assist").slice(-1)[0];
     expect((last.request as { conversation: { question: string }[] }).conversation.map((c) => c.question)).toEqual(["first topic question"]);
     expect(firstSession).toEqual(expect.any(String));
     expect(sessionOf()).toBe(firstSession);
@@ -610,7 +610,7 @@ describe("AI chat pane (S3, S5, S9)", () => {
     fireEvent.click(within(chat()).getByRole("button", { name: "Delete the conversation “second topic question”" }));
     expect(within(chat()).queryByTitle("second topic question")).toBeNull();
     await settle();
-    const file = JSON.parse((calls("ai_chats_save").at(-1)!.contents as string)) as { chats: { title: string }[] };
+    const file = JSON.parse((calls("ai_chats_save").slice(-1)[0].contents as string)) as { chats: { title: string }[] };
     expect(file.chats.map((c) => c.title)).toContain("first topic question");
     expect(file.chats.map((c) => c.title)).not.toContain("second topic question");
   });

@@ -262,6 +262,8 @@ Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `ro
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
 - **Text editor** (default: empty, the system default text editor): the program **Open with default text editor** uses in the SFTP browser. **Browse…** picks a program; you can also type a command with arguments, such as `code --wait` or `"/opt/My Editor/editor" -n`. The file is added as the last argument, or in place of `%f` when the command has one. The command runs directly, never through a shell, and a path to an existing program counts as one program even when it contains spaces. **Use system default** empties the field. A value that is not text or is longer than 1024 characters loads as the system default.
 
+- **Show size and date in file lists** (Settings → Files, off by default): the SFTP browser and the Explorer show each entry's size and modification date next to its name.
+
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
 
 With text selected, the terminal menu starts with what can be done with it: **Copy**, **Ask the AI about it** (opens the terminal's AI chat with the selection attached, or attaches it to the chat already open), **Type at the prompt** (types the selection at the cursor, asking first when it has several lines), **Find in terminal** (opens the find bar with the selection's first line) and, when the selection is one `http://` or `https://` address, **Open link** (opens it in the browser).

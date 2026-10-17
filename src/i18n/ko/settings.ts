@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "텍스트 편집기",
     systemDefault: "시스템 기본값",
     useSystemDefault: "시스템 기본값 사용",
+    details: "파일 목록에 크기와 날짜 표시",
     chooseEditor: "텍스트 편집기 선택",
     textEditorHelp:
       "텍스트 편집기는 SFTP 브라우저에서 파일을 엽니다. 프로그램 또는 {command} 같은 명령을 지정하고, 비워 두면 시스템 기본값을 사용합니다.",

@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "محرر النصوص",
     systemDefault: "افتراضي النظام",
     useSystemDefault: "استخدام افتراضي النظام",
+    details: "إظهار الحجم والتاريخ في قوائم الملفات",
     chooseEditor: "اختر محرر نصوص",
     textEditorHelp:
       "يفتح محرر النصوص الملفات من متصفح SFTP: برنامج، أو أمر مثل {command}؛ اتركه فارغًا لاستخدام افتراضي النظام.",

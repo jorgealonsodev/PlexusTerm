@@ -26,6 +26,8 @@ interface SftpPanelProps {
   onPathToTerminal?: (text: string) => void;
   /** Text editor chosen in Settings; empty or missing uses the system's default one. */
   textEditor?: string;
+  /** Show each entry's size and date (Settings → Files); hidden when missing. */
+  details?: boolean;
 }
 
 const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
@@ -33,7 +35,7 @@ const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", sy
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false }: SftpPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -419,8 +421,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           >
             <span className="sftp-row__icon">{ICONS[entry.kind]}</span>
             <span className="sftp-row__name">{entry.name}</span>
-            <span className="sftp-row__size">{entry.kind === "dir" ? "" : formatSize(entry.size)}</span>
-            <span className="sftp-row__date">{entry.modified ? formatDate(entry.modified) : ""}</span>
+            {details && (
+              <>
+                <span className="sftp-row__size">{entry.kind === "dir" ? "" : formatSize(entry.size)}</span>
+                <span className="sftp-row__date">{entry.modified ? formatDate(entry.modified) : ""}</span>
+              </>
+            )}
           </li>
         ))}
       </ul>

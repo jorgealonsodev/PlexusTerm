@@ -355,6 +355,16 @@ describe("SettingsDialog", () => {
       expect(field("Model").value).toBe("kimi-k3");
     });
 
+    it("hides file sizes and dates by default and saves the choice (L15)", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const details = field("Show size and date in file lists");
+      expect(details.checked).toBe(false);
+      fireEvent.click(details);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
+    });
+
     it("keeps AI conversations by default and saves the choice (S9)", () => {
       const { onSave } = openAi();
       const keep = field("Keep AI conversations after closing PlexusTerm");

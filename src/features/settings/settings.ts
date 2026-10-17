@@ -36,6 +36,8 @@ export interface TerminalSettings {
    * with arguments; empty uses the system's default text editor.
    */
   textEditor: string;
+  /** File lists (SFTP, Explorer) show each entry's size and date (L15). */
+  fileDetails: boolean;
   /** Grey inline suggestions of the rest of the command while typing (S1). */
   inlineSuggestions: boolean;
   /** Commands sent with Enter are recorded in history.json and suggested (S1). */
@@ -90,6 +92,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   fontFamily: DEFAULT_FONT_FAMILY,
   remoteMonitor: true,
   textEditor: "",
+  fileDetails: false,
   inlineSuggestions: true,
   commandHistory: true,
   aiSuggestions: false,
@@ -192,6 +195,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     fontFamily: cleanFontFamily(value.fontFamily),
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     textEditor: cleanTextEditor(value.textEditor),
+    fileDetails: bool(value.fileDetails, d.fileDetails),
     inlineSuggestions: bool(value.inlineSuggestions, d.inlineSuggestions),
     commandHistory: bool(value.commandHistory, d.commandHistory),
     aiSuggestions: bool(value.aiSuggestions, d.aiSuggestions),

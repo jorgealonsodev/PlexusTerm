@@ -876,6 +876,7 @@ function AppContent() {
                     if (activePane && text !== null) writers.write([activePane], text);
                   }}
                   textEditor={terminalSettings.settings.textEditor}
+                  details={terminalSettings.settings.fileDetails}
                 />
               )
             }
@@ -890,6 +891,7 @@ function AppContent() {
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
                   textEditor={terminalSettings.settings.textEditor}
+                  details={terminalSettings.settings.fileDetails}
                 />
               )
             }

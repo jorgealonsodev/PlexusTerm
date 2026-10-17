@@ -24,12 +24,14 @@ interface LocalPanelProps {
   onPathToTerminal?: (path: string) => void;
   /** Text editor chosen in Settings; empty or missing uses the system's default one. */
   textEditor?: string;
+  /** Show each entry's size and date (Settings → Files); hidden when missing. */
+  details?: boolean;
 }
 
 const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -303,8 +305,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           >
             <span className="sftp-row__icon">{ICONS[entry.kind]}</span>
             <span className="sftp-row__name">{entry.name}</span>
-            <span className="sftp-row__size">{entry.kind === "dir" ? "" : formatSize(entry.size)}</span>
-            <span className="sftp-row__date">{entry.modified ? formatDate(entry.modified) : ""}</span>
+            {details && (
+              <>
+                <span className="sftp-row__size">{entry.kind === "dir" ? "" : formatSize(entry.size)}</span>
+                <span className="sftp-row__date">{entry.modified ? formatDate(entry.modified) : ""}</span>
+              </>
+            )}
           </li>
         ))}
       </ul>

@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "टेक्स्ट एडिटर",
     systemDefault: "सिस्टम डिफ़ॉल्ट",
     useSystemDefault: "सिस्टम डिफ़ॉल्ट का उपयोग करें",
+    details: "फ़ाइल सूचियों में आकार और तारीख दिखाएँ",
     chooseEditor: "एक टेक्स्ट एडिटर चुनें",
     textEditorHelp:
       "टेक्स्ट एडिटर SFTP ब्राउज़र से फ़ाइलें खोलता है: कोई प्रोग्राम, या {command} जैसी कमांड; सिस्टम डिफ़ॉल्ट उपयोग करने के लिए इसे खाली छोड़ें।",

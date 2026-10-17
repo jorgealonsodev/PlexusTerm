@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "Editor de texto",
     systemDefault: "Padrão do sistema",
     useSystemDefault: "Usar o padrão do sistema",
+    details: "Mostrar tamanho e data nas listas de arquivos",
     chooseEditor: "Escolha um editor de texto",
     textEditorHelp:
       "O editor de texto abre arquivos do navegador SFTP: um programa ou um comando como {command}; deixe vazio para usar o padrão do sistema.",

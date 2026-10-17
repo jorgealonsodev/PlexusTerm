@@ -54,6 +54,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "文本编辑器",
     systemDefault: "系统默认",
     useSystemDefault: "使用系统默认",
+    details: "在文件列表中显示大小和日期",
     chooseEditor: "选择文本编辑器",
     textEditorHelp: "用于打开 SFTP 浏览器中文件的文本编辑器：可以是程序，也可以是 {command} 这样的命令；留空则使用系统默认。",
   },

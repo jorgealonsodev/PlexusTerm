@@ -89,6 +89,17 @@ describe("LocalPanel", () => {
     await waitFor(() => expect(mocked.list).toHaveBeenLastCalledWith("/home/me"));
   });
 
+  it("shows size and date only when Settings ask for them (L15)", async () => {
+    mocked.list.mockResolvedValue([{ ...entry("notes.txt", "file"), size: 2048, modified: 1_700_000_000 }]);
+    const { container, rerender } = render(panel());
+    await screen.findByText("notes.txt");
+    expect(container.querySelector(".sftp-row__size")).toBeNull();
+    expect(container.querySelector(".sftp-row__date")).toBeNull();
+    rerender(panel({ details: true }));
+    expect(container.querySelector(".sftp-row__size")?.textContent).toBe("2.0 KB");
+    expect(container.querySelector(".sftp-row__date")?.textContent).not.toBe("");
+  });
+
   it("opens a file in its default program on double-click", async () => {
     render(panel());
     fireEvent.doubleClick(await screen.findByText("notes.txt"));

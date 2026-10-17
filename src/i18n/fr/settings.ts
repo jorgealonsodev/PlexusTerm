@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "Éditeur de texte",
     systemDefault: "Valeur par défaut du système",
     useSystemDefault: "Utiliser la valeur par défaut du système",
+    details: "Afficher la taille et la date dans les listes de fichiers",
     chooseEditor: "Choisir un éditeur de texte",
     textEditorHelp:
       "L'éditeur de texte ouvre les fichiers du navigateur SFTP : un programme, ou une commande comme {command} ; laissez vide pour utiliser la valeur par défaut du système.",

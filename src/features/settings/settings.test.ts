@@ -35,6 +35,7 @@ describe("parseSettings", () => {
       sidebarWidth: null,
       checkUpdates: true,
       aiSaveChats: true,
+      fileDetails: false,
       language: "system",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
@@ -51,7 +52,7 @@ describe("parseSettings", () => {
       '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
-      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"sidebarWidth":320,"localShell":" /usr/bin/fish ","localShellArgs":" --login ","localCwd":" ~/projects ","checkUpdates":false,"aiSaveChats":false,"language":"ja"}';
+      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"sidebarWidth":320,"localShell":" /usr/bin/fish ","localShellArgs":" --login ","localCwd":" ~/projects ","checkUpdates":false,"aiSaveChats":false,"fileDetails":true,"language":"ja"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -77,6 +78,7 @@ describe("parseSettings", () => {
       sidebarWidth: 320,
       checkUpdates: false,
       aiSaveChats: false,
+      fileDetails: true,
       language: "ja",
     });
   });
@@ -189,6 +191,7 @@ describe("serializeSettings", () => {
       localShellArgs: "--login -i",
       localCwd: "~/work",
       aiSaveChats: false,
+      fileDetails: true,
       sidebarWidth: 480,
       checkUpdates: false,
       language: "pt-BR" as const,

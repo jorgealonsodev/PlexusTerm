@@ -52,6 +52,7 @@ export const settings = {
     textEditor: "Text editor",
     systemDefault: "System default",
     useSystemDefault: "Use system default",
+    details: "Show size and date in file lists",
     chooseEditor: "Choose a text editor",
     /** `{command}` is shown as code. */
     textEditorHelp:

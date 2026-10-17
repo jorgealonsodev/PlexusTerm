@@ -55,6 +55,7 @@ export const settings: Messages<typeof en> = {
     textEditor: "テキストエディター",
     systemDefault: "システムの既定",
     useSystemDefault: "システムの既定を使用",
+    details: "ファイル一覧にサイズと日付を表示",
     chooseEditor: "テキストエディターを選択",
     textEditorHelp:
       "SFTP ブラウザーのファイルを開くテキストエディターです。プログラム、または {command} のようなコマンドを指定します。空欄にするとシステムの既定を使用します。",
