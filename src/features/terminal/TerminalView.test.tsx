@@ -168,8 +168,11 @@ describe("TerminalView", () => {
     const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 10)));
     const renderView = (props: Partial<Parameters<typeof TerminalView>[0]> = {}) =>
       render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} {...props} />);
-    const rightClick = (container: HTMLElement, mods: { ctrlKey?: boolean } = {}) =>
-      fireEvent.contextMenu(container.querySelector(".terminal-host")!, { clientX: 5, clientY: 6, ...mods });
+    const rightClick = (container: HTMLElement, mods: { ctrlKey?: boolean } = {}) => {
+      const host = container.querySelector(".terminal-host")!;
+      fireEvent.mouseDown(host, { button: 2, ...mods });
+      fireEvent.contextMenu(host, { clientX: 5, clientY: 6, ...mods });
+    };
 
     it("starts with the font size of the settings and follows its changes", () => {
       const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, fontSize: 18 } });
@@ -284,6 +287,22 @@ describe("TerminalView", () => {
       await settle();
       expect(term().paste).toHaveBeenLastCalledWith("ls");
       expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("right click on a word still pastes when xterm selects the word on right click (macOS)", async () => {
+      clipboard.readText.mockClear();
+      clipboard.readText.mockResolvedValueOnce("ls");
+      const { container } = renderView();
+      const host = container.querySelector(".terminal-host")!;
+      // xterm's own contextmenu listener selects the word under the pointer before ours runs.
+      host.addEventListener("contextmenu", () => {
+        const t = term() as unknown as { hasSelection: () => boolean; getSelection: () => string };
+        t.hasSelection = () => true;
+        t.getSelection = () => "word";
+      });
+      rightClick(container);
+      expect(screen.queryAllByRole("menuitem")).toEqual([]);
+      expect(clipboard.readText).toHaveBeenCalled();
     });
 
     it("has no Ask the AI item without a chat to open", () => {

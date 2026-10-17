@@ -130,6 +130,8 @@ pub fn rename(from: &Path, to: &Path) -> Result<(), String> {
 
 /// Removes a file, a symlink (never what it points to), or a folder with everything inside it.
 pub fn remove(path: &Path, is_dir: bool) -> Result<(), String> {
+    // `link/` would resolve the symlink and delete what it points to.
+    let path = &without_trailing_separators(path);
     let link = fs::symlink_metadata(path).map_err(|err| failure("delete", path, err))?;
     let result = if is_dir && link.is_dir() {
         fs::remove_dir_all(path)
@@ -137,6 +139,16 @@ pub fn remove(path: &Path, is_dir: bool) -> Result<(), String> {
         fs::remove_file(path)
     };
     result.map_err(|err| failure("delete", path, err))
+}
+
+/// `path` without trailing `/` (or `\` on Windows); a root keeps its separator.
+fn without_trailing_separators(path: &Path) -> PathBuf {
+    let text = path.as_os_str().to_string_lossy();
+    let trimmed = text.trim_end_matches(std::path::is_separator);
+    if trimmed.is_empty() || trimmed.ends_with(':') {
+        return path.to_path_buf();
+    }
+    PathBuf::from(trimmed)
 }
 
 pub fn chmod(path: &Path, mode: u32) -> Result<(), String> {
@@ -234,54 +246,54 @@ fn native(path: &str) -> PathBuf {
 }
 
 #[tauri::command]
-pub fn local_home() -> Result<String, String> {
+pub async fn local_home() -> Result<String, String> {
     home()
 }
 
 #[tauri::command]
-pub fn local_list(path: String) -> Result<Vec<Entry>, String> {
+pub async fn local_list(path: String) -> Result<Vec<Entry>, String> {
     list(&native(&path))
 }
 
 #[tauri::command]
-pub fn local_stat(path: String) -> Result<Entry, String> {
+pub async fn local_stat(path: String) -> Result<Entry, String> {
     stat(&native(&path))
 }
 
 #[tauri::command]
-pub fn local_mkdir(path: String) -> Result<(), String> {
+pub async fn local_mkdir(path: String) -> Result<(), String> {
     mkdir(&native(&path))
 }
 
 #[tauri::command]
-pub fn local_create_file(path: String) -> Result<(), String> {
+pub async fn local_create_file(path: String) -> Result<(), String> {
     create_file(&native(&path))
 }
 
 #[tauri::command]
-pub fn local_rename(from: String, to: String) -> Result<(), String> {
+pub async fn local_rename(from: String, to: String) -> Result<(), String> {
     rename(&native(&from), &native(&to))
 }
 
 #[tauri::command]
-pub fn local_remove(path: String, is_dir: bool) -> Result<(), String> {
+pub async fn local_remove(path: String, is_dir: bool) -> Result<(), String> {
     remove(&native(&path), is_dir)
 }
 
 #[tauri::command]
-pub fn local_chmod(path: String, mode: u32) -> Result<(), String> {
+pub async fn local_chmod(path: String, mode: u32) -> Result<(), String> {
     chmod(&native(&path), mode)
 }
 
 /// A local file's text (or a folder's listing) to attach to an AI question.
 #[tauri::command]
-pub fn local_read_text(path: String) -> Result<TextFile, String> {
+pub async fn local_read_text(path: String) -> Result<TextFile, String> {
     read_text(&native(&path))
 }
 
 /// Opens a local file in its default program, the text editor or a chosen program.
 #[tauri::command]
-pub fn local_open(path: String, with: OpenWith) -> Result<(), String> {
+pub async fn local_open(path: String, with: OpenWith) -> Result<(), String> {
     launch(&with, &native(&path)).map_err(|err| err.to_string())
 }
 
@@ -352,6 +364,20 @@ mod tests {
         remove(&link, true).unwrap();
         assert!(!link.exists());
         assert!(target.join("keep").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_trailing_slash_never_deletes_through_a_symlink() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target");
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("keep"), "").unwrap();
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        remove(Path::new(&format!("{}/", link.display())), true).unwrap();
+        assert!(fs::symlink_metadata(&link).is_err(), "the link is removed");
+        assert!(target.join("keep").exists(), "its target is kept");
     }
 
     #[test]

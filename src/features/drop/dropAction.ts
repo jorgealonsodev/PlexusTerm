@@ -20,7 +20,10 @@ export interface DropContext {
  */
 export function dropAction(paths: DraggedPath[], ctx: DropContext): DropAction {
   if (paths.length === 0) return { kind: "unsafe" };
-  if (paths.length === 1 && paths[0].isDir && ctx.lineEmpty && ctx.sameMachine) {
+  // fish reads `\'` as an escape even inside single quotes, so a POSIX path with a backslash
+  // cannot be quoted for every shell: it is typed, never sent with Enter.
+  const runnable = ctx.flavor !== "posix" || !paths[0].path.includes("\\");
+  if (paths.length === 1 && paths[0].isDir && ctx.lineEmpty && ctx.sameMachine && runnable) {
     const command = cdCommand(paths[0].path, ctx.flavor);
     return command === null ? { kind: "unsafe" } : { kind: "run", command };
   }

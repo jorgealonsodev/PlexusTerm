@@ -202,6 +202,8 @@ export function TerminalView({
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
+  /** The selection when the right button went down, read by the context menu handler. */
+  const selectionAtRightDown = useRef<string | null>(null);
   onAskAiRef.current = onAskAi;
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -225,6 +227,8 @@ export function TerminalView({
   const [menu, setMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
   /** What the find bar opens with: the selection it was opened from, or nothing. */
   const [findText, setFindText] = useState("");
+  /** Bumped when the bar must start again with `findText`; plain Ctrl+Shift+F keeps what is typed. */
+  const [findSeed, setFindSeed] = useState(0);
   const [pendingPaste, setPendingPaste] = useState<PendingPaste | null>(null);
   const logRef = useRef<SessionLog | null>(null);
   const [logPath, setLogPath] = useState<string | null>(null);
@@ -703,6 +707,7 @@ export function TerminalView({
 
   const closeFind = () => {
     setFindOpen(false);
+    setFindText("");
     searchRef.current?.clearDecorations();
     focusTerminal();
   };
@@ -741,8 +746,12 @@ export function TerminalView({
     callbacks.current.onLogging?.(path);
   };
 
+  /** Opens the find bar; with `text` (a selection) it starts again with that text. */
   const openFind = (text = "") => {
-    setFindText(text);
+    if (text) {
+      setFindText(text);
+      setFindSeed((n) => n + 1);
+    }
     setFindOpen(true);
   };
 
@@ -799,8 +808,9 @@ export function TerminalView({
    */
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
-    const term = termRef.current;
-    const selection = term?.hasSelection() ? term.getSelection() : "";
+    // The selection from before the click: on macOS xterm selects the word under a right click.
+    const selection = selectionAtRightDown.current ?? "";
+    selectionAtRightDown.current = null;
     if (settingsRef.current.rightClickPastes && !e.ctrlKey && !selection) pasteFromClipboard();
     else setMenu({ x: e.clientX, y: e.clientY, selection });
   };
@@ -811,6 +821,11 @@ export function TerminalView({
         className="terminal-host"
         ref={hostRef}
         style={{ background: theme.background }}
+        onMouseDownCapture={(e) => {
+          if (e.button !== 2) return;
+          const term = termRef.current;
+          selectionAtRightDown.current = term?.hasSelection() ? term.getSelection() : "";
+        }}
         onContextMenu={onContextMenu}
       />
       {ghost && (
@@ -818,7 +833,7 @@ export function TerminalView({
           {ghost.text}
         </div>
       )}
-      {findOpen && <FindBar key={findText} initialText={findText} onFind={find} onClose={closeFind} />}
+      {findOpen && <FindBar key={findSeed} initialText={findText} onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu
           x={menu.x}

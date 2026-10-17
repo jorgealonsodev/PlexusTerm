@@ -24,6 +24,12 @@ describe("dropAction", () => {
     });
   });
 
+  it("only types a POSIX path with a backslash: fish reads \\' as an escape even inside quotes", () => {
+    const path = "/x/y\\'; echo PWNED; echo \\'";
+    expect(dropAction([dir(path)], empty).kind).toBe("type");
+    expect(dropAction([dir("C:\\work")], { ...empty, flavor: "powershell" }).kind).toBe("run");
+  });
+
   it("refuses paths with control characters", () => {
     expect(dropAction([dir("/a\nb")], empty)).toEqual({ kind: "unsafe" });
     expect(dropAction([file("/ok"), file("/bad\u0003")], empty)).toEqual({ kind: "unsafe" });

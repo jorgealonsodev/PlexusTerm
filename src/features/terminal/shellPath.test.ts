@@ -27,6 +27,16 @@ describe("quotePath", () => {
     expect(quotePath("C:\\My Docs & more", "cmd")).toBe('"C:\\My Docs & more"');
   });
 
+  it("doubles every quote PowerShell reads as a single quote, typographic ones too", () => {
+    expect(quotePath("C:\\John\u2019s Files", "powershell")).toBe("'C:\\John\u2019\u2019s Files'");
+    expect(quotePath("C:\\a\u2018b\u201Bc", "powershell")).toBe("'C:\\a\u2018\u2018b\u201B\u201Bc'");
+  });
+
+  it("quotes commas and at signs for PowerShell, which read them as arrays and splats", () => {
+    expect(quotePath("C:\\a,b", "powershell")).toBe("'C:\\a,b'");
+    expect(quotePath("C:\\@x", "powershell")).toBe("'C:\\@x'");
+  });
+
   it("refuses control characters", () => {
     expect(quotePath("/tmp/a\nb", "posix")).toBeNull();
     expect(quotePath("C:\\a\u0015", "powershell")).toBeNull();
@@ -39,5 +49,7 @@ describe("cdCommand", () => {
     expect(cdCommand("D:\\work", "powershell")).toBe("cd D:\\work");
     expect(cdCommand("D:\\my work", "cmd")).toBe('cd /d "D:\\my work"');
     expect(cdCommand("/a\rb", "posix")).toBeNull();
+    // PowerShell reads [ ] * ? in a path as wildcards unless it is literal.
+    expect(cdCommand("C:\\logs [old]", "powershell")).toBe("cd -LiteralPath 'C:\\logs [old]'");
   });
 });

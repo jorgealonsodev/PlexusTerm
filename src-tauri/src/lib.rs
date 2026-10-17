@@ -68,7 +68,7 @@ fn pty_resize(id: u32, cols: u16, rows: u16, ptys: State<'_, PtyManager>) -> Res
 
 /// The working folder of a local terminal's shell, or null when it cannot be read.
 #[tauri::command]
-fn pty_cwd(id: u32, ptys: State<'_, PtyManager>) -> Result<Option<String>, PtyError> {
+async fn pty_cwd(id: u32, ptys: State<'_, PtyManager>) -> Result<Option<String>, PtyError> {
     ptys.cwd(id)
 }
 

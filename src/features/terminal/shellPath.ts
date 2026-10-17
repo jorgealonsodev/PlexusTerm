@@ -18,7 +18,12 @@ export function shellFlavor(platform: Platform, target: SessionTarget["type"], s
   return "posix";
 }
 
-const PLAIN_POWERSHELL = /^[A-Za-z0-9_\-./\\:+@,=]+$/;
+// `,` builds an array and `@` a splat in PowerShell's argument mode: both are quoted.
+const PLAIN_POWERSHELL = /^[A-Za-z0-9_\-./\\:+=]+$/;
+/** PowerShell reads the typographic quotes U+2018..U+201B as single quotes too. */
+const POWERSHELL_QUOTES = /['\u2018-\u201B]/g;
+/** Wildcards PowerShell expands in a path unless it is given with -LiteralPath. */
+const POWERSHELL_WILDCARDS = /[[\]*?]/;
 const PLAIN_CMD = /^[A-Za-z0-9_\-./\\:+@,=~]+$/;
 
 /**
@@ -32,7 +37,7 @@ export function quotePath(path: string, flavor: ShellFlavor): string | null {
     case "posix":
       return shellQuote(path);
     case "powershell":
-      return PLAIN_POWERSHELL.test(path) ? path : `'${path.replace(/'/g, "''")}'`;
+      return PLAIN_POWERSHELL.test(path) ? path : `'${path.replace(POWERSHELL_QUOTES, "$&$&")}'`;
     case "cmd":
       // Windows file names cannot contain `"`, so double quotes always suffice.
       return PLAIN_CMD.test(path) ? path : `"${path}"`;
@@ -43,5 +48,7 @@ export function quotePath(path: string, flavor: ShellFlavor): string | null {
 export function cdCommand(path: string, flavor: ShellFlavor): string | null {
   const quoted = quotePath(path, flavor);
   if (quoted === null) return null;
-  return flavor === "cmd" ? `cd /d ${quoted}` : `cd ${quoted}`;
+  if (flavor === "cmd") return `cd /d ${quoted}`;
+  if (flavor === "powershell" && POWERSHELL_WILDCARDS.test(path)) return `cd -LiteralPath ${quoted}`;
+  return `cd ${quoted}`;
 }

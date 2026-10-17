@@ -165,7 +165,7 @@ With **Follow terminal folder** on (the default), the Explorer shows the folder 
 function prompt {
   $loc = $executionContext.SessionState.Path.CurrentLocation
   if ($loc.Provider.Name -eq "FileSystem") {
-    $url = "file:///" + ($loc.ProviderPath -replace "\\", "/")
+    $url = "file:///" + ($loc.ProviderPath -replace "%", "%25" -replace "\\", "/")
     [Console]::Write("$([char]27)]7;$url$([char]7)")
   }
   "PS $loc$('>' * ($nestedPromptLevel + 1)) "
@@ -178,7 +178,7 @@ Files and folders dragged from the Explorer, the SFTP browser or the desktop ont
 
 - A folder dropped on an empty command line runs `cd` to it (`cd /d` in cmd). This only happens when the folder is on the machine the terminal runs on: local files in a local terminal, SFTP entries in the terminal of their own SSH session.
 - Anything else types the paths at the cursor, quoted for the shell and followed by a space: a file, several entries, a folder while something is already typed, at a password prompt or in a full-screen program such as vim, or a path from another machine.
-- A path with control characters is never typed; a notice says so.
+- A path with control characters is never typed; a notice says so. A Linux or macOS folder whose name contains a backslash is typed instead of run, since shells such as fish read it as an escape.
 
 ### Dropping files on the AI chat
 
