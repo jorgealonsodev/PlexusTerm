@@ -213,10 +213,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span className="sidebar__title">
-          {t("sessions.panel.title")}
-          <HelpTip text={t("sessions.panel.hint")} />
-        </span>
+        <span>{t("sessions.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={() => props.onNewSession("")}>{t("sessions.panel.new")}</button>
@@ -255,6 +252,9 @@ export function SessionsPanel(props: SessionsPanelProps) {
           onClose={() => setImportResult(null)}
         />
       )}
+      <div className="sidebar__help">
+        <HelpTip text={t("sessions.panel.hint")} />
+      </div>
     </div>
   );
 }

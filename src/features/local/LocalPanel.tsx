@@ -265,13 +265,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           {t("common.delete")}
         </button>
       </div>
-      <div className="sftp__follow-row">
-        <label className="sftp__follow">
-          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-          {t("sftp.panel.follow")}
-        </label>
-        <HelpTip text={t("sftp.local.hint")} />
-      </div>
+      <label className="sftp__follow">
+        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+        {t("sftp.panel.follow")}
+      </label>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}
@@ -321,6 +318,9 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           onClose={() => setDialog(null)}
         />
       )}
+      <div className="sidebar__help">
+        <HelpTip text={t("sftp.local.hint")} />
+      </div>
     </div>
   );
 }

@@ -35,10 +35,7 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span className="sidebar__title">
-          {t("tunnels.panel.title")}
-          <HelpTip text={t("tunnels.panel.hint")} />
-        </span>
+        <span>{t("tunnels.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={props.onNew}>
@@ -103,6 +100,9 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
           );
         })}
       </ul>
+      <div className="sidebar__help">
+        <HelpTip text={t("tunnels.panel.hint")} />
+      </div>
     </div>
   );
 }

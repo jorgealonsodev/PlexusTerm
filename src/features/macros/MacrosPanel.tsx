@@ -29,10 +29,7 @@ export function MacrosPanel(props: MacrosPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span className="sidebar__title">
-          {t("macros.panel.title")}
-          <HelpTip text={t("macros.panel.hint")} />
-        </span>
+        <span>{t("macros.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={props.onNew}>
@@ -99,6 +96,9 @@ export function MacrosPanel(props: MacrosPanelProps) {
           </li>
         ))}
       </ul>
+      <div className="sidebar__help">
+        <HelpTip text={t("macros.panel.hint")} />
+      </div>
     </div>
   );
 }

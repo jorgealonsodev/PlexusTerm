@@ -569,10 +569,18 @@ textarea::placeholder {
   line-height: 1.4;
 }
 
-.sidebar__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* The panel's help "?" in the bottom-right corner of the sidebar, also while its list scrolls. */
+.sidebar__help {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  pointer-events: none;
+}
+
+.sidebar__help .help-tip {
+  pointer-events: auto;
 }
 
 /* A round "?" whose explanation shows on hover or keyboard focus. */
@@ -607,12 +615,6 @@ textarea::placeholder {
   pointer-events: none;
 }
 
-.sftp__follow-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 
 .tree,
 .tree ul {

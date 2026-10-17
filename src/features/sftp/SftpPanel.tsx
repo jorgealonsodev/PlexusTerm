@@ -381,13 +381,10 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           {t("sftp.panel.download")}
         </button>
       </div>
-      <div className="sftp__follow-row">
-        <label className="sftp__follow">
-          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-          {t("sftp.panel.follow")}
-        </label>
-        <HelpTip text={t("sftp.panel.hint")} />
-      </div>
+      <label className="sftp__follow">
+        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+        {t("sftp.panel.follow")}
+      </label>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}
@@ -436,6 +433,9 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           onClose={() => setDialog(null)}
         />
       )}
+      <div className="sidebar__help">
+        <HelpTip text={t("sftp.panel.hint")} />
+      </div>
     </div>
   );
 }
