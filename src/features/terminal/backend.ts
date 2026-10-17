@@ -1,5 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { JumpTarget, PasswordStorage, SessionTarget, SshAuth, SshTarget } from "../sessions/types";
+import type { JumpTarget, LocalTarget, PasswordStorage, SessionTarget, SshAuth, SshTarget } from "../sessions/types";
 import { moshBackend } from "../mosh/moshBackend";
 import { serialBackend } from "../serial/serialBackend";
 import { telnetBackend } from "../telnet/telnetBackend";
@@ -44,11 +44,24 @@ function commands(prefix: "pty" | "ssh") {
   };
 }
 
-const localBackend: TerminalBackend = {
-  start: ({ cols, rows }, onEvent) =>
-    invoke<number>("pty_spawn", { request: { cols, rows }, onEvent: channelFor(onEvent) }),
-  ...commands("pty"),
-};
+/** The PTY request of a local target; blank fields are left out so the backend uses its defaults. */
+function localRequest({ program, args, cwd }: LocalTarget, cols: number, rows: number) {
+  return {
+    ...(program?.trim() ? { program: program.trim() } : {}),
+    ...(args?.length ? { args } : {}),
+    ...(cwd?.trim() ? { cwd: cwd.trim() } : {}),
+    cols,
+    rows,
+  };
+}
+
+function localBackend(target: LocalTarget): TerminalBackend {
+  return {
+    start: ({ cols, rows }, onEvent) =>
+      invoke<number>("pty_spawn", { request: localRequest(target, cols, rows), onEvent: channelFor(onEvent) }),
+    ...commands("pty"),
+  };
+}
 
 function sshBackend(target: SshTarget): TerminalBackend {
   return {
@@ -74,7 +87,7 @@ function sshBackend(target: SshTarget): TerminalBackend {
 export function backendFor(target: SessionTarget): TerminalBackend {
   switch (target.type) {
     case "local":
-      return localBackend;
+      return localBackend(target);
     case "ssh":
       return sshBackend(target);
     case "serial":

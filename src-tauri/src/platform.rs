@@ -85,6 +85,118 @@ pub fn default_shell() -> String {
     default_shell_in(CURRENT, &env, &|name| find_program(name, &path))
 }
 
+/// A command interpreter that local terminals can run.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Shell {
+    /// File name without directory or `.exe`, e.g. `pwsh` or `zsh`.
+    pub name: String,
+    /// What to run: a full path, or a bare name when nothing better is known.
+    pub program: String,
+}
+
+impl Shell {
+    fn new(program: String) -> Self {
+        Self {
+            name: shell_name(&program).to_string(),
+            program,
+        }
+    }
+}
+
+/// The shells found on this machine and the one local terminals run by default.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Shells {
+    pub default: Shell,
+    pub available: Vec<Shell>,
+}
+
+/// The file name of `program` without its directory (`/` or `\\`) or a `.exe` extension.
+pub fn shell_name(program: &str) -> &str {
+    let file = program.rsplit(['/', '\\']).next().unwrap_or(program);
+    match file.len().checked_sub(4) {
+        Some(stem) if file.is_char_boundary(stem) && file[stem..].eq_ignore_ascii_case(".exe") => {
+            &file[..stem]
+        }
+        _ => file,
+    }
+}
+
+/// Entries of `/etc/shells` that are never interactive shells.
+const NOT_SHELLS: [&str; 2] = ["nologin", "false"];
+
+/// The shells local terminals can run. Unix: `$SHELL`, then the installed entries of
+/// `/etc/shells` (`etc_shells`). Windows: `pwsh.exe`, `powershell.exe`, `cmd.exe`
+/// (`%COMSPEC%`), `wsl.exe` and Git Bash, when installed. One entry per name, first wins;
+/// with nothing found the default shell is listed alone.
+pub fn shells_in(
+    os: Os,
+    env: EnvLookup,
+    find: ProgramLookup,
+    installed: &dyn Fn(&Path) -> bool,
+    etc_shells: Option<&str>,
+) -> Shells {
+    let default = Shell::new(default_shell_in(os, env, find));
+    let mut programs: Vec<String> = Vec::new();
+    match os {
+        Os::Unix => {
+            programs.extend(env("SHELL").and_then(|shell| shell.into_string().ok()));
+            programs.extend(
+                etc_shells
+                    .unwrap_or_default()
+                    .lines()
+                    .map(str::trim)
+                    .filter(|line| line.starts_with('/'))
+                    .filter(|line| !NOT_SHELLS.contains(&shell_name(line)))
+                    .filter(|line| installed(Path::new(line)))
+                    .map(String::from),
+            );
+        }
+        Os::Windows => {
+            let found = |name: &str| find(name).map(|path| path.to_string_lossy().into_owned());
+            programs.extend(found("pwsh.exe"));
+            programs.extend(found("powershell.exe"));
+            programs.push(
+                env("COMSPEC")
+                    .and_then(|c| c.into_string().ok())
+                    .or_else(|| found("cmd.exe"))
+                    .unwrap_or_else(|| "cmd.exe".into()),
+            );
+            programs.extend(found("wsl.exe"));
+            programs.extend(
+                env("ProgramFiles")
+                    .and_then(|dir| dir.into_string().ok())
+                    .map(|dir| format!(r"{dir}\Git\bin\bash.exe"))
+                    .filter(|bash| installed(Path::new(bash))),
+            );
+        }
+    }
+    let mut available: Vec<Shell> = Vec::new();
+    for shell in programs.into_iter().map(Shell::new) {
+        if !available.iter().any(|known| known.name == shell.name) {
+            available.push(shell);
+        }
+    }
+    if available.is_empty() {
+        available.push(default.clone());
+    }
+    Shells { default, available }
+}
+
+pub fn shells() -> Shells {
+    let path = env("PATH").unwrap_or_default();
+    let etc_shells = match CURRENT {
+        Os::Unix => std::fs::read_to_string("/etc/shells").ok(),
+        Os::Windows => None,
+    };
+    shells_in(
+        CURRENT,
+        &env,
+        &|name| find_program(name, &path),
+        &|candidate| candidate.metadata().is_ok_and(|m| is_executable(&m)),
+        etc_shells.as_deref(),
+    )
+}
+
 /// The current user's OpenSSH `known_hosts` file (`~/.ssh/known_hosts`).
 pub fn known_hosts_path() -> PathBuf {
     home_dir()
@@ -302,6 +414,87 @@ mod tests {
             expand_home_in(Os::Windows, r"D:\keys\id", Some(win_home)),
             PathBuf::from(r"D:\keys\id")
         );
+    }
+
+    fn names(shells: &Shells) -> Vec<(&str, &str)> {
+        shells
+            .available
+            .iter()
+            .map(|s| (s.name.as_str(), s.program.as_str()))
+            .collect()
+    }
+
+    #[test]
+    fn unix_shells_are_dollar_shell_then_the_executable_entries_of_etc_shells() {
+        let etc_shells = "# /etc/shells: valid login shells\n/bin/sh\n/bin/bash\n/usr/bin/bash\n\n\
+                          /usr/bin/zsh\n/usr/bin/fish\n/usr/sbin/nologin\nrelative/sh\n";
+        let installed = |path: &Path| path != Path::new("/usr/bin/fish");
+        let shells = shells_in(
+            Os::Unix,
+            &vars(&[("SHELL", "/usr/bin/zsh")]),
+            &programs(&[]),
+            &installed,
+            Some(etc_shells),
+        );
+        assert_eq!(
+            names(&shells),
+            [
+                ("zsh", "/usr/bin/zsh"),
+                ("sh", "/bin/sh"),
+                ("bash", "/bin/bash")
+            ]
+        );
+        assert_eq!(shells.default.name, "zsh");
+        assert_eq!(shells.default.program, "/usr/bin/zsh");
+    }
+
+    #[test]
+    fn unix_shells_without_etc_shells_or_dollar_shell_fall_back_to_bash() {
+        let shells = shells_in(Os::Unix, &vars(&[]), &programs(&[]), &|_| true, None);
+        assert_eq!(names(&shells), [("bash", "/bin/bash")]);
+        assert_eq!(shells.default.program, "/bin/bash");
+    }
+
+    #[test]
+    fn windows_shells_are_powershell_cmd_wsl_and_git_bash_when_installed() {
+        let env = vars(&[
+            ("COMSPEC", r"C:\Windows\system32\cmd.exe"),
+            ("ProgramFiles", r"C:\Program Files"),
+        ]);
+        let git_bash = r"C:\Program Files\Git\bin\bash.exe";
+        let shells = shells_in(
+            Os::Windows,
+            &env,
+            &programs(&["pwsh.exe", "powershell.exe", "wsl.exe"]),
+            &|path: &Path| path == Path::new(git_bash),
+            Some("/bin/bash\n"),
+        );
+        assert_eq!(
+            names(&shells),
+            [
+                ("pwsh", r"C:\bin\pwsh.exe"),
+                ("powershell", r"C:\bin\powershell.exe"),
+                ("cmd", r"C:\Windows\system32\cmd.exe"),
+                ("wsl", r"C:\bin\wsl.exe"),
+                ("bash", git_bash),
+            ]
+        );
+        assert_eq!(shells.default.name, "pwsh");
+
+        let bare = shells_in(Os::Windows, &vars(&[]), &programs(&[]), &|_| false, None);
+        assert_eq!(names(&bare), [("cmd", "cmd.exe")]);
+        assert_eq!(bare.default.program, "cmd.exe");
+    }
+
+    #[test]
+    fn shell_names_drop_the_directory_and_the_exe_extension() {
+        assert_eq!(
+            shell_name(r"C:\Program Files\PowerShell\7\pwsh.exe"),
+            "pwsh"
+        );
+        assert_eq!(shell_name("CMD.EXE"), "CMD");
+        assert_eq!(shell_name("/usr/bin/zsh"), "zsh");
+        assert_eq!(shell_name("fish"), "fish");
     }
 
     #[test]

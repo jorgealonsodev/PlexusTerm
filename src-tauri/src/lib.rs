@@ -94,6 +94,12 @@ async fn wol_send(mac: String, broadcast: Option<String>, port: Option<u16>) -> 
         .map_err(|err| format!("Could not send the packet: {err}"))
 }
 
+/// The shells local terminals can run, and the default one (Settings and local sessions list them).
+#[tauri::command]
+fn shells() -> platform::Shells {
+    platform::shells()
+}
+
 /// `"linux"`, `"windows"` or `"macos"`, so the frontend can adapt platform-specific texts.
 #[tauri::command]
 fn platform() -> &'static str {
@@ -442,6 +448,7 @@ pub fn run() {
             pty_close,
             serial_list_ports,
             platform,
+            shells,
             serial_open,
             serial_write,
             serial_close,

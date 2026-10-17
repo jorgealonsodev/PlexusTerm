@@ -76,7 +76,20 @@ export interface MoshTarget {
   serverCommand?: string;
 }
 
-export type SessionTarget = { type: "local" } | SshTarget | SerialTarget | TelnetTarget | MoshTarget;
+/**
+ * A terminal on this machine. Missing or blank fields keep the defaults: the shell from
+ * Settings (or the system's), no arguments, the home directory.
+ */
+export interface LocalTarget {
+  type: "local";
+  /** Shell to run: a full path or a name found on PATH. */
+  program?: string;
+  args?: string[];
+  /** Starting directory; a leading `~` is the home directory. */
+  cwd?: string;
+}
+
+export type SessionTarget = LocalTarget | SshTarget | SerialTarget | TelnetTarget | MoshTarget;
 
 /** The SSH login of a target: its own for SSH, the one that starts the server for Mosh. */
 export function sshLoginOf(target: SessionTarget): SshTarget | null {

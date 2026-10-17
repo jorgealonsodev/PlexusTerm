@@ -14,10 +14,11 @@ use crate::terminal::{TerminalSink, Utf8Stream};
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnRequest {
-    /// Program to run; defaults to the user's shell (see [`platform::default_shell`]).
+    /// Program to run; missing or blank runs the user's shell (see [`platform::default_shell`]).
     pub program: Option<String>,
     #[serde(default)]
     pub args: Vec<String>,
+    /// Starting directory (`~/` expanded); missing or blank starts in the home directory.
     pub cwd: Option<String>,
     pub cols: u16,
     pub rows: u16,
@@ -78,6 +79,24 @@ fn size(cols: u16, rows: u16) -> PtySize {
     }
 }
 
+/// The program to run: the requested one, or the user's shell when it is missing or blank.
+fn program_of(req: &SpawnRequest) -> String {
+    match req.program.as_deref().map(str::trim) {
+        Some(program) if !program.is_empty() => program.to_string(),
+        _ => platform::default_shell(),
+    }
+}
+
+/// The starting directory: the requested one with a leading `~` expanded, or the home
+/// directory when it is missing or blank.
+fn cwd_of(req: &SpawnRequest) -> Option<PathBuf> {
+    match req.cwd.as_deref().map(str::trim) {
+        Some("~") | None => platform::home_dir(),
+        Some("") => platform::home_dir(),
+        Some(dir) => Some(platform::expand_home(dir)),
+    }
+}
+
 struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
@@ -96,10 +115,9 @@ impl PtyManager {
             .openpty(size(req.cols, req.rows))
             .map_err(io_err)?;
 
-        let program = req.program.unwrap_or_else(platform::default_shell);
-        let mut cmd = CommandBuilder::new(program);
+        let mut cmd = CommandBuilder::new(program_of(&req));
         cmd.args(&req.args);
-        if let Some(dir) = req.cwd.map(PathBuf::from).or_else(platform::home_dir) {
+        if let Some(dir) = cwd_of(&req) {
             cmd.cwd(dir);
         }
         cmd.env("TERM", "xterm-256color");
@@ -242,6 +260,44 @@ mod tests {
         let debug = format!("{request:?}");
         assert!(debug.contains("MOSH_KEY"), "{debug}");
         assert!(!debug.contains("s3cr3t-value"), "{debug}");
+    }
+
+    fn home() -> String {
+        std::env::var("HOME").unwrap()
+    }
+
+    #[test]
+    fn a_starting_directory_with_a_tilde_starts_in_the_home_directory() {
+        for cwd in ["~", "~/"] {
+            let mgr = PtyManager::default();
+            let (s, rx) = sink();
+            let mut request = req("/bin/sh", &["-c", "echo \"cwd=$(pwd -P)\""]);
+            request.cwd = Some(cwd.into());
+            mgr.spawn(request, s).unwrap();
+            let expected = format!("cwd={}", std::fs::canonicalize(home()).unwrap().display());
+            let (out, _) = wait_for(&rx, &expected);
+            assert!(out.contains(&expected), "{cwd}: output was {out:?}");
+        }
+    }
+
+    #[test]
+    fn a_blank_program_or_directory_keeps_the_defaults() {
+        let request: SpawnRequest = serde_json::from_str(
+            r#"{ "program": "  ", "args": [], "cwd": " ", "cols": 80, "rows": 24 }"#,
+        )
+        .unwrap();
+        assert_eq!(program_of(&request), platform::default_shell());
+        assert_eq!(cwd_of(&request), platform::home_dir());
+    }
+
+    #[test]
+    fn a_program_that_does_not_exist_is_an_error() {
+        let mgr = PtyManager::default();
+        let (s, _rx) = sink();
+        let err = mgr
+            .spawn(req("/nonexistent/plexus-shell", &[]), s)
+            .unwrap_err();
+        assert!(matches!(err, PtyError::Io(_)), "{err:?}");
     }
 
     /// Collects output until `needle` appears or the process exits.
