@@ -140,4 +140,20 @@ describe("Explorer tab", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/home/me/my src" }));
     expect(pane.ran).toEqual([]);
   });
+
+  it("opens on the Explorer for a local terminal, and leaves another chosen tab alone (L18)", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "local_list") return [];
+      return null;
+    });
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Explorer" }).getAttribute("aria-selected")).toBe("true"));
+    fireEvent.click(screen.getByRole("tab", { name: "Macros" }));
+    act(() => void fireEvent.keyDown(window, { key: "T", ctrlKey: true, shiftKey: true }));
+    await waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(2));
+    expect(screen.getByRole("tab", { name: "Macros" }).getAttribute("aria-selected")).toBe("true");
+  });
 });

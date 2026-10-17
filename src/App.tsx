@@ -1046,8 +1046,12 @@ function AppContent() {
                             onCwd={(cwd) => updatePane(paneId, { cwd })}
                             onSession={(sessionId) => {
                               updatePane(paneId, { sessionId });
-                              // A new SSH connection brings its file browser to the front.
+                              // A new SSH connection brings its file browser to the front; a local terminal
+                              // shows the Explorer instead of Sessions, leaving any other tab chosen (L18).
                               if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
+                              if (sessionId !== null && tab.target.type === "local") {
+                                setSidebarView((view) => (view === "sessions" ? "explorer" : view));
+                              }
                             }}
                             onInput={(data) => {
                               broadcast(paneId, data);

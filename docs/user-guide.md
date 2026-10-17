@@ -152,7 +152,7 @@ Paths containing special characters may need percent-encoding; many distribution
 
 ## File explorer
 
-The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). It works like the [SFTP browser](#sftp-browser) on this computer's files:
+The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). A new local terminal brings it to the front when the sidebar shows **Sessions** (any other tab you chose stays), and switching between a local and an SSH tab swaps the Explorer and the SFTP browser. It works like the [SFTP browser](#sftp-browser) on this computer's files:
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to open it in its default program.

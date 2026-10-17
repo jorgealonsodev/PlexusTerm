@@ -51,8 +51,11 @@ export function Sidebar({
   const [dragged, setDragged] = useState<number | null>(null);
   /** Ends the drag in progress (removes its window listeners); null when not dragging. */
   const stopDrag = useRef<(() => void) | null>(null);
+  // A file browser that does not fit the active tab gives way to the one that does (SFTP for SSH,
+  // Explorer for a local terminal), otherwise to Sessions.
+  const fileView: SidebarView = sftpAvailable ? "sftp" : localAvailable ? "explorer" : "sessions";
   const shown: SidebarView =
-    (view === "sftp" && !sftpAvailable) || (view === "explorer" && !localAvailable) ? "sessions" : view;
+    (view === "sftp" && !sftpAvailable) || (view === "explorer" && !localAvailable) ? fileView : view;
   const shownWidth = dragged ?? width;
   // An unmount in the middle of a drag must not leave listeners or the no-selection class behind.
   useEffect(() => () => stopDrag.current?.(), []);

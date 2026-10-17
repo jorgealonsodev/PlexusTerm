@@ -59,7 +59,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       if (seq !== listSeq.current) return true;
       setPath(target);
       setInput(target);
-      setEntries(list);
+      setEntries(list ?? []);
       setSelected(null);
       setError(null);
       if (user) onUserNavigateRef.current?.(target);
