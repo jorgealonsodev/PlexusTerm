@@ -9,6 +9,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Telnet and Mosh](#telnet-and-mosh) | Built-in Telnet client, Mosh over SSH |
 | [Saved sessions](#saved-sessions) | Folders, saved passwords, jump hosts, session import |
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
+| [File explorer](#file-explorer) | Local files of the active local tab, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
@@ -125,10 +126,11 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ## SFTP browser
 
-The sidebar has four tabs, **Sessions**, **SFTP**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. Drag the sidebar's edge to change its width (between 160 and 640 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width too. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
+The sidebar has five tabs, **Sessions**, **SFTP**, **Explorer**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. Drag the sidebar's edge to change its width (between 160 and 640 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width too. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
+- Drag an entry onto the terminal of the same SSH session: a folder dropped on an empty command line runs `cd` to it; otherwise its path is typed at the cursor. Dropped on the AI chat, a file is attached to the next question (see [File explorer](#file-explorer)).
 - **Upload** picks one or more local files; dropping files from the desktop onto the panel uploads them too. Both go into the current folder.
 - **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
 
@@ -147,6 +149,44 @@ PROMPT_COMMAND='printf "\033]7;file://%s%s\007" "$HOSTNAME" "$PWD"'
 ```
 
 Paths containing special characters may need percent-encoding; many distributions' `vte.sh` already emit OSC 7 that way.
+
+## File explorer
+
+The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). It works like the [SFTP browser](#sftp-browser) on this computer's files:
+
+- Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
+- Double-click a folder to open it, or a file to open it in its default program.
+- **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete** act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
+- Right-click an entry for **Open**, **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy.
+
+With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`, PowerShell with the prompt below) are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows only OSC 7 is followed; add this to your PowerShell profile (`notepad $PROFILE`):
+
+```powershell
+function prompt {
+  $loc = $executionContext.SessionState.Path.CurrentLocation
+  if ($loc.Provider.Name -eq "FileSystem") {
+    $url = "file:///" + ($loc.ProviderPath -replace "\\", "/")
+    [Console]::Write("$([char]27)]7;$url$([char]7)")
+  }
+  "PS $loc$('>' * ($nestedPromptLevel + 1)) "
+}
+```
+
+### Dropping files on a terminal
+
+Files and folders dragged from the Explorer, the SFTP browser or the desktop onto a terminal pane:
+
+- A folder dropped on an empty command line runs `cd` to it (`cd /d` in cmd). This only happens when the folder is on the machine the terminal runs on: local files in a local terminal, SFTP entries in the terminal of their own SSH session.
+- Anything else types the paths at the cursor, quoted for the shell and followed by a space: a file, several entries, a folder while something is already typed, at a password prompt or in a full-screen program such as vim, or a path from another machine.
+- A path with control characters is never typed; a notice says so.
+
+### Dropping files on the AI chat
+
+Files dragged from the Explorer, the SFTP browser or the desktop onto the [AI chat](#ai-chat) are attached to the next question, each shown above the input with its **×** to leave it out. Their text is sent with the question as context, and only with that question:
+
+- At most 5 files per question; the first 64 KB of each file are read ("(first 64 KB)" marks a longer one), and at most 100,000 characters in all are sent.
+- Binary files (with a NUL byte or invalid UTF-8) are refused with a message. A dropped folder attaches the list of its entries (folders end with `/`).
+- The text goes to the AI provider chosen in Settings → AI. Do not attach files whose contents must not leave this computer.
 
 ## SSH tunnels
 
@@ -216,12 +256,15 @@ The palettes come from iTerm2-Color-Schemes (MIT); [THIRD_PARTY_NOTICES.md](../T
 
 Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `robbyrussell` or `agnoster`) are configured in the shell, on the machine where it runs (`~/.zshrc`, `~/.config/starship.toml`), not in PlexusTerm. Their colours follow the colour scheme. Themes that draw icons or powerline arrows need a [Nerd Font](https://www.nerdfonts.com/) installed on this machine and set as the font family.
 - **Shell for local terminals** (default: the system default shell): the shells found on this computer are listed (Linux and macOS: `$SHELL` and `/etc/shells`; Windows: PowerShell 7, Windows PowerShell, cmd, WSL and Git Bash when installed), or **Other…** runs any program, typed or chosen with **Browse…**. **Arguments** are separated by spaces; quote an argument that has spaces, e.g. `-NoLogo -Command "Set-Location 'C:\My Files'"`. New local terminals use it; terminals already open keep their shell. Command suggestions name it to the AI provider, and **Run** clears the line with the keys that shell understands.
+- **Starting folder for local terminals** (default: empty, the home folder): the folder new local terminals start in, typed (`~` is the home folder) or chosen with **Browse**. Saved local sessions keep their own starting directory.
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
-- **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it.
+- **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it, and so does a right click on selected text.
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
 - **Text editor** (default: empty, the system default text editor): the program **Open with default text editor** uses in the SFTP browser. **Browse…** picks a program; you can also type a command with arguments, such as `code --wait` or `"/opt/My Editor/editor" -n`. The file is added as the last argument, or in place of `%f` when the command has one. The command runs directly, never through a shell, and a path to an existing program counts as one program even when it contains spaces. **Use system default** empties the field. A value that is not text or is longer than 1024 characters loads as the system default.
 
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
+
+With text selected, the terminal menu starts with what can be done with it: **Copy**, **Ask the AI about it** (opens the terminal's AI chat with the selection attached, or attaches it to the chat already open), **Type at the prompt** (types the selection at the cursor, asking first when it has several lines), **Find in terminal** (opens the find bar with the selection's first line) and, when the selection is one `http://` or `https://` address, **Open link** (opens it in the browser).
 
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
@@ -291,6 +334,7 @@ The AI chat answers any question or request in plain words (explanations, steps,
 - The answer is shown as plain text: line breaks are kept and code between ``` fences is shown in monospace blocks; nothing in it is ever treated as HTML or run. Control and invisible formatting characters are removed (line breaks and tabs stay), and an answer longer than 8000 characters is shortened, ending with "… (answer shortened)".
 - When a single shell command does what you asked, it is shown below the answer with **Copy**, **Insert** and **Run**; otherwise there is no command box. **Insert** types the command into the chat's terminal without Enter and moves the focus there, so nothing runs until you press Enter yourself. **Run** clears whatever was half typed in that terminal, types the command and presses Enter; it refuses (and says so) while the terminal is at a password prompt or in a full-screen program such as vim. **Copy** puts it on the clipboard. Nothing runs unless you click **Run** or press Enter. An inserted command is recorded in the command history once you send it with Enter, like one you typed. Commands always come back on one line, without control characters or invisible formatting characters (such as zero-width spaces or right-to-left overrides); a command longer than 2000 characters is left out and only the answer is shown.
 - When text is selected in the terminal as you open the chat, it is attached to your first question and shown above the input before you send it; at most 2000 characters are sent. Click its **×** to leave it out.
+- Files dropped on the chat are attached to the next question: see [Dropping files on the AI chat](#dropping-files-on-the-ai-chat).
 - Besides your question, the chat sends the operating system, the terminal's current folder (when known) and the host's recent commands under the same rules as AI suggestions; never the terminal output.
 - The chat's header shows the provider and model; click it to choose another model from a scrollable list. The list holds the models of every provider with an API key saved (and of the OpenAI-compatible server when its base URL is set; on `opencode.ai` only once that provider has its own key, since OpenCode answers only with one), each with its provider's name, and can be filtered by typing. Choosing one makes it the AI provider and model, as in Settings → AI, for every chat and for AI suggestions. A provider whose list cannot be read shows why, and the others are still listed.
 - When no key is saved for the provider, the chat says so and **Open AI settings** opens Settings on the **AI** section, where the key is saved.
@@ -347,6 +391,7 @@ Settings → About has **Check for updates** to ask at any time; it says whether
 PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 
 - **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`. Settings → Terminal → **Shell for local terminals** picks another one, such as cmd, WSL or Git Bash.
+- **File explorer**: following the terminal folder needs the shell to send OSC 7 (see [File explorer](#file-explorer) for PowerShell); Windows does not let PlexusTerm read another program's working folder. **Permissions…** is not offered.
 - **Home directory**: `~` is `%USERPROFILE%`, so host keys go to `%USERPROFILE%\.ssh\known_hosts` and key paths accept both `~/` and `~\`.
 - **SSH agent**: `SSH_AUTH_SOCK` when set, otherwise the Windows OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent` (start the "OpenSSH Authentication Agent" service and add keys with `ssh-add`).
 - **Saved files** (sessions, settings, macros) rely on the permissions of your user profile instead of Unix file modes.

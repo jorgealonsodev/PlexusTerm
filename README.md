@@ -62,6 +62,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | SSH | Password, key or agent login, `known_hosts` checks, up to 3 jump hosts | [SSH sessions](docs/user-guide.md#ssh-sessions) |
 | Saved sessions | Folders, search, passwords in the system keyring, import from `.ini` session files | [Saved sessions](docs/user-guide.md#saved-sessions) |
 | SFTP | File browser for the active SSH tab: drag-and-drop upload, open, edit and re-upload, permissions, follows the shell's folder | [SFTP browser](docs/user-guide.md#sftp-browser) |
+| File explorer | Local files next to each local terminal, following its folder; drop files and folders on a terminal (`cd` or the path) or on the AI chat (as context) | [File explorer](docs/user-guide.md#file-explorer) |
 | Tunnels | Local (-L), remote (-R) and SOCKS5 (-D) forwards | [SSH tunnels](docs/user-guide.md#ssh-tunnels) |
 | Serial, Telnet, Mosh | Serial consoles with line settings, a built-in Telnet client, Mosh over SSH | [Serial](docs/user-guide.md#serial-consoles), [Telnet and Mosh](docs/user-guide.md#telnet-and-mosh) |
 | Multi-execution | Type into every open terminal at once, with per-pane exclusion | [Multi-execution](docs/user-guide.md#split-panes-and-multi-execution) |
