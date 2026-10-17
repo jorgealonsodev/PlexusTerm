@@ -26,6 +26,10 @@ import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
 import { quotePath, shellFlavor } from "./features/terminal/shellPath";
+import { dropAction, sameMachine } from "./features/drop/dropAction";
+import { dropTargetAt, setDropHandler, type PathDrag } from "./features/drop/pathDrag";
+import { local } from "./features/local/localClient";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { stepFontSize } from "./features/settings/settings";
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
@@ -579,6 +583,73 @@ function AppContent() {
     };
   };
 
+  /**
+   * Files or folders dropped on a terminal pane (S4): a folder on an empty command line of its own
+   * machine runs `cd`; anything else types the quoted paths at the cursor.
+   */
+  const dropOnPane = (paneId: string, drag: PathDrag) => {
+    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && !t.chats[paneId]);
+    const pane = assistTargets.get(paneId);
+    if (!tab || !pane) return;
+    const { target } = tab;
+    const action = dropAction(drag.paths, {
+      lineEmpty: pane.lineEmpty?.() ?? false,
+      sameMachine: sameMachine(drag.origin, target.type, paneMeta[paneId]?.sessionId ?? null),
+      flavor: shellFlavor(platform, target.type, runningShellOf(target, shells)),
+    });
+    if (action.kind === "unsafe") setNotice(t("sftp.error.unsafePath"));
+    else if (action.kind === "run") pane.run(action.command);
+    else pane.insert(action.text);
+    dispatch({ type: "focusPane", key: tab.key, paneId });
+    pane.focus();
+  };
+  const dropRef = useRef<(drag: PathDrag, target: Element | null) => void>(() => {});
+  dropRef.current = (drag, target) => {
+    const paneId = target?.getAttribute("data-drop-pane");
+    if (paneId) dropOnPane(paneId, drag);
+  };
+  useEffect(() => setDropHandler((drag, target) => dropRef.current(drag, target)), []);
+
+  // Files dropped from the desktop: on a terminal pane they are handled like the Explorer's rows.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    let over: Element | null = null;
+    const highlight = (next: Element | null) => {
+      if (next === over) return;
+      over?.classList.remove("drop-target--over");
+      next?.classList.add("drop-target--over");
+      over = next;
+    };
+    const at = ({ x, y }: { x: number; y: number }) => dropTargetAt(x / window.devicePixelRatio, y / window.devicePixelRatio);
+    try {
+      getCurrentWebview()
+        .onDragDropEvent(({ payload }) => {
+          if (payload.type === "enter" || payload.type === "over") return highlight(at(payload.position));
+          highlight(null);
+          if (payload.type !== "drop") return;
+          const target = at(payload.position);
+          if (!target) return;
+          void Promise.all(
+            payload.paths.map((path) =>
+              local
+                .stat(path)
+                .then((entry) => ({ path, isDir: entry.kind === "dir" }))
+                .catch(() => ({ path, isDir: false })),
+            ),
+          ).then((paths) => dropRef.current({ origin: { kind: "local" }, paths }, target));
+        })
+        .then((stop) => (disposed ? stop() : (unlisten = stop)))
+        .catch(() => {});
+    } catch {
+      // Not running inside Tauri (e.g. tests): no desktop drops.
+    }
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
   /** Types an AI command into the chat's terminal, without Enter, and focuses it. */
   const insertFromChat = (tab: Tab, link: ChatLink, command: string) => {
     // Typed like the user's own keys (so Enter records it in the history), only into this terminal.
@@ -916,7 +987,7 @@ function AppContent() {
                       const excluded = paneMeta[paneId]?.excluded ?? false;
                       return (
                         <div className="pane-stack">
-                          <div className="pane-stack__terminal">
+                          <div className="pane-stack__terminal" data-drop-pane={paneId}>
                           <TerminalView
                             target={tab.target}
                             active={active}

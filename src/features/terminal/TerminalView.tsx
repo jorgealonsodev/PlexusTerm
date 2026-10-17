@@ -95,6 +95,11 @@ export interface AssistTarget {
    * broadcast). Refused (false) at a password prompt or in a full-screen program.
    */
   run: (text: string) => boolean;
+  /**
+   * Nothing is typed on the command line: no tracked text, nothing after the cursor, no password
+   * prompt and no full-screen program. Unknown lines (after Tab or arrows) are not empty.
+   */
+  lineEmpty?: () => boolean;
 }
 
 export interface AiSuggestContext {
@@ -556,6 +561,8 @@ export function TerminalView({
         track(`${text}\r`);
         return true;
       },
+      lineEmpty: () =>
+        !fullScreen() && line.text === "" && !line.uncertain && !cursorRow().textAfter && !atSecretPrompt(),
     });
 
     const subs = [

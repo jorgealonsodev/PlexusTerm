@@ -3,6 +3,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
+import { startPathDrag } from "../drop/pathDrag";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
 import { formatDate, formatSize } from "./format";
@@ -405,6 +406,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
               setSelected(entry.path);
               setMenu({ x: e.clientX, y: e.clientY, entry });
             }}
+            // Dragged onto a terminal it changes to the folder or types the path (S4).
+            onPointerDown={(e) => startPathDrag(e, { origin: { kind: "sftp", sessionId }, paths: [{ path: entry.path, isDir: entry.kind === "dir" }] }, entry.name)}
             // Middle click types the path into the terminal (and never starts autoscroll).
             onMouseDown={(e) => e.button === 1 && e.preventDefault()}
             onAuxClick={(e) => {

@@ -10,10 +10,26 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
+const pane = vi.hoisted(() => ({ lineEmpty: true, inserted: [] as string[], ran: [] as string[] }));
 // A terminal that reports its backend session (pty 5) as soon as it mounts.
 vi.mock("../terminal/TerminalView", () => ({
-  TerminalView: ({ onSession }: { onSession?: (id: number | null) => void }) => {
-    useEffect(() => onSession?.(5), []); // eslint-disable-line react-hooks/exhaustive-deps
+  TerminalView: ({
+    onSession,
+    registerAssistTarget,
+  }: {
+    onSession?: (id: number | null) => void;
+    registerAssistTarget?: (target: import("../terminal/TerminalView").AssistTarget) => () => void;
+  }) => {
+    useEffect(() => {
+      onSession?.(5);
+      return registerAssistTarget?.({
+        selection: () => "",
+        focus: () => {},
+        insert: (text) => void pane.inserted.push(text),
+        run: (text) => (pane.ran.push(text), true),
+        lineEmpty: () => pane.lineEmpty,
+      });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return <div data-testid="terminal" />;
   },
 }));
@@ -24,10 +40,10 @@ afterEach(() => {
   vi.mocked(invoke).mockImplementation(async () => null);
 });
 
-const entry = (path: string) => ({
+const entry = (path: string, kind = "file") => ({
   name: path.split("/").pop(),
   path,
-  kind: "file",
+  kind,
   size: 1,
   modified: null,
   permissions: null,
@@ -55,5 +71,42 @@ describe("Explorer tab", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("pty_cwd", { id: 5 }));
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/srv/app" }));
     expect(screen.getByRole("tab", { name: "SFTP" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("drops a row on the terminal: cd into a folder on an empty line, otherwise types the path", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "settings_load") return JSON.stringify({ ...DEFAULT_SETTINGS, sidebarWidth: 300 });
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "local_list") return [entry("/home/me/my src", "dir"), entry("/home/me/a.txt")];
+      return null;
+    });
+    render(<App />);
+    const terminal = await screen.findByTestId("terminal");
+    const tab = await screen.findByRole("tab", { name: "Explorer" });
+    await waitFor(() => expect((tab as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(tab);
+    document.elementFromPoint = () => terminal;
+    const drag = async (name: string) => {
+      const row = await screen.findByText(name);
+      fireEvent.pointerDown(row, { clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { clientX: 400, clientY: 300 });
+      expect(document.querySelector(".path-drag")?.textContent).toBe(name);
+      expect(terminal.closest("[data-drop-pane]")?.classList.contains("drop-target--over")).toBe(true);
+      fireEvent.pointerUp(window, { clientX: 400, clientY: 300 });
+      expect(document.querySelector(".path-drag")).toBeNull();
+    };
+    pane.lineEmpty = true;
+    await drag("my src");
+    expect(pane.ran).toEqual(["cd '/home/me/my src'"]);
+    await drag("a.txt");
+    expect(pane.inserted).toEqual(["/home/me/a.txt "]);
+    pane.lineEmpty = false;
+    await drag("my src");
+    expect(pane.inserted).toEqual(["/home/me/a.txt ", "'/home/me/my src' "]);
+    expect(pane.ran).toHaveLength(1);
+    // A click without moving is not a drop.
+    fireEvent.pointerDown(await screen.findByText("a.txt"), { clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(window, { clientX: 11, clientY: 10 });
+    expect(pane.inserted).toHaveLength(2);
   });
 });

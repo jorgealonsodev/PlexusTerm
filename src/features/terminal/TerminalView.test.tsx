@@ -680,6 +680,23 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual([]);
     });
 
+    it("tells whether the command line is empty, for drops (S4)", async () => {
+      let assist: { lineEmpty?: () => boolean } | null = null;
+      await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
+      act(() => void (term().line = "$ "));
+      expect(assist!.lineEmpty!()).toBe(true);
+      typeAt("$ ", "ls");
+      expect(assist!.lineEmpty!()).toBe(false);
+      typeAt("$ ", "\r");
+      act(() => void (term().line = "$ "));
+      expect(assist!.lineEmpty!()).toBe(true);
+      act(() => void (term().line = "[sudo] password for jorge: "));
+      expect(assist!.lineEmpty!()).toBe(false);
+      act(() => void (term().line = "$ "));
+      act(() => void (term().bufferType = "alternate"));
+      expect(assist!.lineEmpty!()).toBe(false);
+    });
+
     it("refuses to run a command with line breaks or control characters", async () => {
       let assist: { run: (text: string) => boolean } | null = null;
       await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
