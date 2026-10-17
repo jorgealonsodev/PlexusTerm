@@ -14,7 +14,8 @@ import {
 } from "./library";
 import { IniImportDialog, type ImportResult } from "./IniImportDialog";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
-import { decodeIni, parseSessionsIni, planImport } from "./iniImport";
+import { decodeIni, parseSessionsIni, planImport, type ParsedImport } from "./iniImport";
+import { parseSshConfig } from "./sshConfigImport";
 import type { LibraryStatus } from "./useSessionLibrary";
 import { t, useT } from "../../i18n/i18n";
 import { HelpTip } from "../sidebar/HelpTip";
@@ -88,6 +89,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const editable = status.state === "ready";
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [importMenu, setImportMenu] = useState<{ x: number; y: number } | null>(null);
   const openMenu = (
     e: ReactMouseEvent,
     target: { kind: "session"; session: LibrarySession } | { kind: "folder"; path: string },
@@ -127,23 +129,36 @@ export function SessionsPanel(props: SessionsPanelProps) {
     ];
   };
 
-  // Native dialog + bounded backend read: the same path as SFTP uploads, which works in WebKitGTK.
-  const importFile = async () => {
+  const previewImport = async (read: () => Promise<ParsedImport | null>) => {
     try {
+      const parsed = await read();
+      if (parsed) setImportResult({ ok: true, plan: planImport(library, parsed, () => crypto.randomUUID()) });
+    } catch (err) {
+      setImportResult({ ok: false, error: String(err) });
+    }
+  };
+
+  const readBytes = async (path: string) => new Uint8Array(await invoke<number[]>("import_read_file", { path }));
+
+  // Native dialog + bounded backend read: the same path as SFTP uploads, which works in WebKitGTK.
+  const importIniFile = () =>
+    previewImport(async () => {
       const path = await open({
         title: t("sessions.panel.importTitle"),
         multiple: false,
         directory: false,
         filters: [{ name: t("sessions.panel.importFilter"), extensions: ["ini"] }],
       });
-      if (typeof path !== "string") return;
-      const bytes = await invoke<number[]>("import_read_file", { path });
-      const parsed = parseSessionsIni(decodeIni(new Uint8Array(bytes)));
-      setImportResult({ ok: true, plan: planImport(library, parsed, () => crypto.randomUUID()) });
-    } catch (err) {
-      setImportResult({ ok: false, error: String(err) });
-    }
-  };
+      if (typeof path !== "string") return null;
+      return parseSessionsIni(decodeIni(await readBytes(path)));
+    });
+
+  const importSshConfig = () =>
+    previewImport(async () => {
+      const home = await invoke<string>("local_home");
+      const bytes = await readBytes(`${home}/.ssh/config`);
+      return parseSshConfig(new TextDecoder().decode(bytes));
+    });
 
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -218,7 +233,14 @@ export function SessionsPanel(props: SessionsPanelProps) {
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={() => props.onNewSession("")}>{t("sessions.panel.new")}</button>
             <button className="btn btn--small" onClick={() => props.onNewFolder("")}>{t("sessions.panel.folder")}</button>
-            <button className="btn btn--small" title={t("sessions.panel.importTitle")} onClick={() => void importFile()}>
+            <button
+              className="btn btn--small"
+              aria-haspopup="menu"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setImportMenu({ x: rect.left, y: rect.bottom });
+              }}
+            >
               {t("sessions.panel.import")}
             </button>
           </span>
@@ -242,6 +264,17 @@ export function SessionsPanel(props: SessionsPanelProps) {
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
+      {importMenu && (
+        <ContextMenu
+          x={importMenu.x}
+          y={importMenu.y}
+          items={[
+            { label: t("sessions.panel.importIni"), onSelect: () => void importIniFile() },
+            { label: t("sessions.panel.importSshConfig"), onSelect: () => void importSshConfig() },
+          ]}
+          onClose={() => setImportMenu(null)}
+        />
+      )}
       {importResult && (
         <IniImportDialog
           result={importResult}

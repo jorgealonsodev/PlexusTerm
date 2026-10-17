@@ -11,6 +11,8 @@ export const sessions: Messages<typeof en> = {
     import: "インポート",
     importTitle: ".ini ファイルからセッションをインポート",
     importFilter: "セッションファイル (.ini)",
+    importIni: ".ini ファイルから…",
+    importSshConfig: "~/.ssh/config から",
     search: "セッションを検索",
     readError:
       "保存済みセッションを読み込めませんでした: {error}。ファイルを保護するため、編集は無効になっています。",
@@ -111,6 +113,10 @@ export const sessions: Messages<typeof en> = {
     skippedSerial: "シリアルセッション",
     skippedUnknownType: "種類 {type} のセッション",
     skippedType: "{type} セッション",
+    skippedInclude: "Include 行 (読み込みません)",
+    skippedMatch: "Match ブロック (適用しません)",
+    skippedProxyCommand: "ProxyCommand のあるホスト (それなしでインポート)",
+    skippedJump: "ProxyJump がファイル内のホストでないホスト (それなしでインポート)",
   },
   ssh: {
     title: "SSH セッション",

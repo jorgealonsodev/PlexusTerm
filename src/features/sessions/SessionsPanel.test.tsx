@@ -168,6 +168,7 @@ describe("SessionsPanel", () => {
     vi.mocked(open).mockResolvedValue("/home/u/sessions.ini");
     vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(ini)));
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     expect(await screen.findByText("1 session to import.")).toBeTruthy();
     fireEvent.click(screen.getByText("Import 1 session"));
     expect(props.onImport).toHaveBeenCalledTimes(1);
@@ -182,8 +183,45 @@ describe("SessionsPanel", () => {
     vi.mocked(open).mockResolvedValue("/home/u/sessions.ini");
     vi.mocked(invoke).mockResolvedValue([]);
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     expect(await screen.findByText("No sessions to import.")).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/sessions.ini" });
+  });
+
+  it("imports the hosts of ~/.ssh/config, keeping key auth and jump hosts", async () => {
+    const props = renderPanel();
+    const config = "Host bastion\n  HostName 1.2.3.4\n  User admin\n  IdentityFile ~/.ssh/id_b\nHost app\n  ProxyJump bastion\n";
+    vi.mocked(invoke).mockImplementation(async (cmd) =>
+      cmd === "local_home" ? "/home/u" : Array.from(new TextEncoder().encode(config)),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From ~/.ssh/config" }));
+    expect(await screen.findByText("2 sessions to import.")).toBeTruthy();
+    expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/.ssh/config" });
+    fireEvent.click(screen.getByText("Import 2 sessions"));
+    const [bastion, app] = vi.mocked(props.onImport).mock.calls[0][0];
+    expect(bastion).toMatchObject({
+      name: "bastion",
+      folder: "Imported/SSH config",
+      host: "1.2.3.4",
+      username: "admin",
+      auth: { method: "key", path: "~/.ssh/id_b" },
+    });
+    expect(app).toMatchObject({ name: "app", host: "app", auth: { method: "password" }, jumpIds: [bastion.id] });
+  });
+
+  it("shows the read error when ~/.ssh/config cannot be read", async () => {
+    renderPanel();
+    vi.mocked(invoke).mockImplementation(async (cmd) => {
+      if (cmd === "local_home") return "/home/u";
+      throw "/home/u/.ssh/config: No such file or directory (os error 2)";
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From ~/.ssh/config" }));
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Could not read the file: /home/u/.ssh/config: No such file or directory (os error 2)",
+    );
   });
 
   it("does nothing when the dialog is cancelled", async () => {
@@ -191,6 +229,7 @@ describe("SessionsPanel", () => {
     vi.mocked(open).mockResolvedValue(null);
     vi.mocked(invoke).mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     await Promise.resolve();
     expect(invoke).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();

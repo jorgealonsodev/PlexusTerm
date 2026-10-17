@@ -11,6 +11,8 @@ export const sessions: Messages<typeof en> = {
     import: "Importieren",
     importTitle: "Sitzungen aus einer .ini-Datei importieren",
     importFilter: "Sitzungsdatei (.ini)",
+    importIni: "Aus einer .ini-Datei…",
+    importSshConfig: "Aus ~/.ssh/config",
     search: "Sitzungen durchsuchen",
     readError:
       "Gespeicherte Sitzungen konnten nicht gelesen werden: {error}. Bearbeiten ist deaktiviert, um die Datei zu schützen.",
@@ -119,6 +121,10 @@ export const sessions: Messages<typeof en> = {
     skippedSerial: "Serielle Sitzungen",
     skippedUnknownType: "Sitzungen vom Typ {type}",
     skippedType: "{type}-Sitzungen",
+    skippedInclude: "Include-Zeilen (nicht verfolgt)",
+    skippedMatch: "Match-Blöcke (nicht angewendet)",
+    skippedProxyCommand: "Hosts mit ProxyCommand (ohne ihn importiert)",
+    skippedJump: "Hosts, deren ProxyJump kein Host der Datei ist (ohne ihn importiert)",
   },
   ssh: {
     title: "SSH-Sitzung",

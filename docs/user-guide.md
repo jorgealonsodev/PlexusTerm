@@ -116,13 +116,23 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ### Import sessions from an .ini file
 
-**Import** in the Sessions panel reads a sessions `.ini` file with `[Bookmarks]` sections (UTF-8, or the Windows-1252 code page these files are often written in) and shows a preview before anything is saved:
+**Import → From an .ini file…** in the Sessions panel reads a sessions `.ini` file with `[Bookmarks]` sections (UTF-8, or the Windows-1252 code page these files are often written in) and shows a preview before anything is saved:
 
 - SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, and Telnet sessions with their host and port (23 when missing or invalid), under an **Imported** folder that keeps the folder path saved in the file.
 - Imported SSH sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
 - Other session types (RDP, VNC, Serial, WSL, FTP, ...), entries without a host and unrecognized lines are skipped and counted per type in the preview.
 - Sessions already saved with the same type, folder, name, host, port and username are skipped as duplicates.
 - Passwords are never imported: the `[Passwords]` section and any other section are not read.
+
+### Import hosts from ~/.ssh/config
+
+**Import → From ~/.ssh/config** reads the OpenSSH client config of your home folder (`~/.ssh/config`, also on Windows) and shows the same preview:
+
+- Each concrete `Host` alias becomes an SSH session named after it, under **Imported/SSH config**. Wildcard (`*`, `?`) and negated (`!`) patterns are not imported as sessions, but their options apply to the hosts they match, as do options before the first `Host`; like ssh, the first value of each option wins.
+- `HostName` (the alias when missing; `%h` is replaced by the alias), `User` (empty when missing), `Port` (22 when missing or invalid) and the first `IdentityFile` are read. A host with an `IdentityFile` uses that private key (`%d` becomes `~`); one without uses password authentication.
+- `ProxyJump` hops that are hosts of the same file become the session's jump hosts (at most 3). Other hops, such as `user@gateway:2222`, and `ProxyCommand` are not supported: the host is imported without them and counted in the preview.
+- `Include` lines and `Match` blocks are not followed and are counted in the preview. Every other option is ignored.
+- Hosts already imported the same way are skipped as duplicates, so importing again only adds new hosts.
 
 ## SFTP browser
 

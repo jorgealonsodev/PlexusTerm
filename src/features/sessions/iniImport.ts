@@ -3,12 +3,13 @@ import {
   isSshSession,
   isTelnetSession,
   normalizeFolder,
+  type SavedAuth,
   type SavedSession,
   type SavedTelnetSession,
   type SessionLibrary,
 } from "./library";
 
-/** An SSH or Telnet bookmark read from a sessions .ini file; secrets and key paths are never read. */
+/** An SSH or Telnet session read from an import file (sessions .ini or ssh config); secrets are never read. */
 export type ImportedSession =
   | {
       kind: "ssh";
@@ -18,6 +19,10 @@ export type ImportedSession =
       host: string;
       port: number;
       username: string;
+      /** Password auth (asked at connect time) when absent. */
+      auth?: SavedAuth;
+      /** Names of the imported sessions to go through first, outermost first. */
+      jumps?: string[];
     }
   | { kind: "telnet"; name: string; folder: string; host: string; port: number };
 
@@ -141,26 +146,44 @@ const identity = (s: SavedSession | SavedTelnetSession | ImportedSession) =>
     s.kind === "telnet" ? "" : s.username,
   ]);
 
-/** New SSH sessions use password auth (asked at connect time); exact duplicates are skipped. */
+const nameKey = (folder: string, name: string) => JSON.stringify([normalizeFolder(folder), name]);
+
+/**
+ * New SSH sessions keep the imported auth, or use password auth (asked at connect time); exact
+ * duplicates are skipped. Jump names become the ids of the sessions saved in the same folder.
+ */
 export function planImport(library: SessionLibrary, parsed: ParsedImport, newId: () => string): ImportPlan {
   const comparable = library.sessions.filter(
     (s): s is SavedSession | SavedTelnetSession => isSshSession(s) || isTelnetSession(s),
   );
-  const seen = new Set(comparable.map(identity));
+  const seen = new Map(comparable.map((s) => [identity(s), s.id]));
+  const idByName = new Map<string, string>();
   const toAdd: (SavedSession | SavedTelnetSession)[] = [];
+  const jumpsOf = new Map<SavedSession, string[]>();
   let duplicates = 0;
   for (const session of parsed.sessions) {
     const key = identity(session);
-    if (seen.has(key)) {
+    const existing = seen.get(key);
+    if (existing) {
       duplicates++;
+      idByName.set(nameKey(session.folder, session.name), existing);
       continue;
     }
-    seen.add(key);
-    toAdd.push(
-      session.kind === "telnet"
-        ? { ...session, id: newId() }
-        : { ...session, id: newId(), auth: { method: "password" } },
-    );
+    const id = newId();
+    seen.set(key, id);
+    idByName.set(nameKey(session.folder, session.name), id);
+    if (session.kind === "telnet") {
+      toAdd.push({ ...session, id });
+      continue;
+    }
+    const { jumps, auth, ...rest } = session;
+    const saved: SavedSession = { ...rest, id, auth: auth ?? { method: "password" } };
+    if (jumps?.length) jumpsOf.set(saved, jumps.map((name) => nameKey(session.folder, name)));
+    toAdd.push(saved);
+  }
+  for (const [saved, names] of jumpsOf) {
+    const jumpIds = names.map((name) => idByName.get(name));
+    if (jumpIds.every((id): id is string => id !== undefined)) saved.jumpIds = jumpIds;
   }
   return { toAdd, duplicates, skipped: parsed.skipped };
 }
@@ -170,6 +193,10 @@ export function skippedLabel(key: string): string {
   if (key === "invalid") return t("sessions.import.skippedInvalid");
   if (key === "unrecognized") return t("sessions.import.skippedUnrecognized");
   if (key === "Serial") return t("sessions.import.skippedSerial");
+  if (key === "include") return t("sessions.import.skippedInclude");
+  if (key === "match") return t("sessions.import.skippedMatch");
+  if (key === "proxyCommand") return t("sessions.import.skippedProxyCommand");
+  if (key === "jump") return t("sessions.import.skippedJump");
   const unknown = /^type (\d+)$/.exec(key);
   if (unknown) return t("sessions.import.skippedUnknownType", { type: unknown[1] });
   return t("sessions.import.skippedType", { type: key });

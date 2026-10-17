@@ -11,6 +11,8 @@ export const sessions: Messages<typeof en> = {
     import: "Importer",
     importTitle: "Importer des sessions depuis un fichier .ini",
     importFilter: "Fichier de sessions (.ini)",
+    importIni: "Depuis un fichier .ini…",
+    importSshConfig: "Depuis ~/.ssh/config",
     search: "Rechercher des sessions",
     readError:
       "Impossible de lire les sessions enregistrées : {error}. La modification est désactivée pour protéger le fichier.",
@@ -127,6 +129,10 @@ export const sessions: Messages<typeof en> = {
     skippedSerial: "Sessions série",
     skippedUnknownType: "Sessions de type {type}",
     skippedType: "Sessions {type}",
+    skippedInclude: "Lignes Include (non suivies)",
+    skippedMatch: "Blocs Match (non appliqués)",
+    skippedProxyCommand: "Hôtes avec ProxyCommand (importés sans)",
+    skippedJump: "Hôtes dont le ProxyJump n’est pas un hôte du fichier (importés sans)",
   },
   ssh: {
     title: "Session SSH",
