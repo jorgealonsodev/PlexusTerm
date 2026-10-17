@@ -13,6 +13,7 @@ import { PropertiesDialog } from "../sftp/PropertiesDialog";
 import type { OpenWith, SftpEntry } from "../sftp/sftpClient";
 import { describeLocalError, local } from "./localClient";
 import { isRoot, joinPath, parentPath, validName } from "./localPath";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface LocalPanelProps {
   /** Folder of the active local terminal (OSC 7 or read from its shell); null while unknown. */
@@ -264,10 +265,13 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           {t("common.delete")}
         </button>
       </div>
-      <label className="sftp__follow">
-        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-        {t("sftp.panel.follow")}
-      </label>
+      <div className="sftp__follow-row">
+        <label className="sftp__follow">
+          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+          {t("sftp.panel.follow")}
+        </label>
+        <HelpTip text={t("sftp.local.hint")} />
+      </div>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}
@@ -307,7 +311,6 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           </li>
         ))}
       </ul>
-      <p className="sidebar__hint">{t("sftp.local.hint")}</p>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
       {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
       {dialog?.kind === "permissions" && (

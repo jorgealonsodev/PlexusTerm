@@ -563,16 +563,55 @@ textarea::placeholder {
   border-color: var(--accent);
 }
 
-.sidebar__note,
-.sidebar__hint {
+.sidebar__note {
   margin: 0;
   color: var(--muted);
   line-height: 1.4;
 }
 
-.sidebar__hint {
-  margin-top: auto;
-  font-size: 11px;
+.sidebar__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A round "?" whose explanation shows on hover or keyboard focus. */
+.help-tip {
+  display: inline-flex;
+  flex: none;
+  color: var(--muted);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.help-tip:hover,
+.help-tip:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+
+.help-tip__text {
+  position: fixed;
+  z-index: 1000;
+  width: max-content;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  pointer-events: none;
+}
+
+.sftp__follow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .tree,
@@ -723,9 +762,9 @@ body.is-resizing {
 }
 
 .sidebar__tab {
-  flex: 1;
+  /* Five tabs share the 240px sidebar: each grows from its label's width, so long labels fit. */
+  flex: 1 1 auto;
   min-width: 0;
-  /* Five tabs share the 240px sidebar. */
   padding: 6px 1px 5px;
   font: inherit;
   font-size: 10px;

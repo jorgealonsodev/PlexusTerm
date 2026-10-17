@@ -3,6 +3,7 @@ import { useT } from "../../i18n/i18n";
 import type { SavedSession } from "../sessions/library";
 import type { LibraryStatus } from "../sessions/useSessionLibrary";
 import { describeTunnel, type Tunnel, type TunnelList, type TunnelStatus } from "./tunnels";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface TunnelsPanelProps {
   list: TunnelList;
@@ -34,7 +35,10 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>{t("tunnels.panel.title")}</span>
+        <span className="sidebar__title">
+          {t("tunnels.panel.title")}
+          <HelpTip text={t("tunnels.panel.hint")} />
+        </span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={props.onNew}>
@@ -99,7 +103,6 @@ export function TunnelsPanel(props: TunnelsPanelProps) {
           );
         })}
       </ul>
-      <p className="sidebar__hint">{t("tunnels.panel.hint")}</p>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useT } from "../../i18n/i18n";
 import type { LibraryStatus } from "../sessions/useSessionLibrary";
 import { hotkeyLabel, type Macro, type MacroList } from "./macros";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface MacrosPanelProps {
   list: MacroList;
@@ -28,7 +29,10 @@ export function MacrosPanel(props: MacrosPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>{t("macros.panel.title")}</span>
+        <span className="sidebar__title">
+          {t("macros.panel.title")}
+          <HelpTip text={t("macros.panel.hint")} />
+        </span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={props.onNew}>
@@ -95,7 +99,6 @@ export function MacrosPanel(props: MacrosPanelProps) {
           </li>
         ))}
       </ul>
-      <p className="sidebar__hint">{t("macros.panel.hint")}</p>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { decodeIni, parseSessionsIni, planImport } from "./iniImport";
 import type { LibraryStatus } from "./useSessionLibrary";
 import { t, useT } from "../../i18n/i18n";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface SessionsPanelProps {
   library: SessionLibrary;
@@ -212,7 +213,10 @@ export function SessionsPanel(props: SessionsPanelProps) {
   return (
     <div className="sidebar__panel">
       <div className="sidebar__header">
-        <span>{t("sessions.panel.title")}</span>
+        <span className="sidebar__title">
+          {t("sessions.panel.title")}
+          <HelpTip text={t("sessions.panel.hint")} />
+        </span>
         {editable && (
           <span className="sidebar__actions">
             <button className="btn btn--small" onClick={() => props.onNewSession("")}>{t("sessions.panel.new")}</button>
@@ -241,7 +245,6 @@ export function SessionsPanel(props: SessionsPanelProps) {
       )}
       <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
-      <p className="sidebar__hint">{t("sessions.panel.hint")}</p>
       {importResult && (
         <IniImportDialog
           result={importResult}

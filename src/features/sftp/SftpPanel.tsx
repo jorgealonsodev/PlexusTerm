@@ -13,6 +13,7 @@ import { PermissionsDialog } from "./PermissionsDialog";
 import { PropertiesDialog } from "./PropertiesDialog";
 import { basename, joinPath, parentPath, terminalPath } from "./remotePath";
 import { describeSftpError, sftp, type OpenWith, type SftpEntry } from "./sftpClient";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface SftpPanelProps {
   /** Backend id of the connected SSH session. */
@@ -380,10 +381,13 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           {t("sftp.panel.download")}
         </button>
       </div>
-      <label className="sftp__follow">
-        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-        {t("sftp.panel.follow")}
-      </label>
+      <div className="sftp__follow-row">
+        <label className="sftp__follow">
+          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+          {t("sftp.panel.follow")}
+        </label>
+        <HelpTip text={t("sftp.panel.hint")} />
+      </div>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}
@@ -423,7 +427,6 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           </li>
         ))}
       </ul>
-      <p className="sidebar__hint">{t("sftp.panel.hint")}</p>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
       {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
       {dialog?.kind === "permissions" && (
