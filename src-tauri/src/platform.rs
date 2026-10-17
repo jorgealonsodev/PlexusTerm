@@ -139,7 +139,11 @@ pub fn shells_in(
     let mut programs: Vec<String> = Vec::new();
     match os {
         Os::Unix => {
-            programs.extend(env("SHELL").and_then(|shell| shell.into_string().ok()));
+            programs.extend(
+                env("SHELL")
+                    .and_then(|shell| shell.into_string().ok())
+                    .filter(|shell| !NOT_SHELLS.contains(&shell_name(shell))),
+            );
             programs.extend(
                 etc_shells
                     .unwrap_or_default()
@@ -446,6 +450,54 @@ mod tests {
         );
         assert_eq!(shells.default.name, "zsh");
         assert_eq!(shells.default.program, "/usr/bin/zsh");
+    }
+
+    #[test]
+    fn unix_shells_skip_duplicates_nologin_false_and_comments() {
+        let etc = "#c\n /bin/bash \n/usr/bin/bash\n/bin/false\n/usr/sbin/nologin\n/bin/zsh\n/usr/bin/zsh\n/usr/bin/tmux\n";
+        let s = shells_in(
+            Os::Unix,
+            &vars(&[("SHELL", "/bin/zsh")]),
+            &programs(&[]),
+            &|_| true,
+            Some(etc),
+        );
+        assert_eq!(
+            names(&s),
+            [
+                ("zsh", "/bin/zsh"),
+                ("bash", "/bin/bash"),
+                ("tmux", "/usr/bin/tmux")
+            ]
+        );
+        // A $SHELL that is not a shell (service accounts) is not offered either.
+        let s = shells_in(
+            Os::Unix,
+            &vars(&[("SHELL", "/usr/sbin/nologin")]),
+            &programs(&[]),
+            &|_| true,
+            Some("/bin/sh\n"),
+        );
+        assert_eq!(names(&s), [("sh", "/bin/sh")]);
+    }
+
+    #[test]
+    fn windows_without_comspec_uses_cmd_on_path_and_skips_missing_git_bash() {
+        let s = shells_in(
+            Os::Windows,
+            &vars(&[("ProgramFiles", r"C:\Program Files")]),
+            &programs(&["powershell.exe", "cmd.exe"]),
+            &|_| false,
+            None,
+        );
+        assert_eq!(
+            names(&s),
+            [
+                ("powershell", r"C:\bin\powershell.exe"),
+                ("cmd", r"C:\bin\cmd.exe")
+            ]
+        );
+        assert_eq!(s.default.name, "powershell");
     }
 
     #[test]

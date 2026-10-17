@@ -31,11 +31,18 @@ export function splitArgs(text: string): string[] {
   return args;
 }
 
-/** Joins arguments back into text that {@link splitArgs} reads the same way. */
+/**
+ * Joins arguments back into text that {@link splitArgs} reads the same way. An argument with
+ * both quote kinds is double-quoted with each `"` written as `"'"'"` (close, quoted ", reopen).
+ */
 export function joinArgs(args: readonly string[]): string {
-  return args
-    .map((arg) => (arg === "" || /[\s"']/.test(arg) ? (arg.includes('"') ? `'${arg}'` : `"${arg}"`) : arg))
-    .join(" ");
+  const quote = (arg: string) => {
+    if (arg !== "" && !/[\s"']/.test(arg)) return arg;
+    if (!arg.includes('"')) return `"${arg}"`;
+    if (!arg.includes("'")) return `'${arg}'`;
+    return `"${arg.split('"').join(`"'"'"`)}"`;
+  };
+  return args.map(quote).join(" ");
 }
 
 /** The file name of a program without its directory or a `.exe` extension (like the backend's). */
