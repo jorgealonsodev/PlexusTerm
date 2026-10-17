@@ -101,6 +101,8 @@ struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    /// The child's process id, to read its working folder; None when the system does not give it.
+    pid: Option<u32>,
 }
 
 #[derive(Default)]
@@ -133,6 +135,7 @@ impl PtyManager {
         let mut reader = pair.master.try_clone_reader().map_err(io_err)?;
         let writer = pair.master.take_writer().map_err(io_err)?;
         let killer = child.clone_killer();
+        let pid = child.process_id();
 
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
         self.sessions.lock().unwrap().insert(
@@ -141,6 +144,7 @@ impl PtyManager {
                 master: pair.master,
                 writer,
                 killer,
+                pid,
             },
         );
 
@@ -186,6 +190,13 @@ impl PtyManager {
         self.with_session(id, |s| s.master.resize(size(cols, rows)).map_err(io_err))
     }
 
+    /// The working folder of the session's shell (not of a program it runs), when the system
+    /// can tell: `/proc` on Linux, `lsof` on macOS; always None on Windows.
+    pub fn cwd(&self, id: u32) -> Result<Option<String>, PtyError> {
+        let pid = self.with_session(id, |s| Ok(s.pid))?;
+        Ok(pid.and_then(process_cwd))
+    }
+
     pub fn close(&self, id: u32) -> Result<(), PtyError> {
         let mut session = self
             .sessions
@@ -197,6 +208,30 @@ impl PtyManager {
         let _ = session.killer.kill();
         Ok(())
     }
+}
+
+#[cfg(target_os = "linux")]
+fn process_cwd(pid: u32) -> Option<String> {
+    std::fs::read_link(format!("/proc/{pid}/cwd"))
+        .ok()
+        .map(|dir| dir.to_string_lossy().into_owned())
+}
+
+#[cfg(target_os = "macos")]
+fn process_cwd(pid: u32) -> Option<String> {
+    // `-Fn` prints `p<pid>`, `fcwd` and `n<path>` lines.
+    let out = std::process::Command::new("lsof")
+        .args(["-a", "-p", &pid.to_string(), "-d", "cwd", "-Fn"])
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .find_map(|line| line.strip_prefix('n').map(str::to_string))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn process_cwd(_pid: u32) -> Option<String> {
+    None
 }
 
 // The tests run /bin/sh and other Unix programs.
@@ -317,6 +352,33 @@ mod tests {
             }
         }
         (out, None)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn cwd_follows_the_shell_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let inner = dir.path().join("inner");
+        std::fs::create_dir(&inner).unwrap();
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        let mut request = req("/bin/sh", &[]);
+        request.cwd = Some(dir.path().to_string_lossy().into_owned());
+        let id = mgr.spawn(request, s).unwrap();
+        let start = std::fs::canonicalize(dir.path()).unwrap();
+        assert_eq!(
+            mgr.cwd(id).unwrap(),
+            Some(start.to_string_lossy().into_owned())
+        );
+        mgr.write(id, b"cd inner; echo moved-$((40+2))\n").unwrap();
+        wait_for(&rx, "moved-42");
+        let moved = std::fs::canonicalize(&inner).unwrap();
+        assert_eq!(
+            mgr.cwd(id).unwrap(),
+            Some(moved.to_string_lossy().into_owned())
+        );
+        mgr.close(id).unwrap();
+        assert!(matches!(mgr.cwd(id), Err(PtyError::UnknownSession(_))));
     }
 
     #[test]

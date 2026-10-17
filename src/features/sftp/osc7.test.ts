@@ -24,4 +24,9 @@ describe("parseOsc7", () => {
     expect(parseOsc7("file://h/bad%ZZ")).toBeNull();
     expect(parseOsc7("file://h/bad%FF")).toBeNull();
   });
+
+  it("keeps a Windows drive path without the leading slash", () => {
+    expect(parseOsc7("file:///C:/Users/me/My%20Docs")).toBe("C:/Users/me/My Docs");
+    expect(parseOsc7("file://pc/d:/")).toBe("d:/");
+  });
 });
