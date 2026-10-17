@@ -98,6 +98,8 @@ export const app: Messages<typeof en> = {
     tunnels: "トンネル",
     macros: "マクロ",
     sftpUnavailable: "アクティブなタブのフォーカス中のペインが接続済みの SSH セッションの場合に使用できます",
+    explorer: "エクスプローラー",
+    explorerUnavailable: "アクティブなタブがローカル端末のときに使用できます",
     resize: "サイドバーの幅を変更",
     resizeHint: "ドラッグでサイドバーの幅を変更し、ダブルクリックで既定の幅に戻します",
   },

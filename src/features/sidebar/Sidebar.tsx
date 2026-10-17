@@ -1,17 +1,20 @@
-import { ArrowLeftRight, FolderTree, Keyboard, Star, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, FolderTree, HardDrive, Keyboard, Star, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useT } from "../../i18n/i18n";
 import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, clampSidebarWidth } from "../settings/settings";
 
-export type SidebarView = "sessions" | "sftp" | "tunnels" | "macros";
+export type SidebarView = "sessions" | "sftp" | "explorer" | "tunnels" | "macros";
 
 interface SidebarProps {
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
   /** True while the focused pane of the active tab is a connected SSH session. */
   sftpAvailable: boolean;
+  /** True while the active tab is a local terminal. */
+  localAvailable: boolean;
   sessions: ReactNode;
   sftp: ReactNode;
+  local: ReactNode;
   tunnels: ReactNode;
   macros: ReactNode;
   /** Folded: only the tab icons; a click on one opens the sidebar on that tab. */
@@ -24,15 +27,17 @@ interface SidebarProps {
 }
 
 /**
- * Left sidebar with the "Sessions", "SFTP", "Tunnels" and "Macros" tabs; SFTP falls back to Sessions
- * when unavailable. Its edge can be dragged to change the width (kept within the sidebar's limits).
+ * Left sidebar with the "Sessions", "SFTP", "Explorer", "Tunnels" and "Macros" tabs; SFTP and Explorer fall
+ * back to Sessions when unavailable. Its edge can be dragged to change the width (kept within the sidebar's limits).
  */
 export function Sidebar({
   view,
   onViewChange,
   sftpAvailable,
+  localAvailable,
   sessions,
   sftp,
+  local,
   tunnels,
   macros,
   collapsed,
@@ -46,7 +51,8 @@ export function Sidebar({
   const [dragged, setDragged] = useState<number | null>(null);
   /** Ends the drag in progress (removes its window listeners); null when not dragging. */
   const stopDrag = useRef<(() => void) | null>(null);
-  const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
+  const shown: SidebarView =
+    (view === "sftp" && !sftpAvailable) || (view === "explorer" && !localAvailable) ? "sessions" : view;
   const shownWidth = dragged ?? width;
   // An unmount in the middle of a drag must not leave listeners or the no-selection class behind.
   useEffect(() => () => stopDrag.current?.(), []);
@@ -92,16 +98,16 @@ export function Sidebar({
     stopDrag.current = end;
   };
 
-  const tab = (id: SidebarView, label: string, Icon: LucideIcon, disabled = false) => (
+  const tab = (id: SidebarView, label: string, Icon: LucideIcon, unavailable: string | null = null) => (
     <button
       role="tab"
       aria-selected={shown === id}
       aria-label={label}
       className={`sidebar__tab${shown === id ? " sidebar__tab--active" : ""}`}
-      disabled={disabled}
+      disabled={unavailable !== null}
       title={
-        disabled
-          ? t("app.sidebar.sftpUnavailable")
+        unavailable !== null
+          ? unavailable
           : collapsed
             ? label
             : undefined
@@ -115,7 +121,7 @@ export function Sidebar({
       {!collapsed && label}
     </button>
   );
-  const panels: Record<SidebarView, ReactNode> = { sessions, sftp, tunnels, macros };
+  const panels: Record<SidebarView, ReactNode> = { sessions, sftp, explorer: local, tunnels, macros };
   return (
     <>
       <aside
@@ -130,7 +136,8 @@ export function Sidebar({
           aria-orientation={collapsed ? "vertical" : "horizontal"}
         >
           {tab("sessions", t("app.sidebar.sessions"), Star)}
-          {tab("sftp", "SFTP", FolderTree, !sftpAvailable)}
+          {tab("sftp", "SFTP", FolderTree, sftpAvailable ? null : t("app.sidebar.sftpUnavailable"))}
+          {tab("explorer", t("app.sidebar.explorer"), HardDrive, localAvailable ? null : t("app.sidebar.explorerUnavailable"))}
           {tab("tunnels", t("app.sidebar.tunnels"), ArrowLeftRight)}
           {tab("macros", t("app.sidebar.macros"), Keyboard)}
         </div>

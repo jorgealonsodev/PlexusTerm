@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "{name} nach {remote} hochgeladen.",
     failed: "{name} konnte nicht hochgeladen werden: {error}",
   },
+  local: {
+    path: "Lokaler Pfad",
+    deleteFolder: "Ordner \"{name}\" mit seinem gesamten Inhalt löschen?",
+    hint: "Doppelklicken Sie auf einen Ordner, um ihn zu öffnen, oder auf eine Datei, um sie mit ihrem Standardprogramm zu öffnen. Rechtsklick auf einen Eintrag zeigt weitere Optionen; ein Mittelklick schreibt seinen Pfad ins Terminal.",
+  },
 };

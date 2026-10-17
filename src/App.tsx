@@ -23,6 +23,9 @@ import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
+import { LocalPanel } from "./features/local/LocalPanel";
+import { useShellCwd } from "./features/local/useShellCwd";
+import { quotePath, shellFlavor } from "./features/terminal/shellPath";
 import { stepFontSize } from "./features/settings/settings";
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
@@ -260,6 +263,7 @@ function AppContent() {
   const [paneMeta, setPaneMeta] = useState<Record<string, PaneMeta>>({});
   const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
   const [followCwd, setFollowCwd] = useState(true);
+  const [followLocalCwd, setFollowLocalCwd] = useState(true);
   // Multi-execution is off at start and never persisted (S11.4).
   const [multiExec, setMultiExec] = useState(false);
   const [writers] = useState(createWriterRegistry);
@@ -315,6 +319,10 @@ function AppContent() {
   const activePane = activeTab ? (activeTab.chats[activeTab.focusedPane]?.terminalPaneId ?? activeTab.focusedPane) : null;
   const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
+  // The Explorer tab belongs to a local terminal; its pty id lets the backend read the shell's folder.
+  const localPtyId = activeTab?.target.type === "local" ? activeSession.sessionId : null;
+  const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
+  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd);
   const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
   const loggingTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
@@ -757,6 +765,24 @@ function AppContent() {
             width={settings.sidebarWidth}
             onWidthChange={(sidebarWidth) => terminalSettings.update({ sidebarWidth })}
             sftpAvailable={sftpSessionId !== null}
+            localAvailable={localPtyId !== null}
+            local={
+              activeTab &&
+              localPtyId !== null && (
+                <LocalPanel
+                  key={`${activePane}:${localPtyId}`}
+                  cwd={localCwd}
+                  follow={followLocalCwd}
+                  onFollowChange={setFollowLocalCwd}
+                  onPathToTerminal={(path) => {
+                    const flavor = shellFlavor(platform, activeTab.target.type, runningShellOf(activeTab.target, shells));
+                    const text = quotePath(path, flavor);
+                    if (activePane && text !== null) writers.write([activePane], text);
+                  }}
+                  textEditor={terminalSettings.settings.textEditor}
+                />
+              )
+            }
             sftp={
               activeTab &&
               sftpSessionId !== null && (

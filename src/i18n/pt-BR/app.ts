@@ -100,6 +100,8 @@ export const app: Messages<typeof en> = {
     tunnels: "Túneis",
     macros: "Macros",
     sftpUnavailable: "Disponível quando o painel em foco da aba ativa é uma sessão SSH conectada",
+    explorer: "Explorador",
+    explorerUnavailable: "Disponível quando a aba ativa é um terminal local",
     resize: "Redimensionar a barra lateral",
     resizeHint: "Arraste para mudar a largura da barra lateral; clique duas vezes para voltar à largura padrão",
   },

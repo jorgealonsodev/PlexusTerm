@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "Se subió {name} a {remote}.",
     failed: "No se pudo subir {name}: {error}",
   },
+  local: {
+    path: "Ruta local",
+    deleteFolder: "¿Eliminar la carpeta \"{name}\" y todo su contenido?",
+    hint: "Haz doble clic en una carpeta para abrirla o en un archivo para abrirlo con su programa predeterminado. Haz clic derecho en un elemento para ver más opciones; con el botón central se escribe su ruta en la terminal.",
+  },
 };

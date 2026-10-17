@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "{name} enviado para {remote}.",
     failed: "Não foi possível enviar {name}: {error}",
   },
+  local: {
+    path: "Caminho local",
+    deleteFolder: "Excluir a pasta \"{name}\" e todo o seu conteúdo?",
+    hint: "Clique duas vezes em uma pasta para abri-la ou em um arquivo para abri-lo no programa padrão. Clique com o botão direito em um item para mais opções; o clique do meio digita o caminho no terminal.",
+  },
 };

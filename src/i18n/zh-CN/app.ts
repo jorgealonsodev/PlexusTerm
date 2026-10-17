@@ -97,6 +97,8 @@ export const app: Messages<typeof en> = {
     tunnels: "隧道",
     macros: "宏",
     sftpUnavailable: "当活动标签页的焦点窗格为已连接的 SSH 会话时可用",
+    explorer: "资源管理器",
+    explorerUnavailable: "当前标签页为本地终端时可用",
     resize: "调整侧边栏宽度",
     resizeHint: "拖动可更改侧边栏宽度；双击恢复默认宽度",
   },

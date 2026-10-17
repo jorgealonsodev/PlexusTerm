@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "{name}을(를) {remote}에 업로드했습니다.",
     failed: "{name}을(를) 업로드할 수 없습니다: {error}",
   },
+  local: {
+    path: "로컬 경로",
+    deleteFolder: "\"{name}\" 폴더와 그 안의 모든 항목을 삭제할까요?",
+    hint: "폴더를 두 번 클릭하면 열리고, 파일은 기본 프로그램으로 열립니다. 항목을 마우스 오른쪽 버튼으로 클릭하면 더 많은 옵션이 표시되고, 가운데 버튼으로 클릭하면 경로가 터미널에 입력됩니다.",
+  },
 };

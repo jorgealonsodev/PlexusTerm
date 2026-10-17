@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "已将 {name} 上传到 {remote}。",
     failed: "无法上传 {name}：{error}",
   },
+  local: {
+    path: "本地路径",
+    deleteFolder: "删除文件夹“{name}”及其全部内容?",
+    hint: "双击文件夹将其打开,双击文件则用默认程序打开。右键单击条目查看更多选项;中键单击会将其路径输入终端。",
+  },
 };

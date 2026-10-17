@@ -21,11 +21,13 @@ interface PermissionsDialogProps {
   entry: SftpEntry;
   /** Applies the new mode (chmod); a rejection is shown in the dialog. */
   onApply: (mode: number) => Promise<unknown>;
+  /** Text for a rejected `onApply`; SFTP errors by default. */
+  describeError?: (err: unknown) => string;
   onClose: () => void;
 }
 
 /** Read/write/execute checkboxes for owner, group and others, kept in sync with the octal value. */
-export function PermissionsDialog({ entry, onApply, onClose }: PermissionsDialogProps) {
+export function PermissionsDialog({ entry, onApply, describeError = describeSftpError, onClose }: PermissionsDialogProps) {
   const t = useT();
   const [mode, setMode] = useState((entry.permissions ?? 0) & MAX_MODE);
   const [octal, setOctal] = useState(octalString(mode));
@@ -56,7 +58,7 @@ export function PermissionsDialog({ entry, onApply, onClose }: PermissionsDialog
       await onApply(mode);
       onClose();
     } catch (err) {
-      setError(describeSftpError(err));
+      setError(describeError(err));
       setApplying(false);
     }
   };

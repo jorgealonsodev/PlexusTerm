@@ -98,4 +98,9 @@ export const sftp: Messages<typeof en> = {
     uploaded: "{name} を {remote} にアップロードしました。",
     failed: "{name} をアップロードできませんでした: {error}",
   },
+  local: {
+    path: "ローカルパス",
+    deleteFolder: "フォルダー「{name}」とその中身をすべて削除しますか?",
+    hint: "フォルダーをダブルクリックすると開き、ファイルは既定のプログラムで開きます。右クリックでその他のオプション、中クリックでパスを端末に入力します。",
+  },
 };

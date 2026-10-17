@@ -96,4 +96,9 @@ export const sftp = {
     uploaded: "Uploaded {name} to {remote}.",
     failed: "Could not upload {name}: {error}",
   },
+  local: {
+    path: "Local path",
+    deleteFolder: "Delete folder \"{name}\" and everything in it?",
+    hint: "Double-click a folder to open it or a file to open it in its default program. Right-click an entry for more options; middle-click it to type its path in the terminal.",
+  },
 };

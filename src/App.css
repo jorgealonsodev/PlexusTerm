@@ -725,7 +725,7 @@ body.is-resizing {
 .sidebar__tab {
   flex: 1;
   min-width: 0;
-  /* Four tabs share the 240px sidebar. */
+  /* Five tabs share the 240px sidebar. */
   padding: 6px 2px 5px;
   font: inherit;
   font-size: 11px;
