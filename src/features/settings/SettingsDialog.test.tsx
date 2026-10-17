@@ -365,6 +365,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("changes the terminal's folder with the file browser by default, and saves the choice (L16)", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const follows = field("Change the terminal's folder when you open a folder in the file browser");
+      expect(follows.checked).toBe(true);
+      fireEvent.click(follows);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ terminalFollowsBrowser: false }));
+    });
+
     it("keeps AI conversations by default and saves the choice (S9)", () => {
       const { onSave } = openAi();
       const keep = field("Keep AI conversations after closing PlexusTerm");

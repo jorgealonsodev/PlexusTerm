@@ -56,6 +56,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Padrão do sistema",
     useSystemDefault: "Usar o padrão do sistema",
     details: "Mostrar tamanho e data nas listas de arquivos",
+    terminalFollows: "Mudar a pasta do terminal ao abrir uma pasta no navegador de arquivos",
+    terminalFollowsHelp: "Abrir uma pasta no navegador SFTP ou no Explorador executa cd no terminal dele, só quando nada está digitado na linha de comando.",
     chooseEditor: "Escolha um editor de texto",
     textEditorHelp:
       "O editor de texto abre arquivos do navegador SFTP: um programa ou um comando como {command}; deixe vazio para usar o padrão do sistema.",

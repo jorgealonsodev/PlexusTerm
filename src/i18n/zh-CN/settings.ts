@@ -55,6 +55,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "系统默认",
     useSystemDefault: "使用系统默认",
     details: "在文件列表中显示大小和日期",
+    terminalFollows: "在文件浏览器中打开文件夹时切换终端的文件夹",
+    terminalFollowsHelp: "在 SFTP 浏览器或资源管理器中打开文件夹时,仅当命令行为空时才会在其终端中执行 cd。",
     chooseEditor: "选择文本编辑器",
     textEditorHelp: "用于打开 SFTP 浏览器中文件的文本编辑器：可以是程序，也可以是 {command} 这样的命令；留空则使用系统默认。",
   },

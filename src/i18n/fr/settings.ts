@@ -56,6 +56,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Valeur par défaut du système",
     useSystemDefault: "Utiliser la valeur par défaut du système",
     details: "Afficher la taille et la date dans les listes de fichiers",
+    terminalFollows: "Changer le dossier du terminal quand vous ouvrez un dossier dans le navigateur de fichiers",
+    terminalFollowsHelp: "Ouvrir un dossier dans le navigateur SFTP ou l’Explorateur exécute cd dans son terminal, seulement si rien n’est saisi sur la ligne de commande.",
     chooseEditor: "Choisir un éditeur de texte",
     textEditorHelp:
       "L'éditeur de texte ouvre les fichiers du navigateur SFTP : un programme, ou une commande comme {command} ; laissez vide pour utiliser la valeur par défaut du système.",

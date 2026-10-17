@@ -56,6 +56,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "افتراضي النظام",
     useSystemDefault: "استخدام افتراضي النظام",
     details: "إظهار الحجم والتاريخ في قوائم الملفات",
+    terminalFollows: "تغيير مجلد الطرفية عند فتح مجلد في متصفح الملفات",
+    terminalFollowsHelp: "فتح مجلد في متصفح SFTP أو المستكشف يشغّل cd في طرفيته، فقط عندما لا يكون في سطر الأوامر أي نص.",
     chooseEditor: "اختر محرر نصوص",
     textEditorHelp:
       "يفتح محرر النصوص الملفات من متصفح SFTP: برنامج، أو أمر مثل {command}؛ اتركه فارغًا لاستخدام افتراضي النظام.",

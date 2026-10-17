@@ -27,7 +27,7 @@ import { LocalPanel } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
 import { quotePath, shellFlavor } from "./features/terminal/shellPath";
 import { dropAction, sameMachine } from "./features/drop/dropAction";
-import { dropTargetAt, setDropHandler, type PathDrag } from "./features/drop/pathDrag";
+import { dropTargetAt, setDropHandler, type PathDrag, type PathOrigin } from "./features/drop/pathDrag";
 import { local } from "./features/local/localClient";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { stepFontSize } from "./features/settings/settings";
@@ -625,6 +625,23 @@ function AppContent() {
     dispatch({ type: "focusPane", key: tab.key, paneId });
     pane.focus();
   };
+  /**
+   * A folder opened in the SFTP browser or the Explorer (L16): the pane's shell changes to it when
+   * Settings ask for it, the command line is empty and the folder is on the pane's machine.
+   */
+  const cdFromBrowser = (paneId: string | null, origin: PathOrigin, path: string) => {
+    if (!paneId || !terminalSettings.settings.terminalFollowsBrowser) return;
+    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && !t.chats[paneId]);
+    const pane = assistTargets.get(paneId);
+    if (!tab || !pane?.lineEmpty?.()) return;
+    const action = dropAction([{ path, isDir: true }], {
+      lineEmpty: true,
+      sameMachine: sameMachine(origin, tab.target.type, paneMeta[paneId]?.sessionId ?? null),
+      flavor: shellFlavor(platform, tab.target.type, runningShellOf(tab.target, shells)),
+    });
+    if (action.kind === "run") pane.run(action.command);
+  };
+
   const dropRef = useRef<(drag: PathDrag, target: Element | null) => void>(() => {});
   dropRef.current = (drag, target) => {
     const paneId = target?.getAttribute("data-drop-pane");
@@ -870,6 +887,7 @@ function AppContent() {
                   cwd={localCwd}
                   follow={followLocalCwd}
                   onFollowChange={setFollowLocalCwd}
+                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "local" }, path)}
                   onPathToTerminal={(path) => {
                     const flavor = shellFlavor(platform, activeTab.target.type, runningShellOf(activeTab.target, shells));
                     const text = quotePath(path, flavor);
@@ -890,6 +908,7 @@ function AppContent() {
                   follow={followCwd}
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
+                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path)}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                 />

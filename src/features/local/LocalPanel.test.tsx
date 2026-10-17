@@ -100,6 +100,23 @@ describe("LocalPanel", () => {
     expect(container.querySelector(".sftp-row__date")?.textContent).not.toBe("");
   });
 
+  it("reports the folders the user opens, never those it follows (L16)", async () => {
+    const onUserNavigate = vi.fn();
+    const { rerender } = render(panel({ onUserNavigate }));
+    fireEvent.doubleClick(await screen.findByText("src"));
+    await waitFor(() => expect(onUserNavigate).toHaveBeenLastCalledWith("/home/me/src"));
+    fireEvent.click(screen.getByTitle("Up"));
+    await waitFor(() => expect(onUserNavigate).toHaveBeenLastCalledWith("/home/me"));
+    const field = screen.getByLabelText("Local path");
+    fireEvent.change(field, { target: { value: "/tmp" } });
+    fireEvent.submit(field.closest("form")!);
+    await waitFor(() => expect(onUserNavigate).toHaveBeenLastCalledWith("/tmp"));
+    const before = onUserNavigate.mock.calls.length;
+    rerender(panel({ onUserNavigate, cwd: "/var" }));
+    await waitFor(() => expect(mocked.list).toHaveBeenLastCalledWith("/var"));
+    expect(onUserNavigate).toHaveBeenCalledTimes(before);
+  });
+
   it("opens a file in its default program on double-click", async () => {
     render(panel());
     fireEvent.doubleClick(await screen.findByText("notes.txt"));

@@ -56,6 +56,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Predeterminado del sistema",
     useSystemDefault: "Usar el predeterminado del sistema",
     details: "Mostrar tamaño y fecha en las listas de archivos",
+    terminalFollows: "Cambiar la carpeta de la terminal al abrir una carpeta en el explorador de archivos",
+    terminalFollowsHelp: "Al abrir una carpeta en SFTP o en el Explorador se ejecuta cd en su terminal, solo si no hay nada escrito en la línea de comandos.",
     chooseEditor: "Elige un editor de texto",
     textEditorHelp:
       "El editor de texto abre archivos desde el explorador SFTP: un programa o un comando como {command}; déjalo vacío para usar el predeterminado del sistema.",

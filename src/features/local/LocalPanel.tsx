@@ -24,6 +24,8 @@ interface LocalPanelProps {
   onPathToTerminal?: (path: string) => void;
   /** Text editor chosen in Settings; empty or missing uses the system's default one. */
   textEditor?: string;
+  /** Called with the folder the user opened (path bar, a folder, Up, Home), never when following. */
+  onUserNavigate?: (path: string) => void;
   /** Show each entry's size and date (Settings → Files); hidden when missing. */
   details?: boolean;
 }
@@ -31,7 +33,7 @@ interface LocalPanelProps {
 const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -43,12 +45,14 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   const [status, setStatus] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry } | null>(null);
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
+  const onUserNavigateRef = useRef(onUserNavigate);
+  onUserNavigateRef.current = onUserNavigate;
   // Only the latest listing request may update the view.
   const listSeq = useRef(0);
   const current = useRef({ path, entries });
   current.current = { path, entries };
 
-  const navigate = useCallback(async (target: string) => {
+  const navigate = useCallback(async (target: string, user = false) => {
     const seq = ++listSeq.current;
     try {
       const list = await local.list(target);
@@ -58,6 +62,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       setEntries(list);
       setSelected(null);
       setError(null);
+      if (user) onUserNavigateRef.current?.(target);
       return true;
     } catch (err) {
       if (seq === listSeq.current) {
@@ -68,9 +73,9 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     }
   }, []);
 
-  const goHome = useCallback(async () => {
+  const goHome = useCallback(async (user = false) => {
     try {
-      await navigate(await local.home());
+      await navigate(await local.home(), user);
     } catch (err) {
       setError(describeLocalError(err));
     }
@@ -98,10 +103,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     void act(t("sftp.status.opening", { name: entry.name }), () => local.open(entry.path, how), t("sftp.status.opened", { name: entry.name }));
 
   const openEntry = async (entry: SftpEntry) => {
-    if (entry.kind === "dir") void navigate(entry.path);
+    if (entry.kind === "dir") void navigate(entry.path, true);
     else if (entry.kind === "file") openWith(entry, { kind: "default" });
     // A symlink may point to a folder or a file: try to enter it first.
-    else if (!(await navigate(entry.path))) {
+    else if (!(await navigate(entry.path, true))) {
       setError(null);
       openWith(entry, { kind: "default" });
     }
@@ -227,7 +232,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
         onSubmit={(e) => {
           e.preventDefault();
           const target = input.trim();
-          if (target) void navigate(target);
+          if (target) void navigate(target, true);
         }}
       >
         <button
@@ -235,11 +240,11 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           className="btn btn--small"
           title={t("sftp.panel.up")}
           disabled={busy || (path !== null && isRoot(path))}
-          onClick={() => path && void navigate(parentPath(path))}
+          onClick={() => path && void navigate(parentPath(path), true)}
         >
           ↑
         </button>
-        <button type="button" className="btn btn--small" title={t("sftp.panel.homeFolder")} onClick={() => void goHome()}>
+        <button type="button" className="btn btn--small" title={t("sftp.panel.homeFolder")} onClick={() => void goHome(true)}>
           ⌂
         </button>
         <button type="button" className="btn btn--small" title={t("common.refresh")} disabled={busy} onClick={refresh}>

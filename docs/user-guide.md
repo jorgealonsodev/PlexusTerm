@@ -263,6 +263,7 @@ Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `ro
 - **Text editor** (default: empty, the system default text editor): the program **Open with default text editor** uses in the SFTP browser. **Browse…** picks a program; you can also type a command with arguments, such as `code --wait` or `"/opt/My Editor/editor" -n`. The file is added as the last argument, or in place of `%f` when the command has one. The command runs directly, never through a shell, and a path to an existing program counts as one program even when it contains spaces. **Use system default** empties the field. A value that is not text or is longer than 1024 characters loads as the system default.
 
 - **Show size and date in file lists** (Settings → Files, off by default): the SFTP browser and the Explorer show each entry's size and modification date next to its name.
+- **Change the terminal's folder when you open a folder in the file browser** (Settings → Files, on by default): opening a folder in the SFTP browser or the Explorer (path bar, double-click, **↑**, **⌂**) runs `cd` to it in the terminal of the same machine, only when nothing is typed on its command line and no full-screen program runs. Folders the browser opens by following the terminal never send `cd`.
 
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
 

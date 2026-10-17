@@ -38,6 +38,8 @@ export interface TerminalSettings {
   textEditor: string;
   /** File lists (SFTP, Explorer) show each entry's size and date (L15). */
   fileDetails: boolean;
+  /** Opening a folder in the SFTP browser or the Explorer runs `cd` to it in the terminal (L16). */
+  terminalFollowsBrowser: boolean;
   /** Grey inline suggestions of the rest of the command while typing (S1). */
   inlineSuggestions: boolean;
   /** Commands sent with Enter are recorded in history.json and suggested (S1). */
@@ -93,6 +95,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   remoteMonitor: true,
   textEditor: "",
   fileDetails: false,
+  terminalFollowsBrowser: true,
   inlineSuggestions: true,
   commandHistory: true,
   aiSuggestions: false,
@@ -196,6 +199,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
+    terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),
     inlineSuggestions: bool(value.inlineSuggestions, d.inlineSuggestions),
     commandHistory: bool(value.commandHistory, d.commandHistory),
     aiSuggestions: bool(value.aiSuggestions, d.aiSuggestions),

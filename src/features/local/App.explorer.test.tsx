@@ -109,4 +109,35 @@ describe("Explorer tab", () => {
     fireEvent.pointerUp(window, { clientX: 11, clientY: 10 });
     expect(pane.inserted).toHaveLength(2);
   });
+
+  it("runs cd in the terminal for a folder opened in the Explorer, on an empty line only (L16)", async () => {
+    const start = async (settings: object) => {
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+        if (cmd === "settings_load") return JSON.stringify({ ...DEFAULT_SETTINGS, ...settings });
+        if (cmd === "local_home") return "/home/me";
+        if (cmd === "local_list") return [entry("/home/me/my src", "dir")];
+        return null;
+      });
+      render(<App />);
+      await screen.findByTestId("terminal");
+      const tab = await screen.findByRole("tab", { name: "Explorer" });
+      await waitFor(() => expect((tab as HTMLButtonElement).disabled).toBe(false));
+      fireEvent.click(tab);
+      return screen.findByText("my src");
+    };
+    pane.ran = [];
+    pane.lineEmpty = true;
+    fireEvent.doubleClick(await start({}));
+    await waitFor(() => expect(pane.ran).toEqual(["cd '/home/me/my src'"]));
+    pane.lineEmpty = false;
+    fireEvent.click(screen.getByTitle("Up"));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/home/me" }));
+    expect(pane.ran).toHaveLength(1);
+    cleanup();
+    pane.ran = [];
+    pane.lineEmpty = true;
+    fireEvent.doubleClick(await start({ terminalFollowsBrowser: false }));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/home/me/my src" }));
+    expect(pane.ran).toEqual([]);
+  });
 });

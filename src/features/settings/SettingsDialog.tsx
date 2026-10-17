@@ -347,6 +347,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   };
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [fileDetails, setFileDetails] = useState(settings.fileDetails);
+  const [terminalFollowsBrowser, setTerminalFollowsBrowser] = useState(settings.terminalFollowsBrowser);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
   const [localCwd, setLocalCwd] = useState(settings.localCwd);
@@ -406,6 +407,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       remoteMonitor,
       textEditor: cleanTextEditor(textEditor),
       fileDetails,
+      terminalFollowsBrowser,
       inlineSuggestions,
       commandHistory: history,
       aiSuggestions,
@@ -631,6 +633,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
               {t("settings.files.details")}
             </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={terminalFollowsBrowser}
+                onChange={(e) => setTerminalFollowsBrowser(e.target.checked)}
+              />
+              {t("settings.files.terminalFollows")}
+            </label>
+            <p className="muted">{t("settings.files.terminalFollowsHelp")}</p>
           </div>
 
           <div {...panel("ai")}>

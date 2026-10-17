@@ -56,6 +56,8 @@ export const settings: Messages<typeof en> = {
     systemDefault: "시스템 기본값",
     useSystemDefault: "시스템 기본값 사용",
     details: "파일 목록에 크기와 날짜 표시",
+    terminalFollows: "파일 브라우저에서 폴더를 열면 터미널의 폴더도 변경",
+    terminalFollowsHelp: "SFTP 브라우저나 탐색기에서 폴더를 열면 명령줄에 아무것도 입력되지 않은 경우에만 해당 터미널에서 cd를 실행합니다.",
     chooseEditor: "텍스트 편집기 선택",
     textEditorHelp:
       "텍스트 편집기는 SFTP 브라우저에서 파일을 엽니다. 프로그램 또는 {command} 같은 명령을 지정하고, 비워 두면 시스템 기본값을 사용합니다.",
