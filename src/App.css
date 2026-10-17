@@ -670,6 +670,13 @@ textarea::placeholder {
   width: 340px;
 }
 
+/* While the sidebar edge is dragged: no text selection, and the resize cursor everywhere. */
+body.is-resizing {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: col-resize;
+}
+
 /* Drag handle over the sidebar's edge; the inline width of the sidebar follows it. */
 .sidebar__resizer {
   position: relative;
