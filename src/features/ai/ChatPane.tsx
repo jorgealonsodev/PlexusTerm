@@ -366,7 +366,11 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
                   className="chat__chip-remove"
                   aria-label={t("ai.chat.deleteConversation", { title: chat.title })}
                   title={t("ai.chat.deleteConversation", { title: chat.title })}
-                  onClick={() => history.remove(chat.id)}
+                  onClick={() => {
+                    history.remove(chat.id);
+                    // Deleting this chat's conversation starts a new one, so it is not saved again.
+                    if (chat.id === sessionId) newConversation();
+                  }}
                 >
                   <Trash2 size={13} />
                 </button>

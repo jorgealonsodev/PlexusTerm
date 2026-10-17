@@ -615,6 +615,20 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(file.chats.map((c) => c.title)).not.toContain("second topic question");
   });
 
+  it("deleting the open conversation starts a new one, so it is not saved again (S9)", async () => {
+    answers.ai_assist = () => ({ answer: "noted", command: null });
+    await renderApp();
+    pressShortcut();
+    await ask("secret topic");
+    fireEvent.click(within(chat()).getByRole("button", { name: "AI conversations" }));
+    fireEvent.click(within(chat()).getByRole("button", { name: "Delete the conversation “secret topic”" }));
+    expect(within(chat()).queryByText("noted")).toBeNull();
+    await ask("unrelated");
+    await settle();
+    const file = JSON.parse(calls("ai_chats_save").slice(-1)[0].contents as string) as { chats: { title: string }[] };
+    expect(file.chats.map((c) => c.title)).not.toContain("secret topic");
+  });
+
   it("saves no conversation when Settings say not to keep them (S9)", async () => {
     withSettings({ aiSaveChats: false });
     answers.ai_assist = () => ({ answer: "ok", command: null });

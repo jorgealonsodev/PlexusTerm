@@ -51,15 +51,24 @@ const isChat = (value: unknown): value is SavedChat => {
 
 const newestFirst = (chats: SavedChat[]) => [...chats].sort((a, b) => b.updated - a.updated).slice(0, MAX_SAVED_CHATS);
 
-/** The conversations of an `ai-chats.json` file; a damaged file or entry is left out. */
-export function parseChatHistory(contents: string): SavedChat[] {
+/**
+ * An `ai-chats.json` file: its conversations and the entries it holds that this version does not
+ * understand (kept as they are when saving), or null when the file is damaged or of another
+ * version (it is then never written over).
+ */
+function readFile(contents: string): { chats: SavedChat[]; unknown: unknown[] } | null {
   try {
     const data = JSON.parse(contents) as { version?: unknown; chats?: unknown };
-    if (data?.version !== 1 || !Array.isArray(data.chats)) return [];
-    return newestFirst(data.chats.filter(isChat));
+    if (data?.version !== 1 || !Array.isArray(data.chats)) return null;
+    return { chats: newestFirst(data.chats.filter(isChat)), unknown: data.chats.filter((c) => !isChat(c)) };
   } catch {
-    return [];
+    return null;
   }
+}
+
+/** The conversations of an `ai-chats.json` file; a damaged file or entry is left out. */
+export function parseChatHistory(contents: string): SavedChat[] {
+  return readFile(contents)?.chats ?? [];
 }
 
 /**
@@ -71,6 +80,10 @@ export function createChatHistory(storage: ChatStorage, saving: () => boolean) {
   const listeners = new Set<() => void>();
   /** The saved file was read (or found missing); until then nothing is written over it. */
   let fromDisk = false;
+  /** The file could not be understood: it is left alone for the rest of this run. */
+  let readOnly = false;
+  /** Entries of the file this version does not understand, written back as they were. */
+  let unknownEntries: unknown[] = [];
   let loading: Promise<void> | null = null;
   let writing: Promise<void> = Promise.resolve();
   const changed = () => listeners.forEach((listener) => listener());
@@ -80,8 +93,11 @@ export function createChatHistory(storage: ChatStorage, saving: () => boolean) {
     loading ??= storage
       .load()
       .then((contents) => {
+        const file = contents === null ? { chats: [], unknown: [] } : readFile(contents);
+        if (file === null) readOnly = true;
+        else unknownEntries = file.unknown;
         const known = new Set(chats.map((c) => c.id));
-        chats = newestFirst([...chats, ...(contents ? parseChatHistory(contents) : []).filter((c) => !known.has(c.id))]);
+        chats = newestFirst([...chats, ...(file?.chats ?? []).filter((c) => !known.has(c.id))]);
         fromDisk = true;
         changed();
       })
@@ -94,7 +110,11 @@ export function createChatHistory(storage: ChatStorage, saving: () => boolean) {
     // Saving turned on later still keeps the conversations of earlier runs.
     writing = writing
       .then(load)
-      .then(() => (fromDisk && saving() ? storage.save(JSON.stringify({ version: 1, chats })) : undefined))
+      .then(() =>
+        fromDisk && !readOnly && saving()
+          ? storage.save(JSON.stringify({ version: 1, chats: [...chats, ...unknownEntries] }))
+          : undefined,
+      )
       .catch(() => {});
   };
   return {

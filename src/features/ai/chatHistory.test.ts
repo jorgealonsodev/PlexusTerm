@@ -105,6 +105,37 @@ describe("chat history (S9)", () => {
     expect(disk.save).not.toHaveBeenCalled();
   });
 
+  it("does not overwrite an ai-chats.json it cannot parse", async () => {
+    const damaged = '{"version":1,"chats":[{"id":"old"';
+    const disk = storage(damaged);
+    const history = createChatHistory(disk, () => true);
+    await history.ready();
+    history.update("new", [turn("q")]);
+    await history.flush();
+    expect(disk.file()).toBe(damaged);
+    expect(history.list().map((c) => c.id)).toEqual(["new"]);
+  });
+
+  it("does not overwrite an ai-chats.json of another version", async () => {
+    const future = JSON.stringify({ version: 2, chats: [{ id: "x", title: "t", updated: 1, turns: [] }] });
+    const disk = storage(future);
+    const history = createChatHistory(disk, () => true);
+    await history.ready();
+    history.update("new", [turn("q")]);
+    await history.flush();
+    expect(disk.file()).toBe(future);
+  });
+
+  it("keeps entries it does not understand when it saves", async () => {
+    const odd = { id: "odd", title: "t", updated: 1, turns: [{ future: true }] };
+    const disk = storage(JSON.stringify({ version: 1, chats: [odd] }));
+    const history = createChatHistory(disk, () => true);
+    await history.ready();
+    history.update("new", [turn("q")], 5);
+    await history.flush();
+    expect(JSON.parse(disk.file()!).chats).toEqual([expect.objectContaining({ id: "new" }), odd]);
+  });
+
   it("ignores a damaged file and invalid entries", () => {
     expect(parseChatHistory("{oops")).toEqual([]);
     expect(parseChatHistory(JSON.stringify({ version: 2, chats: [] }))).toEqual([]);
