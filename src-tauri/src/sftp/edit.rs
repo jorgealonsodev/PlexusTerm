@@ -249,7 +249,9 @@ pub fn desktop_exec_args(exec: &str, file: &Path) -> Vec<OsString> {
     args
 }
 
-/// The `Exec=` value of the `[Desktop Entry]` group of a desktop file.
+/// The `Exec=` value of the `[Desktop Entry]` group of a desktop file. Only Linux and BSD
+/// read desktop files; the tests check it on every platform.
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
 pub fn desktop_exec(contents: &str) -> Option<String> {
     let mut in_entry = false;
     for line in contents.lines() {
