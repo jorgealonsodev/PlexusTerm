@@ -61,8 +61,8 @@ curl -fsSL -o checksums.txt \
 4. On Arch: `makepkg -si` to test, `namcap PKGBUILD` and `namcap *.pkg.tar.zst`
    to lint, then regenerate `.SRCINFO` with `makepkg --printsrcinfo > .SRCINFO`.
    Without Arch, edit `.SRCINFO` by hand so every value matches the PKGBUILD.
-5. Replace the placeholder e-mail in the `# Maintainer:` line before the first
-   submission.
+5. Keep the `# Maintainer:` line current (written "name at domain dot com",
+   as AUR packages usually do).
 
 ## Submitting
 
