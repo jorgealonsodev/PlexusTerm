@@ -76,6 +76,8 @@ export const settings = {
     baseUrl: "Base URL",
     model: "Model",
     historyContext: "History commands sent as context",
+    saveChats: "Keep AI conversations after closing PlexusTerm",
+    saveChatsHelp: "They are saved on this computer, in ai-chats.json in the app config folder, and listed by the history button of the AI chat. Turned off, only this run's conversations are listed.",
     chooseModel: "Choose a model",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) — not supported yet",

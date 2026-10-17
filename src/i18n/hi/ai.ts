@@ -24,6 +24,9 @@ export const ai: Messages<typeof en> = {
   },
   chat: {
     newConversation: "नई बातचीत",
+    conversations: "AI बातचीत",
+    noConversations: "अभी कोई बातचीत नहीं है।",
+    deleteConversation: "बातचीत “{title}” हटाएँ",
     label: "AI चैट",
     title: "AI",
     close: "AI चैट बंद करें",

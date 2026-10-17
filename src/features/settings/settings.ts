@@ -65,6 +65,8 @@ export interface TerminalSettings {
   sidebarWidth: number | null;
   /** Ask GitHub for a newer release when PlexusTerm starts. */
   checkUpdates: boolean;
+  /** Keep AI conversations in `ai-chats.json` after closing PlexusTerm (S9). */
+  aiSaveChats: boolean;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
 }
@@ -103,6 +105,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   localCwd: "",
   sidebarWidth: null,
   checkUpdates: true,
+  aiSaveChats: true,
   language: "system",
 };
 
@@ -210,6 +213,7 @@ export function parseSettings(json: string | null): TerminalSettings {
         ? clampSidebarWidth(value.sidebarWidth)
         : d.sidebarWidth,
     checkUpdates: bool(value.checkUpdates, d.checkUpdates),
+    aiSaveChats: bool(value.aiSaveChats, d.aiSaveChats),
     language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }

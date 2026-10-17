@@ -329,6 +329,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
+  const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
   const [updateState, setUpdateState] = useState<
     | { state: "idle" }
     | { state: "checking" }
@@ -418,6 +419,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       localCwd: cleanLocalShell(localCwd),
       sidebarWidth: settings.sidebarWidth,
       checkUpdates,
+      aiSaveChats,
       language,
     });
   };
@@ -701,6 +703,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </label>
             <ShortcutField value={assistantShortcut} onChange={setAssistantShortcut} />
+            <label className="check">
+              <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />
+              {t("settings.ai.saveChats")}
+            </label>
+            <p className="muted">{t("settings.ai.saveChatsHelp")}</p>
           </div>
 
           <div {...panel("about")}>

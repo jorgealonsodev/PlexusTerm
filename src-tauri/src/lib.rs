@@ -382,6 +382,19 @@ fn macros_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, MACROS_FILE)?, &contents)
 }
 
+/// The AI conversations kept after closing PlexusTerm (Settings → AI); a private file.
+const AI_CHATS_FILE: &str = "ai-chats.json";
+
+#[tauri::command]
+fn ai_chats_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    storage::load(&config_path(&app, AI_CHATS_FILE)?)
+}
+
+#[tauri::command]
+fn ai_chats_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, AI_CHATS_FILE)?, &contents)
+}
+
 const SETTINGS_FILE: &str = "settings.json";
 
 #[tauri::command]
@@ -511,6 +524,8 @@ pub fn run() {
             settings_save,
             macros_load,
             macros_save,
+            ai_chats_load,
+            ai_chats_save,
             save_text_file,
             append_text_file,
             wol_send,

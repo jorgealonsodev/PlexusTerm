@@ -74,6 +74,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "基础 URL",
     model: "模型",
     historyContext: "作为上下文发送的历史命令数",
+    saveChats: "关闭 PlexusTerm 后保留 AI 对话",
+    saveChatsHelp: "对话保存在本机配置文件夹中的 ai-chats.json,并在 AI 聊天的历史按钮中列出。关闭后只列出本次运行的对话。",
     chooseModel: "选择模型",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) — 暂不支持",

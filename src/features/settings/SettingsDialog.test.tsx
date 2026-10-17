@@ -355,6 +355,15 @@ describe("SettingsDialog", () => {
       expect(field("Model").value).toBe("kimi-k3");
     });
 
+    it("keeps AI conversations by default and saves the choice (S9)", () => {
+      const { onSave } = openAi();
+      const keep = field("Keep AI conversations after closing PlexusTerm");
+      expect(keep.checked).toBe(true);
+      fireEvent.click(keep);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiSaveChats: false }));
+    });
+
     it("saves the OpenCode Go key under its own provider", async () => {
       openAi();
       fireEvent.change(field("Provider"), { target: { value: "opencode-go" } });

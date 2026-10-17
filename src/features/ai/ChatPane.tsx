@@ -1,5 +1,5 @@
-import { FileText, MessageSquarePlus, Play, X } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { FileText, History, MessageSquarePlus, Play, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import type { TerminalSettings } from "../settings/settings";
 import { writeText } from "../terminal/clipboard";
@@ -9,6 +9,8 @@ import { aiConfigOf, needsApiKey, newAiSessionId, truncateSelection } from "./ai
 import { recallChat, rememberChat, type ChatTurn } from "./chatMemory";
 import { ModelPicker } from "./ModelPicker";
 import type { PathDrag } from "../drop/pathDrag";
+import { formatDate } from "../sftp/format";
+import { chatHistory, type ChatHistory } from "./chatHistory";
 import { MAX_ATTACHED_FILES, describeAttachError, fileName, readAttachment, type AttachedText } from "./attachments";
 
 const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible">, string> = {
@@ -59,6 +61,8 @@ interface ChatPaneProps {
   onSelectModel: (provider: AiProvider, model: string) => void;
   /** Hands out how to attach dropped files (S6) and a selection (S7); returns its unregister function. */
   registerDropTarget?: (target: ChatTarget) => () => void;
+  /** The AI conversations list (S9); the app's own by default. */
+  history?: ChatHistory;
 }
 
 
@@ -117,7 +121,7 @@ function CommandBox({
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel, registerDropTarget }: ChatPaneProps) {
+export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel, registerDropTarget, history = chatHistory }: ChatPaneProps) {
   const t = useT();
   const [sessionId, setSessionId] = useState(() => recallChat(conversationKey)?.sessionId ?? newAiSessionId());
   const [input, setInput] = useState("");
@@ -146,6 +150,29 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
     seq.current++;
     setTurns([]);
     setSessionId(newAiSessionId());
+    inputRef.current?.focus();
+  };
+
+  // The conversations list (S9): every answer updates this conversation in it.
+  const saved = useSyncExternalStore(history.subscribe, history.list);
+  const [listOpen, setListOpen] = useState(false);
+  const answered = useRef(false);
+  useEffect(() => void history.ready(), [history]);
+  useEffect(() => {
+    if (!answered.current) return;
+    answered.current = false;
+    history.update(sessionId, turns);
+  }, [history, sessionId, turns]);
+
+  /** Continues a listed conversation in this chat: its turns and its AI session. */
+  const openSaved = (id: string) => {
+    const chat = history.get(id);
+    setListOpen(false);
+    if (!chat) return;
+    seq.current++;
+    nextId.current = Math.max(0, ...chat.turns.map((turn) => turn.id)) + 1;
+    setSessionId(chat.id);
+    setTurns(chat.turns);
     inputRef.current?.focus();
   };
   const provider = settings.aiProvider;
@@ -250,10 +277,15 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
       conversation,
       ...(sentFiles.length ? { files: sentFiles.map(({ path, content }) => ({ path, content })) } : {}),
     })
-      .then((reply) => mine === seq.current && update({ state: "answer", answer: reply.answer, command: reply.command }))
+      .then((reply) => {
+        if (mine !== seq.current) return;
+        answered.current = true;
+        update({ state: "answer", answer: reply.answer, command: reply.command });
+      })
       .catch((err) => {
         if (mine !== seq.current) return;
         if (isAiError(err) && err.kind === "noKey") setKeyMissing(true);
+        answered.current = true;
         update({ state: "error", error: describeAiError(err) });
       });
   };
@@ -287,6 +319,16 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
         <button
           type="button"
           className="chat__close"
+          aria-label={t("ai.chat.conversations")}
+          title={t("ai.chat.conversations")}
+          aria-expanded={listOpen}
+          onClick={() => setListOpen((open) => !open)}
+        >
+          <History size={16} />
+        </button>
+        <button
+          type="button"
+          className="chat__close"
           aria-label={t("ai.chat.newConversation")}
           title={t("ai.chat.newConversation")}
           onClick={newConversation}
@@ -303,6 +345,36 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
           <X size={16} />
         </button>
       </header>
+      {listOpen && (
+        <div className="chat__history" role="dialog" aria-label={t("ai.chat.conversations")} onKeyDown={(e) => e.key === "Escape" && setListOpen(false)}>
+          {saved.length === 0 && <p className="muted chat__history-empty">{t("ai.chat.noConversations")}</p>}
+          <ul>
+            {saved.map((chat) => (
+              <li key={chat.id} className={`chat__history-item${chat.id === sessionId ? " chat__history-item--current" : ""}`}>
+                <button
+                  type="button"
+                  className="chat__history-open"
+                  title={chat.title}
+                  aria-current={chat.id === sessionId ? "true" : undefined}
+                  onClick={() => openSaved(chat.id)}
+                >
+                  <span className="chat__history-title">{chat.title}</span>
+                  <span className="chat__history-date">{formatDate(Math.floor(chat.updated / 1000))}</span>
+                </button>
+                <button
+                  type="button"
+                  className="chat__chip-remove"
+                  aria-label={t("ai.chat.deleteConversation", { title: chat.title })}
+                  title={t("ai.chat.deleteConversation", { title: chat.title })}
+                  onClick={() => history.remove(chat.id)}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="chat__turns" ref={listRef} aria-live="polite">
         {turns.length === 0 && !keyMissing && (
           <p className="muted chat__empty">{t("ai.chat.empty")}</p>

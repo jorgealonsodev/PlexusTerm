@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "기본 URL",
     model: "모델",
     historyContext: "컨텍스트로 보낼 기록 명령",
+    saveChats: "PlexusTerm을 닫은 후에도 AI 대화 보관",
+    saveChatsHelp: "대화는 이 컴퓨터의 설정 폴더에 있는 ai-chats.json에 저장되며 AI 채팅의 기록 버튼에 표시됩니다. 끄면 이번 실행의 대화만 표시됩니다.",
     chooseModel: "모델 선택",
     modelOption: "{name}({id})",
     modelOptionUnsupported: "{name}({id}) — 아직 지원되지 않음",

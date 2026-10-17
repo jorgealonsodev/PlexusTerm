@@ -584,6 +584,48 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(send.disabled).toBe(true);
   });
 
+  it("lists the conversations, reopens one to continue it, deletes one, and saves them (S9)", async () => {
+    answers.ai_assist = (args) => ({ answer: `re: ${(args as { request: { prompt: string } }).request.prompt}`, command: null });
+    await renderApp();
+    pressShortcut();
+    await ask("first topic question");
+    const sessionOf = () => (calls("ai_assist").at(-1)!.config as { sessionId?: string }).sessionId;
+    const firstSession = sessionOf();
+    fireEvent.click(within(chat()).getByRole("button", { name: "New conversation" }));
+    await ask("second topic question");
+    fireEvent.click(within(chat()).getByRole("button", { name: "AI conversations" }));
+    const list = within(chat()).getByRole("dialog", { name: "AI conversations" });
+    const titles = within(list).getAllByRole("button").map((b) => b.getAttribute("title"));
+    expect(titles.indexOf("second topic question")).toBeLessThan(titles.indexOf("first topic question"));
+    fireEvent.click(within(list).getByTitle("first topic question"));
+    expect(within(chat()).queryByRole("dialog", { name: "AI conversations" })).toBeNull();
+    expect(within(chat()).getByText("re: first topic question")).toBeTruthy();
+    expect(within(chat()).queryByText("re: second topic question")).toBeNull();
+    await ask("follow-up");
+    const last = calls("ai_assist").at(-1)!;
+    expect((last.request as { conversation: { question: string }[] }).conversation.map((c) => c.question)).toEqual(["first topic question"]);
+    expect(firstSession).toEqual(expect.any(String));
+    expect(sessionOf()).toBe(firstSession);
+    fireEvent.click(within(chat()).getByRole("button", { name: "AI conversations" }));
+    fireEvent.click(within(chat()).getByRole("button", { name: "Delete the conversation “second topic question”" }));
+    expect(within(chat()).queryByTitle("second topic question")).toBeNull();
+    await settle();
+    const file = JSON.parse((calls("ai_chats_save").at(-1)!.contents as string)) as { chats: { title: string }[] };
+    expect(file.chats.map((c) => c.title)).toContain("first topic question");
+    expect(file.chats.map((c) => c.title)).not.toContain("second topic question");
+  });
+
+  it("saves no conversation when Settings say not to keep them (S9)", async () => {
+    withSettings({ aiSaveChats: false });
+    answers.ai_assist = () => ({ answer: "ok", command: null });
+    await renderApp();
+    pressShortcut();
+    await ask("private question");
+    await settle();
+    expect(calls("ai_chats_save")).toEqual([]);
+    expect(calls("ai_chats_load")).toEqual([]);
+  });
+
   it("sends no selection once its chip is removed, and cuts it to 2000 characters", async () => {
     answers.ai_assist = () => ({ answer: "ok", command: null });
     await renderApp();

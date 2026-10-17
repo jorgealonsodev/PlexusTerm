@@ -24,6 +24,9 @@ export const ai: Messages<typeof en> = {
   },
   chat: {
     newConversation: "새 대화",
+    conversations: "AI 대화",
+    noConversations: "아직 대화가 없습니다.",
+    deleteConversation: "“{title}” 대화 삭제",
     label: "AI 채팅",
     title: "AI",
     close: "AI 채팅 닫기",

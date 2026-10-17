@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "URL base",
     model: "Modelo",
     historyContext: "Comandos del historial enviados como contexto",
+    saveChats: "Guardar las conversaciones con la IA al cerrar PlexusTerm",
+    saveChatsHelp: "Se guardan en este equipo, en ai-chats.json dentro de la carpeta de configuración, y aparecen en el botón de historial del chat de IA. Si lo desactivas, solo se listan las conversaciones de esta sesión.",
     chooseModel: "Elige un modelo",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}): aún no compatible",

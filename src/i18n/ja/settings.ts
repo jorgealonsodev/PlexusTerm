@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "ベース URL",
     model: "モデル",
     historyContext: "コンテキストとして送信する履歴コマンド数",
+    saveChats: "PlexusTerm を閉じた後も AI との会話を残す",
+    saveChatsHelp: "会話はこのコンピューターの設定フォルダー内の ai-chats.json に保存され、AI チャットの履歴ボタンに一覧表示されます。オフにすると、今回の実行中の会話だけが表示されます。",
     chooseModel: "モデルを選択",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) — 未対応",

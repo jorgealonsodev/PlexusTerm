@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "बेस URL",
     model: "मॉडल",
     historyContext: "संदर्भ के रूप में भेजे जाने वाले इतिहास कमांड",
+    saveChats: "PlexusTerm बंद करने के बाद भी AI बातचीत रखें",
+    saveChatsHelp: "बातचीत इस कंप्यूटर पर कॉन्फ़िगरेशन फ़ोल्डर की ai-chats.json में सहेजी जाती है और AI चैट के इतिहास बटन में दिखती है। बंद करने पर केवल इस बार की बातचीत दिखती है।",
     chooseModel: "एक मॉडल चुनें",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) — अभी समर्थित नहीं",

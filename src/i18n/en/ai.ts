@@ -22,6 +22,9 @@ export const ai = {
   },
   chat: {
     newConversation: "New conversation",
+    conversations: "AI conversations",
+    noConversations: "No conversations yet.",
+    deleteConversation: "Delete the conversation “{title}”",
     label: "AI chat",
     title: "AI",
     close: "Close AI chat",

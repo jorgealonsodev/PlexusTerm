@@ -1928,3 +1928,76 @@ body.is-dragging-path {
   margin: 0 10px 6px;
   font-size: 12px;
 }
+
+/* The AI conversations list (S9), under the chat header. */
+.chat__history {
+  position: absolute;
+  top: 32px;
+  inset-inline-end: 8px;
+  z-index: 20;
+  width: min(360px, calc(100% - 16px));
+  max-height: 60%;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 35%);
+}
+
+.chat__history ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat__history-empty {
+  margin: 6px 8px;
+  font-size: 12px;
+}
+
+.chat__history-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+}
+
+.chat__history-item:hover,
+.chat__history-item--current {
+  background: var(--surface);
+}
+
+.chat__history-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.chat__history-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat__history-date {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chat__history .chat__chip-remove {
+  position: static;
+}

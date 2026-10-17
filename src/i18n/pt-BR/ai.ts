@@ -24,6 +24,9 @@ export const ai: Messages<typeof en> = {
   },
   chat: {
     newConversation: "Nova conversa",
+    conversations: "Conversas com a IA",
+    noConversations: "Ainda não há conversas.",
+    deleteConversation: "Excluir a conversa “{title}”",
     label: "Chat de IA",
     title: "IA",
     close: "Fechar o chat de IA",

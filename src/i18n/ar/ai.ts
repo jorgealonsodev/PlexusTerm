@@ -24,6 +24,9 @@ export const ai: Messages<typeof en> = {
   },
   chat: {
     newConversation: "محادثة جديدة",
+    conversations: "محادثات الذكاء الاصطناعي",
+    noConversations: "لا توجد محادثات بعد.",
+    deleteConversation: "حذف المحادثة «{title}»",
     label: "دردشة الذكاء الاصطناعي",
     title: "الذكاء الاصطناعي",
     close: "إغلاق دردشة الذكاء الاصطناعي",

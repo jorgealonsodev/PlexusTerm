@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "Basis-URL",
     model: "Modell",
     historyContext: "Als Kontext gesendete Verlaufsbefehle",
+    saveChats: "KI-Unterhaltungen nach dem Schließen von PlexusTerm behalten",
+    saveChatsHelp: "Sie werden auf diesem Computer in ai-chats.json im Konfigurationsordner gespeichert und über die Verlaufsschaltfläche des KI-Chats aufgelistet. Ausgeschaltet werden nur die Unterhaltungen dieser Sitzung aufgelistet.",
     chooseModel: "Modell auswählen",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) – noch nicht unterstützt",

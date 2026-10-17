@@ -24,6 +24,9 @@ export const ai: Messages<typeof en> = {
   },
   chat: {
     newConversation: "Neue Unterhaltung",
+    conversations: "KI-Unterhaltungen",
+    noConversations: "Noch keine Unterhaltungen.",
+    deleteConversation: "Unterhaltung „{title}“ löschen",
     label: "KI-Chat",
     title: "KI",
     close: "KI-Chat schließen",

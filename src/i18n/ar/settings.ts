@@ -78,6 +78,8 @@ export const settings: Messages<typeof en> = {
     baseUrl: "عنوان URL الأساسي",
     model: "النموذج",
     historyContext: "أوامر السجل المرسلة كسياق",
+    saveChats: "الاحتفاظ بمحادثات الذكاء الاصطناعي بعد إغلاق PlexusTerm",
+    saveChatsHelp: "تُحفظ على هذا الحاسوب في ai-chats.json داخل مجلد الإعدادات، وتظهر في زر السجل في دردشة الذكاء الاصطناعي. عند الإيقاف تظهر محادثات هذا التشغيل فقط.",
     chooseModel: "اختر نموذجًا",
     modelOption: "{name} ({id})",
     modelOptionUnsupported: "{name} ({id}) — غير مدعوم بعد",

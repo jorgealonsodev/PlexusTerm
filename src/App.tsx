@@ -58,6 +58,7 @@ import { TabBar } from "./features/tabs/TabBar";
 import { chatAction, initialTabs, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
+import { setChatSaving } from "./features/ai/chatHistory";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
 import { aiConfigOf, aiHint, newAiSessionId, truncateSelection } from "./features/ai/aiContext";
 import { createAiLimiter } from "./features/ai/aiLimiter";
@@ -492,6 +493,8 @@ function AppContent() {
 
   const { updateWith: updateSettingsWith } = terminalSettings;
   const settings = terminalSettings.settings;
+  // Settings → AI → keep conversations (S9): read before the first chat is listed.
+  setChatSaving(settings.aiSaveChats);
 
   /** One AI conversation ID per pane for its inline suggestions, kept while the app runs (S6). */
   const aiSessions = useRef(new Map<string, string>());
