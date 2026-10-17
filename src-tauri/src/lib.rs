@@ -1,5 +1,6 @@
 mod ai;
 mod history;
+mod localfs;
 mod mosh;
 mod platform;
 mod pty;
@@ -521,7 +522,16 @@ pub fn run() {
             sftp::commands::sftp_edit,
             sftp::commands::sftp_edit_upload,
             sftp::commands::sftp_compare,
-            sftp::commands::sftp_discard_copies
+            sftp::commands::sftp_discard_copies,
+            localfs::local_home,
+            localfs::local_list,
+            localfs::local_stat,
+            localfs::local_mkdir,
+            localfs::local_create_file,
+            localfs::local_rename,
+            localfs::local_remove,
+            localfs::local_chmod,
+            localfs::local_open
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

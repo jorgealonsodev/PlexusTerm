@@ -44,7 +44,7 @@ fn open_failure(local: &Path, err: impl std::fmt::Display) -> SftpError {
     }
 }
 
-fn launch(with: &OpenWith, local: &Path) -> Result<(), SftpError> {
+pub(crate) fn launch(with: &OpenWith, local: &Path) -> Result<(), SftpError> {
     let path = local.to_string_lossy().into_owned();
     match with {
         OpenWith::Default => tauri_plugin_opener::open_path(path, None::<&str>)
