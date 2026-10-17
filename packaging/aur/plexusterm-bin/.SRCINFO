@@ -1,0 +1,22 @@
+pkgbase = plexusterm-bin
+	pkgdesc = Terminal and remote-session manager: local shells, SSH, SFTP, tunnels and serial consoles
+	pkgver = 0.1.5
+	pkgrel = 1
+	url = https://plexusterm.xdev.es
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	provides = plexusterm
+	conflicts = plexusterm
+	options = !strip
+	options = !debug
+	source = LICENSE-0.1.5::https://raw.githubusercontent.com/jorgealonsodev/PlexusTerm/v0.1.5/LICENSE
+	sha256sums = bcb9162e209261631372686f45c29ad6d6946ff0674326b4adcfc461dcd197c4
+	source_x86_64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.1.5/plexusterm_0.1.5_linux_amd64.tar.gz
+	sha256sums_x86_64 = 677321f2b62c210f391ff87fe12045cc24e114fe36ba54c1558adf19674212f1
+	source_aarch64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.1.5/plexusterm_0.1.5_linux_arm64.tar.gz
+	sha256sums_aarch64 = 03c5c7277540c8708dd4460622c28717c6b7ef666e5de22de71051e6591f842a
+
+pkgname = plexusterm-bin

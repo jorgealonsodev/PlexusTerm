@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
+
+PackageIdentifier: JorgeAlonso.PlexusTerm
+PackageVersion: 0.1.5
+PackageLocale: en-US
+Publisher: Jorge Alonso
+PublisherUrl: https://github.com/jorgealonsodev
+PublisherSupportUrl: https://github.com/jorgealonsodev/PlexusTerm/issues
+Author: Jorge Alonso
+PackageName: PlexusTerm
+PackageUrl: https://plexusterm.xdev.es
+License: MIT
+LicenseUrl: https://github.com/jorgealonsodev/PlexusTerm/blob/v0.1.5/LICENSE
+Copyright: (c) 2026 Jorge Alonso
+ShortDescription: Terminal and remote-session manager with SSH, SFTP, tunnels and serial consoles.
+Description: PlexusTerm is a terminal and remote-session manager - local shells, SSH with jump hosts, an SFTP browser, SSH tunnels, serial consoles, split panes with multi-execution and saved sessions (with import from .ini session files).
+Moniker: plexusterm
+Tags:
+- serial
+- sftp
+- ssh
+- ssh-client
+- terminal
+- terminal-emulator
+- tunnel
+ReleaseNotesUrl: https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.1.5
+ManifestType: defaultLocale
+ManifestVersion: 1.28.0

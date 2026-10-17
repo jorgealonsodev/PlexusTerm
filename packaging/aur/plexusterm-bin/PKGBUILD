@@ -1,0 +1,38 @@
+# Maintainer: Jorge Alonso <your-email at example dot com>
+pkgname=plexusterm-bin
+_pkgname=plexusterm
+pkgver=0.1.5
+pkgrel=1
+pkgdesc='Terminal and remote-session manager: local shells, SSH, SFTP, tunnels and serial consoles'
+arch=('x86_64' 'aarch64')
+url='https://plexusterm.xdev.es'
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+_repo='https://github.com/jorgealonsodev/PlexusTerm'
+source=("LICENSE-$pkgver::https://raw.githubusercontent.com/jorgealonsodev/PlexusTerm/v$pkgver/LICENSE")
+source_x86_64=("$_repo/releases/download/v$pkgver/${_pkgname}_${pkgver}_linux_amd64.tar.gz")
+source_aarch64=("$_repo/releases/download/v$pkgver/${_pkgname}_${pkgver}_linux_arm64.tar.gz")
+sha256sums=('bcb9162e209261631372686f45c29ad6d6946ff0674326b4adcfc461dcd197c4')
+sha256sums_x86_64=('677321f2b62c210f391ff87fe12045cc24e114fe36ba54c1558adf19674212f1')
+sha256sums_aarch64=('03c5c7277540c8708dd4460622c28717c6b7ef666e5de22de71051e6591f842a')
+
+package() {
+  local _arch
+  case "$CARCH" in
+    x86_64) _arch=amd64 ;;
+    aarch64) _arch=arm64 ;;
+  esac
+  cd "${_pkgname}_${pkgver}_linux_${_arch}"
+
+  install -Dm755 "$_pkgname" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 "$_pkgname.desktop" "$pkgdir/usr/share/applications/$_pkgname.desktop"
+  local _size
+  for _size in 32x32 64x64 128x128 256x256 512x512; do
+    install -Dm644 "icons/hicolor/$_size/apps/$_pkgname.png" \
+      "$pkgdir/usr/share/icons/hicolor/$_size/apps/$_pkgname.png"
+  done
+  install -Dm644 "$srcdir/LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
