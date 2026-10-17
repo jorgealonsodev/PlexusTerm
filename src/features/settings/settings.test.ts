@@ -29,6 +29,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Shift+Space",
       sidebarCollapsed: false,
       sidebarHideWhenCollapsed: false,
+      checkUpdates: true,
       language: "system",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
@@ -45,7 +46,7 @@ describe("parseSettings", () => {
       '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
-      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"language":"ja"}';
+      '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"checkUpdates":false,"language":"ja"}';
     expect(parseSettings(json)).toEqual({
       fontSize: 18,
       copyOnSelect: false,
@@ -65,6 +66,7 @@ describe("parseSettings", () => {
       assistantShortcut: "Ctrl+Alt+K",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      checkUpdates: false,
       language: "ja",
     });
   });
@@ -173,6 +175,7 @@ describe("serializeSettings", () => {
       assistantShortcut: "Ctrl+Alt+Space",
       sidebarCollapsed: true,
       sidebarHideWhenCollapsed: true,
+      checkUpdates: false,
       language: "pt-BR" as const,
     };
     const json = serializeSettings(settings);
@@ -198,6 +201,14 @@ describe("sidebar settings", () => {
     const parsed = parseSettings(JSON.stringify({ sidebarCollapsed: true, sidebarHideWhenCollapsed: "yes" }));
     expect(parsed.sidebarCollapsed).toBe(true);
     expect(parsed.sidebarHideWhenCollapsed).toBe(false);
+  });
+});
+
+describe("update check setting", () => {
+  it("is on by default and keeps only a saved boolean", () => {
+    expect(DEFAULT_SETTINGS.checkUpdates).toBe(true);
+    expect(parseSettings(JSON.stringify({ checkUpdates: false })).checkUpdates).toBe(false);
+    expect(parseSettings(JSON.stringify({ checkUpdates: "no" })).checkUpdates).toBe(true);
   });
 });
 

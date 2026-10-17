@@ -8,6 +8,8 @@ import { useMacros } from "./features/macros/useMacros";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
+import { UpdateNotice } from "./features/updates/UpdateNotice";
+import { checkForUpdate, type Release } from "./features/updates/updates";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
 import { forgetChatsExcept } from "./features/ai/chatMemory";
@@ -220,6 +222,17 @@ function AppContent() {
   );
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  // Once per launch, when Settings allow it: a newer release only shows a notice.
+  const [update, setUpdate] = useState<Release | null>(null);
+  const updateChecked = useRef(false);
+  useEffect(() => {
+    if (!terminalSettings.loaded || updateChecked.current) return;
+    updateChecked.current = true;
+    if (!terminalSettings.settings.checkUpdates) return;
+    checkForUpdate()
+      .then(({ latest }) => setUpdate(latest))
+      .catch(() => {});
+  }, [terminalSettings.loaded, terminalSettings.settings.checkUpdates]);
   const dialogs = useDialogs();
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
@@ -700,6 +713,7 @@ function AppContent() {
         </button>
       </header>
       <EditUploads onNotice={setNotice} />
+      {update && <UpdateNotice release={update} onClose={() => setUpdate(null)} />}
       {notice && (
         <div className="notice" role="status">
           <span>{notice}</span>

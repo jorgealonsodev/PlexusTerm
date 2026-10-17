@@ -8,6 +8,8 @@ import { clampFontSize, DEFAULT_SETTINGS, parseSettings, serializeSettings, type
  */
 export function useSettings() {
   const [settings, setSettings] = useState<TerminalSettings>(DEFAULT_SETTINGS);
+  /** True once settings.json was read (or could not be): what opens at startup depends on it. */
+  const [loaded, setLoaded] = useState(false);
   const current = useRef(settings);
   /** Set once the user changed something: a slower load must not undo it. */
   const changed = useRef(false);
@@ -21,7 +23,8 @@ export function useSettings() {
         current.current = parseSettings(json);
         setSettings(current.current);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
 
   const update = useCallback((patch: Partial<TerminalSettings>) => {
@@ -40,5 +43,5 @@ export function useSettings() {
     [update],
   );
 
-  return { settings, update, updateWith };
+  return { settings, loaded, update, updateWith };
 }

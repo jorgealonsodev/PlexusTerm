@@ -16,6 +16,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI chat |
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
+| [Updates](#updates) | Being told about a new release |
 | [Windows](#windows) | What differs on Windows 10/11 |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
 
@@ -186,7 +187,7 @@ PlexusTerm's interface comes in English, Spanish, German, French, Japanese, Port
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version and project links); **Save** keeps the changes of every section:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version, project links and updates); **Save** keeps the changes of every section:
 
 - **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
 - **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
@@ -332,6 +333,12 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 **Wake On LAN…** powers on a machine of the local network: enter its MAC address (`aa:bb:cc:dd:ee:ff` or `aa-bb-cc-dd-ee-ff`) and send the magic packet. The broadcast address defaults to `255.255.255.255` and the UDP port to 9; use the subnet's broadcast address (for example `192.168.1.255`) when the machine is on another network segment reachable that way. The machine needs Wake On LAN enabled in its firmware and network card. PlexusTerm confirms that the packet was sent; it cannot tell whether the machine woke up.
 
 **Show / Hide remote monitor** toggles a bar under every SSH pane (also **Remote monitor bar (SSH tabs)** in Settings; on by default) with the server's CPU use, used/total memory, used/total space of `/`, network download/upload rate and number of logged-in users, refreshed every 3 seconds. It runs one read-only command over the tab's existing SSH connection (`/proc`, `df`, `who`; nothing is installed or left running) and needs a Linux server; anything else shows "Monitoring unavailable".
+
+## Updates
+
+When PlexusTerm starts it asks GitHub for the latest published release, once. If it is newer than the version you run, a bar under the toolbar says so: **Download** opens the release page in your browser, where you pick the package for your system, and the close button hides the bar until the next start. PlexusTerm never downloads or installs anything by itself, and a failed check (no network, GitHub unavailable) shows nothing.
+
+Settings → About has **Check for updates** to ask at any time; it says whether PlexusTerm is up to date, offers **Download** for a newer release or shows why the check failed. Turn off **Check for updates at startup** there to stop the startup check; the only data sent is a request for the latest release of the public repository, with PlexusTerm's version as the user agent.
 
 ## Windows
 

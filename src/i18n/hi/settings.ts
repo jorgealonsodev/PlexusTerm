@@ -93,6 +93,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "इसे बदलने के लिए फ़ील्ड पर क्लिक करें।",
   },
   about: {
+    checkUpdates: "अपडेट जाँचें",
+    checking: "अपडेट जाँचे जा रहे हैं…",
+    upToDate: "PlexusTerm अप टू डेट है ({version})।",
+    available: "PlexusTerm {version} उपलब्ध है।",
+    download: "डाउनलोड करें",
+    checkFailed: "अपडेट नहीं जाँच सके: {error}",
+    checkAtStartup: "शुरू होने पर अपडेट जाँचें",
+    checkHelp: "PlexusTerm शुरू होने पर GitHub से नवीनतम प्रकाशित रिलीज़ पूछता है। कुछ भी डाउनलोड या इंस्टॉल नहीं होता: डाउनलोड करें रिलीज़ पेज खोलता है।",
     version: "संस्करण {version}",
     description:
       "Linux और Windows के लिए एक टर्मिनल और रिमोट-सेशन मैनेजर: लोकल शेल, SSH, SFTP, टनल, सीरियल, Telnet और Mosh एक ही विंडो में।",

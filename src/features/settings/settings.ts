@@ -55,6 +55,8 @@ export interface TerminalSettings {
   sidebarCollapsed: boolean;
   /** Folding hides the sidebar completely instead of leaving its tab icons. */
   sidebarHideWhenCollapsed: boolean;
+  /** Ask GitHub for a newer release when PlexusTerm starts. */
+  checkUpdates: boolean;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
 }
@@ -88,6 +90,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   assistantShortcut: DEFAULT_ASSISTANT_SHORTCUT,
   sidebarCollapsed: false,
   sidebarHideWhenCollapsed: false,
+  checkUpdates: true,
   language: "system",
 };
 
@@ -172,6 +175,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
     sidebarCollapsed: bool(value.sidebarCollapsed, d.sidebarCollapsed),
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
+    checkUpdates: bool(value.checkUpdates, d.checkUpdates),
     language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }

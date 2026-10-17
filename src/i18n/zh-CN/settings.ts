@@ -89,6 +89,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "单击该字段以更改。",
   },
   about: {
+    checkUpdates: "检查更新",
+    checking: "正在检查更新…",
+    upToDate: "PlexusTerm 已是最新版本 ({version})。",
+    available: "PlexusTerm {version} 已发布。",
+    download: "下载",
+    checkFailed: "无法检查更新：{error}",
+    checkAtStartup: "启动时检查更新",
+    checkHelp: "PlexusTerm 启动时向 GitHub 查询最新发布的版本。不会下载或安装任何内容：“下载”会打开发布页面。",
     version: "版本 {version}",
     description:
       "适用于 Linux 和 Windows 的终端与远程会话管理器：在一个窗口中使用本地 Shell、SSH、SFTP、隧道、串口、Telnet 和 Mosh。",

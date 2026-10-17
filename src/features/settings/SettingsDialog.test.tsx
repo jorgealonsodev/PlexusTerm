@@ -5,9 +5,13 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
 import packageJson from "../../../package.json";
-import { DEFAULT_SETTINGS } from "./settings";
+import { DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/plugin-opener", () => opener);
+/** What `update_check` answers (a function so a test can make it fail). */
+const updates = vi.hoisted(() => ({ check: async (): Promise<unknown> => ({ current: "0.1.2", latest: null }) }));
 /** The keyring of the AI key commands, by provider. */
 const keys = vi.hoisted(() => new Map<string, string>());
 /** What `ai_opencode_models` answers (a function so a test can make it fail). */
@@ -30,6 +34,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
     if (cmd === "ai_key_delete") keys.delete(args!.provider!);
     if (cmd === "history_load") return null;
+    if (cmd === "update_check") return updates.check();
     return null;
   }),
 }));
@@ -380,5 +385,59 @@ describe("SettingsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+J" });
     });
+  });
+});
+
+describe("Updates in About", () => {
+  const renderAbout = (patch: Partial<TerminalSettings> = {}) => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, ...patch }} onSave={onSave} onCancel={vi.fn()} initialSection="about" />);
+    return onSave;
+  };
+  const checkNow = () => fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+
+  it("says when PlexusTerm is up to date", async () => {
+    renderAbout();
+    checkNow();
+    expect(screen.getByRole("status").textContent).toBe("Checking for updates…");
+    expect(await screen.findByText("PlexusTerm is up to date (0.1.2).")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
+  });
+
+  it("offers the download page of a newer release", async () => {
+    updates.check = async () => ({
+      current: "0.1.2",
+      latest: { version: "0.2.0", notes: "Fixes.", url: "https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0" },
+    });
+    onTestFinished(() => {
+      updates.check = async () => ({ current: "0.1.2", latest: null });
+      opener.openUrl.mockClear();
+    });
+    renderAbout();
+    checkNow();
+    expect(await screen.findByText("PlexusTerm 0.2.0 is available.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(opener.openUrl).toHaveBeenCalledWith("https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0");
+  });
+
+  it("shows why a check failed", async () => {
+    updates.check = async () => {
+      throw "GitHub answered 503";
+    };
+    onTestFinished(() => {
+      updates.check = async () => ({ current: "0.1.2", latest: null });
+    });
+    renderAbout();
+    checkNow();
+    expect(await screen.findByText("Could not check for updates: GitHub answered 503")).toBeTruthy();
+  });
+
+  it("saves the startup check choice", () => {
+    const onSave = renderAbout();
+    const box = screen.getByLabelText("Check for updates at startup") as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, checkUpdates: false });
   });
 });

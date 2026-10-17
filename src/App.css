@@ -919,6 +919,22 @@ textarea::placeholder {
   color: var(--muted);
 }
 
+.notice__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.notice--update {
+  color: var(--text);
+  background: var(--surface);
+  border-bottom: 1px solid var(--accent);
+}
+
+.settings__updates {
+  display: flex;
+  gap: 8px;
+}
+
 .notice {
   display: flex;
   align-items: center;
