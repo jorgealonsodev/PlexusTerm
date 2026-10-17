@@ -117,6 +117,20 @@ describe("Resizable sidebar", () => {
     expect(saved().map((s) => s.sidebarWidth)).toEqual([null]);
   });
 
+  it("keeps following the pointer when it leaves the handle, and blocks text selection while dragging", async () => {
+    await renderApp();
+    fireEvent.pointerDown(handle(), { pointerId: 1, clientX: 240 });
+    expect(document.body.classList.contains("is-resizing")).toBe(true);
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 450 });
+    expect(sidebar()?.style.width).toBe("450px");
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 450 });
+    expect(document.body.classList.contains("is-resizing")).toBe(false);
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 300 });
+    expect(sidebar()?.style.width).toBe("450px");
+    await flush();
+    expect(saved().map((s) => s.sidebarWidth)).toEqual([450]);
+  });
+
   it("has no resize handle while folded", async () => {
     await renderApp({ sidebarCollapsed: true });
     expect(screen.queryByRole("separator", { name: "Resize sidebar" })).toBeNull();

@@ -1,5 +1,5 @@
 import { ArrowLeftRight, FolderTree, Keyboard, Star, type LucideIcon } from "lucide-react";
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useT } from "../../i18n/i18n";
 import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, clampSidebarWidth } from "../settings/settings";
 
@@ -44,32 +44,52 @@ export function Sidebar({
   const asideRef = useRef<HTMLElement>(null);
   /** Width while the edge is being dragged; the setting is written only when the drag ends. */
   const [dragged, setDragged] = useState<number | null>(null);
-  const dragging = useRef(false);
+  /** Ends the drag in progress (removes its window listeners); null when not dragging. */
+  const stopDrag = useRef<(() => void) | null>(null);
   const shown: SidebarView = view === "sftp" && !sftpAvailable ? "sessions" : view;
   const shownWidth = dragged ?? width;
+  // An unmount in the middle of a drag must not leave listeners or the no-selection class behind.
+  useEffect(() => () => stopDrag.current?.(), []);
 
-  const widthAt = (e: PointerEvent<HTMLDivElement>) => {
-    const bounds = asideRef.current?.getBoundingClientRect();
-    if (!bounds) return null;
-    const rtl = document.documentElement.dir === "rtl";
-    return clampSidebarWidth(rtl ? bounds.right - e.clientX : e.clientX - bounds.left);
-  };
-  const startDrag = (e: PointerEvent<HTMLDivElement>) => {
+  /**
+   * Follows the pointer over the whole window, not just the thin handle: a fast move leaves the
+   * handle, and WebKitGTK may give the events to a text selection instead. Text selection is
+   * blocked while dragging; the setting is written once, when the button is released.
+   */
+  const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    dragging.current = true;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const moveDrag = (e: PointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    const next = widthAt(e);
-    if (next !== null) setDragged(next);
-  };
-  const endDrag = (e: PointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    if (dragged !== null) onWidthChange(dragged);
-    setDragged(null);
+    stopDrag.current?.();
+    let latest: number | null = null;
+    const widthAt = (clientX: number) => {
+      const bounds = asideRef.current?.getBoundingClientRect();
+      if (!bounds) return null;
+      const rtl = document.documentElement.dir === "rtl";
+      return clampSidebarWidth(rtl ? bounds.right - clientX : clientX - bounds.left);
+    };
+    const move = (ev: PointerEvent) => {
+      const next = widthAt(ev.clientX);
+      if (next === null) return;
+      latest = next;
+      setDragged(next);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      document.body.classList.remove("is-resizing");
+      stopDrag.current = null;
+      setDragged(null);
+    };
+    const finish = () => {
+      const width = latest;
+      end();
+      if (width !== null) onWidthChange(width);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    document.body.classList.add("is-resizing");
+    stopDrag.current = end;
   };
 
   const tab = (id: SidebarView, label: string, Icon: LucideIcon, disabled = false) => (
@@ -127,9 +147,6 @@ export function Sidebar({
           title={t("app.sidebar.resizeHint")}
           className="sidebar__resizer"
           onPointerDown={startDrag}
-          onPointerMove={moveDrag}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
           onDoubleClick={() => onWidthChange(null)}
         />
       )}
