@@ -740,6 +740,8 @@ function AppContent() {
             onViewChange={setSidebarView}
             collapsed={settings.sidebarCollapsed}
             onExpand={() => terminalSettings.update({ sidebarCollapsed: false })}
+            width={settings.sidebarWidth}
+            onWidthChange={(sidebarWidth) => terminalSettings.update({ sidebarWidth })}
             sftpAvailable={sftpSessionId !== null}
             sftp={
               activeTab &&

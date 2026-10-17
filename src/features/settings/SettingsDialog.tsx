@@ -397,6 +397,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       sidebarHideWhenCollapsed,
       localShell: cleanLocalShell(localShell),
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
+      sidebarWidth: settings.sidebarWidth,
       language,
     });
   };

@@ -94,5 +94,7 @@ export const app: Messages<typeof en> = {
     tunnels: "Tunnel",
     macros: "Makros",
     sftpUnavailable: "Verfügbar, wenn der aktive Bereich des aktuellen Tabs eine verbundene SSH-Sitzung ist",
+    resize: "Breite der Seitenleiste ändern",
+    resizeHint: "Ziehen, um die Breite der Seitenleiste zu ändern; Doppelklick stellt die Standardbreite wieder her",
   },
 };

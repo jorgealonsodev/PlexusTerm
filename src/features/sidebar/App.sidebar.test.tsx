@@ -33,7 +33,7 @@ async function renderApp(settings: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 const ctrlShiftB = () => act(() => void fireEvent.keyDown(window, { key: "B", ctrlKey: true, shiftKey: true }));
-const sidebar = () => document.querySelector("aside.sidebar");
+const sidebar = () => document.querySelector<HTMLElement>("aside.sidebar");
 const sessionsPanelShown = () => screen.queryByText("Saved sessions") !== null;
 const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
@@ -85,5 +85,40 @@ describe("Collapsible sidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await flush();
     expect(saved().slice(-1)[0]).toMatchObject({ sidebarHideWhenCollapsed: true, sidebarCollapsed: false });
+  });
+});
+
+describe("Resizable sidebar", () => {
+  const handle = () => screen.getByRole("separator", { name: "Resize sidebar" });
+
+  it("drags its edge to a new width, within 160..640 px, and remembers it when the drag ends", async () => {
+    await renderApp();
+    expect(sidebar()?.style.width).toBe("");
+    fireEvent.pointerDown(handle(), { pointerId: 1, clientX: 240 });
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 320 });
+    expect(sidebar()?.style.width).toBe("320px");
+    await flush();
+    expect(saved()).toEqual([]);
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 2000 });
+    expect(sidebar()?.style.width).toBe("640px");
+    fireEvent.pointerUp(handle(), { pointerId: 1, clientX: 2000 });
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 100 });
+    expect(sidebar()?.style.width).toBe("640px");
+    await flush();
+    expect(saved().map((s) => s.sidebarWidth)).toEqual([640]);
+  });
+
+  it("starts with the remembered width; a double-click on the edge goes back to the default width", async () => {
+    await renderApp({ sidebarWidth: 400 });
+    expect(sidebar()?.style.width).toBe("400px");
+    fireEvent.doubleClick(handle());
+    expect(sidebar()?.style.width).toBe("");
+    await flush();
+    expect(saved().map((s) => s.sidebarWidth)).toEqual([null]);
+  });
+
+  it("has no resize handle while folded", async () => {
+    await renderApp({ sidebarCollapsed: true });
+    expect(screen.queryByRole("separator", { name: "Resize sidebar" })).toBeNull();
   });
 });
