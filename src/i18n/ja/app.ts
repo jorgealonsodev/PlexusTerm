@@ -87,6 +87,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} を閉じる",
     newLocal: "新しいローカルターミナル",
   },
+  update: {
+    available: "PlexusTerm {version} が利用可能です。",
+    download: "ダウンロード",
+    close: "更新のお知らせを閉じる",
+  },
   sidebar: {
     label: "サイドバー",
     sessions: "セッション",

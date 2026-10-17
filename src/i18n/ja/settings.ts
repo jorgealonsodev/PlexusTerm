@@ -101,6 +101,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "クリックして変更します。",
   },
   about: {
+    checkUpdates: "更新を確認",
+    checking: "更新を確認しています…",
+    upToDate: "PlexusTerm は最新です ({version})。",
+    available: "PlexusTerm {version} が利用可能です。",
+    download: "ダウンロード",
+    checkFailed: "更新を確認できませんでした: {error}",
+    checkAtStartup: "起動時に更新を確認",
+    checkHelp: "PlexusTerm の起動時に GitHub で最新の公開リリースを確認します。何もダウンロード・インストールしません。ダウンロードはリリースページを開きます。",
     version: "バージョン {version}",
     description:
       "Linux と Windows 向けのターミナル兼リモートセッションマネージャーです。ローカルシェル、SSH、SFTP、トンネル、シリアル、Telnet、Mosh を 1 つのウィンドウで利用できます。",

@@ -99,6 +99,14 @@ export const settings = {
     shortcutIdle: "Click the field to change it.",
   },
   about: {
+    checkUpdates: "Check for updates",
+    checking: "Checking for updates…",
+    upToDate: "PlexusTerm is up to date ({version}).",
+    available: "PlexusTerm {version} is available.",
+    download: "Download",
+    checkFailed: "Could not check for updates: {error}",
+    checkAtStartup: "Check for updates at startup",
+    checkHelp: "Asks GitHub for the latest published release when PlexusTerm starts. Nothing is downloaded or installed: Download opens the release page.",
     version: "Version {version}",
     description:
       "A terminal and remote-session manager for Linux and Windows: local shells, SSH, SFTP, tunnels, serial, Telnet and Mosh in one window.",

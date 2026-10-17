@@ -89,6 +89,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "Fermer {title}",
     newLocal: "Nouveau terminal local",
   },
+  update: {
+    available: "PlexusTerm {version} est disponible.",
+    download: "Télécharger",
+    close: "Fermer l'avis de mise à jour",
+  },
   sidebar: {
     label: "Barre latérale",
     sessions: "Sessions",

@@ -91,6 +91,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "إغلاق {title}",
     newLocal: "طرفية محلية جديدة",
   },
+  update: {
+    available: "يتوفر PlexusTerm {version}.",
+    download: "تنزيل",
+    close: "إغلاق إشعار التحديث",
+  },
   sidebar: {
     label: "الشريط الجانبي",
     sessions: "الجلسات",

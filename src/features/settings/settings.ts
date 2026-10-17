@@ -61,6 +61,8 @@ export interface TerminalSettings {
   localShellArgs: string;
   /** Width in px dragged by the user; null keeps the default width of each sidebar tab. */
   sidebarWidth: number | null;
+  /** Ask GitHub for a newer release when PlexusTerm starts. */
+  checkUpdates: boolean;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
 }
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   localShell: "",
   localShellArgs: "",
   sidebarWidth: null,
+  checkUpdates: true,
   language: "system",
 };
 
@@ -202,6 +205,7 @@ export function parseSettings(json: string | null): TerminalSettings {
       typeof value.sidebarWidth === "number" && Number.isFinite(value.sidebarWidth)
         ? clampSidebarWidth(value.sidebarWidth)
         : d.sidebarWidth,
+    checkUpdates: bool(value.checkUpdates, d.checkUpdates),
     language: isLanguageSetting(value.language) ? value.language : d.language,
   };
 }

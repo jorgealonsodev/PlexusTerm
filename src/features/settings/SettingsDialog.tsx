@@ -13,6 +13,7 @@ import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { ShellPicker } from "../terminal/ShellPicker";
+import { checkForUpdate, type Release } from "../updates/updates";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
 import {
   cleanLocalShell,
@@ -327,6 +328,22 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
+  const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
+  const [updateState, setUpdateState] = useState<
+    | { state: "idle" }
+    | { state: "checking" }
+    | { state: "upToDate"; current: string }
+    | { state: "available"; release: Release }
+    | { state: "failed"; error: string }
+  >({ state: "idle" });
+  const checkNow = () => {
+    setUpdateState({ state: "checking" });
+    checkForUpdate()
+      .then(({ current, latest }) =>
+        setUpdateState(latest ? { state: "available", release: latest } : { state: "upToDate", current }),
+      )
+      .catch((error: string) => setUpdateState({ state: "failed", error }));
+  };
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
@@ -398,6 +415,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       localShell: cleanLocalShell(localShell),
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
       sidebarWidth: settings.sidebarWidth,
+      checkUpdates,
       language,
     });
   };
@@ -668,6 +686,32 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
               <p>{t("settings.about.version", { version: APP_VERSION })}</p>
               <p className="muted">{t("settings.about.description")}</p>
+              <div className="settings__updates">
+                <button type="button" className="btn" disabled={updateState.state === "checking"} onClick={checkNow}>
+                  {t("settings.about.checkUpdates")}
+                </button>
+                {updateState.state === "available" && (
+                  <button type="button" className="btn btn--primary" onClick={(e) => openLink(e, updateState.release.url)}>
+                    {t("settings.about.download")}
+                  </button>
+                )}
+              </div>
+              {updateState.state !== "idle" && (
+                <p role="status">
+                  {updateState.state === "checking"
+                    ? t("settings.about.checking")
+                    : updateState.state === "upToDate"
+                      ? t("settings.about.upToDate", { version: updateState.current })
+                      : updateState.state === "available"
+                        ? t("settings.about.available", { version: updateState.release.version })
+                        : t("settings.about.checkFailed", { error: updateState.error })}
+                </p>
+              )}
+              <label className="check">
+                <input type="checkbox" checked={checkUpdates} onChange={(e) => setCheckUpdates(e.target.checked)} />
+                {t("settings.about.checkAtStartup")}
+              </label>
+              <p className="muted">{t("settings.about.checkHelp")}</p>
               <p>
                 <a href={REPO_URL} onClick={(e) => openLink(e, REPO_URL)}>
                   github.com/jorgealonsodev/PlexusTerm

@@ -101,6 +101,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "변경하려면 필드를 클릭하십시오.",
   },
   about: {
+    checkUpdates: "업데이트 확인",
+    checking: "업데이트 확인 중…",
+    upToDate: "PlexusTerm이 최신 버전입니다 ({version}).",
+    available: "PlexusTerm {version}을(를) 사용할 수 있습니다.",
+    download: "다운로드",
+    checkFailed: "업데이트를 확인할 수 없습니다: {error}",
+    checkAtStartup: "시작할 때 업데이트 확인",
+    checkHelp: "PlexusTerm을 시작할 때 GitHub에서 최신 공개 릴리스를 확인합니다. 아무것도 다운로드하거나 설치하지 않으며, 다운로드는 릴리스 페이지를 엽니다.",
     version: "버전 {version}",
     description:
       "Linux 및 Windows용 터미널 겸 원격 세션 관리자: 로컬 셸, SSH, SFTP, 터널, 직렬, Telnet, Mosh를 한 창에서 사용합니다.",

@@ -12,6 +12,7 @@ mod telnet;
 mod terminal;
 mod tools;
 mod tunnels;
+mod updates;
 
 use mosh::{MoshLauncher, MoshRequest};
 use pty::{PtyError, PtyManager, SpawnRequest};
@@ -98,6 +99,12 @@ async fn wol_send(mac: String, broadcast: Option<String>, port: Option<u16>) -> 
 #[tauri::command]
 fn shells() -> platform::Shells {
     platform::shells()
+}
+
+/// Whether a newer PlexusTerm release is published on GitHub (the app only links to it).
+#[tauri::command]
+async fn update_check() -> Result<updates::UpdateCheck, String> {
+    updates::check().await
 }
 
 /// `"linux"`, `"windows"` or `"macos"`, so the frontend can adapt platform-specific texts.
@@ -449,6 +456,7 @@ pub fn run() {
             serial_list_ports,
             platform,
             shells,
+            update_check,
             serial_open,
             serial_write,
             serial_close,

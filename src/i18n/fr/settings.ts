@@ -101,6 +101,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "Cliquez sur le champ pour le modifier.",
   },
   about: {
+    checkUpdates: "Rechercher des mises à jour",
+    checking: "Recherche de mises à jour…",
+    upToDate: "PlexusTerm est à jour ({version}).",
+    available: "PlexusTerm {version} est disponible.",
+    download: "Télécharger",
+    checkFailed: "Impossible de rechercher des mises à jour : {error}",
+    checkAtStartup: "Rechercher des mises à jour au démarrage",
+    checkHelp: "Demande à GitHub la dernière version publiée au démarrage de PlexusTerm. Rien n'est téléchargé ni installé : Télécharger ouvre la page de la version.",
     version: "Version {version}",
     description:
       "Un gestionnaire de terminaux et de sessions distantes pour Linux et Windows : shells locaux, SSH, SFTP, tunnels, série, Telnet et Mosh dans une seule fenêtre.",

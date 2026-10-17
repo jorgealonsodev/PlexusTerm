@@ -89,6 +89,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "Fechar {title}",
     newLocal: "Novo terminal local",
   },
+  update: {
+    available: "O PlexusTerm {version} está disponível.",
+    download: "Baixar",
+    close: "Fechar o aviso de atualização",
+  },
   sidebar: {
     label: "Barra lateral",
     sessions: "Sessões",

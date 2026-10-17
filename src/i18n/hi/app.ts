@@ -87,6 +87,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} बंद करें",
     newLocal: "नया लोकल टर्मिनल",
   },
+  update: {
+    available: "PlexusTerm {version} उपलब्ध है।",
+    download: "डाउनलोड करें",
+    close: "अपडेट सूचना बंद करें",
+  },
   sidebar: {
     label: "साइडबार",
     sessions: "सेशन",

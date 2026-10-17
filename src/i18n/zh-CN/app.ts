@@ -86,6 +86,11 @@ export const app: Messages<typeof en> = {
     closeNamed: "关闭 {title}",
     newLocal: "新建本地终端",
   },
+  update: {
+    available: "PlexusTerm {version} 已发布。",
+    download: "下载",
+    close: "关闭更新通知",
+  },
   sidebar: {
     label: "侧边栏",
     sessions: "会话",

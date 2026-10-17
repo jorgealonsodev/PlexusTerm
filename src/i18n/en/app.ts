@@ -85,6 +85,11 @@ export const app = {
     closeNamed: "Close {title}",
     newLocal: "New local terminal",
   },
+  update: {
+    available: "PlexusTerm {version} is available.",
+    download: "Download",
+    close: "Close the update notice",
+  },
   sidebar: {
     label: "Sidebar",
     sessions: "Sessions",

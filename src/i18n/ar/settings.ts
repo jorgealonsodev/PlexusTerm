@@ -101,6 +101,14 @@ export const settings: Messages<typeof en> = {
     shortcutIdle: "انقر الحقل لتغييره.",
   },
   about: {
+    checkUpdates: "التحقق من التحديثات",
+    checking: "جارٍ التحقق من التحديثات…",
+    upToDate: "PlexusTerm محدَّث ({version}).",
+    available: "يتوفر PlexusTerm {version}.",
+    download: "تنزيل",
+    checkFailed: "تعذر التحقق من التحديثات: {error}",
+    checkAtStartup: "التحقق من التحديثات عند البدء",
+    checkHelp: "يسأل GitHub عن أحدث إصدار منشور عند بدء PlexusTerm. لا يُنزَّل أو يُثبَّت أي شيء: يفتح تنزيل صفحة الإصدار.",
     version: "الإصدار {version}",
     description:
       "طرفية ومدير جلسات بعيدة لنظامي Linux وWindows: صدفات محلية وSSH وSFTP وأنفاق واتصال تسلسلي وTelnet وMosh في نافذة واحدة.",
