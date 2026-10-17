@@ -40,6 +40,7 @@ export const ai: Messages<typeof en> = {
     attachedFile: "Arquivo anexado {name}",
     fileTruncated: "(primeiros 64 KB)",
     removeFile: "Remover {name}",
+    explainAttached: "Explique isto.",
     input: "Sua pergunta",
     placeholder: "Pergunte o que quiser…",
     send: "Enviar",

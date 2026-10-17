@@ -40,6 +40,7 @@ export const ai: Messages<typeof en> = {
     attachedFile: "附加文件 {name}",
     fileTruncated: "(前 64 KB)",
     removeFile: "移除 {name}",
+    explainAttached: "请解释这个。",
     input: "您的问题",
     placeholder: "随便问…",
     send: "发送",

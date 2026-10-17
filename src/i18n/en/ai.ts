@@ -38,6 +38,7 @@ export const ai = {
     attachedFile: "Attached file {name}",
     fileTruncated: "(first 64 KB)",
     removeFile: "Remove {name}",
+    explainAttached: "Explain this.",
     input: "Your question",
     placeholder: "Ask anything…",
     send: "Send",

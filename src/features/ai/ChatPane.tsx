@@ -208,7 +208,9 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
   }, [turns]);
 
   const send = () => {
-    const question = input.trim();
+    // With only a selection or files attached, the question asks to explain them (L13).
+    const attachedOnly = !input.trim() && (chip !== "" || files.length > 0);
+    const question = attachedOnly ? t("ai.chat.explainAttached") : input.trim();
     if (!question || loading || keyMissing) return;
     const mine = ++seq.current;
     const id = nextId.current++;
@@ -391,7 +393,7 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
             {t("common.stop")}
           </button>
         ) : (
-          <button type="button" className="btn btn--primary" disabled={!input.trim() || keyMissing} onClick={send}>
+          <button type="button" className="btn btn--primary" disabled={(!input.trim() && !chip && files.length === 0) || keyMissing} onClick={send}>
             {t("ai.chat.send")}
           </button>
         )}

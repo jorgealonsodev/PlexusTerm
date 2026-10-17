@@ -40,6 +40,7 @@ export const ai: Messages<typeof en> = {
     attachedFile: "첨부 파일 {name}",
     fileTruncated: "(처음 64KB)",
     removeFile: "{name} 제거",
+    explainAttached: "이것을 설명해 주세요.",
     input: "질문 입력",
     placeholder: "무엇이든 물어보십시오…",
     send: "보내기",

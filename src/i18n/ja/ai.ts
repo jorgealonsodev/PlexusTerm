@@ -40,6 +40,7 @@ export const ai: Messages<typeof en> = {
     attachedFile: "添付ファイル {name}",
     fileTruncated: "(先頭 64 KB)",
     removeFile: "{name} を削除",
+    explainAttached: "これを説明してください。",
     input: "質問",
     placeholder: "何でも質問…",
     send: "送信",

@@ -569,6 +569,21 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("permission denied");
   });
 
+  it("sends an attached selection alone, asking to explain it (L13)", async () => {
+    answers.ai_assist = () => ({ answer: "It is the license notice.", command: null });
+    await renderApp();
+    pane.selection = "NO WARRANTY";
+    pressShortcut();
+    const send = within(chat()).getByRole("button", { name: "Send" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+    await settle();
+    expect(calls("ai_assist").map((c) => c.request as { prompt: string; selection: string })).toEqual([
+      expect.objectContaining({ prompt: "Explain this.", selection: "NO WARRANTY" }),
+    ]);
+    expect(send.disabled).toBe(true);
+  });
+
   it("sends no selection once its chip is removed, and cuts it to 2000 characters", async () => {
     answers.ai_assist = () => ({ answer: "ok", command: null });
     await renderApp();
