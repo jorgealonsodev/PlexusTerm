@@ -10,7 +10,7 @@ export function FileTypeIcon({ name, kind, open = false }: { name: string; kind:
   const style = color ? ({ "--icon-dark": color.dark, "--icon-light": color.light } as CSSProperties) : undefined;
   return (
     <span className="sftp-row__icon file-icon" data-icon={id} style={style} aria-hidden="true">
-      <Icon size={15} strokeWidth={1.75} />
+      <Icon size={15} strokeWidth={2} />
     </span>
   );
 }

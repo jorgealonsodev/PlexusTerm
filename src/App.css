@@ -896,13 +896,18 @@ body.is-resizing {
   font-size: 12px;
 }
 
-/* File-type icons keep their own colour (dark or light scheme), not the git status colour. */
+/* File-type icons keep their own colour (dark or light scheme), not the git status colour; icons
+   without one (folders, plain files) take the text colour, a little softened. */
 .file-icon {
-  color: var(--icon-dark, var(--muted));
+  color: var(--icon-dark, var(--text));
+}
+
+.file-icon:not([style]) {
+  opacity: 0.8;
 }
 
 :root[data-theme="light"] .file-icon {
-  color: var(--icon-light, var(--muted));
+  color: var(--icon-light, var(--text));
 }
 
 .sftp-row__name {
@@ -961,7 +966,8 @@ body.is-resizing {
   text-align: center;
 }
 
-.sftp-row--faded {
+/* Ignored entries fade their name and badge; the type icon keeps its colour. */
+.sftp-row--faded > :not(.file-icon) {
   opacity: 0.6;
 }
 
