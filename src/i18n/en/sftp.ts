@@ -9,6 +9,11 @@ export const sftp = {
     newFile: "New file",
     download: "Download",
     follow: "Follow terminal folder",
+    workspace: {
+      add: "Add folder",
+      choose: "Add a folder to the workspace",
+      remove: "Remove folder from workspace",
+    },
     empty: "This folder is empty.",
     hint: "Click a folder to expand it in place; double-click it to list it from there. Double-click a file to download it. The arrow keys move and open or close folders. Right-click an entry for more options; middle-click it to type its path in the terminal. Drop files here to upload them.",
   },

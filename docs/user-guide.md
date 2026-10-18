@@ -180,6 +180,7 @@ In [DEV mode](#dev-mode) the Explorer and the SFTP browser start at the project 
 - With the keyboard: **↓** / **↑** move between entries, **→** expands a folder or moves into it, **←** collapses it or moves to its parent folder, and **Enter** opens a file or expands a folder.
 - Each entry has an icon for its type (folders, source code by language, configuration, text, images, archives, keys and certificates, `Dockerfile`, `package.json`, `README`, ...), coloured like VS Code's usual icon themes.
 - Inside a git repository, entries show their git status (below).
+- **Add folder** (Explorer only) adds another folder to the tab's workspace, as in a VS Code workspace: it shows under the main folder as a root of its own, with its name as a title that folds it, its own tree and its own git status, and a **×** that removes it from the workspace (the folder itself is not touched). The added folders belong to that tab and are kept while it is open.
 
 #### Git status in file lists
 

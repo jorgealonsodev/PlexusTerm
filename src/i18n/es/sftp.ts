@@ -11,6 +11,11 @@ export const sftp: Messages<typeof en> = {
     newFile: "Nuevo archivo",
     download: "Descargar",
     follow: "Seguir la carpeta del terminal",
+    workspace: {
+      add: "Añadir carpeta",
+      choose: "Añadir una carpeta al área de trabajo",
+      remove: "Quitar la carpeta del área de trabajo",
+    },
     empty: "Esta carpeta está vacía.",
     hint: "Haz clic en una carpeta para desplegarla en el sitio; con doble clic se lista desde ella. Haz doble clic en un archivo para descargarlo. Las flechas mueven la selección y abren o cierran carpetas. Haz clic derecho en un elemento para ver más opciones; con el clic central se escribe su ruta en el terminal. Suelta archivos aquí para subirlos.",
   },

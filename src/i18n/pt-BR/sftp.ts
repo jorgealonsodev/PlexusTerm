@@ -11,6 +11,11 @@ export const sftp: Messages<typeof en> = {
     newFile: "Novo arquivo",
     download: "Baixar",
     follow: "Acompanhar a pasta do terminal",
+    workspace: {
+      add: "Adicionar pasta",
+      choose: "Adicionar uma pasta ao espaço de trabalho",
+      remove: "Remover a pasta do espaço de trabalho",
+    },
     empty: "Esta pasta está vazia.",
     hint: "Clique em uma pasta para expandi-la no lugar; com clique duplo, a lista passa a partir dela. Clique duas vezes em um arquivo para baixá-lo. As setas movem a seleção e abrem ou fecham pastas. Clique com o botão direito em um item para mais opções; o clique do meio digita o caminho no terminal. Solte arquivos aqui para enviá-los.",
   },

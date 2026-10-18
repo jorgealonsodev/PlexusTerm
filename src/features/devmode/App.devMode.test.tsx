@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import App from "../../App";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import type { AttentionNotice } from "../terminal/attention";
@@ -285,6 +286,21 @@ describe("DEV mode (S10, S13)", () => {
     expect(tabs[2].getAttribute("aria-selected")).toBe("true");
     expect(devOn()).toBe(true);
     expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
+  });
+
+  it("keeps the folders added to a DEV tab's workspace with that tab", async () => {
+    await renderApp();
+    await run("claude");
+    vi.mocked(open).mockResolvedValueOnce("/tmp");
+    fireEvent.click(await screen.findByRole("button", { name: "Add folder" }));
+    const added = await screen.findByRole("group", { name: "tmp" });
+    expect(await within(added).findByText("scratch.txt")).toBeTruthy();
+    // Another tab has its own (empty) workspace; back on the first one, the folder is still there.
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    expect(screen.queryByRole("group", { name: "tmp" })).toBeNull();
+    fireEvent.mouseDown(within(tabBar()).getAllByRole("tab")[0], { button: 0 });
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
   });
 
   it("is toggled by its shortcut once one is set", async () => {

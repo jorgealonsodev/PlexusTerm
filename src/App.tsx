@@ -315,6 +315,8 @@ function AppContent() {
   const [chatDrops] = useState(() => createTargetRegistry<ChatTarget>());
   const [aiLimit] = useState(() => createAiLimiter());
   const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
+  /** Folders added to each DEV tab's workspace, by tab key (VS Code-style roots in the Explorer). */
+  const [workspaceFolders, setWorkspaceFolders] = useState<Record<string, string[]>>({});
   /** Bumped on every assistant open: a new key restarts the X's spin (S5); 0 = not spinning. */
   const [spin, setSpin] = useState(0);
   const platform = usePlatform();
@@ -375,6 +377,11 @@ function AppContent() {
       return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
     });
     forgetChatsExcept(open);
+    const tabKeys = new Set(state.tabs.map((t) => t.key));
+    setWorkspaceFolders((prev) => {
+      const keys = Object.keys(prev).filter((key) => tabKeys.has(key));
+      return keys.length === Object.keys(prev).length ? prev : Object.fromEntries(keys.map((key) => [key, prev[key]]));
+    });
   }, [state.tabs, forgetDev]);
   // The conversations belong to this window's terminals.
   useEffect(() => () => forgetChatsExcept(new Set()), []);
@@ -1138,6 +1145,16 @@ function AppContent() {
                   follow={followLocalCwd}
                   startAt={activeDev ? devAnchor : null}
                   onFollowChange={setFollowLocalCwd}
+                  workspace={{
+                    folders: workspaceFolders[activeTab.key] ?? [],
+                    onAdd: (folder) =>
+                      setWorkspaceFolders((prev) => ({ ...prev, [activeTab.key]: [...(prev[activeTab.key] ?? []), folder] })),
+                    onRemove: (folder) =>
+                      setWorkspaceFolders((prev) => ({
+                        ...prev,
+                        [activeTab.key]: (prev[activeTab.key] ?? []).filter((f) => f !== folder),
+                      })),
+                  }}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {

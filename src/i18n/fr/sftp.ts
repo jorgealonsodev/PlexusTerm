@@ -11,6 +11,11 @@ export const sftp: Messages<typeof en> = {
     newFile: "Nouveau fichier",
     download: "Télécharger",
     follow: "Suivre le dossier du terminal",
+    workspace: {
+      add: "Ajouter un dossier",
+      choose: "Ajouter un dossier à l’espace de travail",
+      remove: "Retirer le dossier de l’espace de travail",
+    },
     empty: "Ce dossier est vide.",
     hint: "Cliquez sur un dossier pour le déplier sur place ; un double-clic liste à partir de lui. Double-cliquez sur un fichier pour le télécharger. Les flèches déplacent la sélection et ouvrent ou ferment les dossiers. Clic droit sur un élément pour plus d’options ; un clic du milieu écrit son chemin dans le terminal. Déposez des fichiers ici pour les envoyer.",
   },

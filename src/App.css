@@ -2398,3 +2398,57 @@ body.is-dragging-path {
   line-height: 1;
 }
 
+
+/* A folder added to the DEV mode workspace: a root title like VS Code's, then its own tree. */
+.workspace-folder {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+.workspace-folder__header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workspace-folder__toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.workspace-folder__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-folder__remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.workspace-folder__remove:hover {
+  background: var(--hover, color-mix(in srgb, var(--text) 10%, transparent));
+  color: var(--text);
+}

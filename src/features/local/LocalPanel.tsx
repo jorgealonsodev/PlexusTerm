@@ -11,12 +11,13 @@ import { PermissionsDialog } from "../sftp/PermissionsDialog";
 import { PropertiesDialog } from "../sftp/PropertiesDialog";
 import type { OpenWith, SftpEntry } from "../sftp/sftpClient";
 import { describeLocalError, local } from "./localClient";
-import { isRoot, joinPath, parentPath, validName } from "./localPath";
+import { basename, isRoot, joinPath, parentPath, validName } from "./localPath";
 import { HelpTip } from "../sidebar/HelpTip";
 import { FileTree } from "../files/FileTree";
 import { FlatFileList } from "../files/FlatFileList";
 import { indexGitStatus } from "../files/gitStatus";
 import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
+import { WorkspaceFolder } from "../files/WorkspaceFolder";
 
 interface LocalPanelProps {
   /** Folder of the active local terminal (OSC 7 or read from its shell); null while unknown. */
@@ -42,10 +43,18 @@ interface LocalPanelProps {
   startAt?: string | null;
   /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
   onOpenInTerminal?: (path: string) => void;
+  /** DEV mode's workspace: folders added under the main one, as roots of their own (like VS Code's). */
+  workspace?: Workspace;
+}
+
+export interface Workspace {
+  folders: readonly string[];
+  onAdd: (path: string) => void;
+  onRemove: (path: string) => void;
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, workspace }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -250,6 +259,22 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     subscribeOutput: git?.subscribeOutput,
   });
   const gitIndex = useMemo(() => indexGitStatus(gitEntries), [gitEntries]);
+  const gitOptions: GitStatusOptions = {
+    enabled: devStyle && (git?.enabled ?? false),
+    visible: git?.visible ?? false,
+    prompt: git?.prompt ?? 0,
+    loads,
+    subscribeOutput: git?.subscribeOutput,
+  };
+  const showWorkspace = devStyle && workspace !== undefined;
+
+  /** Adds a folder chosen in the system dialog to the workspace, once. */
+  const addFolder = async () => {
+    if (!workspace) return;
+    const dir = await open({ title: t("sftp.panel.workspace.choose"), multiple: false, directory: true }).catch(() => null);
+    if (typeof dir !== "string" || workspace.folders.includes(dir)) return;
+    workspace.onAdd(dir);
+  };
 
   /** A row's own handlers in either list style: menu, drag onto a terminal, middle click. */
   const rowProps = (entry: SftpEntry): LiHTMLAttributes<HTMLLIElement> => ({
@@ -317,6 +342,11 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
         <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)}>
           {t("common.delete")}
         </button>
+        {showWorkspace && (
+          <button className="btn btn--small" onClick={() => void addFolder()}>
+            {t("sftp.panel.workspace.add")}
+          </button>
+        )}
       </div>
       <label className="sftp__follow">
         <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
@@ -353,6 +383,24 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           rowProps={rowProps}
         />
       )}
+      {showWorkspace &&
+        workspace.folders.map((folder) => (
+          <WorkspaceFolder
+            key={folder}
+            path={folder}
+            name={basename(folder)}
+            list={listFolder}
+            readGit={readGit}
+            describeError={describeLocalError}
+            git={gitOptions}
+            selected={selected}
+            onSelect={setSelectedEntry}
+            onOpen={(entry) => void openEntry(entry)}
+            details={details}
+            rowProps={rowProps}
+            onRemove={() => workspace.onRemove(folder)}
+          />
+        ))}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
       {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
       {dialog?.kind === "permissions" && (

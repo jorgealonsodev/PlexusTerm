@@ -11,6 +11,11 @@ export const sftp: Messages<typeof en> = {
     newFile: "Neue Datei",
     download: "Herunterladen",
     follow: "Terminal-Ordner folgen",
+    workspace: {
+      add: "Ordner hinzufügen",
+      choose: "Ordner zum Arbeitsbereich hinzufügen",
+      remove: "Ordner aus dem Arbeitsbereich entfernen",
+    },
     empty: "Dieser Ordner ist leer.",
     hint: "Klicke auf einen Ordner, um ihn an Ort und Stelle aufzuklappen; ein Doppelklick listet ab ihm. Doppelklicke auf eine Datei, um sie herunterzuladen. Die Pfeiltasten bewegen die Auswahl und öffnen oder schließen Ordner. Rechtsklick auf einen Eintrag zeigt weitere Optionen; Mittelklick schreibt seinen Pfad ins Terminal. Lege Dateien hier ab, um sie hochzuladen.",
   },

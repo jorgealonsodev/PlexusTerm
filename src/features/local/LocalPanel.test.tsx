@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DialogProvider } from "../dialogs/DialogProvider";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { writeText } from "../terminal/clipboard";
+import { open } from "@tauri-apps/plugin-dialog";
 import { LocalPanel } from "./LocalPanel";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
@@ -395,3 +396,69 @@ describe("LocalPanel outside DEV mode", () => {
   });
 });
 
+describe("workspace folders in DEV mode", () => {
+  const listing = () =>
+    mocked.list.mockImplementation(async (path) => {
+      if (path === "/home/me") return [entry("src", "dir"), entry("notes.txt", "file")];
+      if (path === "/work/api") return [entry("server.ts", "file", "/work/api")];
+      return [];
+    });
+
+  it("adds a folder chosen in the system dialog, only in DEV mode", async () => {
+    vi.mocked(open).mockResolvedValue("/work/api");
+    const onAdd = vi.fn();
+    const { unmount } = render(panel({ workspace: { folders: [], onAdd, onRemove: () => {} } }));
+    await screen.findByText("notes.txt");
+    expect(screen.queryByRole("button", { name: "Add folder" })).toBeNull();
+    unmount();
+    render(panel({ devStyle: true, workspace: { folders: [], onAdd, onRemove: () => {} } }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith("/work/api"));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }));
+  });
+
+  it("does not add a folder when the dialog is cancelled or it is already there", async () => {
+    const onAdd = vi.fn();
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd, onRemove: () => {} } }));
+    await screen.findByText("notes.txt");
+    vi.mocked(open).mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    vi.mocked(open).mockResolvedValueOnce("/work/api");
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it("lists each added folder as another root with its own git status, and removes it", async () => {
+    listing();
+    mocked.gitStatus.mockImplementation(async (root) =>
+      root === "/work/api" ? [{ path: "server.ts", status: "modified" }] : [],
+    );
+    const onRemove = vi.fn();
+    render(
+      panel({
+        devStyle: true,
+        git: { enabled: true, visible: true, prompt: 0 },
+        workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove },
+      }),
+    );
+    const root = await screen.findByRole("group", { name: "api" });
+    expect(await within(root).findByText("server.ts")).toBeTruthy();
+    await waitFor(() => expect(within(root).getByText("server.ts").className).toContain("git--modified"));
+    expect(mocked.gitStatus).toHaveBeenCalledWith("/work/api");
+    // It folds like a VS Code workspace root.
+    fireEvent.click(within(root).getByRole("button", { name: "api" }));
+    expect(within(root).queryByText("server.ts")).toBeNull();
+    fireEvent.click(within(root).getByRole("button", { name: "Remove folder from workspace" }));
+    expect(onRemove).toHaveBeenCalledWith("/work/api");
+  });
+
+  it("shows no added folders outside DEV mode", async () => {
+    listing();
+    render(panel({ workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {} } }));
+    await screen.findByText("notes.txt");
+    expect(screen.queryByRole("group", { name: "api" })).toBeNull();
+  });
+});
