@@ -46,6 +46,8 @@ interface LocalPanelProps {
   startAt?: string | null;
   /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
   onOpenInTerminal?: (path: string) => void;
+  /** Shows a file in the file viewer next to the terminal; without it there is no View item. */
+  onView?: (path: string) => void;
   /** DEV mode's workspace: folders added under the main one, as roots of their own (like VS Code's). */
   workspace?: Workspace;
 }
@@ -59,7 +61,7 @@ export interface Workspace {
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, workspace }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -134,7 +136,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
 
   const openEntry = async (entry: SftpEntry) => {
     if (entry.kind === "dir") void navigate(entry.path, true);
-    else if (entry.kind === "file") openWith(entry, { kind: "default" });
+    // In DEV mode a file opens in the viewer, as in VS Code.
+    else if (entry.kind === "file") devStyle && onView ? onView(entry.path) : openWith(entry, { kind: "default" });
     // A symlink may point to a folder or a file: try to enter it first.
     else if (!(await navigate(entry.path, true))) {
       setError(null);
@@ -217,6 +220,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     const isFile = entry.kind !== "dir";
     const fileItems: ContextMenuItem[] = isFile
       ? [
+          ...(onView ? [{ label: t("sftp.menu.view"), onSelect: () => onView(entry.path) }] : []),
           {
             label: t("sftp.menu.openTextEditor"),
             onSelect: () => openWith(entry, textEditor ? { kind: "textEditor", command: textEditor } : { kind: "textEditor" }),

@@ -62,6 +62,9 @@ export const sftp = {
   discardCopies: (id: number) => invoke<void>("sftp_discard_copies", { id }),
   /** Git status of the files under a remote folder (one read-only git command); empty outside a repository. */
   gitStatus: (id: number, path: string) => invoke<GitStatusEntry[]>("ssh_git_status", { id, path }),
+  /** A remote text file for the file viewer (the first 4 MiB). */
+  viewText: (id: number, path: string) =>
+    invoke<{ path: string; content: string; truncated: boolean }>("sftp_view_text", { id, path }),
 };
 
 /** Text for an `sftp_*` rejection: `{ kind: "sftp", message }` or any `SshError`. */

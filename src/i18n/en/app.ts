@@ -116,6 +116,7 @@ export const app = {
     resizeHint: "Drag to change the sidebar width; double-click to restore the default width",
   },
   viewer: {
+    full: "This tab already has 4 panes: close one to view the file.",
     close: "Close viewer",
     loading: "Reading the file…",
     truncated: "Showing the first 4 MB of this file.",

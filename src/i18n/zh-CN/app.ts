@@ -116,6 +116,7 @@ export const app: Messages<typeof en> = {
     resizeHint: "拖动可更改侧边栏宽度；双击恢复默认宽度",
   },
   viewer: {
+    full: "此标签页已有 4 个窗格：关闭一个以查看文件。",
     close: "关闭查看器",
     loading: "正在读取文件…",
     truncated: "仅显示此文件的前 4 MB。",

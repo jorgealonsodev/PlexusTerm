@@ -46,12 +46,14 @@ interface SftpPanelProps {
   startAt?: string | null;
   /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
   onOpenInTerminal?: (path: string) => void;
+  /** Shows a file in the file viewer next to the terminal; without it there is no View item. */
+  onView?: (path: string) => void;
 }
 
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView }: SftpPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -165,7 +167,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
 
   const openEntry = async (entry: SftpEntry) => {
     if (entry.kind === "dir") void navigate(entry.path, true);
-    else if (entry.kind === "file") void download(entry);
+    // In DEV mode a file opens in the viewer, as in VS Code.
+    else if (entry.kind === "file") devStyle && onView ? onView(entry.path) : void download(entry);
     // A symlink may point to a folder or a file: try to enter it first.
     else if (!(await navigate(entry.path, true))) {
       setError(null);
@@ -280,6 +283,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     const isFile = entry.kind !== "dir";
     const fileItems: ContextMenuItem[] = isFile
       ? [
+          ...(onView ? [{ label: t("sftp.menu.view"), onSelect: () => onView(entry.path) }] : []),
           {
             label: t("sftp.menu.openTextEditor"),
             onSelect: () => editWith(entry, textEditor ? { kind: "textEditor", command: textEditor } : { kind: "textEditor" }),

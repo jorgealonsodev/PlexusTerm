@@ -22,6 +22,8 @@ export const local = {
   gitStatus: (path: string) => invoke<GitStatusEntry[]>("git_status", { path }),
   /** A text file's content (the first part of a long file). */
   readText: (path: string) => invoke<{ content: string }>("local_read_text", { path }).then((file) => file.content),
+  /** A text file for the file viewer (the first 4 MiB). */
+  viewText: (path: string) => invoke<{ path: string; content: string; truncated: boolean }>("local_view_text", { path }),
   /** Writes a text file, replacing it. */
   saveText: (path: string, contents: string) => invoke<void>("save_text_file", { path, contents }),
 };

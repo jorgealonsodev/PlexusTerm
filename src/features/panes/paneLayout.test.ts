@@ -22,6 +22,13 @@ describe("splitPane", () => {
     expect(paneIds(layout)).toEqual(["p1", "p2"]);
   });
 
+  it("can put the new pane before the old one (left of it, or above)", () => {
+    const layout = splitPane(leaf("p1"), "p1", "row", "p2", "before");
+    expect(layout).toMatchObject({ kind: "split", direction: "row", ratio: 0.5 });
+    expect(paneIds(layout)).toEqual(["p2", "p1"]);
+    expect(paneRects(layout).p2.x).toBe(0);
+  });
+
   it("splits a nested pane in place", () => {
     expect(paneIds(threePanes())).toEqual(["p1", "p2", "p3"]);
   });

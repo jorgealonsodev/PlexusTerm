@@ -61,6 +61,7 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 작업에 실패했습니다.",
   },
   menu: {
+    view: "보기",
     openInTerminal: "터미널에서 열기",
     openTextEditor: "기본 텍스트 편집기로 열기",
     openDefaultProgram: "기본 프로그램으로 열기",

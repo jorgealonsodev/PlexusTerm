@@ -57,7 +57,8 @@ import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
-import { chatAction, initialTabs, tabTitle, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
+import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type ViewerLink } from "./features/tabs/tabs";
+import { FileViewer } from "./features/viewer/FileViewer";
 import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
 import { createNotifier } from "./features/notifications/notifier";
@@ -174,7 +175,6 @@ const DEV_TARGETS: ReadonlySet<string> = new Set(["local", "ssh", "mosh"]);
 const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null, busy: false };
 
 /** The terminal pane a tab's focus stands for: an AI chat pane stands for its terminal (S9). */
-const terminalPaneOf = (tab: Tab) => tab.chats[tab.focusedPane]?.terminalPaneId ?? tab.focusedPane;
 
 const draftSession = (folder: string): SavedSession => ({
   kind: "ssh",
@@ -399,7 +399,7 @@ function AppContent() {
   }, [state.tabs, paneMeta, dev.state, toggleDev]);
   // SFTP and the followed folder belong to the focused pane of the active tab (S11.5); an AI
   // chat pane stands for its terminal (S9).
-  const activePane = activeTab ? (activeTab.chats[activeTab.focusedPane]?.terminalPaneId ?? activeTab.focusedPane) : null;
+  const activePane = activeTab ? terminalPaneOf(activeTab) : null;
   const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
   // DEV mode of the active tab (S10): its file lists stay at the project the CLI started in.
   const activeDev = activeTab ? dev.state[activeTab.key] : undefined;
@@ -467,7 +467,7 @@ function AppContent() {
 
   // Terminal panes only: AI chat panes never take part in multi-execution (S9).
   const allPanes: PaneInfo[] = state.tabs.flatMap((t) =>
-    paneIds(t.layout).filter((id) => !t.chats[id]).map((id) => ({
+    paneIds(t.layout).filter((id) => isTerminalPane(t, id)).map((id) => ({
       id,
       sessionId: paneMeta[id]?.sessionId ?? null,
       excluded: paneMeta[id]?.excluded ?? false,
@@ -756,7 +756,7 @@ function AppContent() {
    * machine runs `cd`; anything else types the quoted paths at the cursor.
    */
   const dropOnPane = (paneId: string, drag: PathDrag) => {
-    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && !t.chats[paneId]);
+    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && isTerminalPane(t, paneId));
     const pane = assistTargets.get(paneId);
     if (!tab || !pane) return;
     const { target } = tab;
@@ -778,7 +778,7 @@ function AppContent() {
    */
   const cdFromBrowser = (paneId: string | null, origin: PathOrigin, path: string, follow: boolean) => {
     if (!paneId || !follow || !terminalSettings.settings.terminalFollowsBrowser) return;
-    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && !t.chats[paneId]);
+    const tab = state.tabs.find((t) => paneIds(t.layout).includes(paneId) && isTerminalPane(t, paneId));
     const pane = assistTargets.get(paneId);
     if (!tab || !pane?.lineEmpty?.()) return;
     const action = dropAction([{ path, isDir: true }], {
@@ -795,6 +795,17 @@ function AppContent() {
    * Duplicate does, so it authenticates the same way) and changes to the folder once its shell is
    * ready, with the same quoted `cd` a dropped folder runs.
    */
+  /** The text of a viewer's file, from this computer or through its SFTP session. */
+  const viewFile = (viewer: ViewerLink) =>
+    viewer.origin.kind === "local" ? local.viewText(viewer.path) : sftp.viewText(viewer.origin.sessionId, viewer.path);
+  /** Shows a file of the file lists in the viewer of the active tab's terminal, at its left. */
+  const viewInTab = (origin: PathOrigin, path: string) => {
+    if (!activeTab) return;
+    const terminal = terminalPaneOf(activeTab);
+    const hasViewer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal);
+    if (!hasViewer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.viewer.full"));
+    dispatch({ type: "openViewer", key: activeTab.key, path, origin });
+  };
   const openInTerminal = (path: string) => {
     if (!activeTab) return;
     const { target } = activeTab;
@@ -1174,6 +1185,7 @@ function AppContent() {
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                   onOpenInTerminal={openInTerminal}
+                  onView={(path) => viewInTab({ kind: "local" }, path)}
                   // DEV mode's tree, icons and git status (S10).
                   devStyle={activeDev !== undefined}
                   git={{
@@ -1202,6 +1214,7 @@ function AppContent() {
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                   onOpenInTerminal={openInTerminal}
+                  onView={(path) => sftpSessionId !== null && viewInTab({ kind: "sftp", sessionId: sftpSessionId }, path)}
                   // DEV mode's tree, icons and git status (S10).
                   devStyle={activeDev !== undefined}
                   git={{
@@ -1325,6 +1338,16 @@ function AppContent() {
                     onFocusPane={(paneId) => dispatch({ type: "focusPane", key: tab.key, paneId })}
                     onResize={(splitId, ratio) => dispatch({ type: "resizeSplit", key: tab.key, splitId, ratio })}
                     renderPane={(paneId) => {
+                      const viewer = tab.viewers?.[paneId];
+                      if (viewer) {
+                        return (
+                          <FileViewer
+                            path={viewer.path}
+                            load={() => viewFile(viewer)}
+                            onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                          />
+                        );
+                      }
                       const link = tab.chats[paneId];
                       if (link) {
                         return (

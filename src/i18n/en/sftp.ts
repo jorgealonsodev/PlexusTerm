@@ -59,6 +59,7 @@ export const sftp = {
     failed: "SFTP operation failed.",
   },
   menu: {
+    view: "View",
     openInTerminal: "Open in terminal",
     openTextEditor: "Open with default text editor",
     openDefaultProgram: "Open with default program",

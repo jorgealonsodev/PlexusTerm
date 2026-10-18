@@ -116,6 +116,7 @@ export const app: Messages<typeof en> = {
     resizeHint: "드래그하여 사이드바 너비를 바꾸고, 더블 클릭하면 기본 너비로 돌아갑니다",
   },
   viewer: {
+    full: "이 탭에는 이미 창이 4개 있습니다. 파일을 보려면 하나를 닫으세요.",
     close: "뷰어 닫기",
     loading: "파일을 읽는 중…",
     truncated: "이 파일의 처음 4MB를 표시합니다.",

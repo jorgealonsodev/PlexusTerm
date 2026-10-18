@@ -119,6 +119,7 @@ export const app: Messages<typeof en> = {
     resizeHint: "Faites glisser pour changer la largeur de la barre latérale ; double-cliquez pour revenir à la largeur par défaut",
   },
   viewer: {
+    full: "Cet onglet a déjà 4 volets : fermez-en un pour afficher le fichier.",
     close: "Fermer la visionneuse",
     loading: "Lecture du fichier…",
     truncated: "Seuls les 4 premiers Mo de ce fichier sont affichés.",

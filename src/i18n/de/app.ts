@@ -118,6 +118,7 @@ export const app: Messages<typeof en> = {
     resizeHint: "Ziehen, um die Breite der Seitenleiste zu ändern; Doppelklick stellt die Standardbreite wieder her",
   },
   viewer: {
+    full: "Dieser Tab hat bereits 4 Bereiche: Schließe einen, um die Datei anzuzeigen.",
     close: "Betrachter schließen",
     loading: "Datei wird gelesen …",
     truncated: "Es werden die ersten 4 MB dieser Datei angezeigt.",

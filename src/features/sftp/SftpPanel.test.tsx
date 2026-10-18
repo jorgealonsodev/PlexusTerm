@@ -580,3 +580,28 @@ describe("SftpPanel toolbar", () => {
     }
   });
 });
+
+describe("SftpPanel file viewer", () => {
+  it("views a file from its menu; folders have no View item", async () => {
+    const onView = vi.fn();
+    render(panel({ onView }));
+    fireEvent.contextMenu(await screen.findByText("notes.txt"), { clientX: 1, clientY: 1 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "View" }));
+    expect(onView).toHaveBeenCalledWith(expect.stringMatching(/\/notes\.txt$/));
+    fireEvent.contextMenu(screen.getByText("src"), { clientX: 1, clientY: 1 });
+    expect(screen.queryByRole("menuitem", { name: "View" })).toBeNull();
+  });
+
+  it("views a double-clicked file in DEV mode, and opens it as before outside it", async () => {
+    const onView = vi.fn();
+    const { unmount } = render(panel({ onView, devStyle: true }));
+    fireEvent.doubleClick(await screen.findByText("notes.txt"));
+    expect(onView).toHaveBeenCalledTimes(1);
+    expect(mocked.download).not.toHaveBeenCalled();
+    unmount();
+    render(panel({ onView }));
+    fireEvent.doubleClick(await screen.findByText("notes.txt"));
+    expect(onView).toHaveBeenCalledTimes(1);
+  });
+});
+

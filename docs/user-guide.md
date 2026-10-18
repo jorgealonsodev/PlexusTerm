@@ -9,7 +9,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Telnet and Mosh](#telnet-and-mosh) | Built-in Telnet client, Mosh over SSH |
 | [Saved sessions](#saved-sessions) | Folders, saved passwords, jump hosts, session import |
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
-| [File explorer](#file-explorer) | Local files of the active local tab, dropping files on terminals and on the AI chat |
+| [File explorer](#file-explorer) | Local files of the active local tab, viewing files, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
@@ -214,6 +214,16 @@ function prompt {
   "PS $loc$('>' * ($nestedPromptLevel + 1)) "
 }
 ```
+
+### Viewing files
+
+Right-click a file in the Explorer or the SFTP browser and choose **View** (in [DEV mode](#dev-mode), double-clicking a file does the same): it opens in a viewer pane at the left of the terminal, in the same tab.
+
+- The text is shown read-only, with line numbers; long lines wrap to the pane's width (like **Alt+Z** in VS Code). **Ctrl+F** searches it.
+- The language is recognised by the file's name (TypeScript, Rust, Python, JSON, YAML, shell scripts, and many more) and highlighted with the colour scheme's colours.
+- Markdown files open rendered; the **Code** / **Preview** switch in the viewer's title shows their source. In the preview, web links open in your browser; other links do nothing. Scripts, forms and embedded pages in a Markdown file are never run or shown.
+- Viewing another file from the same terminal shows it in the same viewer. Close it with its **×**; it also closes with its terminal. Files longer than 4 MB show their first 4 MB; binary files and folders cannot be viewed.
+- The viewer counts as one of the tab's 4 panes: when the tab is full, close a pane first.
 
 ### Dropping files on a terminal
 

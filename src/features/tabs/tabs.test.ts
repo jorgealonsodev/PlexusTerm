@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SessionTarget } from "../sessions/types";
 import { MAX_PANES, paneIds } from "../panes/paneLayout";
-import { chatAction, initialTabs, tabsReducer, type TabsState } from "./tabs";
+import { chatAction, initialTabs, isTerminalPane, tabsReducer, terminalPaneOf, type TabsState } from "./tabs";
 
 const open = (state: TabsState, target: SessionTarget = { type: "local" }) =>
   tabsReducer(state, { type: "open", target });
@@ -218,5 +218,58 @@ describe("AI chat panes (S9)", () => {
   it("closing the only terminal of a tab with its chat closes the tab", () => {
     const state = openChat(open(initialTabs));
     expect(tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-1" }).tabs).toEqual([]);
+  });
+});
+
+describe("file viewer panes", () => {
+  const tab = (state: TabsState) => state.tabs[0];
+  const local = { kind: "local" } as const;
+  const view = (state: TabsState, path: string) =>
+    tabsReducer(state, { type: "openViewer", key: tab(state).key, path, origin: local });
+
+  it("opens a file at the left of the focused terminal, linked to it and focused", () => {
+    const state = view(open(initialTabs), "/p/a.ts");
+    expect(tab(state).layout).toMatchObject({ kind: "split", direction: "row", a: { id: "pane-2" }, b: { id: "pane-1" } });
+    expect(tab(state).viewers).toEqual({ "pane-2": { terminalPaneId: "pane-1", path: "/p/a.ts", origin: local } });
+    expect(tab(state).focusedPane).toBe("pane-2");
+    expect(isTerminalPane(tab(state), "pane-1")).toBe(true);
+    expect(isTerminalPane(tab(state), "pane-2")).toBe(false);
+    expect(terminalPaneOf(tab(state))).toBe("pane-1");
+  });
+
+  it("shows another file of the same terminal in its viewer instead of opening a second one", () => {
+    let state = view(open(initialTabs), "/p/a.ts");
+    state = view(state, "/p/b.md");
+    expect(paneIds(tab(state).layout)).toEqual(["pane-2", "pane-1"]);
+    expect(tab(state).viewers!["pane-2"].path).toBe("/p/b.md");
+    state = tabsReducer(state, { type: "focusPane", key: "tab-1", paneId: "pane-1" });
+    state = view(state, "/p/c.rs");
+    expect(paneIds(tab(state).layout)).toEqual(["pane-2", "pane-1"]);
+    expect(tab(state).viewers!["pane-2"].path).toBe("/p/c.rs");
+    expect(tab(state).focusedPane).toBe("pane-2");
+  });
+
+  it("does nothing when the tab is full", () => {
+    let state = open(initialTabs);
+    for (let i = 1; i < MAX_PANES; i++) state = tabsReducer(state, { type: "split", key: tab(state).key, direction: "row" });
+    expect(view(state, "/p/a.ts")).toBe(state);
+  });
+
+  it("closing a terminal also closes its viewer; closing the viewer focuses its terminal", () => {
+    const state = view(tabsReducer(open(initialTabs), { type: "split", key: "tab-1", direction: "row" }), "/p/a.ts");
+    // pane-2 (the split) was focused: the viewer (pane-3) opens at its left.
+    expect(paneIds(tab(state).layout)).toEqual(["pane-1", "pane-3", "pane-2"]);
+    const closedViewer = tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-3" });
+    expect(paneIds(tab(closedViewer).layout)).toEqual(["pane-1", "pane-2"]);
+    expect(tab(closedViewer).viewers).toEqual({});
+    expect(tab(closedViewer).focusedPane).toBe("pane-2");
+    const closedTerminal = tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-2" });
+    expect(paneIds(tab(closedTerminal).layout)).toEqual(["pane-1"]);
+    expect(tab(closedTerminal).viewers).toEqual({});
+  });
+
+  it("opens the AI chat of the viewer's terminal from a focused viewer", () => {
+    const state = view(open(initialTabs), "/p/a.ts");
+    expect(chatAction(tab(state))).toEqual({ kind: "open", terminalPaneId: "pane-1" });
   });
 });

@@ -61,6 +61,7 @@ export const sftp: Messages<typeof en> = {
     failed: "Error en la operación SFTP.",
   },
   menu: {
+    view: "Ver",
     openInTerminal: "Abrir en terminal",
     openTextEditor: "Abrir con el editor de texto predeterminado",
     openDefaultProgram: "Abrir con el programa predeterminado",

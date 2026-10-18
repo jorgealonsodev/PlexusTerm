@@ -42,11 +42,17 @@ function mapNode(layout: PaneLayout, id: string, fn: (node: PaneLayout) => PaneL
 }
 
 /**
- * Splits a pane in two halves; the new pane goes right of (row) or below (column) the old one.
- * Returns the same layout when the pane is unknown or the tab already has MAX_PANES panes.
- * The split node is identified as `split-<newId>`.
+ * Splits a pane in two halves; the new pane goes right of (row) or below (column) the old one, or
+ * left of it or above with `side` "before". Returns the same layout when the pane is unknown or
+ * the tab already has MAX_PANES panes. The split node is identified as `split-<newId>`.
  */
-export function splitPane(layout: PaneLayout, paneId: string, direction: SplitDirection, newId: string): PaneLayout {
+export function splitPane(
+  layout: PaneLayout,
+  paneId: string,
+  direction: SplitDirection,
+  newId: string,
+  side: "before" | "after" = "after",
+): PaneLayout {
   const ids = paneIds(layout);
   if (ids.length >= MAX_PANES || !ids.includes(paneId) || ids.includes(newId)) return layout;
   return mapNode(layout, paneId, (node) => ({
@@ -54,8 +60,8 @@ export function splitPane(layout: PaneLayout, paneId: string, direction: SplitDi
     id: `split-${newId}`,
     direction,
     ratio: 0.5,
-    a: node,
-    b: leaf(newId),
+    a: side === "before" ? leaf(newId) : node,
+    b: side === "before" ? node : leaf(newId),
   }))!;
 }
 

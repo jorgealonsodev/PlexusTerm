@@ -61,6 +61,7 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 操作失败。",
   },
   menu: {
+    view: "查看",
     openInTerminal: "在终端中打开",
     openTextEditor: "用默认文本编辑器打开",
     openDefaultProgram: "用默认程序打开",

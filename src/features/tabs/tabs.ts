@@ -1,3 +1,4 @@
+import type { PathOrigin } from "../drop/pathDrag";
 import { targetTitle, type SessionTarget } from "../sessions/types";
 import {
   closePane,
@@ -19,6 +20,14 @@ export interface ChatLink {
   selection: string;
 }
 
+/** A file viewer pane: the file it shows and the terminal pane it opened next to. */
+export interface ViewerLink {
+  terminalPaneId: string;
+  path: string;
+  /** Where the file is: this computer, or the SFTP session of an SSH tab. */
+  origin: PathOrigin;
+}
+
 export interface Tab {
   key: string;
   /** The title the shell or the user gave the tab; until then the target's title is shown. */
@@ -34,7 +43,19 @@ export interface Tab {
   focusedPane: string;
   /** AI chat panes by pane id; at most one per terminal pane. */
   chats: Record<string, ChatLink>;
+  /** File viewer panes by pane id; at most one per terminal pane. */
+  viewers?: Record<string, ViewerLink>;
 }
+
+/** A pane that runs a terminal (not an AI chat or a file viewer). */
+export const isTerminalPane = (tab: Tab, paneId: string) => !tab.chats[paneId] && !tab.viewers?.[paneId];
+
+/** The terminal of a pane: itself, or the terminal an AI chat or a file viewer belongs to. */
+export const terminalOf = (tab: Tab, paneId: string) =>
+  tab.chats[paneId]?.terminalPaneId ?? tab.viewers?.[paneId]?.terminalPaneId ?? paneId;
+
+/** The terminal of the focused pane. */
+export const terminalPaneOf = (tab: Tab) => terminalOf(tab, tab.focusedPane);
 
 /** What opening the AI chat does in a tab: open one, focus one, go back to the terminal, or nothing (full tab). */
 export type ChatAction =
@@ -44,7 +65,8 @@ export type ChatAction =
   | { kind: "full" };
 
 export function chatAction(tab: Tab): ChatAction {
-  const focused = tab.focusedPane;
+  // From a file viewer, the chat is its terminal's.
+  const focused = tab.viewers?.[tab.focusedPane]?.terminalPaneId ?? tab.focusedPane;
   const link = tab.chats[focused];
   if (link) return { kind: "terminal", paneId: link.terminalPaneId };
   const existing = Object.keys(tab.chats).find((id) => tab.chats[id].terminalPaneId === focused);
@@ -71,6 +93,8 @@ export type TabsAction =
   | { type: "split"; key: string; direction: SplitDirection }
   /** The AI chat key (S9): see `chatAction`. */
   | { type: "openChat"; key: string; selection: string }
+  /** Shows a file in the viewer of the focused terminal, opening one at its left if it has none. */
+  | { type: "openViewer"; key: string; path: string; origin: PathOrigin }
   | { type: "closePane"; key: string; paneId: string }
   | { type: "focusPane"; key: string; paneId: string }
   | { type: "focusDirection"; key: string; direction: FocusDirection }
@@ -110,6 +134,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         layout: leaf(pane),
         focusedPane: pane,
         chats: {},
+        viewers: {},
       };
       return {
         tabs: [...state.tabs, tab],
@@ -165,20 +190,43 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         nextPaneSeq: state.nextPaneSeq + 1,
       };
     }
+    case "openViewer": {
+      const tab = state.tabs.find((t) => t.key === action.key);
+      if (!tab) return state;
+      const terminalPaneId = terminalPaneOf(tab);
+      const link: ViewerLink = { terminalPaneId, path: action.path, origin: action.origin };
+      const viewers = tab.viewers ?? {};
+      const existing = Object.keys(viewers).find((id) => viewers[id].terminalPaneId === terminalPaneId);
+      if (existing) {
+        return updateTab(state, tab.key, (t) => ({ ...t, focusedPane: existing, viewers: { ...viewers, [existing]: link } }));
+      }
+      const pane = `pane-${state.nextPaneSeq}`;
+      const layout = splitPane(tab.layout, terminalPaneId, "row", pane, "before");
+      if (layout === tab.layout) return state;
+      return {
+        ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, viewers: { ...viewers, [pane]: link } })),
+        nextPaneSeq: state.nextPaneSeq + 1,
+      };
+    }
     case "closePane": {
       const tab = state.tabs.find((t) => t.key === action.key);
       if (!tab) return state;
-      // A terminal's chat pane goes with it.
-      const closing = [action.paneId, ...Object.keys(tab.chats).filter((id) => tab.chats[id].terminalPaneId === action.paneId)];
+      // A terminal's chat and viewer panes go with it.
+      const viewers = tab.viewers ?? {};
+      const closing = [
+        action.paneId,
+        ...Object.keys(tab.chats).filter((id) => tab.chats[id].terminalPaneId === action.paneId),
+        ...Object.keys(viewers).filter((id) => viewers[id].terminalPaneId === action.paneId),
+      ];
       let layout: PaneLayout | null = tab.layout;
       for (const id of closing) layout = layout && closePane(layout, id);
       if (layout === null) return closeTab(state, tab.key);
       if (layout === tab.layout) return state;
       let focusedPane = tab.focusedPane;
-      const chatOf = tab.chats[action.paneId];
-      if (chatOf && focusedPane === action.paneId) {
-        // A closed chat gives the focus back to its terminal.
-        focusedPane = chatOf.terminalPaneId;
+      const linkOf = tab.chats[action.paneId] ?? viewers[action.paneId];
+      if (linkOf && focusedPane === action.paneId) {
+        // A closed chat or viewer gives the focus back to its terminal.
+        focusedPane = linkOf.terminalPaneId;
       } else if (closing.includes(focusedPane)) {
         // Focus the pane that now sits where the closed one was in visual order.
         const index = paneIds(tab.layout).indexOf(action.paneId);
@@ -186,7 +234,8 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         focusedPane = remaining[Math.min(index, remaining.length - 1)];
       }
       const chats = Object.fromEntries(Object.entries(tab.chats).filter(([id]) => !closing.includes(id)));
-      return updateTab(state, tab.key, (t) => ({ ...t, layout: layout!, focusedPane, chats }));
+      const keptViewers = Object.fromEntries(Object.entries(viewers).filter(([id]) => !closing.includes(id)));
+      return updateTab(state, tab.key, (t) => ({ ...t, layout: layout!, focusedPane, chats, viewers: keptViewers }));
     }
     case "focusPane":
       return updateTab(state, action.key, (tab) =>

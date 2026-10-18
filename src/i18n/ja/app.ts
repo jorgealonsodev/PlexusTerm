@@ -117,6 +117,7 @@ export const app: Messages<typeof en> = {
     resizeHint: "ドラッグでサイドバーの幅を変更し、ダブルクリックで既定の幅に戻します",
   },
   viewer: {
+    full: "このタブにはすでに 4 つのペインがあります。ファイルを表示するには 1 つ閉じてください。",
     close: "ビューアーを閉じる",
     loading: "ファイルを読み込んでいます…",
     truncated: "このファイルの最初の 4 MB を表示しています。",

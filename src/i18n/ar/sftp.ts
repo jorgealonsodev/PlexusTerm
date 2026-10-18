@@ -68,6 +68,7 @@ export const sftp: Messages<typeof en> = {
     failed: "فشلت عملية SFTP.",
   },
   menu: {
+    view: "عرض",
     openInTerminal: "فتح في الطرفية",
     openTextEditor: "فتح باستخدام محرر النصوص الافتراضي",
     openDefaultProgram: "فتح باستخدام البرنامج الافتراضي",
