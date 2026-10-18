@@ -69,10 +69,10 @@ describe("pi mark", () => {
 });
 
 describe("gentle-shell mark", () => {
-  it("borrows pi's mark for now, named gentle-shell", () => {
+  it("is a rose, named gentle-shell", () => {
     render(<CliIcon cli="gentle-shell" />);
     const icon = screen.getByRole("img", { name: "gentle-shell" });
-    expect(icon.getAttribute("viewBox")).toBe("0 0 560 560");
-    expect(icon.querySelectorAll("path").length).toBe(3);
+    expect(icon.classList.contains("lucide-rose")).toBe(true);
+    expect(icon.classList.contains("cli-icon--gentle-shell")).toBe(true);
   });
 });

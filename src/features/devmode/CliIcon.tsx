@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { SquareTerminal } from "lucide-react";
+import { Rose, SquareTerminal } from "lucide-react";
 import { ANTIGRAVITY_MARKUP, ANTIGRAVITY_VIEWBOX } from "./antigravityMark";
 
 /**
@@ -63,8 +63,10 @@ export function CliIcon({ cli, size = 14 }: { cli: string | null; size?: number 
     );
   }
   if (cli === "agy") return <AntigravityMark size={size} />;
-  // gentle-shell has no mark of its own yet: it borrows pi's.
-  if (cli === "pi" || cli === "gentle-shell") {
+  if (cli === "gentle-shell") {
+    return <Rose className="cli-icon cli-icon--gentle-shell" size={size} role="img" aria-label={cliName(cli)} />;
+  }
+  if (cli === "pi") {
     return (
       <svg className="cli-icon cli-icon--pi" role="img" aria-label={cliName(cli)} viewBox="0 0 560 560" width={size} height={size} fill="currentColor">
         {PI_PATHS.map((d) => (
