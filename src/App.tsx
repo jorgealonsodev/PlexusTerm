@@ -1156,6 +1156,13 @@ function AppContent() {
                         ...prev,
                         [activeTab.key]: (prev[activeTab.key] ?? []).filter((f) => f !== folder),
                       })),
+                    // A workspace file opens a new DEV tab in its first folder, with the others added.
+                    onOpenFolders: ([first, ...others]) => {
+                      const key = `tab-${state.nextSeq}`;
+                      devOnStart.current = key;
+                      setWorkspaceFolders((prev) => ({ ...prev, [key]: others }));
+                      open(localTargetOf({ localShell, localShellArgs, localCwd: first }));
+                    },
                   }}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}

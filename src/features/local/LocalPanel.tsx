@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
 import { startPathDrag } from "../drop/pathDrag";
@@ -18,6 +18,7 @@ import { FlatFileList } from "../files/FlatFileList";
 import { indexGitStatus } from "../files/gitStatus";
 import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
 import { WorkspaceFolder } from "../files/WorkspaceFolder";
+import { parseWorkspaceFile, WORKSPACE_EXTENSION, workspaceFileText } from "../files/workspaceFile";
 
 interface LocalPanelProps {
   /** Folder of the active local terminal (OSC 7 or read from its shell); null while unknown. */
@@ -51,6 +52,8 @@ export interface Workspace {
   folders: readonly string[];
   onAdd: (path: string) => void;
   onRemove: (path: string) => void;
+  /** Opens the folders a workspace file lists (the first one is the main folder). */
+  onOpenFolders: (folders: string[]) => void;
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
@@ -276,6 +279,37 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     workspace.onAdd(dir);
   };
 
+  const workspaceFilters = () => [{ name: t("sftp.panel.workspace.fileType"), extensions: [WORKSPACE_EXTENSION] }];
+
+  /** Saves the main folder and the added ones to a VS Code workspace file. */
+  const saveWorkspace = async () => {
+    if (!workspace || path === null) return;
+    const file = await save({
+      defaultPath: joinPath(path, `${basename(path)}.${WORKSPACE_EXTENSION}`),
+      filters: workspaceFilters(),
+    }).catch(() => null);
+    if (!file) return;
+    await local
+      .saveText(file, workspaceFileText([path, ...workspace.folders.filter((f) => f !== path)]))
+      .then(() => setStatus(t("sftp.panel.workspace.saved", { file: basename(file) })))
+      .catch((err) => setError(describeLocalError(err)));
+  };
+
+  /** Opens the folders of a workspace file (VS Code's or one saved here). */
+  const openWorkspace = async () => {
+    if (!workspace) return;
+    const file = await open({ multiple: false, filters: workspaceFilters() }).catch(() => null);
+    if (typeof file !== "string") return;
+    try {
+      const folders = parseWorkspaceFile(await local.readText(file), file);
+      if (folders.length === 0) return setError(t("sftp.panel.workspace.noFolders", { file: basename(file) }));
+      setError(null);
+      workspace.onOpenFolders(folders);
+    } catch (err) {
+      setError(describeLocalError(err));
+    }
+  };
+
   /** A row's own handlers in either list style: menu, drag onto a terminal, middle click. */
   const rowProps = (entry: SftpEntry): LiHTMLAttributes<HTMLLIElement> => ({
     onContextMenu: (e) => {
@@ -343,9 +377,17 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           {t("common.delete")}
         </button>
         {showWorkspace && (
-          <button className="btn btn--small" onClick={() => void addFolder()}>
-            {t("sftp.panel.workspace.add")}
-          </button>
+          <>
+            <button className="btn btn--small" onClick={() => void addFolder()}>
+              {t("sftp.panel.workspace.add")}
+            </button>
+            <button className="btn btn--small" disabled={busy} onClick={() => void saveWorkspace()}>
+              {t("sftp.panel.workspace.save")}
+            </button>
+            <button className="btn btn--small" onClick={() => void openWorkspace()}>
+              {t("sftp.panel.workspace.open")}
+            </button>
+          </>
         )}
       </div>
       <label className="sftp__follow">

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DialogProvider } from "../dialogs/DialogProvider";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { writeText } from "../terminal/clipboard";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { LocalPanel } from "./LocalPanel";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
@@ -27,6 +27,8 @@ vi.mock("./localClient", async (importOriginal) => {
       open: vi.fn(),
       shellCwd: vi.fn(),
       gitStatus: vi.fn(),
+      readText: vi.fn(),
+      saveText: vi.fn(),
     },
   };
 });
@@ -407,11 +409,11 @@ describe("workspace folders in DEV mode", () => {
   it("adds a folder chosen in the system dialog, only in DEV mode", async () => {
     vi.mocked(open).mockResolvedValue("/work/api");
     const onAdd = vi.fn();
-    const { unmount } = render(panel({ workspace: { folders: [], onAdd, onRemove: () => {} } }));
+    const { unmount } = render(panel({ workspace: { folders: [], onAdd, onRemove: () => {}, onOpenFolders: () => {} } }));
     await screen.findByText("notes.txt");
     expect(screen.queryByRole("button", { name: "Add folder" })).toBeNull();
     unmount();
-    render(panel({ devStyle: true, workspace: { folders: [], onAdd, onRemove: () => {} } }));
+    render(panel({ devStyle: true, workspace: { folders: [], onAdd, onRemove: () => {}, onOpenFolders: () => {} } }));
     await screen.findByText("notes.txt");
     fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith("/work/api"));
@@ -420,7 +422,7 @@ describe("workspace folders in DEV mode", () => {
 
   it("does not add a folder when the dialog is cancelled or it is already there", async () => {
     const onAdd = vi.fn();
-    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd, onRemove: () => {} } }));
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd, onRemove: () => {}, onOpenFolders: () => {} } }));
     await screen.findByText("notes.txt");
     vi.mocked(open).mockResolvedValueOnce(null);
     fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
@@ -441,7 +443,7 @@ describe("workspace folders in DEV mode", () => {
       panel({
         devStyle: true,
         git: { enabled: true, visible: true, prompt: 0 },
-        workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove },
+        workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove, onOpenFolders: () => {} },
       }),
     );
     const root = await screen.findByRole("group", { name: "api" });
@@ -457,8 +459,40 @@ describe("workspace folders in DEV mode", () => {
 
   it("shows no added folders outside DEV mode", async () => {
     listing();
-    render(panel({ workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {} } }));
+    render(panel({ workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
     await screen.findByText("notes.txt");
     expect(screen.queryByRole("group", { name: "api" })).toBeNull();
+  });
+
+  it("saves the workspace (its folder first) to a VS Code workspace file", async () => {
+    vi.mocked(save).mockResolvedValue("/home/me/me.code-workspace");
+    mocked.saveText.mockResolvedValue(undefined);
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Save workspace" }));
+    await waitFor(() => expect(mocked.saveText).toHaveBeenCalled());
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultPath: "/home/me/me.code-workspace", filters: [expect.objectContaining({ extensions: ["code-workspace"] })] }),
+    );
+    const [path, contents] = mocked.saveText.mock.calls[0];
+    expect(path).toBe("/home/me/me.code-workspace");
+    expect(JSON.parse(contents)).toEqual({ folders: [{ path: "/home/me" }, { path: "/work/api" }] });
+  });
+
+  it("opens the folders of a workspace file, and says so when it lists none", async () => {
+    const onOpenFolders = vi.fn();
+    render(panel({ devStyle: true, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders } }));
+    await screen.findByText("notes.txt");
+    vi.mocked(open).mockResolvedValueOnce("/home/me/proj/app.code-workspace");
+    mocked.readText.mockResolvedValueOnce('{ "folders": [ { "path": "." }, { "path": "../api" }, ] }');
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace" }));
+    await waitFor(() => expect(onOpenFolders).toHaveBeenCalledWith(["/home/me/proj", "/home/me/api"]));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, filters: [expect.objectContaining({ extensions: ["code-workspace"] })] }));
+
+    vi.mocked(open).mockResolvedValueOnce("/home/me/notes.txt");
+    mocked.readText.mockResolvedValueOnce("hello");
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("lists no folders");
+    expect(onOpenFolders).toHaveBeenCalledTimes(1);
   });
 });

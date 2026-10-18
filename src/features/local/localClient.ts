@@ -20,6 +20,10 @@ export const local = {
   shellCwd: (ptyId: number) => invoke<string | null>("pty_cwd", { id: ptyId }),
   /** Git status of the files under a folder (paths relative to it); empty outside a repository. */
   gitStatus: (path: string) => invoke<GitStatusEntry[]>("git_status", { path }),
+  /** A text file's content (the first part of a long file). */
+  readText: (path: string) => invoke<{ content: string }>("local_read_text", { path }).then((file) => file.content),
+  /** Writes a text file, replacing it. */
+  saveText: (path: string, contents: string) => invoke<void>("save_text_file", { path, contents }),
 };
 
 /** The commands reject with `cannot <action> <path>: <cause>`. */

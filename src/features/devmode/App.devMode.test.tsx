@@ -318,6 +318,26 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
   });
 
+  it("opens a workspace file in a new DEV tab: the terminal in its first folder, the others added", async () => {
+    await renderApp();
+    await run("claude");
+    const backend = vi.mocked(invoke).getMockImplementation()!;
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) =>
+      cmd === "local_read_text"
+        ? { path: "/home/me/app.code-workspace", content: '{ "folders": [{ "path": "repo" }, { "path": "/tmp" }] }', truncated: false }
+        : backend(cmd, args as Parameters<typeof backend>[1]),
+    );
+    vi.mocked(open).mockResolvedValueOnce("/home/me/app.code-workspace");
+    fireEvent.click(await screen.findByRole("button", { name: "Open workspace" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(true);
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+  });
+
   it("is toggled by its shortcut once one is set", async () => {
     await renderApp({ shortcuts: { toggleDevMode: "Ctrl+Shift+Y" } });
     expect(devButton().getAttribute("title")).toContain("Ctrl+Shift+Y");

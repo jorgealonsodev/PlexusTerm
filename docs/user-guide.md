@@ -181,6 +181,7 @@ In [DEV mode](#dev-mode) the Explorer and the SFTP browser start at the project 
 - Each entry has an icon for its type (folders, source code by language, configuration, text, images, archives, keys and certificates, `Dockerfile`, `package.json`, `README`, ...), coloured like VS Code's usual icon themes.
 - Inside a git repository, entries show their git status (below).
 - **Add folder** (Explorer only) adds another folder to the tab's workspace, as in a VS Code workspace: it shows under the main folder as a root of its own, with its name as a title that folds it, its own tree and its own git status, and a **×** that removes it from the workspace (the folder itself is not touched). The added folders belong to that tab and are kept while it is open.
+- **Save workspace** writes the main folder and the added ones to a workspace file in VS Code's format (`.code-workspace`), and **Open workspace** opens one (saved here or by VS Code): a new DEV tab starts in its first folder and adds the others. Folders given relative to the file are taken from the file's folder; remote folders of VS Code workspaces are left out.
 
 #### Git status in file lists
 
