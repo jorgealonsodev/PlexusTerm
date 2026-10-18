@@ -303,6 +303,21 @@ describe("DEV mode (S10, S13)", () => {
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
   });
 
+  it("opens a folder in a new DEV terminal with Open in terminal while in DEV mode", async () => {
+    await renderApp();
+    fireEvent.click(devButton());
+    await settle();
+    act(() => stub.props.onCwd?.("/home/me"));
+    fireEvent.contextMenu(await screen.findByText("repo"), { clientX: 1, clientY: 1 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open in terminal" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(true);
+  });
+
   it("is toggled by its shortcut once one is set", async () => {
     await renderApp({ shortcuts: { toggleDevMode: "Ctrl+Shift+Y" } });
     expect(devButton().getAttribute("title")).toContain("Ctrl+Shift+Y");

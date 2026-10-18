@@ -387,7 +387,7 @@ function AppContent() {
   useEffect(() => () => forgetChatsExcept(new Set()), []);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
-  /** The tab the DEV column's + or a DEV tab's duplicate opened: it turns DEV mode on once its shell has started. */
+  /** A tab opened from a DEV tab (+, Duplicate, Open in terminal): it turns DEV mode on once its shell has started. */
   const devOnStart = useRef<string | null>(null);
   useEffect(() => {
     const tab = state.tabs.find((t) => t.key === devOnStart.current);
@@ -798,8 +798,10 @@ function AppContent() {
   const openInTerminal = (path: string) => {
     if (!activeTab) return;
     const { target } = activeTab;
+    if (target.type !== "local" && target.type !== "ssh") return;
+    // From a DEV tab the new terminal is a DEV tab too.
+    if (activeDev) devOnStart.current = `tab-${state.nextSeq}`;
     if (target.type === "local") return open({ ...target, cwd: path });
-    if (target.type !== "ssh") return;
     // The pane the "open" action is about to create (see tabsReducer).
     pendingCd.current.set(`pane-${state.nextPaneSeq}`, path);
     open(target);
