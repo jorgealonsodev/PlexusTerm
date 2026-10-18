@@ -181,7 +181,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(document.querySelector(".main--dev")).not.toBeNull();
     const row = within(tabBar()).getByRole("tab");
     expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
-    await waitFor(() => expect(row.querySelector(".tab__folder")?.textContent).toBe("repo"));
+    await waitFor(() => expect(row.querySelector(".tab__folder")?.textContent).toBe("src"));
     expect(within(row).getByRole("button", { name: /^Close/ })).toBeTruthy();
     const branch = await screen.findByTitle("Git branch: main");
     expect(branch.closest(".pane-footer")).not.toBeNull();
@@ -234,11 +234,13 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
-  it("anchors the Explorer at the project root and lets it follow the terminal again afterwards", async () => {
+  it("anchors the Explorer at the folder the tool was opened in and lets it follow the terminal again afterwards", async () => {
     await renderApp();
     await run("claude");
-    await waitFor(() => expect(listed("/home/me/repo")).toBe(true));
-    expect(await screen.findByText("src")).toBeTruthy();
+    // Opened in the repository's src folder: the Explorer goes there, not to the repository root.
+    await waitFor(() => expect(listed("/home/me/repo/src")).toBe(true));
+    expect(await screen.findByText("main.ts")).toBeTruthy();
+    expect(listed("/home/me/repo")).toBe(false);
     // The terminal changes folder: the Explorer stays at the project.
     act(() => stub.props.onCwd?.("/tmp"));
     await settle();

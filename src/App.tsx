@@ -109,7 +109,6 @@ import {
 } from "lucide-react";
 import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
-import { projectRootOf } from "./features/devmode/projectRoot";
 import { basename } from "./features/local/localPath";
 import "./App.css";
 
@@ -343,9 +342,9 @@ function AppContent() {
   }, []);
 
   /**
-   * DEV mode's project for a tab turning on (S10): the folder of the pane's shell (OSC 7, else asked
-   * from the backend) and the git repository holding it; null when the folder cannot be known
-   * (Mosh, Telnet and serial terminals have no channel to ask through).
+   * DEV mode's project for a tab turning on (S10): the folder the tool was opened in, the pane's
+   * shell folder (OSC 7, else asked from the backend); null when it cannot be known (Mosh, Telnet
+   * and serial terminals have no channel to ask through).
    */
   const locateProject: LocateProject = async (tabKey, paneId) => {
     const tab = state.tabs.find((t) => t.key === tabKey);
@@ -355,8 +354,7 @@ function AppContent() {
     const folder =
       paneMeta[paneId]?.cwd ?? (kind === "local" ? await local.shellCwd(sessionId) : await sftp.shellCwd(sessionId));
     if (!folder) return null;
-    const list = (path: string) => (kind === "local" ? local.list(path) : sftp.list(sessionId, path));
-    return { folder, root: await projectRootOf(folder, list) };
+    return { folder, root: folder };
   };
   const dev = useDevMode(locateProject);
   const { forget: forgetDev, toggle: toggleDev } = dev;
