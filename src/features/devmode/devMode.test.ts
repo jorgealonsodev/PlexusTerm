@@ -141,6 +141,14 @@ describe("devReducer (S10)", () => {
     const manual = title(devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 3 }), "π - daily-work");
     expect(manual["tab-1"]).toMatchObject({ manual: true, cli: "pi" });
     expect(title(manual, "daily-work")["tab-1"]).toMatchObject({ manual: true, cli: null });
+    // cmd.exe titles its window with the running command: still the CLI until the shell's title is back.
+    const cmd = run({}, "claude", "pane-1", "C:\\Users\\me>");
+    const running = title(cmd, "C:\\WINDOWS\\system32\\cmd.exe - claude");
+    expect(running["tab-1"]).toMatchObject({ cli: "claude" });
+    expect(title(running, "Administrador: C:\\WINDOWS\\system32\\cmd.exe - claude --resume")["tab-1"]).toMatchObject({ cli: "claude" });
+    expect(title(running, "C:\\WINDOWS\\system32\\cmd.exe")).toEqual({});
+    // A folder that only contains the name in a longer word is the shell's title.
+    expect(title(claude, "me@box: ~/claude-project")).toEqual({});
     // Another pane's title does not end the CLI.
     expect(devReducer(pi, { type: "title", tab: "tab-1", pane: "pane-2", title: "bash", commands, id: 8 })).toBe(pi);
   });

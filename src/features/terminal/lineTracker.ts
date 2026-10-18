@@ -122,11 +122,12 @@ export const isSecretPrompt = (prompt: string) => SECRET_PROMPT.test(prompt);
 
 /**
  * The prompt and the command of a terminal row, split after the row's last prompt sign followed
- * by a space (`$`, `#`, `%`, `>`, `❯`, `›`, `»`): what a recalled (history) or completed command line
+ * by a space (`$`, `#`, `%`, `>`, `❯`, `›`, `»`), or after cmd.exe's `C:\\path>`: what a recalled (history) or completed command line
  * looks like on screen, where the typed-line tracker cannot follow it. Null without a command.
  */
 export function commandOnScreen(row: string): { prompt: string; command: string } | null {
-  const match = /^(.*[$#%>❯›»] )(.*)$/u.exec(row);
+  // cmd.exe's prompt, a drive path and `>` with no space after it, comes first.
+  const match = /^([A-Za-z]:\\[^>]*>)(?! )(.*)$/u.exec(row) ?? /^(.*[$#%>❯›»] )(.*)$/u.exec(row);
   const command = match?.[2].trim() ?? "";
   return match && command ? { prompt: match[1], command } : null;
 }

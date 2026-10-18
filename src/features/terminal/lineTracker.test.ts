@@ -132,6 +132,9 @@ describe("commandOnScreen", () => {
     expect(commandOnScreen("root@box:/# claude")).toEqual({ prompt: "root@box:/# ", command: "claude" });
     expect(commandOnScreen("~/proj ❯ opencode")).toEqual({ prompt: "~/proj ❯ ", command: "opencode" });
     expect(commandOnScreen("PS C:\\Users\\me> codex")).toEqual({ prompt: "PS C:\\Users\\me> ", command: "codex" });
+    // cmd.exe's prompt has no space after the sign.
+    expect(commandOnScreen("C:\\Users\\me>codex --full-auto")).toEqual({ prompt: "C:\\Users\\me>", command: "codex --full-auto" });
+    expect(commandOnScreen("D:\\work\\api>claude")).toEqual({ prompt: "D:\\work\\api>", command: "claude" });
   });
 
   it("is null without a prompt sign or a command", () => {

@@ -62,6 +62,16 @@ export function cliOfTitle(title: string, commands: readonly string[]): string |
 }
 
 /**
+ * A title that names the running CLI as a word anywhere, as cmd.exe titles its window while a
+ * program runs (`C:\\WINDOWS\\system32\\cmd.exe - claude`). `claude-project` is another word.
+ */
+const mentionsCli = (title: string, cli: string) => {
+  const names = [cli, ...Object.entries(TITLE_NAMES).filter(([, command]) => command === cli).map(([name]) => name)];
+  const text = title.toLowerCase();
+  return names.some((name) => new RegExp(`(^|[^\\p{L}\\p{N}_-])${escape(name)}($|[^\\p{L}\\p{N}_-])`, "u").test(text));
+};
+
+/**
  * A title that opens with a non-ASCII symbol (a spinner or mark such as Claude Code's ✳ or ⠂), as AI
  * CLIs title the terminal while they work. ASCII punctuation is the shell's (`~/proj`, `[me@box]`).
  */
@@ -135,7 +145,10 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       if (dev && dev.cli !== null) {
         // While a CLI runs its titles name it or start with a symbol (Claude Code's "✳ <task>");
         // any other title in its pane is the shell's again: the CLI has ended.
-        const stillCli = cliOfTitle(action.title, action.commands) !== null || startsWithSymbol(action.title);
+        const stillCli =
+          cliOfTitle(action.title, action.commands) !== null ||
+          startsWithSymbol(action.title) ||
+          mentionsCli(action.title, dev.cli);
         return stillCli || dev.pane !== action.pane ? state : promptBack(state, action.tab, action.pane);
       }
       // A hand-made DEV mode learns its CLI from the title.
