@@ -38,12 +38,14 @@ interface LocalPanelProps {
    * default), the plain list, which never reads git.
    */
   devStyle?: boolean;
+  /** Where the list starts when it does not follow the terminal (DEV mode's project); home otherwise. */
+  startAt?: string | null;
   /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
   onOpenInTerminal?: (path: string) => void;
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -227,10 +229,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   };
 
   // Start in the terminal folder when following it, otherwise in the home folder.
-  const start = useRef({ follow, cwd });
+  const start = useRef({ follow, cwd, startAt });
   useEffect(() => {
-    if (!(start.current.follow && start.current.cwd)) void goHome();
-  }, [goHome]);
+    const { follow, cwd, startAt } = start.current;
+    if (follow && cwd) return;
+    void (startAt ? navigate(startAt) : goHome());
+  }, [goHome, navigate]);
 
   useEffect(() => {
     if (follow && cwd) void navigate(cwd);
@@ -314,13 +318,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           {t("common.delete")}
         </button>
       </div>
-      {/* DEV mode keeps the list at the project folder: following the terminal does not apply. */}
-      {!devStyle && (
-        <label className="sftp__follow">
-          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-          {t("sftp.panel.follow")}
-        </label>
-      )}
+      <label className="sftp__follow">
+        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+        {t("sftp.panel.follow")}
+      </label>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}

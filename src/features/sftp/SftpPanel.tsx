@@ -40,6 +40,8 @@ interface SftpPanelProps {
    * default), the plain list, which never reads git.
    */
   devStyle?: boolean;
+  /** Where the list starts when it does not follow the terminal (DEV mode's project); home otherwise. */
+  startAt?: string | null;
   /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
   onOpenInTerminal?: (path: string) => void;
 }
@@ -47,7 +49,7 @@ interface SftpPanelProps {
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null }: SftpPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -304,10 +306,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
   };
 
   // Start in the terminal folder when following it, otherwise in the home folder.
-  const start = useRef({ follow, cwd });
+  const start = useRef({ follow, cwd, startAt });
   useEffect(() => {
-    if (!(start.current.follow && start.current.cwd)) void goHome();
-  }, [goHome]);
+    const { follow, cwd, startAt } = start.current;
+    if (follow && cwd) return;
+    void (startAt ? navigate(startAt) : goHome());
+  }, [goHome, navigate]);
 
   useEffect(() => {
     if (follow && cwd) void navigate(cwd);
@@ -431,13 +435,10 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           {t("sftp.panel.download")}
         </button>
       </div>
-      {/* DEV mode keeps the list at the project folder: following the terminal does not apply. */}
-      {!devStyle && (
-        <label className="sftp__follow">
-          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-          {t("sftp.panel.follow")}
-        </label>
-      )}
+      <label className="sftp__follow">
+        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+        {t("sftp.panel.follow")}
+      </label>
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}

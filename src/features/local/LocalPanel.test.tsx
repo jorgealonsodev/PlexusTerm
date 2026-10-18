@@ -395,15 +395,3 @@ describe("LocalPanel outside DEV mode", () => {
   });
 });
 
-
-describe("Follow terminal folder in DEV mode", () => {
-  it("is hidden in DEV mode, where the list stays at the project folder, and shown otherwise", async () => {
-    const { unmount } = render(panel({ devStyle: true }));
-    await act(() => Promise.resolve());
-    expect(screen.queryByLabelText("Follow terminal folder")).toBeNull();
-    unmount();
-    render(panel());
-    await act(() => Promise.resolve());
-    expect(screen.getByLabelText("Follow terminal folder")).toBeTruthy();
-  });
-});

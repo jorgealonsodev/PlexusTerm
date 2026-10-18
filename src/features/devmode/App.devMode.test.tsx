@@ -276,21 +276,36 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
-  it("anchors the Explorer at the folder the tool was opened in and lets it follow the terminal again afterwards", async () => {
+  it("opens the Explorer at the folder the tool was opened in and follows the terminal while Follow terminal folder is on", async () => {
     await renderApp();
     await run("claude");
     // Opened in the repository's src folder: the Explorer goes there, not to the repository root.
     await waitFor(() => expect(listed("/home/me/repo/src")).toBe(true));
     expect(await screen.findByText("main.ts")).toBeTruthy();
     expect(listed("/home/me/repo")).toBe(false);
-    // The terminal changes folder: the Explorer stays at the project.
+    // The option is there in DEV mode too, on by default: the Explorer goes where the terminal goes.
+    const follow = screen.getByRole("checkbox", { name: "Follow terminal folder" }) as HTMLInputElement;
+    expect(follow.checked).toBe(true);
+    act(() => stub.props.onCwd?.("/tmp"));
+    await waitFor(() => expect(listed("/tmp")).toBe(true));
+    expect(await screen.findByText("scratch.txt")).toBeTruthy();
+    // Off: the Explorer stays where it is.
+    fireEvent.click(follow);
+    await settle();
+    act(() => stub.props.onCwd?.("/opt"));
+    await settle();
+    expect(listed("/opt")).toBe(false);
+  });
+
+  it("keeps the Explorer at the folder the tool was opened in while Follow terminal folder is off", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Follow terminal folder" }));
+    await settle();
+    await run("claude");
+    await waitFor(() => expect(listed("/home/me/repo/src")).toBe(true));
     act(() => stub.props.onCwd?.("/tmp"));
     await settle();
     expect(listed("/tmp")).toBe(false);
-    // DEV mode ends: the Explorer follows the terminal again.
-    act(() => stub.props.onPrompt?.(true));
-    await waitFor(() => expect(listed("/tmp")).toBe(true));
-    expect(await screen.findByText("scratch.txt")).toBeTruthy();
   });
 
   it("sends desktop notifications for a DEV tab even when they are off in Settings", async () => {

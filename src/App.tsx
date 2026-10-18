@@ -401,12 +401,12 @@ function AppContent() {
   // The Explorer tab belongs to a local terminal; its pty id lets the backend read the shell's folder.
   const localPtyId = activeTab?.target.type === "local" ? activeSession.sessionId : null;
   const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
-  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd && !activeDev);
+  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd);
   // SFTP follows a remote shell without OSC 7 by reading its folder on the server; the sidebar
   // shows SFTP for an SSH tab on either file tab.
   const sftpShown =
     sftpSessionId !== null && (sidebarView === "sftp" || sidebarView === "explorer") && !terminalSettings.settings.sidebarCollapsed;
-  const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd && !activeDev, sftp.shellCwd);
+  const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd, sftp.shellCwd);
   // The file lists read their git status again while the active terminal prints (AI CLIs edit
   // files as they go), through the same output feed macros wait on.
   const activeSessionId = activeSession.sessionId;
@@ -1133,8 +1133,10 @@ function AppContent() {
                 <LocalPanel
                   // DEV mode lists from the project root (S10) and starts over when it ends.
                   key={`${activePane}:${localPtyId}${activeDev ? `:dev:${devAnchor ?? ""}` : ""}`}
-                  cwd={activeDev ? devAnchor : localCwd}
-                  follow={activeDev ? devAnchor !== null : followLocalCwd}
+                  // DEV mode opens at the folder the tool was opened in, then follows the terminal if asked.
+                  cwd={activeDev && (!followLocalCwd || localCwd === null) ? devAnchor : localCwd}
+                  follow={followLocalCwd}
+                  startAt={activeDev ? devAnchor : null}
                   onFollowChange={setFollowLocalCwd}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
@@ -1163,8 +1165,9 @@ function AppContent() {
                 <SftpPanel
                   key={`${activePane}:${sftpSessionId}${activeDev ? `:dev:${devAnchor ?? ""}` : ""}`}
                   sessionId={sftpSessionId}
-                  cwd={activeDev ? devAnchor : sftpCwd}
-                  follow={activeDev ? devAnchor !== null : followCwd}
+                  cwd={activeDev && (!followCwd || sftpCwd === null) ? devAnchor : sftpCwd}
+                  follow={followCwd}
+                  startAt={activeDev ? devAnchor : null}
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
                   onUserNavigate={(path) =>
