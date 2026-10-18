@@ -166,3 +166,10 @@ export function decorationFor(index: GitStatusIndex, path: string, isDir: boolea
   const below = isDir ? index.folders.get(path) : undefined;
   return below === undefined ? null : decoration(below, true);
 }
+
+/** The decoration of a whole listed folder (a workspace root): a dot coloured as its folders are. */
+export function rootDecoration(entries: GitStatusEntry[]): Decoration | null {
+  let best: GitFileStatus | undefined;
+  for (const { status } of entries) if (propagates(status)) best = pick(best, status);
+  return best === undefined ? null : decoration(best, true);
+}

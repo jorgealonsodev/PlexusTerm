@@ -15,9 +15,9 @@ import { basename, isRoot, joinPath, parentPath, validName } from "./localPath";
 import { HelpTip } from "../sidebar/HelpTip";
 import { FileTree } from "../files/FileTree";
 import { FlatFileList } from "../files/FlatFileList";
-import { indexGitStatus } from "../files/gitStatus";
+import { indexGitStatus, rootDecoration } from "../files/gitStatus";
 import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
-import { WorkspaceFolder } from "../files/WorkspaceFolder";
+import { WorkspaceFolder, WorkspaceRoot } from "../files/WorkspaceFolder";
 import { parseWorkspaceFile, WORKSPACE_EXTENSION, workspaceFileText } from "../files/workspaceFile";
 
 interface LocalPanelProps {
@@ -270,6 +270,9 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     subscribeOutput: git?.subscribeOutput,
   };
   const showWorkspace = devStyle && workspace !== undefined;
+  /** With added folders, every folder shows as a root, as in a VS Code workspace. */
+  const asRoots = showWorkspace && workspace.folders.length > 0;
+  const [mainOpen, setMainOpen] = useState(true);
 
   /** Adds a folder chosen in the system dialog to the workspace, once. */
   const addFolder = async () => {
@@ -329,6 +332,21 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   });
 
   const busy = path === null;
+  const mainTree = (
+    <FileTree
+      key={path ?? ""}
+      entries={entries}
+      list={listFolder}
+      describeError={describeLocalError}
+      loads={loads}
+      selected={selected}
+      onSelect={setSelectedEntry}
+      onOpen={(entry) => void openEntry(entry)}
+      details={details}
+      gitIndex={gitIndex}
+      rowProps={rowProps}
+    />
+  );
 
   return (
     <div className="sidebar__panel sftp">
@@ -402,19 +420,19 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       {status && <p className="sidebar__note">{status}</p>}
       {path !== null && entries.length === 0 && !error && <p className="sidebar__note">{t("sftp.panel.empty")}</p>}
       {devStyle ? (
-        <FileTree
-          key={path ?? ""}
-          entries={entries}
-          list={listFolder}
-          describeError={describeLocalError}
-          loads={loads}
-          selected={selected}
-          onSelect={setSelectedEntry}
-          onOpen={(entry) => void openEntry(entry)}
-          details={details}
-          gitIndex={gitIndex}
-          rowProps={rowProps}
-        />
+        asRoots && path !== null ? (
+          <WorkspaceRoot
+            name={basename(path)}
+            path={path}
+            open={mainOpen}
+            onToggle={() => setMainOpen((v) => !v)}
+            decoration={rootDecoration(gitEntries)}
+          >
+            {mainTree}
+          </WorkspaceRoot>
+        ) : (
+          mainTree
+        )
       ) : (
         <FlatFileList
           entries={entries}

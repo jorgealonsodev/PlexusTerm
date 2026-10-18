@@ -433,7 +433,7 @@ describe("workspace folders in DEV mode", () => {
     expect(onAdd).not.toHaveBeenCalled();
   });
 
-  it("lists each added folder as another root with its own git status, and removes it", async () => {
+  it("shows every folder as a VS Code workspace root once one is added: folds, git dot, remove from its menu", async () => {
     listing();
     mocked.gitStatus.mockImplementation(async (root) =>
       root === "/work/api" ? [{ path: "server.ts", status: "modified" }] : [],
@@ -446,15 +446,36 @@ describe("workspace folders in DEV mode", () => {
         workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove, onOpenFolders: () => {} },
       }),
     );
+    // The main folder is a root too, first.
+    const main = await screen.findByRole("group", { name: "me" });
+    expect(await within(main).findByText("notes.txt")).toBeTruthy();
     const root = await screen.findByRole("group", { name: "api" });
+    expect(main.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(await within(root).findByText("server.ts")).toBeTruthy();
     await waitFor(() => expect(within(root).getByText("server.ts").className).toContain("git--modified"));
     expect(mocked.gitStatus).toHaveBeenCalledWith("/work/api");
-    // It folds like a VS Code workspace root.
-    fireEvent.click(within(root).getByRole("button", { name: "api" }));
+    // Its title: chevron and name, and a dot coloured by what changed inside.
+    const title = within(root).getByRole("button", { name: "api" });
+    expect(title.getAttribute("aria-expanded")).toBe("true");
+    const rootTitle = (group: HTMLElement) => group.querySelector<HTMLElement>(".workspace-root__title")!;
+    expect(within(rootTitle(root)).getByTitle("Modified").textContent).toBe("●");
+    expect(within(rootTitle(main)).queryByTitle("Modified")).toBeNull();
+    fireEvent.click(title);
     expect(within(root).queryByText("server.ts")).toBeNull();
-    fireEvent.click(within(root).getByRole("button", { name: "Remove folder from workspace" }));
+    expect(title.getAttribute("aria-expanded")).toBe("false");
+    // Removed from its right-click menu (the main folder has no such item).
+    fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
+    expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.contextMenu(title, { clientX: 1, clientY: 1 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remove folder from workspace" }));
     expect(onRemove).toHaveBeenCalledWith("/work/api");
+  });
+
+  it("keeps the plain tree, without root titles, while no folder is added", async () => {
+    render(panel({ devStyle: true, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    await screen.findByText("notes.txt");
+    expect(screen.queryByRole("group")).toBeNull();
   });
 
   it("shows no added folders outside DEV mode", async () => {

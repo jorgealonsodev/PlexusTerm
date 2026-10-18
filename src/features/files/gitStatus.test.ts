@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decorationFor, indexGitStatus, type GitStatusEntry } from "./gitStatus";
+import { decorationFor, indexGitStatus, rootDecoration, type GitStatusEntry } from "./gitStatus";
 
 const e = (path: string, status: GitStatusEntry["status"]): GitStatusEntry => ({ path, status });
 const deco = (entries: GitStatusEntry[], path: string, isDir = false) => decorationFor(indexGitStatus(entries), path, isDir);
@@ -53,5 +53,20 @@ describe("git status decorations (VS Code)", () => {
     // An ignored folder does not grey its parent.
     expect(deco(entries, "", true)).toBeNull();
     expect(deco([e("web/node_modules/", "ignored")], "web", true)).toBeNull();
+  });
+});
+
+describe("a workspace root's decoration", () => {
+  it("is a dot coloured by the most important change inside, as a folder's", () => {
+    const deco = rootDecoration([
+      { path: "src/a.ts", status: "untracked" },
+      { path: "b.ts", status: "modified" },
+    ]);
+    expect(deco).toEqual(expect.objectContaining({ letter: null, color: "modified" }));
+  });
+
+  it("is none when nothing changed, or only ignored files are listed", () => {
+    expect(rootDecoration([])).toBeNull();
+    expect(rootDecoration([{ path: "node_modules/", status: "ignored" }])).toBeNull();
   });
 });
