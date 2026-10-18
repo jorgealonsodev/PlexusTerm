@@ -80,11 +80,19 @@ async fn git_branch(path: String) -> Option<String> {
 /// The git branch of a folder on the server of SSH session `id`, read with one `git` command over
 /// the existing connection; null outside a repository, without git, or when the command fails.
 #[tauri::command]
-async fn ssh_git_branch(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<Option<String>, ()> {
+async fn ssh_git_branch(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<Option<String>, ()> {
     let Some(command) = git::remote_command(&path) else {
         return Ok(None);
     };
-    Ok(ssh.exec(id, &command).await.ok().and_then(|output| git::parse_remote(&output)))
+    Ok(ssh
+        .exec(id, &command)
+        .await
+        .ok()
+        .and_then(|output| git::parse_remote(&output)))
 }
 
 /// The git status of the files under a local folder (paths relative to it), for colouring the
@@ -99,7 +107,11 @@ async fn git_status(path: String) -> Vec<git::StatusEntry> {
 /// The git status of the files under a folder on the server of SSH session `id`, read with one
 /// read-only `git` command over the existing connection; empty when it cannot be read.
 #[tauri::command]
-async fn ssh_git_status(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<Vec<git::StatusEntry>, ()> {
+async fn ssh_git_status(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<Vec<git::StatusEntry>, ()> {
     let Some(command) = git::remote_status_command(&path) else {
         return Ok(Vec::new());
     };
@@ -324,6 +336,16 @@ async fn sftp_read_text(
     ssh: State<'_, SshManager>,
 ) -> Result<localfs::TextFile, SftpError> {
     sftp::read_text(&*ssh.sftp(id).await?, &path).await
+}
+
+/// A remote text file for the file viewer.
+#[tauri::command]
+async fn sftp_view_text(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<localfs::TextFile, SftpError> {
+    sftp::view_text(&*ssh.sftp(id).await?, &path).await
 }
 
 #[tauri::command]
@@ -562,6 +584,7 @@ pub fn run() {
             sftp_home,
             sftp_list,
             sftp_read_text,
+            sftp_view_text,
             sftp_download,
             sftp_upload,
             sftp_mkdir,
@@ -621,7 +644,8 @@ pub fn run() {
             localfs::local_remove,
             localfs::local_chmod,
             localfs::local_open,
-            localfs::local_read_text
+            localfs::local_read_text,
+            localfs::local_view_text
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

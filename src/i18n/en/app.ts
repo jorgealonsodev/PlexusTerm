@@ -115,4 +115,9 @@ export const app = {
     resize: "Resize sidebar",
     resizeHint: "Drag to change the sidebar width; double-click to restore the default width",
   },
+  viewer: {
+    close: "Close viewer",
+    loading: "Reading the file…",
+    truncated: "Showing the first 4 MB of this file.",
+  },
 };

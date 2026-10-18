@@ -17,11 +17,11 @@
 //! `id_rsa` next to known_hosts (`~/.ssh`), unencrypted only. The password is only sent
 //! when the server rejects all of them (see [`try_default_keys`]).
 
+pub mod cwd;
 #[cfg(test)]
 mod interop_tests;
 #[cfg(test)]
 pub(crate) mod test_server;
-pub mod cwd;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

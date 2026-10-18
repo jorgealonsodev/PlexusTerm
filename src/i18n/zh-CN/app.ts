@@ -115,4 +115,9 @@ export const app: Messages<typeof en> = {
     resize: "调整侧边栏宽度",
     resizeHint: "拖动可更改侧边栏宽度；双击恢复默认宽度",
   },
+  viewer: {
+    close: "关闭查看器",
+    loading: "正在读取文件…",
+    truncated: "仅显示此文件的前 4 MB。",
+  },
 };

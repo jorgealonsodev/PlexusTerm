@@ -116,4 +116,9 @@ export const app: Messages<typeof en> = {
     resize: "サイドバーの幅を変更",
     resizeHint: "ドラッグでサイドバーの幅を変更し、ダブルクリックで既定の幅に戻します",
   },
+  viewer: {
+    close: "ビューアーを閉じる",
+    loading: "ファイルを読み込んでいます…",
+    truncated: "このファイルの最初の 4 MB を表示しています。",
+  },
 };

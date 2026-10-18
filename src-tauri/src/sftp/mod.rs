@@ -163,7 +163,6 @@ pub async fn read_text(
     path: &str,
 ) -> Result<crate::localfs::TextFile, SftpError> {
     use crate::localfs::{MAX_ATTACH_BYTES, listing_text, text_from};
-    use tokio::io::AsyncReadExt;
 
     let meta = sftp
         .metadata(path)
@@ -172,18 +171,50 @@ pub async fn read_text(
     if meta.is_dir() {
         return Ok(listing_text(path, &list(sftp, path).await?));
     }
+    let (bytes, truncated) = read_prefix(sftp, path, MAX_ATTACH_BYTES).await?;
+    text_from(path, bytes, truncated).map_err(|message| SftpError::Sftp { message })
+}
+
+/// The first [`crate::localfs::MAX_VIEW_BYTES`] of a remote text file, for the file viewer.
+pub async fn view_text(
+    sftp: &SftpSession,
+    path: &str,
+) -> Result<crate::localfs::TextFile, SftpError> {
+    use crate::localfs::{MAX_VIEW_BYTES, text_for};
+
+    let meta = sftp
+        .metadata(path)
+        .await
+        .map_err(|err| failure("read", path, err))?;
+    if meta.is_dir() {
+        return Err(SftpError::Sftp {
+            message: format!("cannot view {path}: it is a folder"),
+        });
+    }
+    let (bytes, truncated) = read_prefix(sftp, path, MAX_VIEW_BYTES).await?;
+    text_for("view", path, bytes, truncated).map_err(|message| SftpError::Sftp { message })
+}
+
+/// The first `max` bytes of a remote file, and whether it is longer.
+async fn read_prefix(
+    sftp: &SftpSession,
+    path: &str,
+    max: usize,
+) -> Result<(Vec<u8>, bool), SftpError> {
+    use tokio::io::AsyncReadExt;
+
     let file = sftp
         .open(path)
         .await
         .map_err(|err| failure("read", path, err))?;
     let mut bytes = Vec::new();
-    file.take(MAX_ATTACH_BYTES as u64 + 1)
+    file.take(max as u64 + 1)
         .read_to_end(&mut bytes)
         .await
         .map_err(|err| failure("read", path, err))?;
-    let truncated = bytes.len() > MAX_ATTACH_BYTES;
-    bytes.truncate(MAX_ATTACH_BYTES);
-    text_from(path, bytes, truncated).map_err(|message| SftpError::Sftp { message })
+    let truncated = bytes.len() > max;
+    bytes.truncate(max);
+    Ok((bytes, truncated))
 }
 
 /// Streams the remote file `remote` into the local file `local` (created or truncated).

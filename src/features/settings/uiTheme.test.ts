@@ -73,4 +73,17 @@ describe("mix", () => {
     expect(light["--git-stageDeleted"]).toBe("#ad0707");
     expect(light["--git-conflicting"]).toBe("#ad0707");
   });
+
+  it("colours code in the file viewer from the scheme's ANSI palette", () => {
+    const nord = themeById("nord");
+    const colors = uiColors(nord);
+    expect(colors["--syntax-keyword"]).toBe(nord.theme.magenta);
+    expect(colors["--syntax-string"]).toBe(nord.theme.green);
+    expect(colors["--syntax-number"]).toBe(nord.theme.yellow);
+    expect(colors["--syntax-function"]).toBe(nord.theme.blue);
+    expect(colors["--syntax-type"]).toBe(nord.theme.cyan);
+    expect(colors["--syntax-tag"]).toBe(nord.theme.red);
+    expect(colors["--syntax-property"]).toBe(nord.theme.brightBlue);
+    expect(colors["--syntax-comment"]).toBe(colors["--muted"]);
+  });
 });

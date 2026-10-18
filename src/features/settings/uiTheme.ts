@@ -57,6 +57,15 @@ export function uiColors({ dark, theme }: TerminalThemeEntry): Record<string, st
     "--danger": theme.red!,
     "--warning": theme.yellow!,
     "--success": theme.green!,
+    // Code in the file viewer, from the ANSI palette as terminal programs colour it.
+    "--syntax-keyword": theme.magenta!,
+    "--syntax-string": theme.green!,
+    "--syntax-number": theme.yellow!,
+    "--syntax-function": theme.blue!,
+    "--syntax-type": theme.cyan!,
+    "--syntax-tag": theme.red!,
+    "--syntax-property": theme.brightBlue ?? theme.blue!,
+    "--syntax-comment": mix(bg, fg, 0.6),
     ...Object.fromEntries(Object.entries(GIT_COLORS).map(([name, [onDark, onLight]]) => [`--git-${name}`, dark ? onDark : onLight])),
     "color-scheme": dark ? "dark" : "light",
   };

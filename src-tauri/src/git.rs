@@ -62,7 +62,8 @@ pub fn parse_head(text: &str) -> Option<String> {
         let name = reference.strip_prefix("refs/heads/").unwrap_or(reference);
         return clean_name(name);
     }
-    let is_hash = (line.len() == 40 || line.len() == 64) && line.bytes().all(|b| b.is_ascii_hexdigit());
+    let is_hash =
+        (line.len() == 40 || line.len() == 64) && line.bytes().all(|b| b.is_ascii_hexdigit());
     is_hash.then(|| line[..SHORT_HASH].to_ascii_lowercase())
 }
 
@@ -84,9 +85,16 @@ fn base64(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
-        let n = chunk.iter().enumerate().fold(0u32, |n, (i, b)| n | u32::from(*b) << (16 - 8 * i));
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |n, (i, b)| n | u32::from(*b) << (16 - 8 * i));
         for i in 0..4 {
-            out.push(if i <= chunk.len() { ALPHABET[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
+            out.push(if i <= chunk.len() {
+                ALPHABET[(n >> (18 - 6 * i) & 63) as usize] as char
+            } else {
+                '='
+            });
         }
     }
     out
@@ -96,7 +104,10 @@ fn base64(bytes: &[u8]) -> String {
 /// the command to that shell first, and shells disagree on quoting (fish reads `\'` inside single
 /// quotes as an escaped quote), so the login shell only sees base64 letters piped into `sh`.
 fn through_sh(script: &str) -> String {
-    format!("echo {} | base64 -d | sh 2>/dev/null", base64(script.as_bytes()))
+    format!(
+        "echo {} | base64 -d | sh 2>/dev/null",
+        base64(script.as_bytes())
+    )
 }
 
 /// The read-only command that prints the branch of the remote `folder` (or its short commit when
@@ -213,7 +224,10 @@ pub fn parse_status(output: &[u8]) -> Vec<StatusEntry> {
     let prefix = String::from_utf8_lossy(&output[..split]);
     let rest = &output[split + 1..];
     // Every complete record ends with a NUL; whatever follows the last one was cut.
-    let complete = rest.iter().rposition(|&b| b == 0).map_or(&rest[..0], |end| &rest[..end]);
+    let complete = rest
+        .iter()
+        .rposition(|&b| b == 0)
+        .map_or(&rest[..0], |end| &rest[..end]);
     let mut fields = complete.split(|&b| b == 0);
     let mut entries = Vec::new();
     while let Some(record) = fields.next() {
@@ -233,7 +247,10 @@ pub fn parse_status(output: &[u8]) -> Vec<StatusEntry> {
         };
         for status in statuses_of_code(x, y) {
             if entries.len() < MAX_STATUS_ENTRIES {
-                entries.push(StatusEntry { path: relative.clone(), status });
+                entries.push(StatusEntry {
+                    path: relative.clone(),
+                    status,
+                });
             }
         }
     }
@@ -273,7 +290,14 @@ pub fn status_of(folder: &Path) -> Vec<StatusEntry> {
     parse_status(&output)
 }
 
-const STATUS_ARGS: [&str; 6] = ["status", "--porcelain=v1", "-z", "--ignored=matching", "--", "."];
+const STATUS_ARGS: [&str; 6] = [
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--ignored=matching",
+    "--",
+    ".",
+];
 
 /// Runs `git --no-optional-locks <args>` in `folder`; its stdout (at most [`MAX_STATUS_BYTES`]),
 /// or `None` when git is missing or fails.
@@ -296,7 +320,11 @@ fn run_git(folder: &Path, args: &[&str]) -> Option<Vec<u8>> {
     }
     let mut child = command.spawn().ok()?;
     let mut out = Vec::new();
-    let read = child.stdout.take()?.take(MAX_STATUS_BYTES).read_to_end(&mut out);
+    let read = child
+        .stdout
+        .take()?
+        .take(MAX_STATUS_BYTES)
+        .read_to_end(&mut out);
     if out.len() as u64 >= MAX_STATUS_BYTES {
         // Capped: stop git rather than wait for output nobody reads.
         let _ = child.kill();
@@ -366,7 +394,11 @@ mod tests {
         fs::create_dir_all(&gitdir).unwrap();
         fs::write(gitdir.join("HEAD"), "ref: refs/heads/wt-branch\n").unwrap();
         let worktree = tempfile::tempdir().unwrap();
-        fs::write(worktree.path().join(".git"), format!("gitdir: {}\n", gitdir.display())).unwrap();
+        fs::write(
+            worktree.path().join(".git"),
+            format!("gitdir: {}\n", gitdir.display()),
+        )
+        .unwrap();
         assert_eq!(branch_of(worktree.path()), Some("wt-branch".into()));
 
         // Submodules point with a relative path.
@@ -394,7 +426,10 @@ mod tests {
         assert_eq!(branch_of(repo_with_head("").path()), None);
         assert_eq!(branch_of(repo_with_head("garbage\n").path()), None);
         assert_eq!(branch_of(repo_with_head("ref: \n").path()), None);
-        assert_eq!(branch_of(repo_with_head("ref: refs/heads/a\u{1b}[31mred\n").path()), None);
+        assert_eq!(
+            branch_of(repo_with_head("ref: refs/heads/a\u{1b}[31mred\n").path()),
+            None
+        );
         assert_eq!(branch_of(repo_with_head(&"x".repeat(10_000)).path()), None);
         // HEAD missing, or a folder instead of a file.
         let repo = tempfile::tempdir().unwrap();
@@ -448,7 +483,10 @@ mod tests {
         };
         assert_eq!(run(&dir), None);
         assert!(!dir.join("pwned").exists() && !Path::new("pwned").exists());
-        let has_git = std::process::Command::new("git").arg("--version").output().is_ok();
+        let has_git = std::process::Command::new("git")
+            .arg("--version")
+            .output()
+            .is_ok();
         if has_git {
             let init = std::process::Command::new("git")
                 .args(["init", "-q", "-b", "topic"])
@@ -477,14 +515,29 @@ mod status_tests {
     use std::process::Command;
 
     fn has_git() -> bool {
-        Command::new("git").arg("--version").output().is_ok_and(|o| o.status.success())
+        Command::new("git")
+            .arg("--version")
+            .output()
+            .is_ok_and(|o| o.status.success())
     }
 
     /// Runs git in `dir` without the user's or system's configuration.
     fn git(dir: &Path, args: &[&str]) {
         let out = Command::new("git")
-            .args(["-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"])
-            .args(["-c", "init.defaultBranch=main", "-c", "core.hooksPath=/dev/null"])
+            .args([
+                "-c",
+                "user.name=T",
+                "-c",
+                "user.email=t@example.com",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args([
+                "-c",
+                "init.defaultBranch=main",
+                "-c",
+                "core.hooksPath=/dev/null",
+            ])
             .args(args)
             .current_dir(dir)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
@@ -509,11 +562,18 @@ mod status_tests {
     }
 
     fn entry(path: &str, status: FileStatus) -> StatusEntry {
-        StatusEntry { path: path.into(), status }
+        StatusEntry {
+            path: path.into(),
+            status,
+        }
     }
 
     fn sorted(mut entries: Vec<StatusEntry>) -> Vec<StatusEntry> {
-        entries.sort_by(|a, b| a.path.cmp(&b.path).then((a.status as u8).cmp(&(b.status as u8))));
+        entries.sort_by(|a, b| {
+            a.path
+                .cmp(&b.path)
+                .then((a.status as u8).cmp(&(b.status as u8)))
+        });
         entries
     }
 
@@ -557,13 +617,19 @@ mod status_tests {
             ]
         );
         // Inside an ignored folder: the listed folder itself is covered.
-        assert_eq!(parse_status(b"node_modules/pkg/\0!! node_modules/\0"), vec![entry("", Ignored)]);
+        assert_eq!(
+            parse_status(b"node_modules/pkg/\0!! node_modules/\0"),
+            vec![entry("", Ignored)]
+        );
         assert_eq!(parse_status(b"src/\0?? src/\0"), vec![entry("", Untracked)]);
         // Nothing before the prefix separator (not a repository): nothing.
         assert_eq!(parse_status(b""), vec![]);
         assert_eq!(parse_status(b" M a.rs\0"), vec![]);
         // Garbage records are skipped.
-        assert_eq!(parse_status(b"\0x\0M\0 M ok\0"), vec![entry("ok", Modified)]);
+        assert_eq!(
+            parse_status(b"\0x\0M\0 M ok\0"),
+            vec![entry("ok", Modified)]
+        );
     }
 
     #[test]
@@ -630,7 +696,10 @@ mod status_tests {
         // Inside an untracked folder, everything is untracked.
         fs::create_dir_all(p.join("fresh/inner")).unwrap();
         fs::write(p.join("fresh/inner/f.txt"), "f").unwrap();
-        assert_eq!(status_of(&p.join("fresh/inner")), vec![entry("", Untracked)]);
+        assert_eq!(
+            status_of(&p.join("fresh/inner")),
+            vec![entry("", Untracked)]
+        );
     }
 
     #[test]
@@ -647,7 +716,15 @@ mod status_tests {
         fs::write(p.join("a.txt"), "main\n").unwrap();
         git(p, &["commit", "-q", "-am", "main"]);
         let merge = Command::new("git")
-            .args(["-c", "user.name=T", "-c", "user.email=t@example.com", "merge", "-q", "other"])
+            .args([
+                "-c",
+                "user.name=T",
+                "-c",
+                "user.email=t@example.com",
+                "merge",
+                "-q",
+                "other",
+            ])
             .current_dir(p)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_NOSYSTEM", "1")
@@ -679,14 +756,24 @@ mod status_tests {
     /// tcsh all read that the same way, whatever the folder name holds.
     #[test]
     fn the_login_shell_only_sees_base64_letters() {
-        for folder in ["/tmp/x\\';touch PWN_A;echo '", "/tmp/x\\'(touch PWN_B)", "/a b/$(c)`d`", "x&calc&y"] {
-            for command in [remote_command(folder).unwrap(), remote_status_command(folder).unwrap()] {
+        for folder in [
+            "/tmp/x\\';touch PWN_A;echo '",
+            "/tmp/x\\'(touch PWN_B)",
+            "/a b/$(c)`d`",
+            "x&calc&y",
+        ] {
+            for command in [
+                remote_command(folder).unwrap(),
+                remote_status_command(folder).unwrap(),
+            ] {
                 let payload = command
                     .strip_prefix("echo ")
                     .and_then(|rest| rest.strip_suffix(" | base64 -d | sh 2>/dev/null"))
                     .unwrap_or_else(|| panic!("{command}"));
                 assert!(
-                    payload.chars().all(|c| c.is_ascii_alphanumeric() || "+/=".contains(c)),
+                    payload
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || "+/=".contains(c)),
                     "{command}"
                 );
             }
@@ -700,7 +787,10 @@ mod status_tests {
         let Ok(fish) = which_fish() else { return };
         let outside = tempfile::tempdir().unwrap();
         for folder in ["x\\';touch PWN_A;echo '", "x\\'(touch PWN_B)"] {
-            for command in [remote_command(folder).unwrap(), remote_status_command(folder).unwrap()] {
+            for command in [
+                remote_command(folder).unwrap(),
+                remote_status_command(folder).unwrap(),
+            ] {
                 let out = Command::new(&fish)
                     .args(["--no-config", "-c", &command])
                     .current_dir(outside.path())
@@ -710,14 +800,21 @@ mod status_tests {
             }
         }
         for leaked in ["PWN_A", "PWN_B"] {
-            assert!(!outside.path().join(leaked).exists(), "{leaked} was created");
+            assert!(
+                !outside.path().join(leaked).exists(),
+                "{leaked} was created"
+            );
         }
     }
 
     #[cfg(unix)]
     fn which_fish() -> Result<std::path::PathBuf, ()> {
         std::env::var_os("PATH")
-            .and_then(|paths| std::env::split_paths(&paths).map(|p| p.join("fish")).find(|p| p.is_file()))
+            .and_then(|paths| {
+                std::env::split_paths(&paths)
+                    .map(|p| p.join("fish"))
+                    .find(|p| p.is_file())
+            })
             .ok_or(())
     }
 
@@ -726,7 +823,9 @@ mod status_tests {
     #[test]
     fn the_remote_status_command_runs_in_sh_and_a_hostile_name_runs_nothing() {
         let outside = tempfile::tempdir().unwrap();
-        let dir = outside.path().join("it's a repo; $(touch pwned) `touch pwned2`");
+        let dir = outside
+            .path()
+            .join("it's a repo; $(touch pwned) `touch pwned2`");
         fs::create_dir_all(&dir).unwrap();
         let run = |folder: &Path| {
             let out = Command::new("sh")
@@ -744,7 +843,10 @@ mod status_tests {
             fs::create_dir_all(dir.join("sub")).unwrap();
             fs::write(dir.join("sub/new.txt"), "n").unwrap();
             fs::write(dir.join("top.txt"), "t").unwrap();
-            assert_eq!(sorted(run(&dir)), vec![entry("sub/", Untracked), entry("top.txt", Untracked)]);
+            assert_eq!(
+                sorted(run(&dir)),
+                vec![entry("sub/", Untracked), entry("top.txt", Untracked)]
+            );
             // Inside the untracked folder, the whole folder is untracked.
             assert_eq!(run(&dir.join("sub")), vec![entry("", Untracked)]);
         }

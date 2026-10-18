@@ -117,4 +117,9 @@ export const app: Messages<typeof en> = {
     resize: "Breite der Seitenleiste ändern",
     resizeHint: "Ziehen, um die Breite der Seitenleiste zu ändern; Doppelklick stellt die Standardbreite wieder her",
   },
+  viewer: {
+    close: "Betrachter schließen",
+    loading: "Datei wird gelesen …",
+    truncated: "Es werden die ersten 4 MB dieser Datei angezeigt.",
+  },
 };

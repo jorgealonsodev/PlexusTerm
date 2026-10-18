@@ -11,6 +11,14 @@
   --warning: #f0b45e;
   --on-warning: #0f1419;
   --success: #7fd88f;
+  --syntax-keyword: #c792ea;
+  --syntax-string: #7fd88f;
+  --syntax-number: #f0b45e;
+  --syntax-function: #5ec4ff;
+  --syntax-type: #6cd4c8;
+  --syntax-tag: #ef6b73;
+  --syntax-property: #8fd3ff;
+  --syntax-comment: #7a8794;
   /* Overridden at runtime from the colour scheme (features/settings/uiTheme.ts). */
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -2436,4 +2444,58 @@ body.is-dragging-path {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The file viewer pane: the file's name and actions, then its text filling the rest. */
+.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.viewer__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.viewer__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.viewer__close:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text);
+}
+
+.viewer__code {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }

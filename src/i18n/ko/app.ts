@@ -115,4 +115,9 @@ export const app: Messages<typeof en> = {
     resize: "사이드바 너비 조절",
     resizeHint: "드래그하여 사이드바 너비를 바꾸고, 더블 클릭하면 기본 너비로 돌아갑니다",
   },
+  viewer: {
+    close: "뷰어 닫기",
+    loading: "파일을 읽는 중…",
+    truncated: "이 파일의 처음 4MB를 표시합니다.",
+  },
 };

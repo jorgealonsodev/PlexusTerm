@@ -118,4 +118,9 @@ export const app: Messages<typeof en> = {
     resize: "Redimensionner la barre latérale",
     resizeHint: "Faites glisser pour changer la largeur de la barre latérale ; double-cliquez pour revenir à la largeur par défaut",
   },
+  viewer: {
+    close: "Fermer la visionneuse",
+    loading: "Lecture du fichier…",
+    truncated: "Seuls les 4 premiers Mo de ce fichier sont affichés.",
+  },
 };

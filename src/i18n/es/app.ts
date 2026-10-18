@@ -118,4 +118,9 @@ export const app: Messages<typeof en> = {
     resize: "Cambiar el ancho de la barra lateral",
     resizeHint: "Arrastra para cambiar el ancho de la barra lateral; doble clic para volver al ancho por defecto",
   },
+  viewer: {
+    close: "Cerrar el visor",
+    loading: "Leyendo el archivo…",
+    truncated: "Se muestran los primeros 4 MB de este archivo.",
+  },
 };

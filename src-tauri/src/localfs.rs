@@ -172,6 +172,8 @@ pub fn chmod(path: &Path, mode: u32) -> Result<(), String> {
 pub const MAX_ATTACH_BYTES: usize = 64 * 1024;
 /// Entries of a folder attached to an AI question.
 const MAX_ATTACH_ENTRIES: usize = 500;
+/// Bytes of a file shown in the file viewer; the rest is left out.
+pub const MAX_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
 /// A file's text (or a folder's listing) attached to an AI question.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -186,7 +188,17 @@ pub struct TextFile {
 /// The text of the first bytes of a file; refused when they hold a NUL byte or invalid UTF-8
 /// (a character cut by the size limit is dropped, not refused).
 pub fn text_from(path: &str, bytes: Vec<u8>, truncated: bool) -> Result<TextFile, String> {
-    let not_text = || format!("cannot attach {path}: it is not a text file");
+    text_for("attach", path, bytes, truncated)
+}
+
+/// [`text_from`] for another action (`view`): its errors say `cannot <verb> <path>: ...`.
+pub fn text_for(
+    verb: &str,
+    path: &str,
+    bytes: Vec<u8>,
+    truncated: bool,
+) -> Result<TextFile, String> {
+    let not_text = || format!("cannot {verb} {path}: it is not a text file");
     if bytes.contains(&0) {
         return Err(not_text());
     }
@@ -226,19 +238,35 @@ pub fn listing_text(path: &str, entries: &[Entry]) -> TextFile {
 
 /// The first [`MAX_ATTACH_BYTES`] of a text file, or a folder's listing.
 pub fn read_text(path: &Path) -> Result<TextFile, String> {
-    use std::io::Read;
     let label = path.to_string_lossy().into_owned();
     if fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false) {
         return Ok(listing_text(&label, &list(path)?));
     }
+    let (bytes, truncated) = read_prefix(path, MAX_ATTACH_BYTES)?;
+    text_from(&label, bytes, truncated)
+}
+
+/// The first [`MAX_VIEW_BYTES`] of a text file, for the file viewer.
+pub fn view_text(path: &Path) -> Result<TextFile, String> {
+    let label = path.to_string_lossy().into_owned();
+    if fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false) {
+        return Err(format!("cannot view {label}: it is a folder"));
+    }
+    let (bytes, truncated) = read_prefix(path, MAX_VIEW_BYTES)?;
+    text_for("view", &label, bytes, truncated)
+}
+
+/// The first `max` bytes of a file, and whether it is longer.
+fn read_prefix(path: &Path, max: usize) -> Result<(Vec<u8>, bool), String> {
+    use std::io::Read;
     let file = fs::File::open(path).map_err(|err| failure("read", path, err))?;
     let mut bytes = Vec::new();
-    file.take(MAX_ATTACH_BYTES as u64 + 1)
+    file.take(max as u64 + 1)
         .read_to_end(&mut bytes)
         .map_err(|err| failure("read", path, err))?;
-    let truncated = bytes.len() > MAX_ATTACH_BYTES;
-    bytes.truncate(MAX_ATTACH_BYTES);
-    text_from(&label, bytes, truncated)
+    let truncated = bytes.len() > max;
+    bytes.truncate(max);
+    Ok((bytes, truncated))
 }
 
 fn native(path: &str) -> PathBuf {
@@ -289,6 +317,12 @@ pub async fn local_chmod(path: String, mode: u32) -> Result<(), String> {
 #[tauri::command]
 pub async fn local_read_text(path: String) -> Result<TextFile, String> {
     read_text(&native(&path))
+}
+
+/// A local text file for the file viewer.
+#[tauri::command]
+pub async fn local_view_text(path: String) -> Result<TextFile, String> {
+    view_text(&native(&path))
 }
 
 /// Opens a local file in its default program, the text editor or a chosen program.
@@ -442,6 +476,40 @@ mod tests {
         assert!(read_text(&binary).unwrap_err().contains("not a text file"));
         assert!(
             read_text(&dir.path().join("x"))
+                .unwrap_err()
+                .starts_with("cannot read ")
+        );
+    }
+
+    #[test]
+    fn views_text_files_up_to_the_view_limit_and_refuses_folders_and_binary_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        // Longer than an attachment, within the viewer's limit: read whole.
+        let long = dir.path().join("long.rs");
+        let text = "x".repeat(MAX_ATTACH_BYTES * 2);
+        fs::write(&long, &text).unwrap();
+        let read = view_text(&long).unwrap();
+        assert_eq!(read.content, text);
+        assert!(!read.truncated);
+
+        let huge = dir.path().join("huge.log");
+        fs::write(&huge, "y".repeat(MAX_VIEW_BYTES + 10)).unwrap();
+        let read = view_text(&huge).unwrap();
+        assert!(read.truncated);
+        assert_eq!(read.content.len(), MAX_VIEW_BYTES);
+
+        let binary = dir.path().join("a.bin");
+        fs::write(&binary, [0x7f, b'E', b'L', b'F', 0, 1]).unwrap();
+        assert_eq!(
+            view_text(&binary).unwrap_err(),
+            format!("cannot view {}: it is not a text file", binary.display())
+        );
+        assert_eq!(
+            view_text(dir.path()).unwrap_err(),
+            format!("cannot view {}: it is a folder", dir.path().display())
+        );
+        assert!(
+            view_text(&dir.path().join("x"))
                 .unwrap_err()
                 .starts_with("cannot read ")
         );

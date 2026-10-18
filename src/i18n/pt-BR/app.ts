@@ -118,4 +118,9 @@ export const app: Messages<typeof en> = {
     resize: "Redimensionar a barra lateral",
     resizeHint: "Arraste para mudar a largura da barra lateral; clique duas vezes para voltar à largura padrão",
   },
+  viewer: {
+    close: "Fechar o visualizador",
+    loading: "Lendo o arquivo…",
+    truncated: "Mostrando os primeiros 4 MB deste arquivo.",
+  },
 };
