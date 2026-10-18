@@ -55,6 +55,8 @@ opt-level = 3
 panic = "abort"
 strip = true
 
-# The screen colour picker asks the desktop portal over D-Bus (same zbus as the Tauri plugins).
+# The screen colour picker: X11 directly (same x11rb as the clipboard plugin), or the desktop
+# portal over D-Bus on Wayland (same zbus as the Tauri plugins).
 [target.'cfg(target_os = "linux")'.dependencies]
+x11rb = "0.13.2"
 zbus = "5.19.0"

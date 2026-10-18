@@ -315,7 +315,7 @@ To tell PlexusTerm windows apart, right-click an empty part of the toolbar and p
 
 Tabs take colours too: right-click a tab (on top or in DEV mode's column) and choose **Tab colour…** for the same colours; the tab is tinted and gets a bar of its colour (on top, or on the left in the column). **Duplicate tab** keeps the colour.
 
-**Custom colour…** opens a dialog: type the colour's code (`#rrggbb`), choose it in the system's colour picker, or click the eyedropper to pick it from anywhere on the screen (Windows, and Linux through the desktop portal of GNOME, KDE and others). **Accept** is painted with the colour, so you see it before you choose it.
+**Custom colour…** opens a dialog: type the colour's code (`#rrggbb`), choose it in the system's colour picker, or click the eyedropper to pick it from anywhere on the screen: the pointer becomes a crosshair, a click takes the colour under it and Escape or right-click cancels (Windows, Linux with any X11 desktop such as XFCE, MATE or Cinnamon, and Wayland through the desktop portal of GNOME and KDE). **Accept** is painted with the colour, so you see it before you choose it.
 
 In [DEV mode](#dev-mode) on a local tab the colours belong to the project, like VS Code's Peacock: the tab's colour and the toolbar's are saved in the project folder the tool was opened in, in `.plexusterm/settings.json` (`tabColor`, `toolbarColor`), and a tab that goes into DEV mode in that folder gets them again. The toolbar shows the project's colour while one of its tabs is active, and the window's own colour otherwise. The `.plexusterm` folder holds a `.gitignore` of its own, so git ignores it without changing the project's `.gitignore`.
 
