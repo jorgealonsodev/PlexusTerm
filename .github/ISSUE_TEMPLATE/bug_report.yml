@@ -1,0 +1,99 @@
+name: Bug report
+description: Something does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report it. Before sending, remove passwords, keys, host names and anything else you do not want public.
+        To report a security vulnerability, do not open an issue: use the [security policy](https://github.com/jorgealonsodev/PlexusTerm/security/policy) instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: PlexusTerm version
+      description: Shown in Settings > About.
+      placeholder: "0.1.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: os-details
+    attributes:
+      label: Distribution, desktop and version
+      description: On Linux, for example "Ubuntu 24.04, GNOME, Wayland". On Windows, the build if you know it.
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed it
+      options:
+        - Windows installer (.exe)
+        - Windows installer (.msi)
+        - Debian/Ubuntu package (.deb)
+        - AppImage
+        - AUR
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Local terminal
+        - SSH
+        - SFTP / file panel
+        - Tunnels / port forwarding
+        - Serial
+        - Telnet
+        - Mosh
+        - AI chat
+        - Sessions and import
+        - Settings
+        - Installation or updates
+        - Other
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, including any error message exactly as shown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Connect to ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or other details
+      description: Screenshots, the server's operating system, the local shell, or anything else that helps.
