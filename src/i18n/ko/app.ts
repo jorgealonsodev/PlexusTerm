@@ -119,5 +119,8 @@ export const app: Messages<typeof en> = {
     close: "뷰어 닫기",
     loading: "파일을 읽는 중…",
     truncated: "이 파일의 처음 4MB를 표시합니다.",
+    mode: "보기",
+    code: "코드",
+    preview: "미리 보기",
   },
 };

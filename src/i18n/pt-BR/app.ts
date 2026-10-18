@@ -122,5 +122,8 @@ export const app: Messages<typeof en> = {
     close: "Fechar o visualizador",
     loading: "Lendo o arquivo…",
     truncated: "Mostrando os primeiros 4 MB deste arquivo.",
+    mode: "Visualização",
+    code: "Código",
+    preview: "Prévia",
   },
 };

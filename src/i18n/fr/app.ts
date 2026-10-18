@@ -122,5 +122,8 @@ export const app: Messages<typeof en> = {
     close: "Fermer la visionneuse",
     loading: "Lecture du fichier…",
     truncated: "Seuls les 4 premiers Mo de ce fichier sont affichés.",
+    mode: "Affichage",
+    code: "Code",
+    preview: "Aperçu",
   },
 };

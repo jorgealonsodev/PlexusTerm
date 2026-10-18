@@ -119,5 +119,8 @@ export const app: Messages<typeof en> = {
     close: "关闭查看器",
     loading: "正在读取文件…",
     truncated: "仅显示此文件的前 4 MB。",
+    mode: "视图",
+    code: "代码",
+    preview: "预览",
   },
 };

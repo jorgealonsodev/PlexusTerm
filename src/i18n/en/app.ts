@@ -119,5 +119,8 @@ export const app = {
     close: "Close viewer",
     loading: "Reading the file…",
     truncated: "Showing the first 4 MB of this file.",
+    mode: "View",
+    code: "Code",
+    preview: "Preview",
   },
 };

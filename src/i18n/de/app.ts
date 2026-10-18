@@ -121,5 +121,8 @@ export const app: Messages<typeof en> = {
     close: "Betrachter schließen",
     loading: "Datei wird gelesen …",
     truncated: "Es werden die ersten 4 MB dieser Datei angezeigt.",
+    mode: "Ansicht",
+    code: "Code",
+    preview: "Vorschau",
   },
 };

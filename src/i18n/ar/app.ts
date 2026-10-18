@@ -124,5 +124,8 @@ export const app: Messages<typeof en> = {
     close: "إغلاق العارض",
     loading: "جارٍ قراءة الملف…",
     truncated: "يُعرض أول 4 ميغابايت من هذا الملف.",
+    mode: "العرض",
+    code: "الشيفرة",
+    preview: "معاينة",
   },
 };

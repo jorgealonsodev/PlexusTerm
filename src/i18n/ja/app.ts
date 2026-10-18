@@ -120,5 +120,8 @@ export const app: Messages<typeof en> = {
     close: "ビューアーを閉じる",
     loading: "ファイルを読み込んでいます…",
     truncated: "このファイルの最初の 4 MB を表示しています。",
+    mode: "表示",
+    code: "コード",
+    preview: "プレビュー",
   },
 };

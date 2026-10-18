@@ -2499,3 +2499,93 @@ body.is-dragging-path {
   min-height: 0;
   overflow: hidden;
 }
+
+/* Code / Preview switch of a Markdown file. */
+.viewer__modes {
+  display: flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.viewer__mode {
+  padding: 1px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.viewer__mode--on {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* A Markdown file rendered, readable like GitHub's: a measured column, headings, code and tables. */
+.viewer__markdown {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 20px 24px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.viewer__markdown > * {
+  max-width: 860px;
+}
+
+.viewer__markdown h1,
+.viewer__markdown h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewer__markdown a {
+  color: var(--accent);
+}
+
+.viewer__markdown code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.viewer__markdown pre {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+.viewer__markdown pre code {
+  padding: 0;
+  background: none;
+}
+
+.viewer__markdown blockquote {
+  margin-inline: 0;
+  padding-inline-start: 12px;
+  border-inline-start: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.viewer__markdown table {
+  border-collapse: collapse;
+}
+
+.viewer__markdown th,
+.viewer__markdown td {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+}
+
+.viewer__markdown img {
+  max-width: 100%;
+}

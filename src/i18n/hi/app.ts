@@ -120,5 +120,8 @@ export const app: Messages<typeof en> = {
     close: "व्यूअर बंद करें",
     loading: "फ़ाइल पढ़ी जा रही है…",
     truncated: "इस फ़ाइल के पहले 4 MB दिखाए जा रहे हैं।",
+    mode: "दृश्य",
+    code: "कोड",
+    preview: "पूर्वावलोकन",
   },
 };

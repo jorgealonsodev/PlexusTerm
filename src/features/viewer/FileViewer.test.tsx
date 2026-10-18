@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { language } from "@codemirror/language";
@@ -64,5 +64,45 @@ describe("FileViewer code view (S2, S3, S5)", () => {
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("first"));
     rerender(<FileViewer path="/p/b.txt" load={file("second")} onClose={() => {}} />);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("second"));
+  });
+});
+
+describe("FileViewer Markdown (S4)", () => {
+  it("shows a Markdown file rendered, with a switch to its code", async () => {
+    render(<FileViewer path="/p/README.md" load={file("# Hello\n\nworld")} onClose={() => {}} />);
+    const preview = await screen.findByRole("article");
+    expect(preview.querySelector("h1")?.textContent).toBe("Hello");
+    const code = screen.getByRole("radio", { name: "Code" });
+    const rendered = screen.getByRole("radio", { name: "Preview" });
+    expect(rendered.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(code);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("# Helloworld"));
+    expect(screen.queryByRole("article")).toBeNull();
+    fireEvent.click(rendered);
+    expect(await screen.findByRole("article")).toBeTruthy();
+  });
+
+  it("offers no switch for other files", async () => {
+    render(<FileViewer path="/p/main.ts" load={file("x")} onClose={() => {}} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
+    expect(screen.queryByRole("radio")).toBeNull();
+  });
+
+  it("opens web links in the system browser and never navigates the window", async () => {
+    const onOpenLink = vi.fn();
+    render(
+      <FileViewer path="/p/README.md" load={file("[site](https://example.com) [mail](mailto:a@b.c) [rel](docs/x.md)")} onClose={() => {}} onOpenLink={onOpenLink} />,
+    );
+    const preview = await screen.findByRole("article");
+    const click = (name: string) => {
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      within(preview).getByText(name).dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(click("site")).toBe(true);
+    expect(onOpenLink).toHaveBeenCalledWith("https://example.com/");
+    expect(click("mail")).toBe(true);
+    expect(click("rel")).toBe(true);
+    expect(onOpenLink).toHaveBeenCalledTimes(1);
   });
 });
