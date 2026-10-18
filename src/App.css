@@ -841,8 +841,13 @@ body.is-resizing {
   gap: 4px;
 }
 
-.sftp__toolbar {
-  flex-wrap: wrap;
+/* The toolbar's actions: square icons in one row, like the path bar's ↑ ⌂ ⟳. */
+.sftp__tool {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
 }
 
 .sftp__path {

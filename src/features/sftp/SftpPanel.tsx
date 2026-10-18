@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
+import { ToolButton } from "../files/ToolButton";
+import { Download, FilePlus, FolderPlus, Pencil, Trash2, Upload } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
@@ -412,28 +414,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         />
       </form>
       <div className="sftp__toolbar">
-        <button className="btn btn--small" disabled={busy} onClick={() => void pickUploads()}>
-          {t("sftp.panel.upload")}
-        </button>
-        <button className="btn btn--small" disabled={busy} onClick={() => void newFolder()}>
-          {t("sftp.panel.newFolder")}
-        </button>
-        <button className="btn btn--small" disabled={busy} onClick={() => void newFile()}>
-          {t("sftp.panel.newFile")}
-        </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)}>
-          {t("common.rename")}
-        </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)}>
-          {t("common.delete")}
-        </button>
-        <button
-          className="btn btn--small"
-          disabled={!selectedEntry || selectedEntry.kind === "dir"}
-          onClick={() => selectedEntry && void download(selectedEntry)}
-        >
-          {t("sftp.panel.download")}
-        </button>
+        <ToolButton icon={Upload} label={t("sftp.panel.upload")} disabled={busy} onClick={() => void pickUploads()} />
+        <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newFolder()} />
+        <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newFile()} />
+        <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
+        <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
+        <ToolButton icon={Download} label={t("sftp.panel.download")} disabled={!selectedEntry || selectedEntry.kind === "dir"} onClick={() => selectedEntry && void download(selectedEntry)} />
       </div>
       <label className="sftp__follow">
         <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />

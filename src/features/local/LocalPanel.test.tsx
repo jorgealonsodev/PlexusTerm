@@ -517,3 +517,16 @@ describe("workspace folders in DEV mode", () => {
     expect(onOpenFolders).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("LocalPanel toolbar", () => {
+  it("shows its actions, and DEV mode's workspace ones, as icons named by their tooltips", async () => {
+    render(panel({ devStyle: true, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    await screen.findByText("notes.txt");
+    for (const name of ["New folder", "New file", "Rename", "Delete", "Add folder", "Save workspace", "Open workspace"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.title).toBe(name);
+      expect(button.textContent).toBe("");
+      expect(button.querySelector("svg")).not.toBeNull();
+    }
+  });
+});

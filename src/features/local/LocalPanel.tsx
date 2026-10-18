@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
+import { ToolButton } from "../files/ToolButton";
+import { FilePlus, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2 } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
@@ -382,29 +384,15 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
         />
       </form>
       <div className="sftp__toolbar">
-        <button className="btn btn--small" disabled={busy} onClick={() => void newEntry("folder")}>
-          {t("sftp.panel.newFolder")}
-        </button>
-        <button className="btn btn--small" disabled={busy} onClick={() => void newEntry("file")}>
-          {t("sftp.panel.newFile")}
-        </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)}>
-          {t("common.rename")}
-        </button>
-        <button className="btn btn--small" disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)}>
-          {t("common.delete")}
-        </button>
+        <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newEntry("folder")} />
+        <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newEntry("file")} />
+        <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
+        <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
         {showWorkspace && (
           <>
-            <button className="btn btn--small" onClick={() => void addFolder()}>
-              {t("sftp.panel.workspace.add")}
-            </button>
-            <button className="btn btn--small" disabled={busy} onClick={() => void saveWorkspace()}>
-              {t("sftp.panel.workspace.save")}
-            </button>
-            <button className="btn btn--small" onClick={() => void openWorkspace()}>
-              {t("sftp.panel.workspace.open")}
-            </button>
+            <ToolButton icon={FolderInput} label={t("sftp.panel.workspace.add")} onClick={() => void addFolder()} />
+            <ToolButton icon={Save} label={t("sftp.panel.workspace.save")} disabled={busy} onClick={() => void saveWorkspace()} />
+            <ToolButton icon={FolderOpen} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
           </>
         )}
       </div>

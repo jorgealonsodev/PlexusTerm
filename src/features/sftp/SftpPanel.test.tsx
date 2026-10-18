@@ -128,13 +128,13 @@ describe("SftpPanel", () => {
     render(panel());
     fireEvent.click(await screen.findByText("src"));
     const question = 'Delete folder "src"? Only empty folders can be deleted.';
-    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog", { name: question });
     expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Cancel" }));
     await answer(question, "Cancel");
     expect(mocked.remove).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await answer(question, "Delete");
     await waitFor(() => expect(mocked.remove).toHaveBeenCalledWith(1, "/home/u/src", true));
   });
@@ -569,3 +569,14 @@ describe("SftpPanel outside DEV mode", () => {
   });
 });
 
+describe("SftpPanel toolbar", () => {
+  it("shows its actions as icons named by their tooltips", async () => {
+    render(panel());
+    for (const name of ["Upload", "New folder", "New file", "Rename", "Delete", "Download"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.title).toBe(name);
+      expect(button.textContent).toBe("");
+      expect(button.querySelector("svg")).not.toBeNull();
+    }
+  });
+});
