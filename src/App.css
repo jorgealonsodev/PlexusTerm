@@ -884,7 +884,6 @@ body.is-resizing {
 .sftp-row--selected,
 .sftp-row--selected:hover {
   background: var(--border);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .sftp-row__icon {
