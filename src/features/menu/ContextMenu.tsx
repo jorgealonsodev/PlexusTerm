@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export type ContextMenuItem =
-  | { label: string; onSelect: () => void; disabled?: boolean; danger?: boolean }
+  /** `swatch`: a colour shown before the label. */
+  | { label: string; onSelect: () => void; disabled?: boolean; danger?: boolean; swatch?: string }
   | { separator: true };
 
 interface ContextMenuProps {
@@ -12,13 +13,15 @@ interface ContextMenuProps {
   onClose: () => void;
   /** Keeps the focus where it was on mouse down (the terminal keeps its selection for Copy). */
   keepFocus?: boolean;
+  /** Shown under the items (a colour picker, ...). */
+  children?: ReactNode;
 }
 
 /** Gap kept between the menu and the window edges. */
 const EDGE = 4;
 
 /** A right-click menu at the pointer, kept inside the window; Escape or a click outside closes it. */
-export function ContextMenu({ x, y, items, onClose, keepFocus = false }: ContextMenuProps) {
+export function ContextMenu({ x, y, items, onClose, keepFocus = false, children }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -73,10 +76,12 @@ export function ContextMenu({ x, y, items, onClose, keepFocus = false }: Context
               item.onSelect();
             }}
           >
+            {item.swatch && <span className="context-menu__swatch" style={{ background: item.swatch }} aria-hidden="true" />}
             {item.label}
           </button>
         ),
       )}
+      {children}
     </div>
   );
 }

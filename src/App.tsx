@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { ContextMenu } from "./features/menu/ContextMenu";
+import { loadToolbarColor, saveToolbarColor, TOOLBAR_COLORS } from "./features/toolbar/toolbarColor";
+import { readableOn } from "./features/settings/uiTheme";
 import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
 import { MacroEditDialog } from "./features/macros/MacroEditDialog";
 import { MacrosPanel } from "./features/macros/MacrosPanel";
@@ -317,6 +320,13 @@ function AppContent() {
   const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
   /** Folders added to each DEV tab's workspace, by tab key (VS Code-style roots in the Explorer). */
   const [workspaceFolders, setWorkspaceFolders] = useState<Record<string, string[]>>({});
+  /** This window's toolbar colour (right-click the toolbar), to tell PlexusTerm windows apart. */
+  const [toolbarColor, setToolbarColorState] = useState<string | null>(loadToolbarColor);
+  const [toolbarMenu, setToolbarMenu] = useState<{ x: number; y: number } | null>(null);
+  const setToolbarColor = (color: string | null) => {
+    setToolbarColorState(color);
+    saveToolbarColor(color);
+  };
   /** Bumped on every assistant open: a new key restarts the X's spin (S5); 0 = not spinning. */
   const [spin, setSpin] = useState(0);
   const platform = usePlatform();
@@ -1038,7 +1048,43 @@ function AppContent() {
 
   return (
     <div className="app">
-      <header className={`toolbar${compactToolbar ? " toolbar--compact" : ""}`} ref={toolbarRef}>
+      <header
+        className={`toolbar${compactToolbar ? " toolbar--compact" : ""}${toolbarColor ? " toolbar--coloured" : ""}`}
+        ref={toolbarRef}
+        style={toolbarColor ? ({ "--toolbar-bg": toolbarColor, "--toolbar-fg": readableOn(toolbarColor) } as CSSProperties) : undefined}
+        onContextMenu={(e) => {
+          // The bar itself, not its buttons.
+          if ((e.target as Element).closest("button, input, a, select")) return;
+          e.preventDefault();
+          setToolbarMenu({ x: e.clientX, y: e.clientY });
+        }}
+      >
+        {toolbarMenu && (
+          <ContextMenu
+            x={toolbarMenu.x}
+            y={toolbarMenu.y}
+            onClose={() => setToolbarMenu(null)}
+            items={[
+              ...TOOLBAR_COLORS.map(([name, color]) => ({
+                label: t(`app.toolbarColor.${name}`),
+                swatch: color,
+                onSelect: () => setToolbarColor(color),
+              })),
+              { separator: true as const },
+              { label: t("app.toolbarColor.none"), onSelect: () => setToolbarColor(null), disabled: !toolbarColor },
+            ]}
+          >
+            <label className="context-menu__custom">
+              {t("app.toolbarColor.custom")}
+              <input
+                type="color"
+                aria-label={t("app.toolbarColor.custom")}
+                value={toolbarColor ?? "#2e86de"}
+                onChange={(e) => setToolbarColor(e.target.value.toLowerCase())}
+              />
+            </label>
+          </ContextMenu>
+        )}
         <button
           type="button"
           className="brand-button"

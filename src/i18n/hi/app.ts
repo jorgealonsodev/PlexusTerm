@@ -125,4 +125,16 @@ export const app: Messages<typeof en> = {
     code: "कोड",
     preview: "पूर्वावलोकन",
   },
+  toolbarColor: {
+    red: "लाल",
+    orange: "नारंगी",
+    yellow: "पीला",
+    green: "हरा",
+    teal: "हरा-नीला",
+    blue: "नीला",
+    purple: "बैंगनी",
+    pink: "गुलाबी",
+    none: "कोई रंग नहीं",
+    custom: "कस्टम रंग",
+  },
 };

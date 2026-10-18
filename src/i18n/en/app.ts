@@ -124,4 +124,16 @@ export const app = {
     code: "Code",
     preview: "Preview",
   },
+  toolbarColor: {
+    red: "Red",
+    orange: "Orange",
+    yellow: "Yellow",
+    green: "Green",
+    teal: "Teal",
+    blue: "Blue",
+    purple: "Purple",
+    pink: "Pink",
+    none: "No colour",
+    custom: "Custom colour",
+  },
 };

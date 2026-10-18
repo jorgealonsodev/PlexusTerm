@@ -127,4 +127,16 @@ export const app: Messages<typeof en> = {
     code: "Code",
     preview: "Aperçu",
   },
+  toolbarColor: {
+    red: "Rouge",
+    orange: "Orange",
+    yellow: "Jaune",
+    green: "Vert",
+    teal: "Sarcelle",
+    blue: "Bleu",
+    purple: "Violet",
+    pink: "Rose",
+    none: "Aucune couleur",
+    custom: "Couleur personnalisée",
+  },
 };

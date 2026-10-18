@@ -17,7 +17,7 @@ const luminance = (hex: string) => {
 };
 
 /** Black or white, whichever reads better on `background`. */
-const readableOn = (background: string) => (luminance(background) > 0.4 ? "#000000" : "#ffffff");
+export const readableOn = (background: string) => (luminance(background) > 0.4 ? "#000000" : "#ffffff");
 
 /**
  * VS Code's `gitDecoration.*ResourceForeground` defaults (dark, light), for the git status of the

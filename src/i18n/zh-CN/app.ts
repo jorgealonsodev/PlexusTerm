@@ -124,4 +124,16 @@ export const app: Messages<typeof en> = {
     code: "代码",
     preview: "预览",
   },
+  toolbarColor: {
+    red: "红色",
+    orange: "橙色",
+    yellow: "黄色",
+    green: "绿色",
+    teal: "青色",
+    blue: "蓝色",
+    purple: "紫色",
+    pink: "粉色",
+    none: "无颜色",
+    custom: "自定义颜色",
+  },
 };

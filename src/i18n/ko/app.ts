@@ -124,4 +124,16 @@ export const app: Messages<typeof en> = {
     code: "코드",
     preview: "미리 보기",
   },
+  toolbarColor: {
+    red: "빨강",
+    orange: "주황",
+    yellow: "노랑",
+    green: "초록",
+    teal: "청록",
+    blue: "파랑",
+    purple: "보라",
+    pink: "분홍",
+    none: "색 없음",
+    custom: "사용자 지정 색",
+  },
 };

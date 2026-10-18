@@ -125,4 +125,16 @@ export const app: Messages<typeof en> = {
     code: "コード",
     preview: "プレビュー",
   },
+  toolbarColor: {
+    red: "赤",
+    orange: "オレンジ",
+    yellow: "黄",
+    green: "緑",
+    teal: "ティール",
+    blue: "青",
+    purple: "紫",
+    pink: "ピンク",
+    none: "色なし",
+    custom: "カスタム色",
+  },
 };

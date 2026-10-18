@@ -129,4 +129,16 @@ export const app: Messages<typeof en> = {
     code: "الشيفرة",
     preview: "معاينة",
   },
+  toolbarColor: {
+    red: "أحمر",
+    orange: "برتقالي",
+    yellow: "أصفر",
+    green: "أخضر",
+    teal: "أزرق مخضر",
+    blue: "أزرق",
+    purple: "بنفسجي",
+    pink: "وردي",
+    none: "بلا لون",
+    custom: "لون مخصص",
+  },
 };
