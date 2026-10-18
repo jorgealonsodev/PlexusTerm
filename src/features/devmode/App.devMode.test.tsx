@@ -223,6 +223,26 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
+  it("opens the column's new terminal in DEV mode; the + on top still opens a plain one", async () => {
+    await renderApp();
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(2);
+    expect(devOn()).toBe(false);
+    expect(tabBar().classList.contains("tabbar--column")).toBe(false);
+
+    fireEvent.click(devButton());
+    await settle();
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
+    expect(tabs[2].getAttribute("aria-selected")).toBe("true");
+    expect(devOn()).toBe(true);
+    expect(tabBar().classList.contains("tabbar--column")).toBe(true);
+    expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
+  });
+
   it("is toggled by its shortcut once one is set", async () => {
     await renderApp({ shortcuts: { toggleDevMode: "Ctrl+Shift+Y" } });
     expect(devButton().getAttribute("title")).toContain("Ctrl+Shift+Y");

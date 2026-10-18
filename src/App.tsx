@@ -377,6 +377,16 @@ function AppContent() {
   useEffect(() => () => forgetChatsExcept(new Set()), []);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
+  /** The tab the DEV column's + opened: it turns DEV mode on once its shell has started. */
+  const devOnStart = useRef<string | null>(null);
+  useEffect(() => {
+    const tab = state.tabs.find((t) => t.key === devOnStart.current);
+    if (!tab) return;
+    const pane = terminalPaneOf(tab);
+    if ((paneMeta[pane]?.sessionId ?? null) === null) return;
+    devOnStart.current = null;
+    if (!dev.state[tab.key]) toggleDev(tab.key, pane);
+  }, [state.tabs, paneMeta, dev.state, toggleDev]);
   // SFTP and the followed folder belong to the focused pane of the active tab (S11.5); an AI
   // chat pane stands for its terminal (S9).
   const activePane = activeTab ? (activeTab.chats[activeTab.focusedPane]?.terminalPaneId ?? activeTab.focusedPane) : null;
@@ -1245,7 +1255,11 @@ function AppContent() {
             onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
-            onNew={openLocal}
+            onNew={() => {
+              // From the DEV column the new terminal stays in DEV mode, as the column does.
+              if (activeDev) devOnStart.current = `tab-${state.nextSeq}`;
+              openLocal();
+            }}
             onDuplicate={(key) => {
               const tab = state.tabs.find((t) => t.key === key);
               if (tab) dispatch({ type: "open", target: tab.target });
