@@ -103,8 +103,6 @@ export interface TerminalSettings {
   attentionNotifications: boolean;
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
   gpuAcceleration: boolean;
-  /** Tabs show the git branch of their terminal's folder (local and SSH terminals). */
-  gitBranch: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
   gitFileStatus: boolean;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
@@ -157,7 +155,6 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shiftEnterNewline: true,
   attentionNotifications: true,
   gpuAcceleration: true,
-  gitBranch: true,
   gitFileStatus: true,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
@@ -329,7 +326,6 @@ export function parseSettings(json: string | null): TerminalSettings {
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
-    gitBranch: bool(value.gitBranch, d.gitBranch),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:

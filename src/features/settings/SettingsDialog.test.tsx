@@ -178,7 +178,7 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByLabelText("Shift+Enter starts a new line"));
     fireEvent.click(screen.getByLabelText("Desktop notifications when a terminal needs attention"));
     fireEvent.click(screen.getByLabelText("GPU acceleration"));
-    fireEvent.click(screen.getByLabelText("Show the git branch under the terminal"));
+    expect(screen.queryByLabelText("Show the git branch under the terminal")).toBeNull();
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: " Hack Nerd Font " } });
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
@@ -193,7 +193,6 @@ describe("SettingsDialog", () => {
       shiftEnterNewline: false,
       attentionNotifications: false,
       gpuAcceleration: false,
-      gitBranch: false,
       theme: "solarized-light",
       fontFamily: "Hack Nerd Font",
       remoteMonitor: false,

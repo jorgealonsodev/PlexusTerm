@@ -44,7 +44,6 @@ describe("parseSettings", () => {
       shiftEnterNewline: true,
       attentionNotifications: true,
       gpuAcceleration: true,
-      gitBranch: true,
       gitFileStatus: true,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
@@ -110,7 +109,6 @@ describe("parseSettings", () => {
       shiftEnterNewline: true,
       attentionNotifications: true,
       gpuAcceleration: true,
-      gitBranch: true,
       gitFileStatus: true,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
@@ -231,6 +229,15 @@ describe("parseSettings", () => {
   });
 });
 
+describe("the removed gitBranch setting", () => {
+  it("is ignored in older settings files: the branch only depends on DEV mode", () => {
+    const parsed = parseSettings('{"version":1,"gitBranch":false,"fontSize":15}');
+    expect(parsed.fontSize).toBe(15);
+    expect("gitBranch" in parsed).toBe(false);
+    expect("gitBranch" in DEFAULT_SETTINGS).toBe(false);
+  });
+});
+
 describe("serializeSettings", () => {
   it("round-trips through parseSettings with a version", () => {
     const settings = {
@@ -267,7 +274,6 @@ describe("serializeSettings", () => {
       shiftEnterNewline: false,
       attentionNotifications: false,
       gpuAcceleration: false,
-      gitBranch: false,
       gitFileStatus: false,
       devCommands: ["aider"],
       tabColumnWidth: 300,

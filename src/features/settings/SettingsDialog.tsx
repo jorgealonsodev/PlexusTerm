@@ -283,7 +283,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
-  const [gitBranch, setGitBranch] = useState(settings.gitBranch);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
@@ -399,7 +398,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       shiftEnterNewline,
       attentionNotifications,
       gpuAcceleration,
-      gitBranch,
       devCommands: parseDevCommands(devCommands),
     });
   };
@@ -646,11 +644,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.terminal.gpuAcceleration")}
             </label>
             <p className="muted">{t("settings.terminal.gpuAccelerationHelp")}</p>
-            <label className="check">
-              <input type="checkbox" checked={gitBranch} onChange={(e) => setGitBranch(e.target.checked)} />
-              {t("settings.terminal.gitBranch")}
-            </label>
-            <p className="muted">{t("settings.terminal.gitBranchHelp")}</p>
             <div className="field">
               <label htmlFor="settings-dev-commands">{t("settings.terminal.devCommands")}</label>
               <input

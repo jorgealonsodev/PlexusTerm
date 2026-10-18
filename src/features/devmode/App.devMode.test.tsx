@@ -188,12 +188,6 @@ describe("DEV mode (S10, S13)", () => {
     await waitFor(() => expect(document.querySelector("[role=tree]")).not.toBeNull());
   });
 
-  it("shows the branch in DEV mode even when it is off in Settings", async () => {
-    await renderApp({ gitBranch: false });
-    await run("codex");
-    expect(await screen.findByTitle("Git branch: main")).toBeTruthy();
-  });
-
   it("turns off when the shell's prompt comes back, not on quiet output inside the CLI", async () => {
     await renderApp();
     await run("claude");

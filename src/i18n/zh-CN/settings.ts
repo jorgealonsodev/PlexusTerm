@@ -68,8 +68,6 @@ export const settings: Messages<typeof en> = {
     attentionNotificationsHelp: "当程序在你没有查看的终端中响铃或发送通知时（例如 Claude Code 和 Codex 完成任务或等待你时），其标签页会被标记，直到你打开它。PlexusTerm 在后台时，还会用桌面通知显示消息。关闭后只保留标签页上的标记。",
     gpuAcceleration: "GPU 加速",
     gpuAccelerationHelp: "终端在显卡上用 WebGL 绘制，让频繁重绘屏幕的程序（AI 命令行工具、htop）保持流畅。WebGL 不可用或显卡重置时，终端会自动切换到标准渲染器。如果在你的显卡驱动下文字显示异常或闪烁，请关闭此项。",
-    gitBranch: "在终端下方显示 git 分支",
-    gitBranchHelp: "在 DEV 模式下，当终端的文件夹位于 git 仓库中时，下方的栏会显示分支（未检出分支时显示短提交号）。文件夹改变时以及命令结束后提示符返回时会重新读取。本地终端从仓库文件中读取；SSH 终端通过同一连接在服务器上运行 git。不在 DEV 模式时不显示分支；DEV 模式下即使关闭此项也会显示。",
     devCommands: "开启 DEV 模式的命令",
     devCommandsHelp: "当标签页的命令行运行其中某个程序（命令的第一个词；用逗号或空格分隔）时，该标签页进入 DEV 模式，shell 提示符返回时退出。DEV 模式会把标签页放到右侧的一列，显示 git 分支，从程序启动所在的项目开始像 VS Code 一样列出文件，并为该标签页发送桌面通知。终端下方栏右端的 DEV 按钮可手动开启或关闭。",
   },

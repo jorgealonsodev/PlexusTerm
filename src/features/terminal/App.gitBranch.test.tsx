@@ -63,8 +63,8 @@ describe("git branch under the terminal", () => {
     expect(document.querySelector(".tabbar .tab__branch")).toBeNull();
   });
 
-  it("shows nothing and reads nothing outside DEV mode, even with the setting on (L5)", async () => {
-    withBackend({ gitBranch: true });
+  it("shows nothing and reads nothing outside DEV mode (L5)", async () => {
+    withBackend({});
     render(<App />);
     await screen.findByTestId("terminal");
     await settle();
