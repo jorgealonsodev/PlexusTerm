@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "licenses:generate": "python3 -I scripts/generate-licenses.py"
   },
   "dependencies": {
     "@codemirror/language": "6.12.4",
