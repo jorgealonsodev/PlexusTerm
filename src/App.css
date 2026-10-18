@@ -910,8 +910,25 @@ body.is-resizing {
 
 /* File-type icons keep their own colour (dark or light scheme), not the git status colour; icons
    without one (folders, plain files) take the text colour, a little softened. */
+/* VS Code's Seti file icons (Seti UI, MIT): one glyph per file type. */
+@font-face {
+  font-family: "PlexusTerm Seti";
+  src: url("./assets/seti.woff") format("woff");
+  font-display: block;
+}
+
 .file-icon {
   color: var(--icon-dark, var(--text));
+}
+
+.file-icon--seti {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  font-family: "PlexusTerm Seti";
+  font-size: 20px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
 }
 
 .file-icon:not([style]) {

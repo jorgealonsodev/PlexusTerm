@@ -1,31 +1,5 @@
-import {
-  BookOpen,
-  Braces,
-  Container,
-  Database,
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileCog,
-  FileImage,
-  FileLock,
-  FileSpreadsheet,
-  FileSymlink,
-  FileTerminal,
-  FileText,
-  FileVideo,
-  Folder,
-  FolderGit2,
-  FolderOpen,
-  GitBranch,
-  Hammer,
-  KeyRound,
-  Lock,
-  Package,
-  Scale,
-  type LucideIcon,
-} from "lucide-react";
+import { FileSymlink, Folder, FolderGit2, FolderOpen, type LucideIcon } from "lucide-react";
+import { SETI_DARK, SETI_ICONS, SETI_LIGHT, type SetiMap } from "./setiIcons.generated";
 
 /** An icon colour readable on dark and on light colour schemes. */
 export interface IconColor {
@@ -34,178 +8,146 @@ export interface IconColor {
 }
 
 export interface FileIcon {
-  /** Stable name of the type (tests, `data-icon`). */
+  /** Stable name of the type (tests, `data-icon`): the Seti icon's name for files. */
   id: string;
-  icon: LucideIcon;
+  /** Files: the glyph of the Seti font (VS Code's default file icons). */
+  glyph?: string;
+  /** Folders and links: a drawn icon. */
+  icon?: LucideIcon;
   /** Null: the muted text colour. */
   color: IconColor | null;
 }
 
-/** Language colours close to VS Code's common icon themes (Seti and friends). */
-const C = {
-  blue: { dark: "#519aba", light: "#2f6f9f" },
-  tsBlue: { dark: "#3d8fd1", light: "#2b6cb0" },
-  pyBlue: { dark: "#4b8bbe", light: "#306998" },
-  yellow: { dark: "#cbcb41", light: "#8a7d00" },
-  orange: { dark: "#e37933", light: "#b4531a" },
-  rust: { dark: "#dea584", light: "#a0522d" },
-  cyan: { dark: "#00add8", light: "#007d9c" },
-  green: { dark: "#8dc149", light: "#4d8a1e" },
-  purple: { dark: "#a074c4", light: "#7a4ea3" },
-  pink: { dark: "#f55385", light: "#c0306a" },
-  red: { dark: "#cc3e44", light: "#a8272d" },
-  gold: { dark: "#e5c07b", light: "#946b00" },
-  brown: { dark: "#c09553", light: "#8a6420" },
-  grey: { dark: "#8c9aa6", light: "#5f6b75" },
-} satisfies Record<string, IconColor>;
-
-type Kind = readonly [id: string, icon: LucideIcon, color: IconColor | null];
-
-const K = {
-  typescript: ["typescript", FileCode, C.tsBlue],
-  javascript: ["javascript", FileCode, C.yellow],
-  rust: ["rust", FileCode, C.rust],
-  python: ["python", FileCode, C.pyBlue],
-  go: ["go", FileCode, C.cyan],
-  html: ["html", FileCode, C.orange],
-  css: ["css", FileCode, C.blue],
-  sass: ["sass", FileCode, C.pink],
-  c: ["c", FileCode, C.blue],
-  java: ["java", FileCode, C.red],
-  kotlin: ["kotlin", FileCode, C.purple],
-  swift: ["swift", FileCode, C.orange],
-  ruby: ["ruby", FileCode, C.red],
-  php: ["php", FileCode, C.purple],
-  csharp: ["csharp", FileCode, C.green],
-  vue: ["vue", FileCode, C.green],
-  svelte: ["svelte", FileCode, C.orange],
-  lua: ["lua", FileCode, C.blue],
-  code: ["code", FileCode, C.grey],
-  json: ["json", Braces, C.yellow],
-  config: ["config", FileCog, C.purple],
-  xml: ["xml", FileCode, C.orange],
-  markdown: ["markdown", FileText, C.blue],
-  text: ["text", FileText, null],
-  pdf: ["pdf", FileText, C.red],
-  shell: ["shell", FileTerminal, C.green],
-  image: ["image", FileImage, C.purple],
-  video: ["video", FileVideo, C.purple],
-  audio: ["audio", FileAudio, C.purple],
-  archive: ["archive", FileArchive, C.brown],
-  spreadsheet: ["spreadsheet", FileSpreadsheet, C.green],
-  database: ["database", Database, C.pink],
-  key: ["key", KeyRound, C.gold],
-  lock: ["lock", FileLock, C.grey],
-  env: ["env", Lock, C.gold],
-  git: ["git", GitBranch, C.orange],
-  docker: ["docker", Container, C.blue],
-  make: ["make", Hammer, C.orange],
-  npm: ["npm", Package, C.red],
-  cargo: ["cargo", Package, C.rust],
-  readme: ["readme", BookOpen, C.blue],
-  license: ["license", Scale, C.gold],
-} satisfies Record<string, Kind>;
-
-/** Extension (lower case, without the first dot; may hold dots like `tar.gz`) → type. */
-const EXTENSIONS: Record<string, Kind> = {
-  ...Object.fromEntries(["ts", "tsx", "mts", "cts", "d.ts"].map((e) => [e, K.typescript])),
-  ...Object.fromEntries(["js", "jsx", "mjs", "cjs"].map((e) => [e, K.javascript])),
-  rs: K.rust,
-  ...Object.fromEntries(["py", "pyw", "pyi", "ipynb"].map((e) => [e, K.python])),
-  go: K.go,
-  ...Object.fromEntries(["html", "htm", "xhtml"].map((e) => [e, K.html])),
-  ...Object.fromEntries(["css", "less"].map((e) => [e, K.css])),
-  ...Object.fromEntries(["scss", "sass"].map((e) => [e, K.sass])),
-  ...Object.fromEntries(["c", "h", "cpp", "cc", "cxx", "hpp", "hh"].map((e) => [e, K.c])),
-  ...Object.fromEntries(["java", "class", "jar"].map((e) => [e, K.java])),
-  ...Object.fromEntries(["kt", "kts"].map((e) => [e, K.kotlin])),
-  swift: K.swift,
-  rb: K.ruby,
-  php: K.php,
-  cs: K.csharp,
-  vue: K.vue,
-  svelte: K.svelte,
-  lua: K.lua,
-  ...Object.fromEntries(["dart", "scala", "zig", "ex", "exs", "erl", "hs", "clj", "pl", "r", "jl", "nim"].map((e) => [e, K.code])),
-  ...Object.fromEntries(["json", "jsonc", "json5"].map((e) => [e, K.json])),
-  ...Object.fromEntries(["yaml", "yml", "toml", "ini", "cfg", "conf", "properties", "editorconfig"].map((e) => [e, K.config])),
-  ...Object.fromEntries(["xml", "xsd", "plist"].map((e) => [e, K.xml])),
-  ...Object.fromEntries(["md", "markdown", "mdx", "rst"].map((e) => [e, K.markdown])),
-  ...Object.fromEntries(["txt", "log", "text"].map((e) => [e, K.text])),
-  pdf: K.pdf,
-  ...Object.fromEntries(
-    ["sh", "bash", "zsh", "fish", "ksh", "ps1", "psm1", "bat", "cmd", "bashrc", "zshrc", "profile", "bash_profile", "zprofile"].map(
-      (e) => [e, K.shell],
-    ),
-  ),
-  ...Object.fromEntries(["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svg", "tiff", "avif", "heic"].map((e) => [e, K.image])),
-  ...Object.fromEntries(["mp4", "mkv", "mov", "avi", "webm", "m4v"].map((e) => [e, K.video])),
-  ...Object.fromEntries(["mp3", "wav", "flac", "ogg", "m4a", "aac", "opus"].map((e) => [e, K.audio])),
-  ...Object.fromEntries(
-    ["zip", "tar", "gz", "tgz", "tar.gz", "bz2", "tar.bz2", "xz", "tar.xz", "7z", "rar", "zst", "tar.zst", "deb", "rpm", "dmg", "iso"].map(
-      (e) => [e, K.archive],
-    ),
-  ),
-  ...Object.fromEntries(["csv", "tsv", "xls", "xlsx", "ods"].map((e) => [e, K.spreadsheet])),
-  ...Object.fromEntries(["sql", "db", "sqlite", "sqlite3"].map((e) => [e, K.database])),
-  ...Object.fromEntries(["pem", "key", "crt", "cer", "der", "p12", "pfx", "pub", "gpg", "asc", "ppk"].map((e) => [e, K.key])),
-  lock: K.lock,
-  ...Object.fromEntries(["gitignore", "gitattributes", "gitmodules", "gitkeep"].map((e) => [e, K.git])),
-  dockerfile: K.docker,
-  dockerignore: K.docker,
-  mk: K.make,
+/**
+ * The languages of VS Code's built-in language support that the Seti theme gives an icon, by the
+ * file extensions (lower case, without the dot) and exact file names VS Code assigns them, so a
+ * file gets the icon it has in VS Code when the theme names its language rather than its extension.
+ */
+const LANGUAGES: Record<string, { extensions?: string[]; names?: string[] }> = {
+  bat: { extensions: ["bat", "cmd"] },
+  c: { extensions: ["c", "i"] },
+  clojure: { extensions: ["clj", "cljs", "cljc", "cljx", "clojure", "edn"] },
+  coffeescript: { extensions: ["coffee", "cson", "iced"] },
+  cpp: { extensions: ["cpp", "cc", "cxx", "c++", "hpp", "hh", "hxx", "h++", "h", "ii", "ino", "inl", "ipp", "ixx", "tpp", "txx"] },
+  csharp: { extensions: ["cs", "csx", "cake"] },
+  css: { extensions: ["css"] },
+  "cuda-cpp": { extensions: ["cu", "cuh"] },
+  dart: { extensions: ["dart"] },
+  dockercompose: { names: ["compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"] },
+  dockerfile: { extensions: ["dockerfile", "containerfile"], names: ["dockerfile", "containerfile"] },
+  elixir: { extensions: ["ex", "exs"] },
+  elm: { extensions: ["elm"] },
+  erb: { extensions: ["erb", "rhtml"] },
+  fsharp: { extensions: ["fs", "fsi", "fsx", "fsscript"] },
+  "git-commit": { names: ["commit_editmsg", "merge_msg"] },
+  go: { extensions: ["go"] },
+  groovy: { extensions: ["groovy", "gvy", "jenkinsfile", "nf"], names: ["jenkinsfile"] },
+  handlebars: { extensions: ["handlebars", "hbs", "hjs"] },
+  haskell: { extensions: ["hs", "lhs"] },
+  html: { extensions: ["html", "htm", "shtml", "xhtml", "xht", "mdoc", "jsp", "asp", "aspx", "jshtm", "volt", "ejs", "rhtml"] },
+  ignore: { extensions: ["gitignore", "gitignore_global", "git-blame-ignore-revs", "npmignore"] },
+  jade: { extensions: ["pug", "jade"] },
+  java: { extensions: ["java", "jav"] },
+  javascript: { extensions: ["js", "es6", "mjs", "cjs", "pac"], names: ["jakefile"] },
+  javascriptreact: { extensions: ["jsx"] },
+  jinja: { extensions: ["jinja", "j2", "jinja2"] },
+  json: {
+    extensions: ["json", "bowerrc", "jscsrc", "webmanifest", "har", "jslintrc", "jsonld", "geojson", "ipynb", "vuerc"],
+    names: ["composer.lock", ".watchmanconfig"],
+  },
+  jsonc: { extensions: ["jsonc", "eslintrc", "jsfmtrc", "jshintrc", "swcrc", "hintrc", "babelrc", "code-workspace"] },
+  jsonl: { extensions: ["jsonl", "ndjson"] },
+  julia: { extensions: ["jl"] },
+  kotlin: { extensions: ["kt", "kts"] },
+  latex: { extensions: ["tex", "ltx", "ctx"] },
+  less: { extensions: ["less"] },
+  lua: { extensions: ["lua"] },
+  makefile: { extensions: ["mak", "mk"], names: ["makefile", "gnumakefile", "ocamlmakefile"] },
+  markdown: { extensions: ["md", "mkd", "mdwn", "mdown", "markdown", "markdn", "mdtxt", "mdtext", "workbook"] },
+  "objective-c": { extensions: ["m"] },
+  "objective-cpp": { extensions: ["mm"] },
+  ocaml: { extensions: ["ml", "mli"] },
+  perl: { extensions: ["pl", "pm", "pod", "t", "psgi"] },
+  php: { extensions: ["php", "php4", "php5", "phtml", "ctp"] },
+  postcss: { extensions: ["pcss", "postcss"] },
+  powershell: { extensions: ["ps1", "psm1", "psd1", "pssc", "psrc"] },
+  properties: {
+    extensions: ["properties", "cfg", "conf", "directory", "gitattributes", "gitconfig", "gitmodules", "editorconfig", "repo"],
+  },
+  python: { extensions: ["py", "rpy", "pyw", "cpy", "gyp", "gypi", "pyi", "ipy", "pyt"] },
+  r: { extensions: ["r", "rhistory", "rprofile", "rt"] },
+  razor: { extensions: ["cshtml", "razor"] },
+  rescript: { extensions: ["res", "resi"] },
+  ruby: { extensions: ["rb", "rbx", "rjs", "gemspec", "rake", "ru", "podspec", "rbi"], names: ["rakefile", "gemfile", "guardfile", "podfile", "capfile"] },
+  rust: { extensions: ["rs"] },
+  sass: { extensions: ["sass"] },
+  scss: { extensions: ["scss"] },
+  shellscript: {
+    extensions: [
+      "sh", "bash", "bashrc", "bash_aliases", "bash_profile", "bash_login", "ebuild", "eclass", "profile", "bash_logout",
+      "xprofile", "xsession", "xsessionrc", "zsh", "zshrc", "zprofile", "zlogin", "zlogout", "zshenv", "zsh-theme", "ksh",
+      "csh", "cshrc", "tcshrc", "yashrc", "yash_profile",
+    ],
+    names: ["apkbuild", "pkgbuild", ".envrc", ".hushlogin", "zshrc", "zshenv", "zlogin", "zprofile", "zlogout", "bashrc_apple_terminal", "zshrc_apple_terminal"],
+  },
+  sql: { extensions: ["sql", "dsql"] },
+  stylus: { extensions: ["styl"] },
+  swift: { extensions: ["swift"] },
+  terraform: { extensions: ["tf", "tfvars"] },
+  tex: { extensions: ["sty", "cls", "bbx", "cbx"] },
+  typescript: { extensions: ["ts", "cts", "mts"] },
+  typescriptreact: { extensions: ["tsx"] },
+  vala: { extensions: ["vala", "vapi"] },
+  vue: { extensions: ["vue"] },
+  xml: {
+    extensions: [
+      "xml", "xsd", "ascx", "atom", "axml", "axaml", "bpmn", "cpt", "csl", "csproj", "dita", "ditamap", "dtd", "ent", "mod", "dtml",
+      "fsproj", "fxml", "iml", "isml", "jmx", "launch", "menu", "mxml", "nuspec", "opml", "owl", "proj", "props", "pt",
+      "publishsettings", "pubxml", "rdf", "rng", "rss", "shproj", "storyboard", "targets", "tld", "tmx", "vbproj", "vcxproj",
+      "wsdl", "wxi", "wxl", "wxs", "xaml", "xbl", "xib", "xlf", "xliff", "xpdl", "xul", "xoml", "plist",
+    ],
+  },
+  yaml: { extensions: ["yml", "yaml", "eyaml", "eyml", "cff"] },
 };
 
-/** Exact file names (lower case). */
-const NAMES: Record<string, Kind> = {
-  "package.json": K.npm,
-  "package-lock.json": K.lock,
-  "pnpm-lock.yaml": K.lock,
-  "yarn.lock": K.lock,
-  "cargo.toml": K.cargo,
-  "cargo.lock": K.lock,
-  "docker-compose.yml": K.docker,
-  "docker-compose.yaml": K.docker,
-  "compose.yml": K.docker,
-  "compose.yaml": K.docker,
-  "known_hosts": K.key,
-  "authorized_keys": K.key,
-};
+const languageByExtension = new Map<string, string>();
+const languageByName = new Map<string, string>();
+for (const [language, { extensions = [], names = [] }] of Object.entries(LANGUAGES)) {
+  for (const extension of extensions) languageByExtension.set(extension, language);
+  for (const name of names) languageByName.set(name, language);
+}
 
-/** Names whose part before the first dot gives the type: `README.md`, `Dockerfile.dev`, `id_rsa.pub`. */
-const BASENAMES: Record<string, Kind> = {
-  readme: K.readme,
-  license: K.license,
-  licence: K.license,
-  copying: K.license,
-  dockerfile: K.docker,
-  containerfile: K.docker,
-  makefile: K.make,
-  gnumakefile: K.make,
-  id_rsa: K.key,
-  id_ed25519: K.key,
-  id_ecdsa: K.key,
-  id_dsa: K.key,
-};
+/** The extensions of a lower-case name, longest first: `a.spec.ts` → `spec.ts`, `ts`; `.env` → `env`. */
+function extensionsOf(name: string): string[] {
+  const out: string[] = [];
+  for (let i = name.indexOf("."); i !== -1; i = name.indexOf(".", i + 1)) out.push(name.slice(i + 1));
+  return out.filter(Boolean);
+}
 
-const icon = ([id, icon, color]: Kind): FileIcon => ({ id, icon, color });
+/** The Seti icon VS Code shows for a file: its name, then its longest known extension, then its language. */
+function setiIconOf(map: SetiMap, lower: string): string {
+  const named = map.fileNames[lower];
+  if (named) return named;
+  const extensions = extensionsOf(lower);
+  for (const extension of extensions) {
+    const icon = map.fileExtensions[extension];
+    if (icon) return icon;
+  }
+  const language = languageByName.get(lower) ?? extensions.map((e) => languageByExtension.get(e)).find(Boolean);
+  return (language && map.languageIds[language]) || map.file;
+}
 
-/** The icon of a list entry: folders (open or closed), symlinks, and files by name and extension. */
+/** The icon of a list entry: folders (open or closed), symlinks, and files as VS Code's Seti theme shows them. */
 export function fileIconFor(name: string, kind: "file" | "dir" | "symlink", open = false): FileIcon {
   if (kind === "dir") {
-    if (name === ".git") return { id: "folder-git", icon: FolderGit2, color: C.orange };
+    if (name === ".git") return { id: "folder-git", icon: FolderGit2, color: { dark: "#e37933", light: "#b4531a" } };
     return open ? { id: "folder-open", icon: FolderOpen, color: null } : { id: "folder", icon: Folder, color: null };
   }
   if (kind === "symlink") return { id: "symlink", icon: FileSymlink, color: null };
   const lower = name.toLowerCase();
-  const exact = NAMES[lower] ?? (lower.startsWith(".") ? undefined : BASENAMES[lower.split(".")[0]]);
-  if (exact) return icon(exact);
-  if (lower === ".env" || lower.startsWith(".env.")) return icon(K.env);
-  // The longest extension first: `backup.tar.gz` is `tar.gz` before `gz`.
-  const parts = lower.split(".");
-  for (let i = 1; i < parts.length; i++) {
-    const kindOf = EXTENSIONS[parts.slice(i).join(".")];
-    if (kindOf) return icon(kindOf);
-  }
-  return { id: "file", icon: File, color: null };
+  const dark = setiIconOf(SETI_DARK, lower);
+  const light = setiIconOf(SETI_LIGHT, lower);
+  const [glyph, darkColor] = SETI_ICONS[dark];
+  const lightColor = SETI_ICONS[light]?.[1] || darkColor;
+  return { id: dark, glyph, color: darkColor ? { dark: darkColor, light: lightColor } : null };
 }

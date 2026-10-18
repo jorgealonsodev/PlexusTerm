@@ -258,7 +258,7 @@ describe("LocalPanel file-type icons", () => {
   it("shows an icon for each entry's type at its left, keeping the icon's colour when git colours the name", async () => {
     render(panel({ devStyle: true }));
     const iconOf = async (name: string) => (await screen.findByText(name)).closest("li")!.querySelector<HTMLElement>("[data-icon]")!;
-    expect((await iconOf("notes.txt")).dataset.icon).toBe("text");
+    expect((await iconOf("notes.txt")).dataset.icon).toBe("_default");
     expect((await iconOf("src")).dataset.icon).toBe("folder");
     expect((await iconOf("src")).querySelector("svg")).toBeTruthy();
     expect((await iconOf("src")).className).not.toContain("git--");

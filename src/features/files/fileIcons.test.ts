@@ -1,66 +1,61 @@
-import { File, FileArchive, FileCode, FileTerminal, Folder, FolderOpen } from "lucide-react";
+import { Folder, FolderGit2, FolderOpen, FileSymlink } from "lucide-react";
 import { describe, expect, it } from "vitest";
 import { fileIconFor } from "./fileIcons";
 
 const id = (name: string, kind: "file" | "dir" | "symlink" = "file", open = false) => fileIconFor(name, kind, open).id;
 
-describe("fileIconFor", () => {
-  it("picks an icon and a language colour by extension, ignoring case", () => {
-    expect(id("main.ts")).toBe("typescript");
-    expect(id("App.TSX")).toBe("typescript");
-    expect(id("index.js")).toBe("javascript");
-    expect(id("lib.rs")).toBe("rust");
-    expect(id("app.py")).toBe("python");
-    expect(id("main.go")).toBe("go");
-    expect(id("index.html")).toBe("html");
-    expect(id("App.css")).toBe("css");
-    expect(id("data.json")).toBe("json");
-    expect(id("notes.md")).toBe("markdown");
-    expect(id("deploy.sh")).toBe("shell");
-    expect(id("config.yaml")).toBe("config");
-    expect(id("photo.PNG")).toBe("image");
-    expect(id("movie.mp4")).toBe("video");
-    expect(id("song.mp3")).toBe("audio");
-    expect(id("table.csv")).toBe("spreadsheet");
-    expect(id("server.pem")).toBe("key");
-    expect(fileIconFor("main.ts", "file").icon).toBe(FileCode);
-    expect(fileIconFor("deploy.sh", "file").icon).toBe(FileTerminal);
-    const ts = fileIconFor("main.ts", "file").color!;
-    expect(ts.dark).toMatch(/^#[0-9a-f]{6}$/);
-    expect(ts.light).toMatch(/^#[0-9a-f]{6}$/);
+describe("fileIconFor (VS Code's Seti icons)", () => {
+  it("gives the files of a project the icons VS Code shows", () => {
+    expect(id("Cargo.toml")).toBe("_config");
+    expect(id("tauri.conf.json")).toBe("_json");
+    expect(id("package.json")).toBe("_json");
+    expect(id("pnpm-lock.yaml")).toBe("_yml");
+    expect(id("README.md")).toBe("_info");
+    expect(id("SECURITY.md")).toBe("_markdown");
+    expect(id("LICENSE")).toBe("_license");
+    expect(id("tsconfig.json")).toBe("_tsconfig");
+    expect(id("vite.config.ts")).toBe("_vite");
+    expect(id(".gitignore")).toBe("_git");
+    expect(id(".gitattributes")).toBe("_git");
+    expect(id("index.html")).toBe("_html_3");
   });
 
-  it("handles names with several dots and dotfiles", () => {
-    expect(id("backup.tar.gz")).toBe("archive");
-    expect(fileIconFor("backup.tar.gz", "file").icon).toBe(FileArchive);
-    expect(id("types.d.ts")).toBe("typescript");
-    expect(id("vite.config.ts")).toBe("typescript");
-    expect(id(".bashrc")).toBe("shell");
-    expect(id(".eslintrc.json")).toBe("json");
-    expect(id(".env")).toBe("env");
-    expect(id(".env.local")).toBe("env");
-    expect(id(".gitignore")).toBe("git");
+  it("finds the language of an extension, ignoring case, as VS Code's language registry does", () => {
+    expect(id("main.ts")).toBe("_typescript");
+    expect(id("App.TSX")).toBe("_react");
+    expect(id("index.mjs")).toBe("_javascript");
+    expect(id("lib.rs")).toBe("_rust");
+    expect(id("app.py")).toBe("_python");
+    expect(id("deploy.sh")).toBe("_shell");
+    expect(id(".bashrc")).toBe("_shell");
+    expect(id("Dockerfile")).toBe("_docker");
+    expect(id("Makefile")).toBe("_makefile");
+    expect(id("profile.ps1")).toBe("_powershell");
   });
 
-  it("recognises well-known file names", () => {
-    expect(id("Dockerfile")).toBe("docker");
-    expect(id("Dockerfile.dev")).toBe("docker");
-    expect(id("Makefile")).toBe("make");
-    expect(id("package.json")).toBe("npm");
-    expect(id("Cargo.toml")).toBe("cargo");
-    expect(id("README.md")).toBe("readme");
-    expect(id("LICENSE")).toBe("license");
-    expect(id("id_rsa")).toBe("key");
-    expect(id("id_ed25519.pub")).toBe("key");
-    expect(id("pnpm-lock.yaml")).toBe("lock");
+  it("prefers the longest known extension and exact names", () => {
+    expect(id("button.spec.ts")).toBe("_typescript_1");
+    expect(id(".eslintrc.json")).toBe("_eslint");
+    expect(id("yarn.lock")).toBe("_yarn");
+    expect(id(".env")).toBe("_config");
+    expect(id("photo.PNG")).toBe("_image");
   });
 
-  it("keeps the generic icon, uncoloured, for unknown types; folders open and close", () => {
-    expect(fileIconFor("mystery.qqq", "file")).toMatchObject({ id: "file", icon: File, color: null });
-    expect(fileIconFor("noextension", "file")).toMatchObject({ id: "file", color: null });
+  it("draws a glyph of the Seti font, with VS Code's colours for dark and light schemes", () => {
+    const json = fileIconFor("data.json", "file");
+    expect(json.glyph).toBe("");
+    expect(json.color).toEqual({ dark: "#cbcb41", light: "#b7b73b" });
+    expect(json.icon).toBeUndefined();
+  });
+
+  it("uses the default file glyph for unknown types; folders and links keep their own icons", () => {
+    expect(fileIconFor("mystery.qqq", "file")).toMatchObject({ id: "_default", glyph: "" });
+    expect(id("notes.txt")).toBe("_default");
+    expect(id("noextension")).toBe("_default");
     expect(fileIconFor("src", "dir")).toMatchObject({ id: "folder", icon: Folder });
     expect(fileIconFor("src", "dir", true)).toMatchObject({ id: "folder-open", icon: FolderOpen });
-    expect(id("link", "symlink")).toBe("symlink");
+    expect(fileIconFor(".git", "dir")).toMatchObject({ id: "folder-git", icon: FolderGit2 });
+    expect(fileIconFor("link", "symlink")).toMatchObject({ id: "symlink", icon: FileSymlink });
     // A folder named like a file type is still a folder.
     expect(id("app.py", "dir")).toBe("folder");
   });
