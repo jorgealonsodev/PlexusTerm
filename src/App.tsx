@@ -1395,7 +1395,7 @@ function AppContent() {
                               <div className="pane-footer">
                                 {branch && (
                                   <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
-                                    <GitBranch size={12} aria-hidden="true" />
+                                    <GitBranch size={13} aria-hidden="true" />
                                     <span className="pane-footer__branch-name">{branch}</span>
                                   </span>
                                 )}

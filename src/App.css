@@ -2199,6 +2199,7 @@ body.is-dragging-path {
   min-width: 0;
   max-width: 40%;
   color: var(--text);
+  font-size: 12px;
 }
 
 .pane-footer__branch svg {
