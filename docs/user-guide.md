@@ -195,6 +195,7 @@ In [DEV mode](#dev-mode) the Explorer and the SFTP browser start at the project 
 - Each file has the icon VS Code shows for its type with its default Seti icon theme (chosen by the file's name, its extension or its language, coloured as in VS Code for dark and light schemes); folders have a folder icon.
 - Inside a git repository, entries show their git status (below).
 - Select an entry in the Explorer and the bottom of the Explorer shows its repository, as VS Code's status bar does: the project's folder and the branch checked out, with `*` when the repository has uncommitted changes (ignored files do not count). Nothing shows outside a repository or with git status off in Settings.
+
 #### Workspaces
 
 As in VS Code, a DEV tab's Explorer can show several folders at once, a project and the libraries or services it works with, for example. The toolbar's workspace icons (Explorer only):
