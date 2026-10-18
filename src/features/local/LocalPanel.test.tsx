@@ -570,6 +570,8 @@ describe("LocalPanel repository of the selection", () => {
     expect(footer()).toBeNull();
     fireEvent.click(screen.getByText("notes.txt"));
     await waitFor(() => expect(footer()?.textContent).toBe("PlexusTerm-landingmain*"));
+    // At the very bottom, in the row of the help icon, like the bar under the terminal.
+    expect(footer()!.parentElement!.classList.contains("sidebar__help")).toBe(true);
     expect(mocked.repoInfo).toHaveBeenCalledWith("/home/me/notes.txt");
     expect(within(footer()!).getByTitle("/home/me/PlexusTerm-landing")).toBeTruthy();
     expect(within(footer()!).getByTitle("Branch main, with uncommitted changes")).toBeTruthy();

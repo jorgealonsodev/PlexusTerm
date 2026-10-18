@@ -480,23 +480,23 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           onClose={() => setDialog(null)}
         />
       )}
-      {repo && (
-        <div className="explorer-repo">
-          <span className="explorer-repo__item" title={repo.root}>
-            <Laptop size={13} aria-hidden="true" />
-            {basename(repo.root)}
-          </span>
-          <span
-            className="explorer-repo__item"
-            title={t(repo.dirty ? "sftp.panel.branchDirty" : "sftp.panel.branch", { branch: repo.branch })}
-          >
-            <GitBranch size={13} aria-hidden="true" />
-            {repo.branch}
-            {repo.dirty && "*"}
-          </span>
-        </div>
-      )}
       <div className="sidebar__help">
+        {repo && (
+          <div className="explorer-repo">
+            <span className="explorer-repo__item" title={repo.root}>
+              <Laptop size={13} aria-hidden="true" />
+              {basename(repo.root)}
+            </span>
+            <span
+              className="explorer-repo__item"
+              title={t(repo.dirty ? "sftp.panel.branchDirty" : "sftp.panel.branch", { branch: repo.branch })}
+            >
+              <GitBranch size={13} aria-hidden="true" />
+              {repo.branch}
+              {repo.dirty && "*"}
+            </span>
+          </div>
+        )}
         <HelpTip text={t("sftp.local.hint")} />
       </div>
     </div>

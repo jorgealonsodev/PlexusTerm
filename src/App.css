@@ -582,6 +582,7 @@ textarea::placeholder {
   position: sticky;
   bottom: -8px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   margin: auto -8px -8px;
   padding: 4px 8px 6px;
@@ -2607,17 +2608,17 @@ body.is-dragging-path {
   max-width: 100%;
 }
 
-/* The selected entry's repository under the Explorer, like VS Code's status bar: project and branch. */
+/* The selected entry's repository at the bottom of the Explorer, like the bar under the terminal. */
 .explorer-repo {
   display: flex;
-  flex: none;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
   align-items: center;
-  gap: 4px 12px;
-  padding: 4px 8px;
-  border-top: 1px solid var(--border);
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
+  pointer-events: auto;
 }
 
 .explorer-repo__item {
