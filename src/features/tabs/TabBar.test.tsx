@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TabBar } from "./TabBar";
 import { leaf } from "../panes/paneLayout";
@@ -190,8 +190,14 @@ describe("TabBar", () => {
           onNew={() => {}}
         />,
       );
-      const titles = [...document.querySelectorAll(".tab__title")].map((t) => t.textContent);
-      expect(titles).toEqual(["daily-work", "Claude Code", "π - notes", "gentle-shell", "work"]);
+      const rows = screen.getAllByRole("tab");
+      const title = (row: HTMLElement) => row.querySelector(".tab__title")?.textContent ?? null;
+      // A title that only names the CLI is left out: the icon says it, the folder follows.
+      expect(rows.map(title)).toEqual(["daily-work", null, "π - notes", null, "work"]);
+      expect(rows[1].querySelector(".cli-icon--claude")).not.toBeNull();
+      expect(rows[1].querySelector(".tab__folder")?.textContent).toBe("app");
+      // The tooltip and the close button still name the tab.
+      expect(within(rows[1]).getByRole("button", { name: /✳ Claude Code/ })).toBeTruthy();
     });
 
     it("marks the active row and activates a row on click", () => {
