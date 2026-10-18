@@ -172,6 +172,26 @@ describe("TabBar", () => {
       expect(rows[0].textContent).toContain("one");
     });
 
+    it("drops the CLI's own mark from the title when its icon is shown", () => {
+      render(
+        <TabBar
+          tabs={[tab("t1", "π - daily-work"), tab("t2", "✳ Claude Code"), tab("t3", "π - notes")]}
+          activeKey="t1"
+          column
+          details={new Map([
+            ["t1", { cli: "pi", folder: "daily-work" }],
+            ["t2", { cli: "claude", folder: "app" }],
+            ["t3", { cli: null, folder: null }],
+          ])}
+          onActivate={() => {}}
+          onClose={() => {}}
+          onNew={() => {}}
+        />,
+      );
+      const titles = [...document.querySelectorAll(".tab__title")].map((t) => t.textContent);
+      expect(titles).toEqual(["daily-work", "Claude Code", "π - notes"]);
+    });
+
     it("marks the active row and activates a row on click", () => {
       const onActivate = vi.fn();
       renderColumn({ onActivate });

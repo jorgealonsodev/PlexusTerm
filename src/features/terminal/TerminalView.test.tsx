@@ -624,6 +624,24 @@ describe("TerminalView", () => {
         expect(onCommand).toHaveBeenCalledWith("claude", "me@box:~/proj$ ");
       });
 
+      it("reads the command off the screen when it came from history or completion", async () => {
+        const onCommand = vi.fn();
+        await renderView({ onCommand });
+        act(() => void (term().line = "me@box:~/proj$ "));
+        // Up arrow: the shell writes a recalled command the typed-line tracker cannot follow.
+        act(() => term().type("\x1b[A"));
+        act(() => void (term().line = "me@box:~/proj$ codex"));
+        act(() => term().type("\r"));
+        expect(onCommand).toHaveBeenCalledWith("codex", "me@box:~/proj$ ");
+        // Tab completion.
+        onCommand.mockClear();
+        act(() => void (term().line = "me@box:~/proj$ "));
+        act(() => term().type("cod\t"));
+        act(() => void (term().line = "me@box:~/proj$ codex "));
+        act(() => term().type("\r"));
+        expect(onCommand).toHaveBeenCalledWith("codex", "me@box:~/proj$ ");
+      });
+
       it("reports no command typed at a password prompt", async () => {
         const onCommand = vi.fn();
         await renderView({ onCommand });

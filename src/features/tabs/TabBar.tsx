@@ -3,6 +3,7 @@ import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
 import { Code } from "lucide-react";
 import { CliIcon } from "../devmode/CliIcon";
+import { titleWithoutCliMark } from "../devmode/devMode";
 import { clampTabColumnWidth, TAB_COLUMN_MAX_WIDTH, TAB_COLUMN_MIN_WIDTH } from "../settings/settings";
 import { tabTitle, type Tab } from "./tabs";
 
@@ -148,7 +149,9 @@ export function TabBar(props: TabBarProps) {
             {attention?.has(tab.key) && (
               <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
             )}
-            <span className="tab__title" dir="auto">{tabTitle(tab)}</span>
+            <span className="tab__title" dir="auto">
+              {column ? titleWithoutCliMark(tabTitle(tab), details?.get(tab.key)?.cli ?? null) : tabTitle(tab)}
+            </span>
             {column && details?.get(tab.key)?.folder && (
               <span className="tab__folder" dir="auto">
                 {details.get(tab.key)!.folder}

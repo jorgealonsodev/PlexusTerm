@@ -36,7 +36,7 @@ import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
 import { usePlatform } from "../platform/usePlatform";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
-import { EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
+import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
 import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
@@ -587,6 +587,12 @@ export function TerminalView({
       refreshGhost();
     };
 
+    /** The prompt and command of the cursor's row, as they look on screen. */
+    const onScreenCommand = () => {
+      const buffer = term.buffer.active;
+      return commandOnScreen(buffer.getLine(buffer.baseY + buffer.cursorY)?.translateToString(true) ?? "");
+    };
+
     /** Follows the typed line and records the commands sent with Enter. */
     const track = (data: string) => {
       if (fullScreen()) {
@@ -595,11 +601,14 @@ export function TerminalView({
       } else {
         // The prompt before the typed text, read before the line changes.
         const prompt = promptBefore(cursorRow().toCursor, line.text);
+        // A line recalled from history or completed with Tab is only known from the screen.
+        const recalled = line.uncertain && data.includes("\r") ? onScreenCommand() : null;
         const result = feedInput(line, data);
-        const secret = result.commits.length > 0 && atSecretPrompt();
+        const secret = (result.commits.length > 0 || recalled !== null) && atSecretPrompt();
         if (result.commits.length > 0) awaitingPrompt = true;
         line = result.state;
         if (!secret) for (const command of result.commits) callbacks.current.onCommand?.(command, prompt);
+        if (!secret && recalled && result.commits.length === 0) callbacks.current.onCommand?.(recalled.command, recalled.prompt);
         if (settingsRef.current.commandHistory && !secret) {
           for (const command of result.commits) if (!command.startsWith(" ")) historyRef.current.record(hostKey, command);
         }

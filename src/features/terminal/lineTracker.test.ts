@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
+import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
 
 const feed = (...chunks: string[]) => {
   let state: LineState = EMPTY_LINE;
@@ -123,5 +123,20 @@ describe("isSecretPrompt (other languages)", () => {
     for (const prompt of ["jorge@contraseñas:~$ ", "~/senha $ ", "PS C:\\Users\\jorge> ", "mot de passe oublié", "密码学 $ "]) {
       expect(isSecretPrompt(prompt), prompt).toBe(false);
     }
+  });
+});
+
+describe("commandOnScreen", () => {
+  it("splits a prompt row into the prompt and the command after its last prompt sign", () => {
+    expect(commandOnScreen("me@box:~/proj$ codex --full-auto")).toEqual({ prompt: "me@box:~/proj$ ", command: "codex --full-auto" });
+    expect(commandOnScreen("root@box:/# claude")).toEqual({ prompt: "root@box:/# ", command: "claude" });
+    expect(commandOnScreen("~/proj ❯ opencode")).toEqual({ prompt: "~/proj ❯ ", command: "opencode" });
+    expect(commandOnScreen("PS C:\\Users\\me> codex")).toEqual({ prompt: "PS C:\\Users\\me> ", command: "codex" });
+  });
+
+  it("is null without a prompt sign or a command", () => {
+    expect(commandOnScreen("codex")).toBeNull();
+    expect(commandOnScreen("me@box:~$ ")).toBeNull();
+    expect(commandOnScreen("")).toBeNull();
   });
 });

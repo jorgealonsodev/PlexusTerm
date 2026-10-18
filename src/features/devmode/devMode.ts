@@ -61,6 +61,12 @@ export function cliOfTitle(title: string, commands: readonly string[]): string |
   return null;
 }
 
+/**
+ * A title that opens with a non-ASCII symbol (a spinner or mark such as Claude Code's ✳ or ⠂), as AI
+ * CLIs title the terminal while they work. ASCII punctuation is the shell's (`~/proj`, `[me@box]`).
+ */
+const startsWithSymbol = (title: string) => /^[^\p{L}\p{N}\s\x00-\x7F]/u.test(title.trimStart());
+
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** A tab in DEV mode. */
@@ -126,8 +132,13 @@ export function devReducer(state: DevState, action: DevAction): DevState {
     }
     case "title": {
       const dev = state[action.tab];
-      // A DEV mode that already knows its CLI keeps it; a hand-made one learns it from the title.
-      if (dev && dev.cli !== null) return state;
+      if (dev && dev.cli !== null) {
+        // While a CLI runs its titles name it or start with a symbol (Claude Code's "✳ <task>");
+        // any other title in its pane is the shell's again: the CLI has ended.
+        const stillCli = cliOfTitle(action.title, action.commands) !== null || startsWithSymbol(action.title);
+        return stillCli || dev.pane !== action.pane ? state : promptBack(state, action.tab, action.pane);
+      }
+      // A hand-made DEV mode learns its CLI from the title.
       const cli = cliOfTitle(action.title, action.commands);
       if (!cli) return state;
       if (dev) return { ...state, [action.tab]: { ...dev, cli, pane: action.pane } };
@@ -164,4 +175,14 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       return next;
     }
   }
+}
+
+/**
+ * A tab's title without the mark its CLI puts in front (pi's "π - ", Claude Code's spinner), for
+ * rows that already show the CLI's icon. Other titles are returned unchanged.
+ */
+export function titleWithoutCliMark(title: string, cli: string | null): string {
+  if (!cli) return title;
+  const trimmed = cli === "pi" ? title.replace(/^π\s*[-–—:]?\s*/u, "") : title.replace(/^[^\p{L}\p{N}\s\x00-\x7F]+\s*/u, "");
+  return trimmed || title;
 }

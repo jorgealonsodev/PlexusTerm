@@ -123,6 +123,28 @@ describe("devReducer (S10)", () => {
     expect(again).toBe(codex);
   });
 
+  it("ends the CLI when the title stops being a CLI's: off when automatic, back to no CLI when by hand", () => {
+    const title = (state: DevState, text: string) =>
+      devReducer(state, { type: "title", tab: "tab-1", pane: "pane-1", title: text, commands, id: 7 });
+    // pi found by its title, then the shell's own title comes back.
+    const pi = title({}, "π - daily-work");
+    expect(pi["tab-1"]).toMatchObject({ cli: "pi", manual: false });
+    expect(title(pi, "daily-work")).toEqual({});
+    // Started from the command line; Claude Code's working titles keep it on.
+    const claude = title(title(run({}, "claude"), "✳ Claude Code"), "✳ Fix the login bug");
+    expect(claude["tab-1"]).toMatchObject({ cli: "claude" });
+    expect(title(claude, "me@box: ~/proj")).toEqual({});
+    // Shell titles that open with ASCII punctuation (zsh, Fedora's bash) end it too.
+    expect(title(claude, "~/proj")).toEqual({});
+    expect(title(claude, "[me@box proj]")).toEqual({});
+    // A hand-made DEV mode stays on and forgets the CLI, so its icon goes back to the terminal.
+    const manual = title(devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 3 }), "π - daily-work");
+    expect(manual["tab-1"]).toMatchObject({ manual: true, cli: "pi" });
+    expect(title(manual, "daily-work")["tab-1"]).toMatchObject({ manual: true, cli: null });
+    // Another pane's title does not end the CLI.
+    expect(devReducer(pi, { type: "title", tab: "tab-1", pane: "pane-2", title: "bash", commands, id: 8 })).toBe(pi);
+  });
+
   it("toggles by hand, and a hand-made DEV mode survives the prompt coming back", () => {
     const on = devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 3 });
     expect(on["tab-1"]).toMatchObject({ manual: true, cli: null });
