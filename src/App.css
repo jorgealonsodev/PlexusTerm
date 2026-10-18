@@ -2367,7 +2367,3 @@ body.is-dragging-path {
   line-height: 1;
 }
 
-/* gentle-shell's rose. */
-.cli-icon--gentle-shell {
-  color: #e8577a;
-}

@@ -1,6 +1,7 @@
 import { useId } from "react";
-import { Rose, SquareTerminal } from "lucide-react";
+import { SquareTerminal } from "lucide-react";
 import { ANTIGRAVITY_MARKUP, ANTIGRAVITY_VIEWBOX } from "./antigravityMark";
+import { ROSE_LINES, ROSE_SHAPE, ROSE_VIEWBOX } from "./roseMark";
 
 /**
  * Brand marks from Simple Icons 15.22.0 (CC0-1.0, https://simpleicons.org); the marks belong to
@@ -64,7 +65,12 @@ export function CliIcon({ cli, size = 14 }: { cli: string | null; size?: number 
   }
   if (cli === "agy") return <AntigravityMark size={size} />;
   if (cli === "gentle-shell") {
-    return <Rose className="cli-icon cli-icon--gentle-shell" size={size} role="img" aria-label={cliName(cli)} />;
+    return (
+      <svg className="cli-icon cli-icon--gentle-shell" role="img" aria-label={cliName(cli)} viewBox={ROSE_VIEWBOX} width={size} height={size}>
+        <path fill="#d6336c" d={ROSE_SHAPE} />
+        <path fill="#ffb3cc" d={ROSE_LINES} />
+      </svg>
+    );
   }
   if (cli === "pi") {
     return (
