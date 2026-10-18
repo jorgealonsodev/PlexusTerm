@@ -178,11 +178,12 @@ export function devReducer(state: DevState, action: DevAction): DevState {
 }
 
 /**
- * A tab's title without the mark its CLI puts in front (pi's "π - ", Claude Code's spinner), for
- * rows that already show the CLI's icon. Other titles are returned unchanged.
+ * A tab's title without the mark its CLI puts in front (pi and gentle-shell's "π - ", Claude Code's
+ * spinner), for rows that already show the CLI's icon; the CLI's name when nothing else is left.
+ * Titles of tabs without a CLI are returned unchanged.
  */
-export function titleWithoutCliMark(title: string, cli: string | null): string {
+export function titleWithoutCliMark(title: string, cli: string | null, name: string = cli ?? ""): string {
   if (!cli) return title;
-  const trimmed = cli === "pi" ? title.replace(/^π\s*[-–—:]?\s*/u, "") : title.replace(/^[^\p{L}\p{N}\s\x00-\x7F]+\s*/u, "");
-  return trimmed || title;
+  const trimmed = title.replace(/^π(\s*[-–—:]\s*|\s+|$)/u, "").replace(/^[^\p{L}\p{N}\s\x00-\x7F]+\s*/u, "").trim();
+  return trimmed || name;
 }

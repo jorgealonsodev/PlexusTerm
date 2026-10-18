@@ -175,13 +175,15 @@ describe("TabBar", () => {
     it("drops the CLI's own mark from the title when its icon is shown", () => {
       render(
         <TabBar
-          tabs={[tab("t1", "π - daily-work"), tab("t2", "✳ Claude Code"), tab("t3", "π - notes")]}
+          tabs={[tab("t1", "π - daily-work"), tab("t2", "✳ Claude Code"), tab("t3", "π - notes"), tab("t4", "π"), tab("t5", "π - work")]}
           activeKey="t1"
           column
           details={new Map([
             ["t1", { cli: "pi", folder: "daily-work" }],
             ["t2", { cli: "claude", folder: "app" }],
             ["t3", { cli: null, folder: null }],
+            ["t4", { cli: "gentle-shell", folder: "app" }],
+            ["t5", { cli: "gentle-shell", folder: "app" }],
           ])}
           onActivate={() => {}}
           onClose={() => {}}
@@ -189,7 +191,7 @@ describe("TabBar", () => {
         />,
       );
       const titles = [...document.querySelectorAll(".tab__title")].map((t) => t.textContent);
-      expect(titles).toEqual(["daily-work", "Claude Code", "π - notes"]);
+      expect(titles).toEqual(["daily-work", "Claude Code", "π - notes", "gentle-shell", "work"]);
     });
 
     it("marks the active row and activates a row on click", () => {
