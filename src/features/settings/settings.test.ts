@@ -46,6 +46,8 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitBranch: true,
       gitFileStatus: true,
+      devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
+      tabColumnWidth: null,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -110,6 +112,8 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitBranch: true,
       gitFileStatus: true,
+      devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
+      tabColumnWidth: null,
     });
   });
 
@@ -265,6 +269,8 @@ describe("serializeSettings", () => {
       gpuAcceleration: false,
       gitBranch: false,
       gitFileStatus: false,
+      devCommands: ["aider"],
+      tabColumnWidth: 300,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });
@@ -325,5 +331,27 @@ describe("language setting", () => {
   it("defaults to the system language and keeps only supported values", () => {
     expect(parseSettings(JSON.stringify({ language: "zh-CN" })).language).toBe("zh-CN");
     expect(parseSettings(JSON.stringify({ language: "klingon" })).language).toBe("system");
+  });
+});
+
+describe("DEV mode commands setting (S10)", () => {
+  it("lists the known AI CLIs by default and keeps an edited list, even an empty one", () => {
+    expect(parseSettings(null).devCommands).toEqual(["claude", "codex", "agy", "opencode", "pi", "gentle-shell"]);
+    expect(parseSettings(JSON.stringify({ devCommands: ["aider", " claude ", "bad name"] })).devCommands).toEqual([
+      "aider",
+      "claude",
+    ]);
+    expect(parseSettings(JSON.stringify({ devCommands: [] })).devCommands).toEqual([]);
+    expect(parseSettings(JSON.stringify({ devCommands: "claude" })).devCommands).toEqual(DEFAULT_SETTINGS.devCommands);
+  });
+});
+
+describe("DEV tab column width (S13)", () => {
+  it("is the default width until dragged, kept within 140..480 px", () => {
+    expect(parseSettings(null).tabColumnWidth).toBeNull();
+    expect(parseSettings(JSON.stringify({ tabColumnWidth: 300.4 })).tabColumnWidth).toBe(300);
+    expect(parseSettings(JSON.stringify({ tabColumnWidth: 10 })).tabColumnWidth).toBe(140);
+    expect(parseSettings(JSON.stringify({ tabColumnWidth: 9999 })).tabColumnWidth).toBe(480);
+    expect(parseSettings(JSON.stringify({ tabColumnWidth: "wide" })).tabColumnWidth).toBeNull();
   });
 });

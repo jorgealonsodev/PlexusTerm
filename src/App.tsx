@@ -89,6 +89,7 @@ import { RemoteMonitorBar } from "./features/tools/monitor/RemoteMonitorBar";
 import {
   ChevronDown,
   Circle,
+  Code,
   Activity,
   Columns2,
   KeySquare,
@@ -107,6 +108,9 @@ import {
   Usb,
 } from "lucide-react";
 import { themeById } from "./features/terminal/themes";
+import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
+import { projectRootOf } from "./features/devmode/projectRoot";
+import { basename } from "./features/local/localPath";
 import "./App.css";
 
 
@@ -163,7 +167,13 @@ const SHELL_QUIET_MS = 400;
 /** ...or when it printed nothing this long after the session started. */
 const SHELL_FIRST_OUTPUT_MS = 1500;
 
+/** Terminals that can run AI command-line tools, so their bar has the DEV button (S10). */
+const DEV_TARGETS: ReadonlySet<string> = new Set(["local", "ssh", "mosh"]);
+
 const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null };
+
+/** The terminal pane a tab's focus stands for: an AI chat pane stands for its terminal (S9). */
+const terminalPaneOf = (tab: Tab) => tab.chats[tab.focusedPane]?.terminalPaneId ?? tab.focusedPane;
 
 const draftSession = (folder: string): SavedSession => ({
   kind: "ssh",
@@ -332,8 +342,28 @@ function AppContent() {
     });
   }, []);
 
+  /**
+   * DEV mode's project for a tab turning on (S10): the folder of the pane's shell (OSC 7, else asked
+   * from the backend) and the git repository holding it; null when the folder cannot be known
+   * (Mosh, Telnet and serial terminals have no channel to ask through).
+   */
+  const locateProject: LocateProject = async (tabKey, paneId) => {
+    const tab = state.tabs.find((t) => t.key === tabKey);
+    const sessionId = paneMeta[paneId]?.sessionId ?? null;
+    const kind = tab?.target.type;
+    if (sessionId === null || (kind !== "local" && kind !== "ssh")) return null;
+    const folder =
+      paneMeta[paneId]?.cwd ?? (kind === "local" ? await local.shellCwd(sessionId) : await sftp.shellCwd(sessionId));
+    if (!folder) return null;
+    const list = (path: string) => (kind === "local" ? local.list(path) : sftp.list(sessionId, path));
+    return { folder, root: await projectRootOf(folder, list) };
+  };
+  const dev = useDevMode(locateProject);
+  const { forget: forgetDev, toggle: toggleDev } = dev;
+
   // Forget what closed panes reported.
   useEffect(() => {
+    forgetDev(new Map(state.tabs.map((t) => [t.key, paneIds(t.layout)])));
     const open = new Set(state.tabs.flatMap((t) => paneIds(t.layout)));
     setPaneMeta((prev) => {
       const ids = Object.keys(prev).filter((id) => open.has(id));
@@ -344,7 +374,7 @@ function AppContent() {
       return ids.length === Object.keys(prev).length ? prev : Object.fromEntries(ids.map((id) => [id, prev[id]]));
     });
     forgetChatsExcept(open);
-  }, [state.tabs]);
+  }, [state.tabs, forgetDev]);
   // The conversations belong to this window's terminals.
   useEffect(() => () => forgetChatsExcept(new Set()), []);
 
@@ -353,16 +383,19 @@ function AppContent() {
   // chat pane stands for its terminal (S9).
   const activePane = activeTab ? (activeTab.chats[activeTab.focusedPane]?.terminalPaneId ?? activeTab.focusedPane) : null;
   const activeSession = (activePane && paneMeta[activePane]) || NO_SESSION;
+  // DEV mode of the active tab (S10): its file lists stay at the project the CLI started in.
+  const activeDev = activeTab ? dev.state[activeTab.key] : undefined;
+  const devAnchor = activeDev ? (activeDev.root ?? activeDev.folder) : null;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
   // The Explorer tab belongs to a local terminal; its pty id lets the backend read the shell's folder.
   const localPtyId = activeTab?.target.type === "local" ? activeSession.sessionId : null;
   const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
-  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd);
+  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd && !activeDev);
   // SFTP follows a remote shell without OSC 7 by reading its folder on the server; the sidebar
   // shows SFTP for an SSH tab on either file tab.
   const sftpShown =
     sftpSessionId !== null && (sidebarView === "sftp" || sidebarView === "explorer") && !terminalSettings.settings.sidebarCollapsed;
-  const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd, sftp.shellCwd);
+  const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd && !activeDev, sftp.shellCwd);
   // The file lists read their git status again while the active terminal prints (AI CLIs edit
   // files as they go), through the same output feed macros wait on.
   const activeSessionId = activeSession.sessionId;
@@ -378,6 +411,15 @@ function AppContent() {
   );
   const attentionTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.attention)).map((t) => t.key),
+  );
+  const devTabs = new Set(Object.keys(dev.state));
+  /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
+  const tabDetails = new Map(
+    state.tabs.map((t) => {
+      const tabDev = dev.state[t.key];
+      const folder = tabDev ? (tabDev.root ?? tabDev.folder) : (paneMeta[terminalPaneOf(t)]?.cwd ?? null);
+      return [t.key, { cli: tabDev?.cli ?? null, folder: folder ? basename(folder) : null }];
+    }),
   );
 
   // The pane being looked at loses its attention mark: when it gets the focus, and when the window
@@ -570,7 +612,8 @@ function AppContent() {
     const windowFocused = document.hasFocus();
     if (windowFocused && state.activeKey === tab.key && tab.focusedPane === paneId) return;
     updatePane(paneId, { attention: true });
-    if (!windowFocused && settings.attentionNotifications) {
+    // A DEV tab notifies even with desktop notifications off (S10).
+    if (!windowFocused && (settings.attentionNotifications || dev.state[tab.key])) {
       notifier.notify(paneId, notice.title ?? tabTitle(tab), notice.body ?? t("app.tabs.attentionNotice"));
     }
   };
@@ -890,6 +933,9 @@ function AppContent() {
           return updateSettingsWith((s) => ({ remoteMonitor: !s.remoteMonitor }));
         case "toggleMultiExec":
           return setMultiExec((on) => !on);
+        case "toggleDevMode":
+          if (activeTab) toggleDev(activeTab.key, terminalPaneOf(activeTab));
+          return;
         case "fontSize":
           return updateSettingsWith((s) => ({ fontSize: stepFontSize(s.fontSize, shortcut.step) }));
         case "recordMacro":
@@ -927,7 +973,7 @@ function AppContent() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openLocal, activeTab, updateSettingsWith]);
+  }, [openLocal, activeTab, updateSettingsWith, toggleDev]);
 
   /** A title with an action's shortcut in it, or the plain label when the action has none. */
   const titleWith = (key: AppKey, plainKey: AppKey, action: ShortcutActionId) => {
@@ -1068,11 +1114,13 @@ function AppContent() {
               activeTab &&
               localPtyId !== null && (
                 <LocalPanel
-                  key={`${activePane}:${localPtyId}`}
-                  cwd={localCwd}
-                  follow={followLocalCwd}
+                  // DEV mode lists from the project root (S10) and starts over when it ends.
+                  key={`${activePane}:${localPtyId}${activeDev ? `:dev:${devAnchor ?? ""}` : ""}`}
+                  cwd={activeDev ? devAnchor : localCwd}
+                  follow={activeDev ? devAnchor !== null : followLocalCwd}
                   onFollowChange={setFollowLocalCwd}
-                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
+                  // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
+                  onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {
                     const flavor = shellFlavor(platform, activeTab.target.type, runningShellOf(activeTab.target, shells));
                     const text = quotePath(path, flavor);
@@ -1081,8 +1129,8 @@ function AppContent() {
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                   onOpenInTerminal={openInTerminal}
-                  // DEV mode's tree, icons and git status; DEV mode (per tab) will turn it on.
-                  devStyle={false}
+                  // DEV mode's tree, icons and git status (S10).
+                  devStyle={activeDev !== undefined}
                   git={{
                     enabled: terminalSettings.settings.gitFileStatus,
                     visible: localShown,
@@ -1096,18 +1144,20 @@ function AppContent() {
               activeTab &&
               sftpSessionId !== null && (
                 <SftpPanel
-                  key={`${activePane}:${sftpSessionId}`}
+                  key={`${activePane}:${sftpSessionId}${activeDev ? `:dev:${devAnchor ?? ""}` : ""}`}
                   sessionId={sftpSessionId}
-                  cwd={sftpCwd}
-                  follow={followCwd}
+                  cwd={activeDev ? devAnchor : sftpCwd}
+                  follow={activeDev ? devAnchor !== null : followCwd}
                   onFollowChange={setFollowCwd}
                   onPathToTerminal={(text) => activePane && writers.write([activePane], text)}
-                  onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path, followCwd)}
+                  onUserNavigate={(path) =>
+                    !activeDev && cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path, followCwd)
+                  }
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
                   onOpenInTerminal={openInTerminal}
-                  // DEV mode's tree, icons and git status; DEV mode (per tab) will turn it on.
-                  devStyle={false}
+                  // DEV mode's tree, icons and git status (S10).
+                  devStyle={activeDev !== undefined}
                   git={{
                     enabled: terminalSettings.settings.gitFileStatus,
                     visible: sftpShown,
@@ -1183,12 +1233,18 @@ function AppContent() {
             }
           />
         )}
-        <section className="main">
+        {/* DEV mode puts the tabs in a column at the right (S13); the workspace keeps its place in the tree. */}
+        <section className={`main${activeDev ? " main--dev" : ""}`}>
           <TabBar
             tabs={state.tabs}
             activeKey={state.activeKey}
             logging={loggingTabs}
             attention={attentionTabs}
+            dev={devTabs}
+            column={activeDev !== undefined}
+            details={tabDetails}
+            columnWidth={settings.tabColumnWidth}
+            onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
             onNew={openLocal}
@@ -1206,6 +1262,7 @@ function AppContent() {
           <main className="workspace">
             {state.tabs.map((tab) => {
               const active = tab.key === state.activeKey;
+              const tabDev = dev.state[tab.key];
               return (
                 <div key={tab.key} className="tab-panes" hidden={!active}>
                   <PaneGrid
@@ -1246,6 +1303,7 @@ function AppContent() {
                             focused={paneId === tab.focusedPane}
                             onTitle={(title) => {
                               if (paneId === tab.focusedPane) dispatch({ type: "rename", key: tab.key, title });
+                              dev.title(tab.key, paneId, title, settings.devCommands);
                             }}
                             onExit={() => dispatch({ type: "closePane", key: tab.key, paneId })}
                             onCwd={(cwd) => updatePane(paneId, { cwd })}
@@ -1272,13 +1330,23 @@ function AppContent() {
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                             onAskAi={() => askAiFrom(tab, paneId)}
                             onAttention={(notice) => attend(tab, paneId, notice)}
-                            onPrompt={() => promptCameBack(paneId)}
+                            onPrompt={(mark) => {
+                              promptCameBack(paneId);
+                              if (mark) dev.promptMark(tab.key, paneId);
+                            }}
+                            onCommand={(command, prompt) => dev.command(tab.key, paneId, command, prompt, settings.devCommands)}
+                            onOutputQuiet={
+                              tabDev?.pane === paneId && tabDev.prompt
+                                ? (row) => dev.quiet(tab.key, paneId, row)
+                                : undefined
+                            }
                           />
                           <GitBranchReporter
                             source={branchSourceOf(tab.target, paneMeta[paneId]?.sessionId ?? null)}
                             cwd={paneMeta[paneId]?.cwd ?? null}
                             prompt={paneMeta[paneId]?.prompts ?? 0}
-                            enabled={settings.gitBranch}
+                            // Only DEV mode reads and shows the branch (S10, L5).
+                            enabled={tabDev !== undefined}
                             onBranch={(branch) => updatePane(paneId, { branch })}
                           />
                           {paneIds(tab.layout).length > 1 && paneMeta[paneId]?.attention && (
@@ -1318,10 +1386,13 @@ function AppContent() {
                           )}
                           </div>
                           {(() => {
-                            // One bar under the terminal: its git branch, then (SSH) the remote monitor.
-                            const branch = settings.gitBranch ? paneMeta[paneId]?.branch : null;
+                            // One bar under the terminal: its git branch (DEV mode only), then (SSH) the remote
+                            // monitor, and the DEV button at its right end for terminals that can run AI CLIs.
+                            const branch = tabDev ? paneMeta[paneId]?.branch : null;
                             const monitor = tab.target.type === "ssh" && settings.remoteMonitor;
-                            if (!branch && !monitor) return null;
+                            const devButton = DEV_TARGETS.has(tab.target.type);
+                            if (!branch && !monitor && !devButton) return null;
+                            const devShortcut = shortcutLabel("toggleDevMode", settings.shortcuts);
                             return (
                               <div className="pane-footer">
                                 {branch && (
@@ -1331,6 +1402,27 @@ function AppContent() {
                                   </span>
                                 )}
                                 {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
+                                {devButton && (
+                                  <button
+                                    type="button"
+                                    className={`pane-footer__dev${tabDev ? " pane-footer__dev--on" : ""}`}
+                                    aria-pressed={tabDev !== undefined}
+                                    aria-label={tabDev ? t("app.dev.on") : t("app.dev.off")}
+                                    title={
+                                      devShortcut
+                                        ? t(tabDev ? "app.dev.onShortcut" : "app.dev.offShortcut", { shortcut: devShortcut })
+                                        : tabDev
+                                          ? t("app.dev.on")
+                                          : t("app.dev.off")
+                                    }
+                                    // Keep the keyboard focus in the terminal.
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => dev.toggle(tab.key, paneId)}
+                                  >
+                                    <Code size={12} aria-hidden="true" />
+                                    <span className="pane-footer__dev-label">DEV</span>
+                                  </button>
+                                )}
                               </div>
                             );
                           })()}

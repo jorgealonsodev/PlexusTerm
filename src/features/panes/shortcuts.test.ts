@@ -129,3 +129,13 @@ describe("customised shortcuts", () => {
     expect(shortcutConflict("Ctrl+Shift+W", { closePane: "" })).toBeNull();
   });
 });
+
+describe("Toggle DEV mode (S10)", () => {
+  it("is an unbound terminal action that answers to the combination it is given", () => {
+    expect(SHORTCUT_ACTIONS.toggleDevMode.defaults).toEqual([]);
+    expect(SHORTCUT_ACTIONS.toggleDevMode.group).toBe("terminal");
+    const key = { key: "y", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false };
+    expect(shortcutFor(key)).toBeNull();
+    expect(shortcutFor(key, { toggleDevMode: "Ctrl+Shift+Y" })).toEqual({ type: "toggleDevMode" });
+  });
+});

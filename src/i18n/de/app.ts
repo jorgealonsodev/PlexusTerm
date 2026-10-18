@@ -90,6 +90,15 @@ export const app: Messages<typeof en> = {
     attention: "Braucht Aufmerksamkeit",
     attentionNotice: "Braucht deine Aufmerksamkeit",
     branch: "Git-Branch: {branch}",
+    dev: "DEV-Modus",
+    resizeColumn: "Breite der Tab-Spalte ändern",
+    resizeColumnHint: "Ziehen, um die Breite der Tab-Spalte zu ändern; Doppelklick stellt die Standardbreite wieder her",
+  },
+  dev: {
+    on: "DEV-Modus: an",
+    off: "DEV-Modus: aus",
+    onShortcut: "DEV-Modus: an ({shortcut})",
+    offShortcut: "DEV-Modus: aus ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} ist verfügbar.",

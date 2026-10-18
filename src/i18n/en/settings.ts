@@ -66,7 +66,9 @@ export const settings = {
     gpuAcceleration: "GPU acceleration",
     gpuAccelerationHelp: "Terminals are drawn with WebGL on the graphics card, which keeps programs that redraw the screen often (AI command-line tools, htop) smooth. When WebGL is not available or the graphics card resets, terminals switch to the standard renderer by themselves. Turn it off if text looks wrong or flickers with your graphics driver.",
     gitBranch: "Show the git branch under the terminal",
-    gitBranchHelp: "When a terminal's folder is inside a git repository, the bar under it shows the branch (or the short commit when no branch is checked out). It is read again when the folder changes and when the prompt comes back after a command. Local terminals read it from the repository files; SSH terminals run git on the server over the same connection.",
+    gitBranchHelp: "In DEV mode, when a terminal's folder is inside a git repository, the bar under it shows the branch (or the short commit when no branch is checked out). It is read again when the folder changes and when the prompt comes back after a command. Local terminals read it from the repository files; SSH terminals run git on the server over the same connection. Outside DEV mode no branch is shown; DEV mode shows it even with this off.",
+    devCommands: "Commands that turn DEV mode on",
+    devCommandsHelp: "A tab turns to DEV mode when its command line runs one of these programs (the first word of the command, separated by commas or spaces) and back when the shell's prompt returns. DEV mode moves the tabs to a column at the right, shows the git branch, lists the files like VS Code from the project the program started in, and sends desktop notifications for that tab. The DEV button at the right of the bar under the terminal turns it on or off by hand.",
   },
   ssh: {
     remoteMonitor: "Remote monitor bar (SSH tabs)",
@@ -187,6 +189,7 @@ export const settings = {
       networkScan: "Network scanner",
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Remote monitor bar on or off",
+      toggleDevMode: "DEV mode on or off",
       openSettings: "Open Settings",
       assistant: "AI assistant",
     },

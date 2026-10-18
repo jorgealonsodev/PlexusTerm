@@ -91,6 +91,15 @@ export const app: Messages<typeof en> = {
     attention: "Requiere atención",
     attentionNotice: "Requiere tu atención",
     branch: "Rama de git: {branch}",
+    dev: "Modo DEV",
+    resizeColumn: "Redimensionar la columna de pestañas",
+    resizeColumnHint: "Arrastra para cambiar el ancho de la columna de pestañas; doble clic para volver al ancho predeterminado",
+  },
+  dev: {
+    on: "Modo DEV: activado",
+    off: "Modo DEV: desactivado",
+    onShortcut: "Modo DEV: activado ({shortcut})",
+    offShortcut: "Modo DEV: desactivado ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} está disponible.",

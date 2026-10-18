@@ -91,9 +91,20 @@ interface TerminalViewProps {
   /**
    * The shell's prompt came back, so a command may have changed the git branch: the shell reported
    * its folder (OSC 7) or marked a prompt (OSC 133), or, without that, the output of a command sent
-   * with Enter went quiet.
+   * with Enter went quiet. `mark` is true for the shell's own marks (OSC 7, OSC 133), false for
+   * quiet output, which a program running in the terminal (an AI CLI) can produce too.
    */
-  onPrompt?: () => void;
+  onPrompt?: (mark: boolean) => void;
+  /**
+   * A command line sent with Enter (never one typed at a password prompt or in a full-screen
+   * program), with the text before it on its row: the shell's prompt (S10).
+   */
+  onCommand?: (command: string, prompt: string) => void;
+  /**
+   * Given, it is called each time the output stops for `PROMPT_QUIET_MS`, with the text before the
+   * cursor, so DEV mode can tell when the shell's prompt is back after an AI CLI (S10).
+   */
+  onOutputQuiet?: (row: string) => void;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -223,6 +234,8 @@ export function TerminalView({
   onAskAi,
   onAttention,
   onPrompt,
+  onCommand,
+  onOutputQuiet,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
@@ -281,8 +294,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet };
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -357,12 +370,15 @@ export function TerminalView({
     /** A command was sent with Enter and its prompt has not been seen yet. */
     let awaitingPrompt = false;
     let promptTimer: ReturnType<typeof setTimeout> | null = null;
-    const promptCame = () => {
+    /** `mark`: the shell marked its prompt (OSC 7, OSC 133) rather than its output going quiet. */
+    const promptCame = (mark: boolean) => {
       awaitingPrompt = false;
       if (promptTimer) clearTimeout(promptTimer);
       promptTimer = null;
-      callbacks.current.onPrompt?.();
+      callbacks.current.onPrompt?.(mark);
     };
+    /** Output went quiet, for DEV mode (only while it listens). */
+    let quietTimer: ReturnType<typeof setTimeout> | null = null;
 
     /** Ends the session but keeps the pane, so what it printed (e.g. an error) stays readable. */
     const endKeepingPane = (note: string) => {
@@ -411,8 +427,15 @@ export function TerminalView({
             outputListeners.forEach((listener) => listener(msg.data));
             if (awaitingPrompt) {
               if (promptTimer) clearTimeout(promptTimer);
-              promptTimer = setTimeout(promptCame, PROMPT_QUIET_MS);
+              promptTimer = setTimeout(() => promptCame(false), PROMPT_QUIET_MS);
             }
+            if (quietTimer) clearTimeout(quietTimer);
+            quietTimer = callbacks.current.onOutputQuiet
+              ? setTimeout(() => {
+                  quietTimer = null;
+                  callbacks.current.onOutputQuiet?.(cursorRow().toCursor);
+                }, PROMPT_QUIET_MS)
+              : null;
           }
           else if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
           else if (target.type === "mosh" && msg.data !== 0) {
@@ -570,10 +593,13 @@ export function TerminalView({
         // vim, less, top...: nothing typed there is a command line.
         line = EMPTY_LINE;
       } else {
+        // The prompt before the typed text, read before the line changes.
+        const prompt = promptBefore(cursorRow().toCursor, line.text);
         const result = feedInput(line, data);
         const secret = result.commits.length > 0 && atSecretPrompt();
         if (result.commits.length > 0) awaitingPrompt = true;
         line = result.state;
+        if (!secret) for (const command of result.commits) callbacks.current.onCommand?.(command, prompt);
         if (settingsRef.current.commandHistory && !secret) {
           for (const command of result.commits) if (!command.startsWith(" ")) historyRef.current.record(hostKey, command);
         }
@@ -672,12 +698,12 @@ export function TerminalView({
           callbacks.current.onCwd?.(path);
         }
         // Shells report their folder with every prompt.
-        promptCame();
+        promptCame(true);
         return true;
       }),
       // Shell integration marks: A = prompt start, D = command finished.
       term.parser.registerOscHandler(133, (data) => {
-        if (/^[AD](;|$)/.test(data)) promptCame();
+        if (/^[AD](;|$)/.test(data)) promptCame(true);
         return true;
       }),
     ];
@@ -723,6 +749,7 @@ export function TerminalView({
       subs.forEach((s) => s.dispose());
       if (errorsTimer) clearTimeout(errorsTimer);
       if (promptTimer) clearTimeout(promptTimer);
+      if (quietTimer) clearTimeout(quietTimer);
       errors.dispose();
       errorsRef.current = null;
       // Disposed with the terminal.

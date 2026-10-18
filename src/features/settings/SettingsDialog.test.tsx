@@ -201,6 +201,15 @@ describe("SettingsDialog", () => {
     });
   });
 
+  it("edits the commands that turn DEV mode on (S10)", () => {
+    const { onSave } = setup();
+    const field = screen.getByLabelText("Commands that turn DEV mode on") as HTMLInputElement;
+    expect(field.value).toBe("claude, codex, agy, opencode, pi, gentle-shell");
+    fireEvent.change(field, { target: { value: "claude  aider, codex" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, devCommands: ["claude", "aider", "codex"] });
+  });
+
   it("restores the default font when the font family is left empty", () => {
     const { onSave } = setup();
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: "  " } });

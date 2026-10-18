@@ -88,6 +88,15 @@ export const app: Messages<typeof en> = {
     attention: "확인 필요",
     attentionNotice: "확인이 필요합니다",
     branch: "git 브랜치: {branch}",
+    dev: "DEV 모드",
+    resizeColumn: "탭 열 크기 조정",
+    resizeColumnHint: "드래그하여 탭 열의 너비를 바꿉니다. 두 번 클릭하면 기본 너비로 돌아갑니다",
+  },
+  dev: {
+    on: "DEV 모드: 켜짐",
+    off: "DEV 모드: 꺼짐",
+    onShortcut: "DEV 모드: 켜짐 ({shortcut})",
+    offShortcut: "DEV 모드: 꺼짐 ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version}을(를) 사용할 수 있습니다.",

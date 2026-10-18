@@ -10,18 +10,24 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) })
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 
+/** Whether the stub runs Claude Code (DEV mode) once its shell started. */
+const shell = vi.hoisted(() => ({ runsCli: false }));
+
 /** Stands in for xterm: a local shell in /home/me/repo that reports its folder (OSC 7). */
 vi.mock("./TerminalView", () => ({
   TerminalView: function StubTerminal({
     onSession,
     onCwd,
+    onCommand,
   }: {
     onSession?: (id: number | null) => void;
     onCwd?: (path: string) => void;
+    onCommand?: (command: string, prompt: string) => void;
   }) {
     useEffect(() => {
       onSession?.(1);
       onCwd?.("/home/me/repo");
+      if (shell.runsCli) onCommand?.("claude", "$ ");
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return <div data-testid="terminal" />;
@@ -30,6 +36,7 @@ vi.mock("./TerminalView", () => ({
 
 afterEach(() => {
   cleanup();
+  shell.runsCli = false;
   vi.mocked(invoke).mockReset();
   vi.mocked(invoke).mockImplementation(async () => null);
 });
@@ -44,7 +51,8 @@ const withBackend = (settings: object) =>
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 10)));
 
 describe("git branch under the terminal", () => {
-  it("shows the branch of the terminal's folder in a bar under it, not in the tab", async () => {
+  it("shows the branch of the terminal's folder in a bar under it in DEV mode, not in the tab", async () => {
+    shell.runsCli = true;
     withBackend({});
     render(<App />);
     await screen.findByTestId("terminal");
@@ -55,8 +63,8 @@ describe("git branch under the terminal", () => {
     expect(document.querySelector(".tabbar .tab__branch")).toBeNull();
   });
 
-  it("shows nothing and reads nothing when the setting is off", async () => {
-    withBackend({ gitBranch: false });
+  it("shows nothing and reads nothing outside DEV mode, even with the setting on (L5)", async () => {
+    withBackend({ gitBranch: true });
     render(<App />);
     await screen.findByTestId("terminal");
     await settle();

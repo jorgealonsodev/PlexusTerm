@@ -89,6 +89,15 @@ export const app: Messages<typeof en> = {
     attention: "ध्यान चाहिए",
     attentionNotice: "आपका ध्यान चाहिए",
     branch: "git ब्रांच: {branch}",
+    dev: "DEV मोड",
+    resizeColumn: "टैब कॉलम का आकार बदलें",
+    resizeColumnHint: "टैब कॉलम की चौड़ाई बदलने के लिए खींचें; डिफ़ॉल्ट चौड़ाई पर लौटने के लिए डबल-क्लिक करें",
+  },
+  dev: {
+    on: "DEV मोड: चालू",
+    off: "DEV मोड: बंद",
+    onShortcut: "DEV मोड: चालू ({shortcut})",
+    offShortcut: "DEV मोड: बंद ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} उपलब्ध है।",

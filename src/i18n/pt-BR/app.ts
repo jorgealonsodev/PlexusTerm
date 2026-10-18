@@ -91,6 +91,15 @@ export const app: Messages<typeof en> = {
     attention: "Precisa de atenção",
     attentionNotice: "Precisa da sua atenção",
     branch: "Branch do git: {branch}",
+    dev: "Modo DEV",
+    resizeColumn: "Redimensionar a coluna de abas",
+    resizeColumnHint: "Arraste para mudar a largura da coluna de abas; clique duas vezes para voltar à largura padrão",
+  },
+  dev: {
+    on: "Modo DEV: ativado",
+    off: "Modo DEV: desativado",
+    onShortcut: "Modo DEV: ativado ({shortcut})",
+    offShortcut: "Modo DEV: desativado ({shortcut})",
   },
   update: {
     available: "O PlexusTerm {version} está disponível.",

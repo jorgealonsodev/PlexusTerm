@@ -9,6 +9,7 @@ import {
   type ShortcutOverrides,
 } from "../panes/shortcuts";
 import { isValidShortcut } from "./shortcutCapture";
+import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -106,6 +107,10 @@ export interface TerminalSettings {
   gitBranch: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
   gitFileStatus: boolean;
+  /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
+  devCommands: string[];
+  /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
+  tabColumnWidth: number | null;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -154,6 +159,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   gpuAcceleration: true,
   gitBranch: true,
   gitFileStatus: true,
+  devCommands: [...DEFAULT_DEV_COMMANDS],
+  tabColumnWidth: null,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -241,6 +248,13 @@ export const SIDEBAR_MAX_WIDTH = 640;
 export const clampSidebarWidth = (width: number) =>
   Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)));
 
+export const TAB_COLUMN_MIN_WIDTH = 140;
+export const TAB_COLUMN_MAX_WIDTH = 480;
+
+/** Rounds a dragged width of DEV mode's tab column and keeps it within its limits (S13). */
+export const clampTabColumnWidth = (width: number) =>
+  Math.min(TAB_COLUMN_MAX_WIDTH, Math.max(TAB_COLUMN_MIN_WIDTH, Math.round(width)));
+
 /**
  * Reads settings.json. A missing or unreadable file gives the defaults; every invalid value
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
@@ -317,6 +331,11 @@ export function parseSettings(json: string | null): TerminalSettings {
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitBranch: bool(value.gitBranch, d.gitBranch),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
+    devCommands: cleanDevCommands(value.devCommands),
+    tabColumnWidth:
+      typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)
+        ? clampTabColumnWidth(value.tabColumnWidth)
+        : d.tabColumnWidth,
   };
 }
 

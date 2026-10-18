@@ -39,6 +39,7 @@ import {
   type TerminalSettings, type SidebarAtStartup } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutLabel } from "../panes/shortcuts";
+import { devCommandsText, parseDevCommands } from "../devmode/devMode";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 
 interface SettingsDialogProps {
@@ -283,6 +284,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [gitBranch, setGitBranch] = useState(settings.gitBranch);
+  const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   /** The well-known monospaced fonts installed here, looked for once per dialog. */
@@ -389,6 +391,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
       localCwd: cleanLocalShell(localCwd),
       sidebarWidth: settings.sidebarWidth,
+      tabColumnWidth: settings.tabColumnWidth,
       checkUpdates,
       aiSaveChats,
       language,
@@ -397,6 +400,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       attentionNotifications,
       gpuAcceleration,
       gitBranch,
+      devCommands: parseDevCommands(devCommands),
     });
   };
 
@@ -647,6 +651,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.terminal.gitBranch")}
             </label>
             <p className="muted">{t("settings.terminal.gitBranchHelp")}</p>
+            <div className="field">
+              <label htmlFor="settings-dev-commands">{t("settings.terminal.devCommands")}</label>
+              <input
+                id="settings-dev-commands"
+                value={devCommands}
+                spellCheck={false}
+                autoCapitalize="off"
+                onChange={(e) => setDevCommands(e.target.value)}
+              />
+            </div>
+            <p className="muted">{t("settings.terminal.devCommandsHelp")}</p>
           </div>
 
           <div {...panel("shortcuts")}>

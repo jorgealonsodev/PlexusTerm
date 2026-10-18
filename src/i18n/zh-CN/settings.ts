@@ -69,7 +69,9 @@ export const settings: Messages<typeof en> = {
     gpuAcceleration: "GPU 加速",
     gpuAccelerationHelp: "终端在显卡上用 WebGL 绘制，让频繁重绘屏幕的程序（AI 命令行工具、htop）保持流畅。WebGL 不可用或显卡重置时，终端会自动切换到标准渲染器。如果在你的显卡驱动下文字显示异常或闪烁，请关闭此项。",
     gitBranch: "在终端下方显示 git 分支",
-    gitBranchHelp: "当终端的文件夹位于 git 仓库内时，其下方的状态栏会显示分支（未检出分支时显示简短提交）。文件夹变化时以及命令执行后提示符返回时会重新读取。本地终端从仓库文件读取；SSH 终端通过同一连接在服务器上运行 git。",
+    gitBranchHelp: "在 DEV 模式下，当终端的文件夹位于 git 仓库中时，下方的栏会显示分支（未检出分支时显示短提交号）。文件夹改变时以及命令结束后提示符返回时会重新读取。本地终端从仓库文件中读取；SSH 终端通过同一连接在服务器上运行 git。不在 DEV 模式时不显示分支；DEV 模式下即使关闭此项也会显示。",
+    devCommands: "开启 DEV 模式的命令",
+    devCommandsHelp: "当标签页的命令行运行其中某个程序（命令的第一个词；用逗号或空格分隔）时，该标签页进入 DEV 模式，shell 提示符返回时退出。DEV 模式会把标签页放到右侧的一列，显示 git 分支，从程序启动所在的项目开始像 VS Code 一样列出文件，并为该标签页发送桌面通知。终端下方栏右端的 DEV 按钮可手动开启或关闭。",
   },
   ssh: {
     remoteMonitor: "远程监视栏（SSH 标签页）",
@@ -186,6 +188,7 @@ export const settings: Messages<typeof en> = {
       networkScan: "网络扫描器",
       wakeOnLan: "网络唤醒 (Wake on LAN)",
       toggleRemoteMonitor: "开启或关闭远程监控栏",
+      toggleDevMode: "开启或关闭 DEV 模式",
       openSettings: "打开设置",
       assistant: "AI 助手",
     },

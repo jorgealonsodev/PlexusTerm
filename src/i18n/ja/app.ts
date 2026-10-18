@@ -89,6 +89,15 @@ export const app: Messages<typeof en> = {
     attention: "要確認",
     attentionNotice: "確認が必要です",
     branch: "git ブランチ: {branch}",
+    dev: "DEV モード",
+    resizeColumn: "タブ列のサイズを変更",
+    resizeColumnHint: "ドラッグしてタブ列の幅を変更します。ダブルクリックで既定の幅に戻ります",
+  },
+  dev: {
+    on: "DEV モード: オン",
+    off: "DEV モード: オフ",
+    onShortcut: "DEV モード: オン ({shortcut})",
+    offShortcut: "DEV モード: オフ ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} が利用可能です。",

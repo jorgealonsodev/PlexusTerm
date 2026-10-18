@@ -69,7 +69,9 @@ export const settings: Messages<typeof en> = {
     gpuAcceleration: "Accélération GPU",
     gpuAccelerationHelp: "Les terminaux sont dessinés avec WebGL sur la carte graphique, ce qui garde fluides les programmes qui redessinent souvent l'écran (outils d'IA en ligne de commande, htop). Si WebGL n'est pas disponible ou si la carte graphique se réinitialise, les terminaux passent d'eux-mêmes au rendu standard. Désactivez-la si le texte s'affiche mal ou scintille avec votre pilote graphique.",
     gitBranch: "Afficher la branche git sous le terminal",
-    gitBranchHelp: "Quand le dossier d'un terminal se trouve dans un dépôt git, la barre sous le terminal affiche la branche (ou le commit abrégé quand aucune branche n'est extraite). Elle est relue quand le dossier change et quand l'invite revient après une commande. Les terminaux locaux la lisent dans les fichiers du dépôt ; les terminaux SSH exécutent git sur le serveur par la même connexion.",
+    gitBranchHelp: "En mode DEV, quand le dossier d’un terminal est dans un dépôt git, la barre sous le terminal affiche la branche (ou le commit abrégé quand aucune branche n’est extraite). Elle est relue quand le dossier change et quand l’invite revient après une commande. Les terminaux locaux la lisent dans les fichiers du dépôt ; les terminaux SSH exécutent git sur le serveur par la même connexion. Hors du mode DEV, aucune branche n’est affichée ; le mode DEV l’affiche même si cette option est désactivée.",
+    devCommands: "Commandes qui activent le mode DEV",
+    devCommandsHelp: "Un onglet passe en mode DEV quand sa ligne de commande lance l’un de ces programmes (le premier mot de la commande ; séparés par des virgules ou des espaces) et en sort quand l’invite du shell revient. Le mode DEV place les onglets dans une colonne à droite, affiche la branche git, liste les fichiers comme VS Code depuis le projet où le programme a démarré et envoie des notifications de bureau pour cet onglet. Le bouton DEV à droite de la barre sous le terminal l’active ou le désactive à la main.",
   },
   ssh: {
     remoteMonitor: "Barre du moniteur distant (onglets SSH)",
@@ -189,6 +191,7 @@ export const settings: Messages<typeof en> = {
       networkScan: "Scanner réseau",
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Activer ou désactiver la barre de surveillance distante",
+      toggleDevMode: "Activer ou désactiver le mode DEV",
       openSettings: "Ouvrir les Paramètres",
       assistant: "Assistant IA",
     },

@@ -69,7 +69,9 @@ export const settings: Messages<typeof en> = {
     gpuAcceleration: "Aceleração por GPU",
     gpuAccelerationHelp: "Os terminais são desenhados com WebGL na placa de vídeo, o que mantém fluidos os programas que redesenham a tela com frequência (ferramentas de IA de linha de comando, htop). Se o WebGL não estiver disponível ou a placa de vídeo for reiniciada, os terminais passam sozinhos para o renderizador padrão. Desative se o texto aparecer errado ou piscar com o seu driver de vídeo.",
     gitBranch: "Mostrar o branch do git abaixo do terminal",
-    gitBranchHelp: "Quando a pasta de um terminal está dentro de um repositório git, a barra abaixo do terminal mostra o branch (ou o commit abreviado quando nenhum branch está ativo). Ele é lido de novo quando a pasta muda e quando o prompt volta após um comando. Terminais locais o leem dos arquivos do repositório; terminais SSH executam git no servidor pela mesma conexão.",
+    gitBranchHelp: "No modo DEV, quando a pasta de um terminal está dentro de um repositório git, a barra sob o terminal mostra o branch (ou o commit abreviado quando nenhum branch está ativo). Ele é lido de novo quando a pasta muda e quando o prompt volta após um comando. Terminais locais o leem dos arquivos do repositório; terminais SSH executam git no servidor pela mesma conexão. Fora do modo DEV nenhum branch é mostrado; o modo DEV o mostra mesmo com esta opção desativada.",
+    devCommands: "Comandos que ativam o modo DEV",
+    devCommandsHelp: "Uma aba entra no modo DEV quando sua linha de comando executa um destes programas (a primeira palavra do comando; separe por vírgulas ou espaços) e sai quando o prompt do shell volta. O modo DEV coloca as abas numa coluna à direita, mostra o branch do git, lista os arquivos como o VS Code a partir do projeto onde o programa começou e envia notificações da área de trabalho dessa aba. O botão DEV à direita da barra sob o terminal o ativa ou desativa manualmente.",
   },
   ssh: {
     remoteMonitor: "Barra do monitor remoto (abas SSH)",
@@ -189,6 +191,7 @@ export const settings: Messages<typeof en> = {
       networkScan: "Scanner de rede",
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Ativar ou desativar a barra de monitor remoto",
+      toggleDevMode: "Ativar ou desativar o modo DEV",
       openSettings: "Abrir Configurações",
       assistant: "Assistente de IA",
     },

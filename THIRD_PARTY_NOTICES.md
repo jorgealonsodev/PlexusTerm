@@ -86,3 +86,7 @@ PlexusTerm ships five monospaced fonts, so they look the same on every computer.
 
 `src-tauri/src/tools/keygen/testdata/` holds OpenSSH and PuTTYgen key files from the test examples of the [ssh-key](https://github.com/RustCrypto/SSH) crate (MIT OR Apache-2.0), used only by the tests to check PuTTY `.ppk` compatibility. They are not part of the application.
 
+
+## AI command-line tool icons
+
+The tab column of DEV mode shows the marks of Claude (Claude Code) and OpenAI (Codex) as drawn by [Simple Icons](https://simpleicons.org) 15.22.0 ([simple-icons/simple-icons](https://github.com/simple-icons/simple-icons)), whose icon data is released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/); the SVG paths are copied into `src/features/devmode/CliIcon.tsx`. The marks are trademarks of their owners (Anthropic and OpenAI), used only to name the tool a tab runs; PlexusTerm is not affiliated with or endorsed by them. Antigravity's mark is the arch of its official favicon (https://antigravity.google/favicon.svg, without its round background), copied into `src/features/devmode/antigravityMark.ts`; it belongs to Google. pi's mark is the three blocks of its official favicon (https://pi.dev/favicon.svg), drawn in the text colour in `src/features/devmode/CliIcon.tsx`; it belongs to the pi project, and gentle-shell borrows it until it has a mark of its own. These marks too are used only to name the tool a tab runs. OpenCode, with no mark used here, is shown as a plain letter badge drawn by PlexusTerm.

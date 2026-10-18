@@ -93,6 +93,15 @@ export const app: Messages<typeof en> = {
     attention: "يحتاج إلى انتباهك",
     attentionNotice: "يحتاج إلى انتباهك",
     branch: "فرع git: {branch}",
+    dev: "وضع DEV",
+    resizeColumn: "تغيير حجم عمود التبويبات",
+    resizeColumnHint: "اسحب لتغيير عرض عمود التبويبات؛ انقر مرتين للعودة إلى العرض الافتراضي",
+  },
+  dev: {
+    on: "وضع DEV: مُفعّل",
+    off: "وضع DEV: مُعطّل",
+    onShortcut: "وضع DEV: مُفعّل ({shortcut})",
+    offShortcut: "وضع DEV: مُعطّل ({shortcut})",
   },
   update: {
     available: "يتوفر PlexusTerm {version}.",

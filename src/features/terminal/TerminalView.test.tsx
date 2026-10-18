@@ -591,6 +591,76 @@ describe("TerminalView", () => {
       });
     });
 
+    describe("DEV mode signals (S10)", () => {
+      it("tells whether the prompt came from a shell mark or from quiet output", async () => {
+        vi.useFakeTimers();
+        try {
+          const onPrompt = vi.fn();
+          let emit: (msg: { event: "output"; data: string }) => void = () => {};
+          backend.start.mockImplementationOnce((_options, onEvent) => {
+            emit = onEvent as typeof emit;
+            return Promise.resolve(7);
+          });
+          renderView({ onPrompt });
+          await act(() => vi.advanceTimersByTimeAsync(10));
+          term().osc(133, "A");
+          expect(onPrompt).toHaveBeenLastCalledWith(true);
+          act(() => term().type("ls\r"));
+          act(() => emit({ event: "output", data: "a b\r\n$ " }));
+          await act(() => vi.advanceTimersByTimeAsync(1000));
+          expect(onPrompt).toHaveBeenLastCalledWith(false);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it("reports each command sent with Enter with the prompt it was typed after", async () => {
+        const onCommand = vi.fn();
+        await renderView({ onCommand });
+        act(() => void (term().line = "me@box:~/proj$ "));
+        act(() => term().type("claude"));
+        act(() => void (term().line = "me@box:~/proj$ claude"));
+        act(() => term().type("\r"));
+        expect(onCommand).toHaveBeenCalledWith("claude", "me@box:~/proj$ ");
+      });
+
+      it("reports no command typed at a password prompt", async () => {
+        const onCommand = vi.fn();
+        await renderView({ onCommand });
+        act(() => void (term().line = "[sudo] password for jorge: "));
+        act(() => term().type("claude\r"));
+        expect(onCommand).not.toHaveBeenCalled();
+      });
+
+      it("reports the text before the cursor whenever output goes quiet, only when asked", async () => {
+        vi.useFakeTimers();
+        try {
+          const onOutputQuiet = vi.fn();
+          let emit: (msg: { event: "output"; data: string }) => void = () => {};
+          backend.start.mockImplementationOnce((_options, onEvent) => {
+            emit = onEvent as typeof emit;
+            return Promise.resolve(7);
+          });
+          const { rerender } = render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
+          await act(() => vi.advanceTimersByTimeAsync(10));
+          act(() => emit({ event: "output", data: "x" }));
+          await act(() => vi.advanceTimersByTimeAsync(1000));
+          rerender(
+            <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} onOutputQuiet={onOutputQuiet} />,
+          );
+          act(() => void (term().line = "me@box:~/proj$ "));
+          act(() => emit({ event: "output", data: "me@box:~/proj$ " }));
+          await act(() => vi.advanceTimersByTimeAsync(100));
+          expect(onOutputQuiet).not.toHaveBeenCalled();
+          await act(() => vi.advanceTimersByTimeAsync(1000));
+          expect(onOutputQuiet).toHaveBeenCalledTimes(1);
+          expect(onOutputQuiet).toHaveBeenCalledWith("me@box:~/proj$ ");
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+    });
+
     describe("Shift+Enter in AI command-line tools", () => {
       const press = (key: string, mods: Partial<KeyboardEvent> = {}, type = "keydown") =>
         term().keyHandler({ type, key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });

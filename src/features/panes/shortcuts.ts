@@ -46,7 +46,9 @@ export type Shortcut =
   | { type: "newMosh" }
   | { type: "tool"; tool: ToolId }
   | { type: "toggleRemoteMonitor" }
-  | { type: "openSettings" };
+  | { type: "openSettings" }
+  /** The active tab's DEV mode on or off (S10). */
+  | { type: "toggleDevMode" };
 
 export type ShortcutGroup = "tabs" | "connections" | "terminal" | "font" | "sidebar" | "tools" | "ai";
 
@@ -86,6 +88,7 @@ export const SHORTCUT_ACTIONS = {
   clear: { shortcut: { type: "clear" }, group: "terminal", defaults: [] },
   saveOutput: { shortcut: { type: "saveOutput" }, group: "terminal", defaults: [] },
   toggleLogging: { shortcut: { type: "toggleLogging" }, group: "terminal", defaults: [] },
+  toggleDevMode: { shortcut: { type: "toggleDevMode" }, group: "terminal", defaults: [] },
   askAi: { shortcut: { type: "askAi" }, group: "ai", defaults: [] },
   fontIncrease: {
     shortcut: { type: "fontSize", step: "increase" },

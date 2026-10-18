@@ -2205,3 +2205,164 @@ body.is-dragging-path {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* DEV mode (S10): text at the right end of the bar under the terminal, like the bar's own items. */
+.pane-footer__dev {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  height: 16px;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.pane-footer__dev svg {
+  flex: none;
+}
+
+/* Uppercase text: centre its capitals, not the line box with room for descenders (where supported). */
+.pane-footer__dev-label {
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
+}
+
+.pane-footer__dev--on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pane-footer__dev:not(.pane-footer__dev--on):hover {
+    color: var(--text);
+  }
+}
+
+.pane-footer__dev:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* DEV tab mark (S10): the DEV button's icon. */
+.tab__dev {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--accent);
+}
+
+/* DEV mode lays the tabs out as a column at the right of the terminals (S13). */
+.main--dev {
+  flex-direction: row-reverse;
+}
+
+.main--dev .workspace {
+  min-width: 0;
+}
+
+.tabbar--column {
+  flex: none;
+  flex-direction: column;
+  width: 220px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-bottom: none;
+  border-inline-start: 1px solid var(--border);
+}
+
+.tabbar__resizer {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 6px;
+  margin-inline: -3px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.tabbar__resizer:hover,
+.tabbar__resizer:active {
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.tab--row .tab__close {
+  flex: none;
+}
+
+.tab--row {
+  max-width: none;
+  gap: 6px;
+  padding: 4px 4px 4px 10px;
+  border-inline-end: none;
+}
+
+.tab--row.tab--active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tab--row .tab__title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.tab__folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab--row .tab__close {
+  margin-inline-start: auto;
+}
+
+.tabbar--column .tabbar__new {
+  align-self: flex-start;
+  margin: 4px 6px;
+}
+
+.cli-icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.cli-icon--claude {
+  color: #d97757;
+}
+
+.cli-icon--codex {
+  color: var(--text);
+}
+
+.cli-icon--badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}

@@ -87,7 +87,17 @@ export const app = {
     attention: "Needs attention",
     attentionNotice: "Needs your attention",
     branch: "Git branch: {branch}",
+    dev: "DEV mode",
+    resizeColumn: "Resize the tab column",
+    resizeColumnHint: "Drag to change the width of the tab column; double-click to restore the default width",
   },
+  dev: {
+    on: "DEV mode: on",
+    off: "DEV mode: off",
+    onShortcut: "DEV mode: on ({shortcut})",
+    offShortcut: "DEV mode: off ({shortcut})",
+  },
+
   update: {
     available: "PlexusTerm {version} is available.",
     download: "Download",

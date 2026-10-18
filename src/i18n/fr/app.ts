@@ -91,6 +91,15 @@ export const app: Messages<typeof en> = {
     attention: "Demande votre attention",
     attentionNotice: "Demande votre attention",
     branch: "Branche git : {branch}",
+    dev: "Mode DEV",
+    resizeColumn: "Redimensionner la colonne d’onglets",
+    resizeColumnHint: "Faites glisser pour changer la largeur de la colonne d’onglets ; double-cliquez pour revenir à la largeur par défaut",
+  },
+  dev: {
+    on: "Mode DEV : activé",
+    off: "Mode DEV : désactivé",
+    onShortcut: "Mode DEV : activé ({shortcut})",
+    offShortcut: "Mode DEV : désactivé ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} est disponible.",

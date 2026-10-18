@@ -88,6 +88,15 @@ export const app: Messages<typeof en> = {
     attention: "需要关注",
     attentionNotice: "需要你的关注",
     branch: "git 分支：{branch}",
+    dev: "DEV 模式",
+    resizeColumn: "调整标签列宽度",
+    resizeColumnHint: "拖动以更改标签列的宽度；双击恢复默认宽度",
+  },
+  dev: {
+    on: "DEV 模式：开",
+    off: "DEV 模式：关",
+    onShortcut: "DEV 模式：开 ({shortcut})",
+    offShortcut: "DEV 模式：关 ({shortcut})",
   },
   update: {
     available: "PlexusTerm {version} 已发布。",

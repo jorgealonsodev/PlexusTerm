@@ -69,7 +69,9 @@ export const settings: Messages<typeof en> = {
     gpuAcceleration: "GPU 가속",
     gpuAccelerationHelp: "터미널을 그래픽 카드의 WebGL로 그려 화면을 자주 다시 그리는 프로그램(AI 명령줄 도구, htop)도 부드럽게 표시합니다. WebGL을 쓸 수 없거나 그래픽 카드가 재설정되면 터미널이 자동으로 표준 렌더러로 전환됩니다. 그래픽 드라이버에서 글자가 이상하게 보이거나 깜박이면 끄세요.",
     gitBranch: "터미널 아래에 git 브랜치 표시",
-    gitBranchHelp: "터미널의 폴더가 git 저장소 안에 있으면 아래 막대에 브랜치(체크아웃된 브랜치가 없으면 짧은 커밋)를 표시합니다. 폴더가 바뀔 때와 명령 후 프롬프트가 돌아올 때 다시 읽습니다. 로컬 터미널은 저장소 파일에서 읽고, SSH 터미널은 같은 연결로 서버에서 git을 실행합니다.",
+    gitBranchHelp: "DEV 모드에서 터미널 폴더가 git 저장소 안에 있으면 아래 막대에 브랜치(브랜치가 체크아웃되지 않았으면 짧은 커밋)가 표시됩니다. 폴더가 바뀌거나 명령 후 프롬프트가 돌아오면 다시 읽습니다. 로컬 터미널은 저장소 파일에서 읽고, SSH 터미널은 같은 연결로 서버에서 git을 실행합니다. DEV 모드가 아니면 브랜치를 표시하지 않으며, DEV 모드에서는 이 설정이 꺼져 있어도 표시합니다.",
+    devCommands: "DEV 모드를 켜는 명령",
+    devCommandsHelp: "탭의 명령줄이 이 프로그램 중 하나(명령의 첫 단어, 쉼표나 공백으로 구분)를 실행하면 DEV 모드가 되고, 셸 프롬프트가 돌아오면 해제됩니다. DEV 모드에서는 탭이 오른쪽 열에 표시되고, git 브랜치가 보이며, 프로그램을 시작한 프로젝트부터 VS Code처럼 파일을 나열하고, 그 탭의 데스크톱 알림을 보냅니다. 터미널 아래 막대 오른쪽 끝의 DEV 버튼으로 직접 켜거나 끌 수 있습니다.",
   },
   ssh: {
     remoteMonitor: "원격 모니터 막대(SSH 탭)",
@@ -189,6 +191,7 @@ export const settings: Messages<typeof en> = {
       networkScan: "네트워크 스캐너",
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "원격 모니터 막대 켜기/끄기",
+      toggleDevMode: "DEV 모드 켜기/끄기",
       openSettings: "설정 열기",
       assistant: "AI 도우미",
     },
