@@ -38,10 +38,16 @@ interface TabBarProps {
   onCopyHost?: (host: string) => void;
 }
 
-/** The title of a DEV column row with no folder: without the CLI's mark, or the CLI's name. */
-function rowTitle(title: string, cli: string | null): string {
+/**
+ * The title of a DEV column row: without the CLI's mark, and none at all when all that is left is
+ * the CLI's own name (the icon says it) and the row shows a folder; the CLI's name otherwise.
+ */
+function rowTitle(title: string, cli: string | null, hasFolder: boolean): string | null {
   if (!cli) return title;
-  return titleWithoutCliMark(title, cli, "") || cliName(cli);
+  const rest = titleWithoutCliMark(title, cli, "");
+  const nameOnly = !rest || [cli, cliName(cli)].some((name) => name.toLowerCase() === rest.toLowerCase());
+  if (!nameOnly) return rest;
+  return hasFolder ? null : cliName(cli);
 }
 
 /** The host a tab connects to, or null for local and serial terminals. */
@@ -160,10 +166,19 @@ export function TabBar(props: TabBarProps) {
             {attention?.has(tab.key) && (
               <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
             )}
-            <span className="tab__title" dir="auto">
-              {/* A DEV row names its folder only: the icon already says which tool runs there. */}
-              {column ? (details?.get(tab.key)?.folder ?? rowTitle(tabTitle(tab), details?.get(tab.key)?.cli ?? null)) : tabTitle(tab)}
-            </span>
+            {(() => {
+              const shown = column ? rowTitle(tabTitle(tab), details?.get(tab.key)?.cli ?? null, !!details?.get(tab.key)?.folder) : tabTitle(tab);
+              return shown === null ? null : (
+                <span className="tab__title" dir="auto">
+                  {shown}
+                </span>
+              );
+            })()}
+            {column && details?.get(tab.key)?.folder && (
+              <span className="tab__folder" dir="auto">
+                {details.get(tab.key)!.folder}
+              </span>
+            )}
             {dev?.has(tab.key) && (
               <span className="tab__dev" role="img" aria-label={t("app.tabs.dev")} title={t("app.tabs.dev")}>
                 <Code size={12} aria-hidden="true" />

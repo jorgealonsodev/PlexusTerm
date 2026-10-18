@@ -2350,10 +2350,19 @@ body.is-dragging-path {
 }
 
 .tab--row .tab__title {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
+.tab__folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .tab--row .tab__close {
   margin-inline-start: auto;

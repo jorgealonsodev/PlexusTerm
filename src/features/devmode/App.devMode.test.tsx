@@ -182,7 +182,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(document.querySelector(".main--dev")).not.toBeNull();
     const row = within(tabBar()).getByRole("tab");
     expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
-    await waitFor(() => expect(row.querySelector(".tab__title")?.textContent).toBe("src"));
+    await waitFor(() => expect(row.querySelector(".tab__folder")?.textContent).toBe("src"));
     expect(within(row).getByRole("button", { name: /^Close/ })).toBeTruthy();
     const branch = await screen.findByTitle("Git branch: main");
     expect(branch.closest(".pane-footer")).not.toBeNull();
