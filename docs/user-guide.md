@@ -9,11 +9,11 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Telnet and Mosh](#telnet-and-mosh) | Built-in Telnet client, Mosh over SSH |
 | [Saved sessions](#saved-sessions) | Folders, saved passwords, jump hosts, session import |
 | [SFTP browser](#sftp-browser) | Remote files of the active SSH tab |
-| [File explorer](#file-explorer) | Local files of the active local tab, viewing files, dropping files on terminals and on the AI chat |
+| [File explorer](#file-explorer) | Local files of the active local tab, VS Code-style lists and workspaces in DEV mode, viewing files, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
-| [Terminal settings](#terminal-settings) | Colour schemes, font, copy and paste, find, saving and logging output |
+| [Terminal settings](#terminal-settings) | Colour schemes, font, tab and window colours, AI command-line tools and DEV mode, copy and paste, find, saving and logging output |
 | [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI chat |
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
@@ -169,21 +169,39 @@ The **Explorer** tab of the sidebar browses the local disk while the active tab 
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to open it in its default program. In DEV mode the list looks like VS Code's Explorer instead (see [DEV mode file lists](#dev-mode-file-lists)).
-- **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete** act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
-- Right-click an entry for **Open**, **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy. On folders, **Open in terminal** (right after **Open**) opens a new local terminal tab, with the same shell as the active one, that starts in that folder.
+- The toolbar's icons (hover one for its name) are **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete**, which act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
+- Right-click an entry for **Open**, **View** (files: see [Viewing files](#viewing-files)), **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy. On folders, **Open in terminal** (right after **Open**) opens a new local terminal tab, with the same shell as the active one, that starts in that folder.
+
+With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`, PowerShell with the prompt below) are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows only OSC 7 is followed; add this to your PowerShell profile (`notepad $PROFILE`):
+
+```powershell
+function prompt {
+  $loc = $executionContext.SessionState.Path.CurrentLocation
+  if ($loc.Provider.Name -eq "FileSystem") {
+    $url = "file:///" + ($loc.ProviderPath -replace "%", "%25" -replace "\\", "/")
+    [Console]::Write("$([char]27)]7;$url$([char]7)")
+  }
+  "PS $loc$('>' * ($nestedPromptLevel + 1)) "
+}
+```
 
 ### DEV mode file lists
 
 In [DEV mode](#dev-mode) the Explorer and the SFTP browser start at the project the AI tool runs in, and look and work like VS Code's Explorer:
 
-- The list is a tree: click a folder (or its chevron) to expand it in place, and again to collapse it; its entries are listed when it is first expanded, indented under it with thin guide lines. Several folders can be open at once, and they stay open when the list is refreshed. Double-click a folder to list from it (it becomes the top of the tree); double-click a file to open it as outside DEV mode. **Rename…** on a nested entry renames it in its own folder.
+- The list is a tree: click a folder (or its chevron) to expand it in place, and again to collapse it; its entries are listed when it is first expanded, indented under it with thin guide lines. Several folders can be open at once, and they stay open when the list is refreshed. Double-click a folder to list from it (it becomes the top of the tree); double-click a file to show it in the [viewer](#viewing-files) next to the terminal. **Rename…** on a nested entry renames it in its own folder.
 - The toolbar's last two icons, as in VS Code: **Refresh Explorer** lists everything again (open folders stay open) and **Collapse Folders in Explorer** closes every open folder.
 - With the keyboard: **↓** / **↑** move between entries, **→** expands a folder or moves into it, **←** collapses it or moves to its parent folder, and **Enter** opens a file or expands a folder.
 - Each file has the icon VS Code shows for its type with its default Seti icon theme (chosen by the file's name, its extension or its language, coloured as in VS Code for dark and light schemes); folders have a folder icon.
 - Inside a git repository, entries show their git status (below).
 - Select an entry in the Explorer and the bottom of the Explorer shows its repository, as VS Code's status bar does: the project's folder and the branch checked out, with `*` when the repository has uncommitted changes (ignored files do not count). Nothing shows outside a repository or with git status off in Settings.
-- **Add folder** (Explorer only) adds another folder to the tab's workspace, as in a VS Code workspace: then every folder, the main one first, shows as a root as in VS Code: a row with a chevron and the folder's name that folds its tree, a dot coloured by its git changes, its own tree and git status; right-click an added folder's row and choose **Remove folder from workspace** to take it out (the folder itself is not touched). The added folders belong to that tab and are kept while it is open.
-- **Save workspace** writes the main folder and the added ones to a workspace file in VS Code's format (`.code-workspace`), and **Open workspace** opens one (saved here or by VS Code): a new DEV tab starts in its first folder and adds the others. Folders given relative to the file are taken from the file's folder; remote folders of VS Code workspaces are left out.
+#### Workspaces
+
+As in VS Code, a DEV tab's Explorer can show several folders at once, a project and the libraries or services it works with, for example. The toolbar's workspace icons (Explorer only):
+
+- **Add folder** adds another folder to the tab's workspace. Then every folder, the main one first, shows as a root: a row with a chevron and the folder's name that folds its tree, and a dot coloured by its git changes; each one has its own tree and its own git status. Right-click an added folder's row and choose **Remove folder from workspace** to take it out (the folder itself is not touched). The added folders belong to that tab and are kept while it is open.
+- **Save workspace** writes the main folder and the added ones to a workspace file in VS Code's format (`.code-workspace`, `{ "folders": [{ "path": "..." }] }`), so the same file opens the same folders in VS Code.
+- **Open workspace** opens a workspace file, saved here or by VS Code: a new DEV tab starts in its first folder and adds the others. Folders given relative to the file are taken from the file's folder, and comments and trailing commas of VS Code's files are accepted; remote folders of VS Code workspaces are left out, and a file that lists no folder says so.
 
 #### Git status in file lists
 
@@ -203,19 +221,6 @@ When a listed folder is inside a git repository, the Explorer and the SFTP brows
 A file with a staged and an unstaged change shows the more important one (conflict, then ignored, then modified, then the others). A folder takes the colour of the most important change inside it and shows a **●** instead of a letter; deleted and ignored files do not colour their folders. A folder that git reports as a whole (untracked, or ignored like `node_modules`) gives its colour to everything inside it. Submodules are not marked.
 
 The status is read with one read-only `git status` (no lock taken, so it never gets in the way of a `git` you or an AI tool run) when the list is loaded or refreshed, when the terminal's prompt comes back, and while the terminal tied to the list prints (so files changed by Claude Code, Codex, OpenCode and other AI command-line tools are marked as they work), at most once every 2 seconds and only while the list is shown; nothing is read while it is idle. SSH lists run that `git` on the server over the same connection. Without git, outside a repository or when it fails, entries are simply not coloured. Very large outputs (many thousands of entries) are cut short rather than slowing the list. Turn it off with Settings → Files → **Show git status in file lists**. Outside DEV mode git is never read for the file lists.
-
-With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`, PowerShell with the prompt below) are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows only OSC 7 is followed; add this to your PowerShell profile (`notepad $PROFILE`):
-
-```powershell
-function prompt {
-  $loc = $executionContext.SessionState.Path.CurrentLocation
-  if ($loc.Provider.Name -eq "FileSystem") {
-    $url = "file:///" + ($loc.ProviderPath -replace "%", "%25" -replace "\\", "/")
-    [Console]::Write("$([char]27)]7;$url$([char]7)")
-  }
-  "PS $loc$('>' * ($nestedPromptLevel + 1)) "
-}
-```
 
 ### Viewing files
 
@@ -311,14 +316,6 @@ The gear button at the right of the toolbar opens **Settings**, shared by every 
 
 The palettes come from iTerm2-Color-Schemes (MIT); [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) credits each scheme's author and original project. The whole window follows the colour scheme, like an editor theme: the toolbar, sidebar, tabs and dialogs take their background, text and accent colours from it, and light schemes switch the window and the logo to their light versions.
 
-To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour…** for any other, **No colour** to go back); its text turns dark or light to stay readable. Each window keeps its own colour while it is open, a reload included; a new window starts without one.
-
-Tabs take colours too: right-click a tab (on top or in DEV mode's column) and choose **Tab colour…** for the same colours; the tab is tinted and gets a bar of its colour (on top, or on the left in the column). **Duplicate tab** keeps the colour.
-
-**Custom colour…** opens a dialog: type the colour's code (`#rrggbb`), choose it in the system's colour picker, or click the eyedropper to pick it from anywhere on the screen: the pointer becomes a crosshair, a click takes the colour under it and Escape or right-click cancels (Windows, Linux with any X11 desktop such as XFCE, MATE or Cinnamon, and Wayland through the desktop portal of GNOME and KDE). **Accept** is painted with the colour, so you see it before you choose it.
-
-In [DEV mode](#dev-mode) on a local tab the colours belong to the project, like VS Code's Peacock: the tab's colour and the toolbar's are saved in the project folder the tool was opened in, in `.plexusterm/settings.json` (`tabColor`, `toolbarColor`), and a tab that goes into DEV mode in that folder gets them again. The toolbar shows the project's colour while one of its tabs is active, and the window's own colour otherwise. The `.plexusterm` folder holds a `.gitignore` of its own, so git ignores it without changing the project's `.gitignore`.
-
 Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `robbyrussell` or `agnoster`) are configured in the shell, on the machine where it runs (`~/.zshrc`, `~/.config/starship.toml`), not in PlexusTerm. Their colours follow the colour scheme. Themes that draw icons or powerline arrows need a [Nerd Font](https://www.nerdfonts.com/) installed on this machine and set as the font family.
 - **Shell for local terminals** (default: the system default shell): the shells found on this computer are listed (Linux and macOS: `$SHELL` and `/etc/shells`; Windows: PowerShell 7, Windows PowerShell, cmd, WSL and Git Bash when installed), or **Other…** runs any program, typed or chosen with **Browse…**. **Arguments** are separated by spaces; quote an argument that has spaces, e.g. `-NoLogo -Command "Set-Location 'C:\My Files'"`. New local terminals use it; terminals already open keep their shell. Command suggestions name it to the AI provider, and **Run** clears the line with the keys that shell understands.
 - **Starting folder for local terminals** (default: empty, the home folder): the folder new local terminals start in, typed (`~` is the home folder) or chosen with **Browse**. Saved local sessions keep their own starting directory.
@@ -343,6 +340,18 @@ With text selected, the terminal menu starts with what can be done with it: **Co
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
 
+### Tab and window colours
+
+Colours tell windows, tabs and projects apart at a glance, as VS Code's Peacock extension does.
+
+To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour…** for any other, **No colour** to go back); its text turns dark or light to stay readable. Each window keeps its own colour while it is open, a reload included; a new window starts without one.
+
+Tabs take colours too: right-click a tab (on top or in DEV mode's column) and choose **Tab colour…** for the same colours; the tab is tinted and gets a bar of its colour (on top, or on the left in the column). **Duplicate tab** keeps the colour.
+
+**Custom colour…** opens a dialog: type the colour's code (`#rrggbb`), choose it in the system's colour picker, or click the eyedropper to pick it from anywhere on the screen: the pointer becomes a crosshair, a click takes the colour under it and Escape or right-click cancels (Windows, Linux with any X11 desktop such as XFCE, MATE or Cinnamon, and Wayland through the desktop portal of GNOME and KDE). **Accept** is painted with the colour, so you see it before you choose it.
+
+In [DEV mode](#dev-mode) on a local tab the colours belong to the project, like VS Code's Peacock: the tab's colour and the toolbar's are saved in the project folder the tool was opened in, in `.plexusterm/settings.json` (`tabColor`, `toolbarColor`), and a tab that goes into DEV mode in that folder gets them again. The toolbar shows the project's colour while one of its tabs is active, and the window's own colour otherwise. The `.plexusterm` folder holds a `.gitignore` of its own, so git ignores it without changing the project's `.gitignore`.
+
 ### AI command-line tools
 
 Claude Code, Codex, Gemini CLI, OpenCode and similar tools run in any PlexusTerm terminal, local or remote (SSH, Mosh, Telnet, serial).
@@ -357,13 +366,23 @@ Claude Code, Codex, Gemini CLI, OpenCode and similar tools run in any PlexusTerm
 
 DEV mode turns a tab into a workspace for an AI command-line tool. It belongs to each tab: other tabs keep their normal look.
 
+#### Getting started
+
+A typical session with Claude Code (Codex, OpenCode and the others work the same way):
+
+1. Open a local terminal and go to your project (`cd ~/code/my-app`), or right-click the project folder in the Explorer and choose **Open in terminal**.
+2. Run `claude`. The tab turns to DEV mode at once: the tabs move to a column at the right with Claude's icon, the Explorer jumps to the project folder and looks like VS Code (a tree with file icons and git colours), and the bar under the terminal shows the git branch.
+3. Ask Claude for a change. While it works, its row shows a turning ring, the files it edits change colour in the Explorer (**M**, **U**...), and a file you opened in the [viewer](#viewing-files) (double-click it) shows its new text as soon as it is written. When Claude needs you and you are in another tab or window, its row gets an amber dot, and a desktop notification tells you once Claude is set to send them (see [AI command-line tools](#ai-command-line-tools)).
+4. Open more tabs for other tools or projects with the **+** under the rows: they start in DEV mode too. Give each project a [colour](#tab-and-window-colours) so you always know where you are; PlexusTerm remembers it in the project.
+5. Exit Claude (`/exit`). Back at the shell's prompt the tab leaves DEV mode, unless you turned it on by hand with the **DEV** button.
+
 - **On by itself.** A tab turns to DEV mode when a command sent with Enter in its terminal starts one of the commands listed in Settings → Terminal → **Commands that turn DEV mode on** (by default `claude`, `codex`, `agy`, `opencode`, `pi` and `gentle-shell`). Only the first word counts, also with a path such as `~/.local/bin/claude`, so `claude --resume` turns it on but `echo claude` or `claude-foo` do not. A command recalled from history (Up arrow) or completed with Tab counts too: it is read from the screen. As a fallback, a terminal whose title names one of them (Claude Code sets `✳ Claude Code`, pi `π - <folder>`) turns it on too. This works in local, SSH and Mosh terminals.
 - **Off by itself.** It turns off when the shell's prompt comes back in the terminal that started the tool: the shell marks its prompt (OSC 7 or OSC 133, see [Git branch](#git-branch)), the output stops on the same prompt the tool was started from, or the terminal's title becomes the shell's again (any title that does not name the tool and does not start with a symbol such as Claude Code's `✳`). A prompt that changes every time (a clock, the duration of the last command) is compared without its numbers; with a prompt that changes otherwise and no OSC 7 or OSC 133, turn DEV mode off by hand.
 - **By hand.** The **DEV** button at the right end of the bar under each local, SSH and Mosh terminal turns the tab's DEV mode on or off (it is highlighted while on; hover it to read whether it is on), and so does **DEV mode on or off** in Settings → Shortcuts (no shortcut by default). Turned on by hand, DEV mode stays on when a tool ends; only the button or the shortcut turns it off.
 
 While a tab is in DEV mode:
 
-- The tab shows the DEV mode icon (`</>`, the same as on the **DEV** button), and while it is the active tab the tabs move to a **column at the right** of the terminals: one row per tab with an icon for the tool it runs (Claude Code, Codex, Antigravity for `agy`, OpenCode, pi, gentle-ai's rose for `gentle-shell`; a terminal icon otherwise),, its title (without the mark the tool puts in front, such as the `π -` of pi and gentle-shell; a title that only names the tool, such as `Claude Code`, is left out because the icon says it), the folder the tool was opened in, in grey and a **×** that closes it. The **+** under the rows opens a new local terminal already in DEV mode. **Duplicate tab** on a DEV tab, and **Open in terminal** on a folder of its file list, open the new terminal in DEV mode too. While the tool in a tab is working (printing on its own, not just echoing what you type), a small turning ring shows next to its icon, in the column and in the tab bar; it stops 1.5 s after the output does (with reduced motion on in the system it is a still ring). The active row is highlighted; clicking a row, middle-clicking it to close it, its right-click menu and its attention and logging marks work as in the tab bar. Drag the column's left edge to change its width (between 140 and 480 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width.
+- The tab shows the DEV mode icon (`</>`, the same as on the **DEV** button), and while it is the active tab the tabs move to a **column at the right** of the terminals: one row per tab with an icon for the tool it runs (Claude Code, Codex, Antigravity for `agy`, OpenCode, pi, gentle-ai's rose for `gentle-shell`; a terminal icon otherwise), its title (without the mark the tool puts in front, such as the `π -` of pi and gentle-shell; a title that only names the tool, such as `Claude Code`, is left out because the icon says it), the folder the tool was opened in, in grey and a **×** that closes it. The **+** under the rows opens a new local terminal already in DEV mode. **Duplicate tab** on a DEV tab, and **Open in terminal** on a folder of its file list, open the new terminal in DEV mode too. While the tool in a tab is working (printing on its own, not just echoing what you type), a small turning ring shows next to its icon, in the column and in the tab bar; it stops 1.5 s after the output does (with reduced motion on in the system it is a still ring). The active row is highlighted; clicking a row, middle-clicking it to close it, its right-click menu and its attention and logging marks work as in the tab bar. Drag the column's left edge to change its width (between 140 and 480 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width.
 - The bar under the terminal shows the [git branch](#git-branch).
 - The Explorer (local tabs) or the SFTP browser (SSH tabs) goes to the folder the tool was opened in; with its **Follow terminal folder** box on (the default) it then goes wherever the terminal goes, and with the box off it stays at that folder. It also looks like VS Code (see [DEV mode file lists](#dev-mode-file-lists)). Opening folders in it never types `cd` in the terminal, where the tool is running.
 - Desktop notifications for that tab are sent even when **Desktop notifications when a terminal needs attention** is off.
@@ -506,6 +525,9 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 
 - **Local terminal**: the default shell is PowerShell 7 (`pwsh.exe`) when it is on `PATH`, otherwise Windows PowerShell (`powershell.exe`), with `%COMSPEC%` as the last fallback; it starts in `%USERPROFILE%`. Settings → Terminal → **Shell for local terminals** picks another one, such as cmd, WSL or Git Bash.
 - **File explorer**: following the terminal folder needs the shell to send OSC 7 (see [File explorer](#file-explorer) for PowerShell); Windows does not let PlexusTerm read another program's working folder. **Permissions…** is not offered.
+- **DEV mode**: the AI tools are recognised in PowerShell and cmd as in other shells (cmd's `C:\path>` prompt and its window titles included). The Explorer opens at the tool's folder, and the git branch shows, only when the shell reports its folder with OSC 7 (the PowerShell prompt of [File explorer](#file-explorer)); otherwise they stay where they were.
+- **Error colouring**: errors are coloured from their English wording and from the C library's and bash's translated messages; the translated messages of cmd and PowerShell are not recognised yet.
+- **Eyedropper**: **Custom colour…** picks colours from the screen with the webview's own eyedropper.
 - **Home directory**: `~` is `%USERPROFILE%`, so host keys go to `%USERPROFILE%\.ssh\known_hosts` and key paths accept both `~/` and `~\`.
 - **SSH agent**: `SSH_AUTH_SOCK` when set, otherwise the Windows OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent` (start the "OpenSSH Authentication Agent" service and add keys with `ssh-add`).
 - **Saved files** (sessions, settings, macros) rely on the permissions of your user profile instead of Unix file modes.

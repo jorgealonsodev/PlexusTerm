@@ -58,6 +58,10 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 
 | Feature | What you get | Guide |
 | --- | --- | --- |
+| DEV mode for AI tools | Claude Code, Codex, OpenCode, Antigravity, pi and others turn a tab into a workspace: tabs in a column with each tool's icon and a working indicator, the Explorer at the project, the git branch, notifications when a tool needs you | [DEV mode](docs/user-guide.md#dev-mode) |
+| File viewer | Any local or remote file next to its terminal: line numbers, syntax highlighting, word wrap, search, Markdown rendered or as code; it follows the file while an AI tool edits it | [Viewing files](docs/user-guide.md#viewing-files) |
+| VS Code-style Explorer | In DEV mode: a tree with VS Code's file icons, git status colours, the selection's project and branch, workspaces saved as `.code-workspace` files | [DEV mode file lists](docs/user-guide.md#dev-mode-file-lists) |
+| Colours | Colour the toolbar and each tab, with any colour or one picked from the screen; DEV projects remember theirs | [Tab and window colours](docs/user-guide.md#tab-and-window-colours) |
 | Local terminals | Tabs with your shell or the one you choose (PowerShell, cmd, WSL, Git Bash, zsh, fish...), up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |
 | SSH | Password, key or agent login, `known_hosts` checks, up to 3 jump hosts | [SSH sessions](docs/user-guide.md#ssh-sessions) |
 | Saved sessions | Folders, search, passwords in the system keyring, import from `.ini` session files and `~/.ssh/config` | [Saved sessions](docs/user-guide.md#saved-sessions) |
@@ -69,8 +73,8 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | Tools | SSH key generator (Ed25519, RSA, ECDSA, PuTTY `.ppk`), port and network scanners, Wake On LAN, remote monitor bar | [Tools](docs/user-guide.md#tools) |
 | Macros | Record, edit and replay keystrokes, with waits and hotkeys | [Macros](docs/user-guide.md#macros) |
 | Updates | A notice when a new release is published, with a link to download it | [Updates](docs/user-guide.md#updates) |
-| Colour schemes | 57 terminal schemes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Solarized, Rosé Pine, ...) with a live preview, and any font | [Terminal settings](docs/user-guide.md#terminal-settings) |
-| Terminal comfort | Find, font size, copy on select, paste confirmation, save and log output, foldable sidebar (**Ctrl+Shift+B**) | [Terminal settings](docs/user-guide.md#terminal-settings) |
+| Colour schemes | 57 terminal schemes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Solarized, Rosé Pine, ...) with a live preview, a catalogue of programming fonts (JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro and Hack included) or any installed one | [Terminal settings](docs/user-guide.md#terminal-settings) |
+| Terminal comfort | Error lines in red, Shift+Enter for new lines in AI tools, find, font size, copy on select, paste confirmation, save and log output, foldable sidebar (**Ctrl+Shift+B**), every shortcut configurable | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Languages | English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic (right to left) and Hindi; follows the system language | [Interface language](docs/user-guide.md#interface-language) |
 
 <p align="center">
@@ -116,7 +120,7 @@ Macros are saved as plain text, including anything typed while recording.
 - [User guide](docs/user-guide.md): how every feature works and its limits.
 - [Building and releasing](docs/building-and-releasing.md): running from source, tests, packaging and publishing a release.
 - [Brand assets](assets/brand/README.md): logo, wordmark and colours.
-- [Credits](THIRD_PARTY_NOTICES.md): the colour schemes' authors and original projects, and third-party licences.
+- [Credits](THIRD_PARTY_NOTICES.md): the colour schemes' authors and original projects, and third-party licences. The licences of every library built into the app are listed in the app itself, in Settings → About → **Open-source licenses**.
 
 ## Development
 
