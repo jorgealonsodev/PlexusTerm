@@ -47,6 +47,9 @@ describe("cliOfTitle (S10 fallback)", () => {
     expect(cliOfTitle("Codex", commands)).toBe("codex");
     expect(cliOfTitle("OpenCode", commands)).toBe("opencode");
     expect(cliOfTitle("opencode - my-project", commands)).toBe("opencode");
+    // pi titles the terminal with the Greek letter.
+    expect(cliOfTitle("π - PlexusTerm", commands)).toBe("pi");
+    expect(cliOfTitle("π", commands)).toBe("pi");
   });
 
   it("ignores shell titles and lookalikes", () => {
@@ -54,6 +57,7 @@ describe("cliOfTitle (S10 fallback)", () => {
     expect(cliOfTitle("vim claude.md", commands)).toBeNull();
     expect(cliOfTitle("claudette", commands)).toBeNull();
     expect(cliOfTitle("", commands)).toBeNull();
+    expect(cliOfTitle("πr² notes", commands)).toBeNull();
   });
 });
 

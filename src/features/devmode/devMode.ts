@@ -44,7 +44,7 @@ export function cliOfCommand(command: string, commands: readonly string[]): stri
 }
 
 /** Titles some CLIs give their terminal, by command. */
-const TITLE_NAMES: Record<string, string> = { "claude code": "claude", antigravity: "agy" };
+const TITLE_NAMES: Record<string, string> = { "claude code": "claude", antigravity: "agy", "π": "pi" };
 
 /**
  * The listed CLI a terminal title names, or null: the title starts with the command (after a
