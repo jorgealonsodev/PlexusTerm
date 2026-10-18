@@ -32,3 +32,6 @@ dist-release/
 # Internal planning notes and research, kept locally only
 odd/
 docs/reference/
+
+# A project's PlexusTerm settings (DEV mode tab colour)
+.plexusterm/

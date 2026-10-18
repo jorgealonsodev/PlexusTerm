@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ColorMenu } from "./features/toolbar/ColorMenu";
 import { loadToolbarColor, saveToolbarColor } from "./features/toolbar/toolbarColor";
 import { readableOn } from "./features/settings/uiTheme";
@@ -799,12 +800,6 @@ function AppContent() {
     if (action.kind === "run") pane.run(action.command);
   };
 
-  /**
-   * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the
-   * same shell starting there; the SFTP browser opens another tab of the same SSH login (as
-   * Duplicate does, so it authenticates the same way) and changes to the folder once its shell is
-   * ready, with the same quoted `cd` a dropped folder runs.
-   */
   /** A stable way to listen to each terminal pane's output (a file viewer follows its terminal's). */
   const outputListeners = useRef(new Map<string, (listener: (text: string) => void) => () => void>());
   const outputOf = (paneId: string) => {
@@ -818,6 +813,51 @@ function AppContent() {
   /** The text of a viewer's file, from this computer or through its SFTP session. */
   const viewFile = (viewer: ViewerLink) =>
     viewer.origin.kind === "local" ? local.viewText(viewer.path) : sftp.viewText(viewer.origin.sessionId, viewer.path);
+  /** The project folder of a local DEV tab (where its `.plexusterm` settings go), or null. */
+  const projectOf = (key: string) => {
+    const tab = state.tabs.find((t) => t.key === key);
+    const tabDev = dev.state[key];
+    const project = tabDev ? (tabDev.root ?? tabDev.folder) : null;
+    return tab?.target.type === "local" ? project : null;
+  };
+  /**
+   * A tab's colour; a local DEV tab's is its project's too, saved in `<project>/.plexusterm/` so the
+   * project's tabs get it again (like VS Code's Peacock).
+   */
+  const colorTab = (key: string, color: string | null) => {
+    dispatch({ type: "setColor", key, color });
+    const project = projectOf(key);
+    if (!project) return;
+    invoke("project_color_set", { folder: project, kind: "tab", color }).catch((err) => setNotice(String(err)));
+  };
+  /** The toolbar colour saved by each project (DEV mode), shown while one of its tabs is active. */
+  const [projectToolbar, setProjectToolbar] = useState<Record<string, string | null>>({});
+  const activeProject = activeTab ? projectOf(activeTab.key) : null;
+  const shownToolbarColor = (activeProject && projectToolbar[activeProject]) || toolbarColor;
+  /** The toolbar's colour menu: the active DEV tab's project's colour, else this window's. */
+  const pickToolbarColor = (color: string | null) => {
+    if (!activeProject) return setToolbarColor(color);
+    setProjectToolbar((prev) => ({ ...prev, [activeProject]: color }));
+    invoke("project_color_set", { folder: activeProject, kind: "toolbar", color }).catch((err) => setNotice(String(err)));
+  };
+  /** DEV tabs already given their project's colours, by tab and project. */
+  const projectColorsRead = useRef(new Set<string>());
+  useEffect(() => {
+    for (const tab of state.tabs) {
+      const tabDev = dev.state[tab.key];
+      const project = tabDev ? (tabDev.root ?? tabDev.folder) : null;
+      if (tab.target.type !== "local" || !project) continue;
+      const read = `${tab.key}\0${project}`;
+      if (projectColorsRead.current.has(read)) continue;
+      projectColorsRead.current.add(read);
+      invoke<{ tabColor: string | null; toolbarColor: string | null }>("project_colors_get", { folder: project })
+        .then((colors) => {
+          if (colors.tabColor) dispatch({ type: "setColor", key: tab.key, color: colors.tabColor });
+          setProjectToolbar((prev) => ({ ...prev, [project]: colors.toolbarColor }));
+        })
+        .catch(() => {});
+    }
+  }, [state.tabs, dev.state]);
   /** Shows a file of the file lists in the viewer of the active tab's terminal, at its left. */
   const viewInTab = (origin: PathOrigin, path: string) => {
     if (!activeTab) return;
@@ -826,6 +866,12 @@ function AppContent() {
     if (!hasViewer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.viewer.full"));
     dispatch({ type: "openViewer", key: activeTab.key, path, origin });
   };
+  /**
+   * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the
+   * same shell starting there; the SFTP browser opens another tab of the same SSH login (as
+   * Duplicate does, so it authenticates the same way) and changes to the folder once its shell is
+   * ready, with the same quoted `cd` a dropped folder runs.
+   */
   const openInTerminal = (path: string) => {
     if (!activeTab) return;
     const { target } = activeTab;
@@ -1049,9 +1095,13 @@ function AppContent() {
   return (
     <div className="app">
       <header
-        className={`toolbar${compactToolbar ? " toolbar--compact" : ""}${toolbarColor ? " toolbar--coloured" : ""}`}
+        className={`toolbar${compactToolbar ? " toolbar--compact" : ""}${shownToolbarColor ? " toolbar--coloured" : ""}`}
         ref={toolbarRef}
-        style={toolbarColor ? ({ "--toolbar-bg": toolbarColor, "--toolbar-fg": readableOn(toolbarColor) } as CSSProperties) : undefined}
+        style={
+          shownToolbarColor
+            ? ({ "--toolbar-bg": shownToolbarColor, "--toolbar-fg": readableOn(shownToolbarColor) } as CSSProperties)
+            : undefined
+        }
         onContextMenu={(e) => {
           // The bar itself, not its buttons.
           if ((e.target as Element).closest("button, input, a, select")) return;
@@ -1063,8 +1113,8 @@ function AppContent() {
           <ColorMenu
             x={toolbarMenu.x}
             y={toolbarMenu.y}
-            current={toolbarColor}
-            onPick={setToolbarColor}
+            current={shownToolbarColor}
+            onPick={pickToolbarColor}
             onClose={() => setToolbarMenu(null)}
           />
         )}
@@ -1356,7 +1406,7 @@ function AppContent() {
               if (dev.state[key]) devOnStart.current = `tab-${state.nextSeq}`;
               dispatch({ type: "duplicate", key });
             }}
-            onColor={(key, color) => dispatch({ type: "setColor", key, color })}
+            onColor={colorTab}
             onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
             onCloseRight={(key) => dispatch({ type: "closeRight", key })}
             onCloseAll={() => dispatch({ type: "closeAll" })}

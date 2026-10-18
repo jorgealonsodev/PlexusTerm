@@ -66,6 +66,8 @@ const folders: Record<string, ReturnType<typeof entry>[]> = {
 };
 
 let windowFocused = true;
+/** `.plexusterm` colours by project folder. */
+const projectColors: Record<string, { tabColor: string | null; toolbarColor: string | null }> = {};
 const withBackend = (settings: object = {}) =>
   vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
     const path = (args as { path?: string } | undefined)?.path;
@@ -75,6 +77,7 @@ const withBackend = (settings: object = {}) =>
     if (cmd === "local_list") return folders[path!] ?? [];
     if (cmd === "git_branch") return "main";
     if (cmd === "git_status") return [];
+    if (cmd === "project_colors_get") return projectColors[(args as { folder: string }).folder] ?? { tabColor: null, toolbarColor: null };
     return null;
   });
 
@@ -336,6 +339,60 @@ describe("DEV mode (S10, S13)", () => {
     expect(stub.props.target.cwd).toBe("/home/me/repo");
     expect(devOn()).toBe(true);
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+  });
+
+  it("saves a DEV tab's colour in its project's .plexusterm folder, and outside DEV mode nowhere", async () => {
+    await renderApp();
+    const pick = (name: string) => {
+      fireEvent.contextMenu(within(tabBar()).getAllByRole("tab")[0], { clientX: 1, clientY: 1 });
+      fireEvent.click(screen.getByRole("menuitem", { name: "Tab colour…" }));
+      fireEvent.click(screen.getByRole("menuitem", { name }));
+    };
+    const saved = () => vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "project_color_set");
+    pick("Red");
+    await settle();
+    expect(saved()).toEqual([]);
+    await run("claude");
+    pick("Blue");
+    await waitFor(() =>
+      expect(saved()).toEqual([["project_color_set", { folder: "/home/me/repo/src", kind: "tab", color: "#2e86de" }]]),
+    );
+    pick("No colour");
+    await waitFor(() =>
+      expect(saved()[saved().length - 1]).toEqual(["project_color_set", { folder: "/home/me/repo/src", kind: "tab", color: null }]),
+    );
+  });
+
+  it("gives a tab and the toolbar the colours its project saved when it goes into DEV mode", async () => {
+    projectColors["/home/me/repo/src"] = { tabColor: "#16a085", toolbarColor: "#8e44ad" };
+    try {
+      await renderApp();
+      const tab = () => within(tabBar()).getAllByRole("tab")[0];
+      const toolbar = () => document.querySelector<HTMLElement>("header.toolbar")!;
+      expect(tab().classList.contains("tab--coloured")).toBe(false);
+      await run("claude");
+      await waitFor(() => expect(tab().style.getPropertyValue("--tab-color")).toBe("#16a085"));
+      expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("#8e44ad");
+      // Back at the shell's prompt DEV mode ends: the window's own toolbar colour (none) is back.
+      act(() => stub.props.onPrompt?.(true));
+      await settle();
+      expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("");
+    } finally {
+      delete projectColors["/home/me/repo/src"];
+    }
+  });
+
+  it("saves the toolbar colour in the active DEV tab's project, in the same file as the tab's", async () => {
+    await renderApp();
+    await run("claude");
+    fireEvent.contextMenu(document.querySelector("header.toolbar")!, { clientX: 40, clientY: 10 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Purple" }));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith("project_color_set", { folder: "/home/me/repo/src", kind: "toolbar", color: "#8e44ad" }),
+    );
+    expect(document.querySelector<HTMLElement>("header.toolbar")!.style.getPropertyValue("--toolbar-bg")).toBe("#8e44ad");
+    // Not the window's own colour: outside the project's tabs the toolbar has none.
+    expect(sessionStorage.getItem("plexusterm.toolbarColor")).toBeNull();
   });
 
   it("is toggled by its shortcut once one is set", async () => {

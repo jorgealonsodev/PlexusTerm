@@ -4,6 +4,7 @@ mod history;
 mod localfs;
 mod mosh;
 mod platform;
+mod project;
 mod pty;
 mod secrets;
 mod serial;
@@ -655,7 +656,9 @@ pub fn run() {
             localfs::local_chmod,
             localfs::local_open,
             localfs::local_read_text,
-            localfs::local_view_text
+            localfs::local_view_text,
+            project::project_colors_get,
+            project::project_color_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
