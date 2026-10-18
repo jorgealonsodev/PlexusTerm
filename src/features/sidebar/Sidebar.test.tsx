@@ -39,3 +39,16 @@ describe("Sidebar file browsers (L18)", () => {
     expect(screen.getByText("macros panel")).toBeTruthy();
   });
 });
+
+describe("Sidebar tabs", () => {
+  it("lists the Explorer first, then Sessions, SFTP, Tunnels and Macros", () => {
+    sidebar("sessions", true, true);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Explorer",
+      "Sessions",
+      "SFTP",
+      "Tunnels",
+      "Macros",
+    ]);
+  });
+});

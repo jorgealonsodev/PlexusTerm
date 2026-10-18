@@ -132,9 +132,9 @@ export function Sidebar({
           aria-label={t("app.sidebar.label")}
           aria-orientation={collapsed ? "vertical" : "horizontal"}
         >
+          {tab("explorer", t("app.sidebar.explorer"), HardDrive, localAvailable ? null : t("app.sidebar.explorerUnavailable"))}
           {tab("sessions", t("app.sidebar.sessions"), Star)}
           {tab("sftp", "SFTP", FolderTree, sftpAvailable ? null : t("app.sidebar.sftpUnavailable"))}
-          {tab("explorer", t("app.sidebar.explorer"), HardDrive, localAvailable ? null : t("app.sidebar.explorerUnavailable"))}
           {tab("tunnels", t("app.sidebar.tunnels"), ArrowLeftRight)}
           {tab("macros", t("app.sidebar.macros"), Keyboard)}
         </div>
