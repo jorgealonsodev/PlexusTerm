@@ -74,9 +74,29 @@ fn clean_name(name: &str) -> Option<String> {
     ok.then(|| name.to_string())
 }
 
-/// Quotes `text` as one word for POSIX `sh`, bash, zsh and fish: `'it'\''s'`.
+/// Quotes `text` as one word for POSIX `sh`: `'it'\''s'`. Only `sh` reads it: see [`through_sh`].
 fn quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+/// Standard base64 (RFC 4648, with padding).
+fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk.iter().enumerate().fold(0u32, |n, (i, b)| n | u32::from(*b) << (16 - 8 * i));
+        for i in 0..4 {
+            out.push(if i <= chunk.len() { ALPHABET[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
+        }
+    }
+    out
+}
+
+/// A command that runs the `sh` `script` whatever the user's login shell is. The SSH server hands
+/// the command to that shell first, and shells disagree on quoting (fish reads `\'` inside single
+/// quotes as an escaped quote), so the login shell only sees base64 letters piped into `sh`.
+fn through_sh(script: &str) -> String {
+    format!("echo {} | base64 -d | sh 2>/dev/null", base64(script.as_bytes()))
 }
 
 /// The read-only command that prints the branch of the remote `folder` (or its short commit when
@@ -91,7 +111,7 @@ pub fn remote_command(folder: &str) -> Option<String> {
     let script = format!(
         "{{ git -C {dir} symbolic-ref --short -q HEAD || git -C {dir} rev-parse --short HEAD; }} 2>/dev/null; exit 0"
     );
-    Some(format!("sh -c {} 2>/dev/null", quote(&script)))
+    Some(through_sh(&script))
 }
 
 /// The branch printed by [`remote_command`], or `None` when it printed none.
@@ -299,7 +319,7 @@ pub fn remote_status_command(folder: &str) -> Option<String> {
     let script = format!(
         "{{ p=$(git --no-optional-locks -C {dir} rev-parse --show-prefix) && printf '%s\\000' \"$p\" && git --no-optional-locks -C {dir} {status}; }} 2>/dev/null; exit 0"
     );
-    Some(format!("sh -c {} 2>/dev/null", quote(&script)))
+    Some(through_sh(&script))
 }
 
 #[cfg(test)]
@@ -386,11 +406,26 @@ mod tests {
         assert_eq!(branch_of(broken.path()), None);
     }
 
+    /// The `sh` script a remote command carries, decoded by the system's `base64 -d` (which also
+    /// checks [`base64`] against a real decoder).
+    pub(super) fn sh_script(command: &str) -> String {
+        let payload = command
+            .strip_prefix("echo ")
+            .and_then(|rest| rest.strip_suffix(" | base64 -d | sh 2>/dev/null"))
+            .unwrap_or_else(|| panic!("{command}"));
+        let out = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(format!("echo {payload} | base64 -d"))
+            .output()
+            .unwrap();
+        String::from_utf8(out.stdout).unwrap()
+    }
+
     #[test]
     fn the_remote_command_quotes_the_folder_and_always_succeeds() {
-        let command = remote_command("/srv/it's here").unwrap();
-        assert!(command.starts_with("sh -c '") && command.ends_with("' 2>/dev/null"), "{command}");
-        assert!(command.contains("symbolic-ref --short -q HEAD") && command.contains("exit 0"));
+        let script = sh_script(&remote_command("/srv/it's here").unwrap());
+        assert!(script.contains(r"-C '/srv/it'\''s here'"), "{script}");
+        assert!(script.contains("symbolic-ref --short -q HEAD") && script.ends_with("exit 0"));
         assert_eq!(remote_command(""), None);
         assert_eq!(remote_command("/a\0b"), None);
     }
@@ -632,11 +667,58 @@ mod status_tests {
 
     #[test]
     fn the_remote_status_command_quotes_the_folder() {
-        let command = remote_status_command("/srv/it's here").unwrap();
-        assert!(command.starts_with("sh -c '") && command.ends_with("' 2>/dev/null"), "{command}");
-        assert!(command.contains("--porcelain=v1") && command.contains("exit 0"));
+        use super::tests::sh_script;
+        let script = sh_script(&remote_status_command("/srv/it's here").unwrap());
+        assert!(script.contains(r"-C '/srv/it'\''s here'"), "{script}");
+        assert!(script.contains("--porcelain=v1") && script.ends_with("exit 0"));
         assert_eq!(remote_status_command(""), None);
         assert_eq!(remote_status_command("/a\0b"), None);
+    }
+
+    /// What the login shell reads is only `echo <base64> | base64 -d | sh`: fish, bash, zsh and
+    /// tcsh all read that the same way, whatever the folder name holds.
+    #[test]
+    fn the_login_shell_only_sees_base64_letters() {
+        for folder in ["/tmp/x\\';touch PWN_A;echo '", "/tmp/x\\'(touch PWN_B)", "/a b/$(c)`d`", "x&calc&y"] {
+            for command in [remote_command(folder).unwrap(), remote_status_command(folder).unwrap()] {
+                let payload = command
+                    .strip_prefix("echo ")
+                    .and_then(|rest| rest.strip_suffix(" | base64 -d | sh 2>/dev/null"))
+                    .unwrap_or_else(|| panic!("{command}"));
+                assert!(
+                    payload.chars().all(|c| c.is_ascii_alphanumeric() || "+/=".contains(c)),
+                    "{command}"
+                );
+            }
+        }
+    }
+
+    /// The fish reproduction from the verifier: a folder name with `\'` runs nothing in fish.
+    #[cfg(unix)]
+    #[test]
+    fn a_hostile_folder_name_runs_nothing_when_the_login_shell_is_fish() {
+        let Ok(fish) = which_fish() else { return };
+        let outside = tempfile::tempdir().unwrap();
+        for folder in ["x\\';touch PWN_A;echo '", "x\\'(touch PWN_B)"] {
+            for command in [remote_command(folder).unwrap(), remote_status_command(folder).unwrap()] {
+                let out = Command::new(&fish)
+                    .args(["--no-config", "-c", &command])
+                    .current_dir(outside.path())
+                    .output()
+                    .unwrap();
+                assert!(out.status.success(), "{out:?}");
+            }
+        }
+        for leaked in ["PWN_A", "PWN_B"] {
+            assert!(!outside.path().join(leaked).exists(), "{leaked} was created");
+        }
+    }
+
+    #[cfg(unix)]
+    fn which_fish() -> Result<std::path::PathBuf, ()> {
+        std::env::var_os("PATH")
+            .and_then(|paths| std::env::split_paths(&paths).map(|p| p.join("fish")).find(|p| p.is_file()))
+            .ok_or(())
     }
 
     /// Run in `sh`, a hostile folder name runs nothing, and the output is the local one.
