@@ -303,6 +303,9 @@ function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut
 const APP_VERSION = packageJson.version;
 const REPO_URL = "https://github.com/jorgealonsodev/PlexusTerm";
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD_PARTY_NOTICES.md`;
+/** The repository's issue forms (.github/ISSUE_TEMPLATE); `version` is the bug form's field id. */
+const BUG_REPORT_URL = `${REPO_URL}/issues/new?template=bug_report.yml&version=${encodeURIComponent(APP_VERSION)}`;
+const FEATURE_REQUEST_URL = `${REPO_URL}/issues/new?template=feature_request.yml`;
 
 /** Opens a link in the system browser (the app window never navigates away). */
 function openLink(e: MouseEvent, url: string) {
@@ -771,6 +774,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.about.checkAtStartup")}
               </label>
               <p className="muted">{t("settings.about.checkHelp")}</p>
+              <div className="settings__updates">
+                <button type="button" className="btn" onClick={(e) => openLink(e, BUG_REPORT_URL)}>
+                  {t("settings.about.reportProblem")}
+                </button>
+                <button type="button" className="btn" onClick={(e) => openLink(e, FEATURE_REQUEST_URL)}>
+                  {t("settings.about.suggestImprovement")}
+                </button>
+              </div>
+              <p className="muted">{t("settings.about.feedbackHelp")}</p>
               <p>
                 <a href={REPO_URL} onClick={(e) => openLink(e, REPO_URL)}>
                   github.com/jorgealonsodev/PlexusTerm

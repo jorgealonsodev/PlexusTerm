@@ -117,6 +117,9 @@ export const settings = {
     checkFailed: "Could not check for updates: {error}",
     checkAtStartup: "Check for updates at startup",
     checkHelp: "Asks GitHub for the latest published release when PlexusTerm starts. Nothing is downloaded or installed: Download opens the release page.",
+    reportProblem: "Report a problem",
+    suggestImprovement: "Suggest an improvement",
+    feedbackHelp: "Opens a form on GitHub in your browser, with the version filled in. Nothing is sent until you submit it there; a GitHub account is needed.",
     version: "Version {version}",
     description:
       "A terminal and remote-session manager for Linux and Windows: local shells, SSH, SFTP, tunnels, serial, Telnet and Mosh in one window.",

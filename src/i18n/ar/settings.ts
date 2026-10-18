@@ -119,6 +119,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "تعذر التحقق من التحديثات: {error}",
     checkAtStartup: "التحقق من التحديثات عند البدء",
     checkHelp: "يسأل GitHub عن أحدث إصدار منشور عند بدء PlexusTerm. لا يُنزَّل أو يُثبَّت أي شيء: يفتح تنزيل صفحة الإصدار.",
+    reportProblem: "الإبلاغ عن مشكلة",
+    suggestImprovement: "اقتراح تحسين",
+    feedbackHelp: "يفتح نموذجًا على GitHub في المتصفح مع تعبئة الإصدار مسبقًا. لا يُرسَل أي شيء حتى ترسله هناك، ويلزم حساب على GitHub.",
     version: "الإصدار {version}",
     description:
       "طرفية ومدير جلسات بعيدة لنظامي Linux وWindows: صدفات محلية وSSH وSFTP وأنفاق واتصال تسلسلي وTelnet وMosh في نافذة واحدة.",

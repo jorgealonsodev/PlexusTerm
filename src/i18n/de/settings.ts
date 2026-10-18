@@ -119,6 +119,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "Konnte nicht nach Updates suchen: {error}",
     checkAtStartup: "Beim Start nach Updates suchen",
     checkHelp: "Fragt beim Start von PlexusTerm GitHub nach der neuesten veröffentlichten Version. Es wird nichts heruntergeladen oder installiert: Herunterladen öffnet die Seite der Version.",
+    reportProblem: "Problem melden",
+    suggestImprovement: "Verbesserung vorschlagen",
+    feedbackHelp: "Öffnet ein Formular auf GitHub im Browser, mit bereits eingetragener Version. Es wird nichts gesendet, bis du es dort abschickst; dafür brauchst du ein GitHub-Konto.",
     version: "Version {version}",
     description:
       "Ein Terminal- und Remote-Sitzungsmanager für Linux und Windows: lokale Shells, SSH, SFTP, Tunnel, seriell, Telnet und Mosh in einem Fenster.",

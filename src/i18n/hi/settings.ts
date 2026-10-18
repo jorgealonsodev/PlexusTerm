@@ -119,6 +119,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "अपडेट नहीं जाँच सके: {error}",
     checkAtStartup: "शुरू होने पर अपडेट जाँचें",
     checkHelp: "PlexusTerm शुरू होने पर GitHub से नवीनतम प्रकाशित रिलीज़ पूछता है। कुछ भी डाउनलोड या इंस्टॉल नहीं होता: डाउनलोड करें रिलीज़ पेज खोलता है।",
+    reportProblem: "समस्या की रिपोर्ट करें",
+    suggestImprovement: "सुधार का सुझाव दें",
+    feedbackHelp: "ब्राउज़र में GitHub पर एक फ़ॉर्म खोलता है, जिसमें संस्करण पहले से भरा होता है। जब तक आप उसे वहाँ सबमिट नहीं करते, कुछ नहीं भेजा जाता; GitHub खाता आवश्यक है।",
     version: "संस्करण {version}",
     description:
       "Linux और Windows के लिए एक टर्मिनल और रिमोट-सेशन मैनेजर: लोकल शेल, SSH, SFTP, टनल, सीरियल, Telnet और Mosh एक ही विंडो में।",

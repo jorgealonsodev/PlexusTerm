@@ -573,3 +573,27 @@ describe("Updates in About", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, checkUpdates: false });
   });
 });
+
+describe("Feedback in About", () => {
+  const renderAbout = () =>
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} initialSection="about" />);
+  const issues = "https://github.com/jorgealonsodev/PlexusTerm/issues/new";
+
+  it("opens the bug report form with the version filled in", () => {
+    onTestFinished(() => {
+      opener.openUrl.mockClear();
+    });
+    renderAbout();
+    fireEvent.click(screen.getByRole("button", { name: "Report a problem" }));
+    expect(opener.openUrl).toHaveBeenCalledWith(`${issues}?template=bug_report.yml&version=${packageJson.version}`);
+  });
+
+  it("opens the feature request form", () => {
+    onTestFinished(() => {
+      opener.openUrl.mockClear();
+    });
+    renderAbout();
+    fireEvent.click(screen.getByRole("button", { name: "Suggest an improvement" }));
+    expect(opener.openUrl).toHaveBeenCalledWith(`${issues}?template=feature_request.yml`);
+  });
+});

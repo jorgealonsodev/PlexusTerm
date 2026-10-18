@@ -119,6 +119,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "업데이트를 확인할 수 없습니다: {error}",
     checkAtStartup: "시작할 때 업데이트 확인",
     checkHelp: "PlexusTerm을 시작할 때 GitHub에서 최신 공개 릴리스를 확인합니다. 아무것도 다운로드하거나 설치하지 않으며, 다운로드는 릴리스 페이지를 엽니다.",
+    reportProblem: "문제 신고",
+    suggestImprovement: "개선 제안",
+    feedbackHelp: "버전이 미리 입력된 GitHub 양식을 브라우저에서 엽니다. 그곳에서 제출하기 전에는 아무것도 전송되지 않으며, GitHub 계정이 필요합니다.",
     version: "버전 {version}",
     description:
       "Linux 및 Windows용 터미널 겸 원격 세션 관리자: 로컬 셸, SSH, SFTP, 터널, 직렬, Telnet, Mosh를 한 창에서 사용합니다.",

@@ -115,6 +115,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "无法检查更新：{error}",
     checkAtStartup: "启动时检查更新",
     checkHelp: "PlexusTerm 启动时向 GitHub 查询最新发布的版本。不会下载或安装任何内容：“下载”会打开发布页面。",
+    reportProblem: "报告问题",
+    suggestImprovement: "提出改进建议",
+    feedbackHelp: "在浏览器中打开 GitHub 上的表单，并已填好版本号。在那里提交之前不会发送任何内容；需要 GitHub 账号。",
     version: "版本 {version}",
     description:
       "适用于 Linux 和 Windows 的终端与远程会话管理器：在一个窗口中使用本地 Shell、SSH、SFTP、隧道、串口、Telnet 和 Mosh。",

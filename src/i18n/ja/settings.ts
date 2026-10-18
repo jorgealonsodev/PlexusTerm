@@ -119,6 +119,9 @@ export const settings: Messages<typeof en> = {
     checkFailed: "更新を確認できませんでした: {error}",
     checkAtStartup: "起動時に更新を確認",
     checkHelp: "PlexusTerm の起動時に GitHub で最新の公開リリースを確認します。何もダウンロード・インストールしません。ダウンロードはリリースページを開きます。",
+    reportProblem: "問題を報告",
+    suggestImprovement: "改善を提案",
+    feedbackHelp: "バージョンを入力済みの GitHub のフォームをブラウザーで開きます。そこで送信するまで何も送られません。GitHub アカウントが必要です。",
     version: "バージョン {version}",
     description:
       "Linux と Windows 向けのターミナル兼リモートセッションマネージャーです。ローカルシェル、SSH、SFTP、トンネル、シリアル、Telnet、Mosh を 1 つのウィンドウで利用できます。",
