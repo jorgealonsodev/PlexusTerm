@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+
+PackageIdentifier: JorgeAlonso.PlexusTerm
+PackageVersion: 0.2.0
+MinimumOSVersion: 10.0.0.0
+ReleaseDate: 2026-10-18
+UpgradeBehavior: install
+Installers:
+- Architecture: x64
+  InstallerType: wix
+  Scope: machine
+  InstallerUrl: https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.0/plexusterm_0.2.0_windows_x86_64.msi
+  InstallerSha256: 7A9E3E5313FDDF5A9EE4B24FFB9D14DF48C18025C86BB5A0E088DAE98A83B078
+  InstallerLocale: en-US
+  AppsAndFeaturesEntries:
+  - DisplayName: PlexusTerm
+    Publisher: Jorge Alonso
+    DisplayVersion: 0.2.0
+    UpgradeCode: '{7D310192-E07B-50E9-8FCA-D6BB3B14F5CE}'
+- Architecture: x64
+  InstallerType: nullsoft
+  Scope: user
+  InstallerUrl: https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.0/plexusterm_0.2.0_windows_x86_64-setup.exe
+  InstallerSha256: 770B208710829562FAA672A828CB8B66D0789CA02E7A452A083B2D1147BC29BB
+ManifestType: installer
+ManifestVersion: 1.12.0
