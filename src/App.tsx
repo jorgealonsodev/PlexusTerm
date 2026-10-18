@@ -1342,6 +1342,8 @@ function AppContent() {
                       if (viewer) {
                         return (
                           <FileViewer
+                            // Each View reads the file again (it may have changed, or come from elsewhere).
+                            key={viewer.opened}
                             path={viewer.path}
                             load={() => viewFile(viewer)}
                             onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}

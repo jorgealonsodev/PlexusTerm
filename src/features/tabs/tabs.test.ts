@@ -230,7 +230,7 @@ describe("file viewer panes", () => {
   it("opens a file at the left of the focused terminal, linked to it and focused", () => {
     const state = view(open(initialTabs), "/p/a.ts");
     expect(tab(state).layout).toMatchObject({ kind: "split", direction: "row", a: { id: "pane-2" }, b: { id: "pane-1" } });
-    expect(tab(state).viewers).toEqual({ "pane-2": { terminalPaneId: "pane-1", path: "/p/a.ts", origin: local } });
+    expect(tab(state).viewers).toEqual({ "pane-2": { terminalPaneId: "pane-1", path: "/p/a.ts", origin: local, opened: 1 } });
     expect(tab(state).focusedPane).toBe("pane-2");
     expect(isTerminalPane(tab(state), "pane-1")).toBe(true);
     expect(isTerminalPane(tab(state), "pane-2")).toBe(false);
@@ -246,6 +246,8 @@ describe("file viewer panes", () => {
     state = view(state, "/p/c.rs");
     expect(paneIds(tab(state).layout)).toEqual(["pane-2", "pane-1"]);
     expect(tab(state).viewers!["pane-2"].path).toBe("/p/c.rs");
+    // Every View counts, the same file too: the viewer reads it again.
+    expect(tab(view(state, "/p/c.rs")).viewers!["pane-2"].opened).toBe(4);
     expect(tab(state).focusedPane).toBe("pane-2");
   });
 

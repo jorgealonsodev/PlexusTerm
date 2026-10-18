@@ -602,6 +602,8 @@ describe("SftpPanel file viewer", () => {
     render(panel({ onView }));
     fireEvent.doubleClick(await screen.findByText("notes.txt"));
     expect(onView).toHaveBeenCalledTimes(1);
+    // Outside DEV mode a double-clicked file is downloaded, as before.
+    await waitFor(() => expect(save).toHaveBeenCalled());
   });
 });
 

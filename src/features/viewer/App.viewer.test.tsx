@@ -115,6 +115,10 @@ describe("File viewer in a tab", () => {
     fireEvent.contextMenu(screen.getAllByText("a.txt").find((el) => el.closest("li"))!);
     fireEvent.click(screen.getByRole("menuitem", { name: "View" }));
     expect(document.querySelectorAll(".viewer")).toHaveLength(1);
+    // Viewing the same file again reads it again (it may have changed on disk).
+    await waitFor(() =>
+      expect(vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "local_view_text")).toHaveLength(2),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
     await waitFor(() => expect(document.querySelector(".viewer")).toBeNull());
     expect(terminals).toHaveLength(1);

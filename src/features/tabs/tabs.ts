@@ -26,6 +26,8 @@ export interface ViewerLink {
   path: string;
   /** Where the file is: this computer, or the SFTP session of an SSH tab. */
   origin: PathOrigin;
+  /** Counts the files viewed in it, so viewing one again reads it again. */
+  opened: number;
 }
 
 export interface Tab {
@@ -194,9 +196,10 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       const tab = state.tabs.find((t) => t.key === action.key);
       if (!tab) return state;
       const terminalPaneId = terminalPaneOf(tab);
-      const link: ViewerLink = { terminalPaneId, path: action.path, origin: action.origin };
       const viewers = tab.viewers ?? {};
       const existing = Object.keys(viewers).find((id) => viewers[id].terminalPaneId === terminalPaneId);
+      const opened = (existing ? viewers[existing].opened : 0) + 1;
+      const link: ViewerLink = { terminalPaneId, path: action.path, origin: action.origin, opened };
       if (existing) {
         return updateTab(state, tab.key, (t) => ({ ...t, focusedPane: existing, viewers: { ...viewers, [existing]: link } }));
       }

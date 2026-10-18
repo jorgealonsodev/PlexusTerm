@@ -552,6 +552,7 @@ describe("LocalPanel file viewer", () => {
     render(panel({ onView }));
     fireEvent.doubleClick(await screen.findByText("notes.txt"));
     expect(onView).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocked.open).toHaveBeenCalledWith("/home/me/notes.txt", { kind: "default" }));
   });
 });
 
