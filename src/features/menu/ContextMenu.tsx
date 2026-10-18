@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export type ContextMenuItem =
-  /** `swatch`: a colour shown before the label. */
-  | { label: string; onSelect: () => void; disabled?: boolean; danger?: boolean; swatch?: string }
+  /**
+   * `swatch`: a colour shown before the label. `keepOpen`: choosing it does not close the menu's
+   * owner (it shows something in the menu's place, such as a dialog).
+   */
+  | { label: string; onSelect: () => void; disabled?: boolean; danger?: boolean; swatch?: string; keepOpen?: boolean }
   | { separator: true };
 
 interface ContextMenuProps {
@@ -72,7 +75,7 @@ export function ContextMenu({ x, y, items, onClose, keepFocus = false, children 
             disabled={item.disabled}
             onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
             onClick={() => {
-              onClose();
+              if (!item.keepOpen) onClose();
               item.onSelect();
             }}
           >

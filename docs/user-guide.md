@@ -311,9 +311,11 @@ The gear button at the right of the toolbar opens **Settings**, shared by every 
 
 The palettes come from iTerm2-Color-Schemes (MIT); [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) credits each scheme's author and original project. The whole window follows the colour scheme, like an editor theme: the toolbar, sidebar, tabs and dialogs take their background, text and accent colours from it, and light schemes switch the window and the logo to their light versions.
 
-To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour** for any other, **No colour** to go back); its text turns dark or light to stay readable. Each window keeps its own colour while it is open, a reload included; a new window starts without one.
+To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour…** for any other, **No colour** to go back); its text turns dark or light to stay readable. Each window keeps its own colour while it is open, a reload included; a new window starts without one.
 
 Tabs take colours too: right-click a tab (on top or in DEV mode's column) and choose **Tab colour…** for the same colours; the tab is tinted and gets a bar of its colour (on top, or on the left in the column). **Duplicate tab** keeps the colour.
+
+**Custom colour…** opens a dialog: type the colour's code (`#rrggbb`), choose it in the system's colour picker, or click the eyedropper to pick it from anywhere on the screen (Windows, and Linux through the desktop portal of GNOME, KDE and others). **Accept** is painted with the colour, so you see it before you choose it.
 
 In [DEV mode](#dev-mode) on a local tab the colours belong to the project, like VS Code's Peacock: the tab's colour and the toolbar's are saved in the project folder the tool was opened in, in `.plexusterm/settings.json` (`tabColor`, `toolbarColor`), and a tab that goes into DEV mode in that folder gets them again. The toolbar shows the project's colour while one of its tabs is active, and the window's own colour otherwise. The `.plexusterm` folder holds a `.gitignore` of its own, so git ignores it without changing the project's `.gitignore`.
 

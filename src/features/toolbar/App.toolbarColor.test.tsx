@@ -43,7 +43,9 @@ describe("toolbar colour of this window", () => {
     const { unmount } = render(<App />);
     await screen.findByTestId("terminal");
     openMenu();
-    fireEvent.change(screen.getByLabelText("Custom colour"), { target: { value: "#123456" } });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Custom colour…" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Colour code" }), { target: { value: "#123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("#123456");
     expect(toolbar().style.getPropertyValue("--toolbar-fg")).toBe("#ffffff");
     unmount();

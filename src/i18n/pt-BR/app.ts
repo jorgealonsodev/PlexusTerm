@@ -138,6 +138,11 @@ export const app: Messages<typeof en> = {
     purple: "Roxo",
     pink: "Rosa",
     none: "Sem cor",
-    custom: "Cor personalizada",
+    customMenu: "Cor personalizada…",
+    customTitle: "Cor personalizada",
+    choose: "Escolher uma cor",
+    code: "Código da cor",
+    fromScreen: "Capturar da tela",
+    accept: "Aceitar",
   },
 };

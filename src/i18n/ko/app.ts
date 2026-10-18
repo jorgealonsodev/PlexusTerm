@@ -135,6 +135,11 @@ export const app: Messages<typeof en> = {
     purple: "보라",
     pink: "분홍",
     none: "색 없음",
-    custom: "사용자 지정 색",
+    customMenu: "사용자 지정 색…",
+    customTitle: "사용자 지정 색",
+    choose: "색 선택",
+    code: "색 코드",
+    fromScreen: "화면에서 선택",
+    accept: "적용",
   },
 };

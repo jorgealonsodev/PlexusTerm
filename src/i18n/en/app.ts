@@ -135,6 +135,11 @@ export const app = {
     purple: "Purple",
     pink: "Pink",
     none: "No colour",
-    custom: "Custom colour",
+    customMenu: "Custom colour…",
+    customTitle: "Custom colour",
+    choose: "Choose a colour",
+    code: "Colour code",
+    fromScreen: "Pick from the screen",
+    accept: "Accept",
   },
 };

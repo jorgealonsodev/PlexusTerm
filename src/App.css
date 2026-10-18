@@ -2704,23 +2704,41 @@ body.is-dragging-path {
   vertical-align: -1px;
 }
 
-.context-menu__custom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 10px;
-  font-size: 12px;
+.custom-color {
+  width: min(360px, 92vw);
 }
 
-.context-menu__custom input[type="color"] {
-  width: 32px;
-  height: 22px;
+.custom-color__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-color__picker {
+  flex: none;
+  width: 44px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   cursor: pointer;
+}
+
+.custom-color__code {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+}
+
+/* Painted with the chosen colour (inline style): the choice shows before it is made. */
+.custom-color__accept:not(:disabled) {
+  font-weight: 600;
 }
 
 /* A tab's colour: a tinted background and a bar on top (on the left in DEV mode's column). */

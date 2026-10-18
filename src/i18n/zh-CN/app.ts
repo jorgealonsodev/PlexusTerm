@@ -135,6 +135,11 @@ export const app: Messages<typeof en> = {
     purple: "紫色",
     pink: "粉色",
     none: "无颜色",
-    custom: "自定义颜色",
+    customMenu: "自定义颜色…",
+    customTitle: "自定义颜色",
+    choose: "选择颜色",
+    code: "颜色代码",
+    fromScreen: "从屏幕取色",
+    accept: "接受",
   },
 };

@@ -54,3 +54,7 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# The screen colour picker asks the desktop portal over D-Bus (same zbus as the Tauri plugins).
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5.19.0"

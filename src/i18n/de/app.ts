@@ -137,6 +137,11 @@ export const app: Messages<typeof en> = {
     purple: "Lila",
     pink: "Pink",
     none: "Keine Farbe",
-    custom: "Eigene Farbe",
+    customMenu: "Eigene Farbe …",
+    customTitle: "Eigene Farbe",
+    choose: "Farbe wählen",
+    code: "Farbcode",
+    fromScreen: "Vom Bildschirm aufnehmen",
+    accept: "Übernehmen",
   },
 };

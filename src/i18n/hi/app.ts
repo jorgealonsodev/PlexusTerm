@@ -136,6 +136,11 @@ export const app: Messages<typeof en> = {
     purple: "बैंगनी",
     pink: "गुलाबी",
     none: "कोई रंग नहीं",
-    custom: "कस्टम रंग",
+    customMenu: "कस्टम रंग…",
+    customTitle: "कस्टम रंग",
+    choose: "रंग चुनें",
+    code: "रंग कोड",
+    fromScreen: "स्क्रीन से चुनें",
+    accept: "स्वीकार करें",
   },
 };

@@ -136,6 +136,11 @@ export const app: Messages<typeof en> = {
     purple: "紫",
     pink: "ピンク",
     none: "色なし",
-    custom: "カスタム色",
+    customMenu: "カスタム色…",
+    customTitle: "カスタム色",
+    choose: "色を選択",
+    code: "カラーコード",
+    fromScreen: "画面から取得",
+    accept: "適用",
   },
 };

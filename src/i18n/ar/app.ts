@@ -140,6 +140,11 @@ export const app: Messages<typeof en> = {
     purple: "بنفسجي",
     pink: "وردي",
     none: "بلا لون",
-    custom: "لون مخصص",
+    customMenu: "لون مخصص…",
+    customTitle: "لون مخصص",
+    choose: "اختيار لون",
+    code: "رمز اللون",
+    fromScreen: "الالتقاط من الشاشة",
+    accept: "قبول",
   },
 };

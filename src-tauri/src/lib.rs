@@ -6,6 +6,7 @@ mod mosh;
 mod platform;
 mod project;
 mod pty;
+mod screen_color;
 mod secrets;
 mod serial;
 mod sftp;
@@ -658,7 +659,8 @@ pub fn run() {
             localfs::local_read_text,
             localfs::local_view_text,
             project::project_colors_get,
-            project::project_color_set
+            project::project_color_set,
+            screen_color::screen_color_pick
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
