@@ -18,6 +18,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Macros](#macros) | Recording and playing keystroke sequences |
 | [Tools](#tools) | SSH key generator, port and network scanners, Wake On LAN, remote monitor |
 | [Updates](#updates) | Being told about a new release |
+| [Reporting a problem](#reporting-a-problem) | Sending a bug report or a suggestion |
 | [Windows](#windows) | What differs on Windows 10/11 |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
 
@@ -399,6 +400,10 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 When PlexusTerm starts it asks GitHub for the latest published release, once. If it is newer than the version you run, a bar under the toolbar says so: **Download** opens the release page in your browser, where you pick the package for your system, and the close button hides the bar until the next start. PlexusTerm never downloads or installs anything by itself, and a failed check (no network, GitHub unavailable) shows nothing.
 
 Settings → About has **Check for updates** to ask at any time; it says whether PlexusTerm is up to date, offers **Download** for a newer release or shows why the check failed. Turn off **Check for updates at startup** there to stop the startup check; the only data sent is a request for the latest release of the public repository, with PlexusTerm's version as the user agent.
+
+## Reporting a problem
+
+Settings → About has **Report a problem** and **Suggest an improvement**. Each opens a form on GitHub in your browser; the bug form already has your PlexusTerm version filled in. Nothing is sent until you submit the form there, and a GitHub account is needed. Remove passwords, keys and host names from what you write. Report security vulnerabilities privately, as the [security policy](https://github.com/jorgealonsodev/PlexusTerm/security/policy) explains, not in a public issue.
 
 ## Windows
 
