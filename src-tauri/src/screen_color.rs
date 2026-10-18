@@ -5,6 +5,8 @@
 //! EyeDropper instead, so this command is Linux only.
 
 /// A colour of the portal, `(red, green, blue)` from 0 to 1, as `#rrggbb`.
+// Used by the Linux pickers (and the tests); Windows picks in the webview.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn hex_of(red: f64, green: f64, blue: f64) -> String {
     let channel = |v: f64| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     format!(
@@ -17,6 +19,8 @@ pub fn hex_of(red: f64, green: f64, blue: f64) -> String {
 
 /// One pixel of an X11 image (`bytes`, in the server's byte order) as `#rrggbb`, its channels
 /// read with the visual's `(red, green, blue)` masks and scaled to 8 bits.
+// Used by the Linux pickers (and the tests); Windows picks in the webview.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn pixel_hex(
     bytes: &[u8],
     (red, green, blue): (u32, u32, u32),
