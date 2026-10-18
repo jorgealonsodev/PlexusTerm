@@ -32,6 +32,24 @@ describe("TabBar", () => {
     expect(marks[0].closest("[role=tab]")?.textContent).toContain("two");
   });
 
+
+  it("marks the tabs that need attention", () => {
+    render(
+      <TabBar
+        tabs={[tab("t1", "one"), tab("t2", "two")]}
+        activeKey="t1"
+        attention={new Set(["t2"])}
+        onActivate={() => {}}
+        onClose={() => {}}
+        onNew={() => {}}
+      />,
+    );
+    const marks = screen.getAllByRole("img", { name: "Needs attention" });
+    expect(marks).toHaveLength(1);
+    expect(marks[0].closest("[role=tab]")?.textContent).toContain("two");
+    expect(marks[0].closest("[role=tab]")?.className).toContain("tab--attention");
+  });
+
   it("offers duplicate, close, close others, close to the right and duplicate on right click", () => {
     const handlers = {
       onClose: vi.fn(),

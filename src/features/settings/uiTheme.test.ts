@@ -50,4 +50,27 @@ describe("mix", () => {
     expect(mix("#000000", "#ffffff", 1)).toBe("#ffffff");
     expect(mix("#000000", "#ffffff80", 0.5)).toBe("#808080");
   });
+
+  it("colours git statuses in the file lists with VS Code's defaults for dark and light schemes", () => {
+    const dark = uiColors(themeById("nord"));
+    expect(dark["--git-modified"]).toBe("#e2c08d");
+    expect(dark["--git-added"]).toBe("#81b88b");
+    expect(dark["--git-deleted"]).toBe("#c74e39");
+    expect(dark["--git-renamed"]).toBe("#73c991");
+    expect(dark["--git-untracked"]).toBe("#73c991");
+    expect(dark["--git-ignored"]).toBe("#8c8c8c");
+    expect(dark["--git-stageModified"]).toBe("#e2c08d");
+    expect(dark["--git-stageDeleted"]).toBe("#c74e39");
+    expect(dark["--git-conflicting"]).toBe("#e4676b");
+    const light = uiColors(themeById("solarized-light"));
+    expect(light["--git-modified"]).toBe("#895503");
+    expect(light["--git-added"]).toBe("#587c0c");
+    expect(light["--git-deleted"]).toBe("#ad0707");
+    expect(light["--git-renamed"]).toBe("#007100");
+    expect(light["--git-untracked"]).toBe("#007100");
+    expect(light["--git-ignored"]).toBe("#8e8e90");
+    expect(light["--git-stageModified"]).toBe("#895503");
+    expect(light["--git-stageDeleted"]).toBe("#ad0707");
+    expect(light["--git-conflicting"]).toBe("#ad0707");
+  });
 });

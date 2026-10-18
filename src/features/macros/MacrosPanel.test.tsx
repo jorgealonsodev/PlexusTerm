@@ -65,3 +65,19 @@ describe("MacrosPanel (S16.3)", () => {
     expect(screen.queryByRole("button", { name: "Delete Deploy" })).toBeNull();
   });
 });
+
+describe("MacrosPanel empty text", () => {
+  const empty = { version: 1 as const, macros: [] };
+  it("names the default recording shortcut", () => {
+    renderPanel({ list: empty });
+    expect(screen.getByText("No macros yet. Record one with Ctrl+Shift+R or create one with New.")).toBeTruthy();
+  });
+
+  it("names the user's recording shortcut, or the button when there is none", () => {
+    renderPanel({ list: empty, recordShortcut: "Alt+R" });
+    expect(screen.getByText("No macros yet. Record one with Alt+R or create one with New.")).toBeTruthy();
+    cleanup();
+    renderPanel({ list: empty, recordShortcut: "" });
+    expect(screen.getByText("No macros yet. Record one with the Record macro button or create one with New.")).toBeTruthy();
+  });
+});

@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "Chat de IA",
     title: "IA",
     close: "Cerrar el chat de IA",
-    closeTitle: "Cerrar el chat de IA (Ctrl+Shift+W)",
+    closeTitle: "Cerrar el chat de IA ({shortcut})",
     empty: "Pregunta lo que quieras. Los comandos solo se ejecutan cuando haces clic en Ejecutar.",
     question: "Pregunta",
     asking: "Preguntando…",

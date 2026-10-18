@@ -25,7 +25,8 @@ export const macros: Messages<typeof en> = {
     readError:
       "保存済みマクロを読み込めませんでした: {message}。ファイルを保護するため、編集は無効になっています。",
     saveError: "マクロを保存できませんでした: {error}",
-    empty: "マクロはまだありません。Ctrl+Shift+R で記録するか、［新規］で作成してください。",
+    empty: "マクロはまだありません。{shortcut} で記録するか、［新規］で作成してください。",
+    emptyNoShortcut: "マクロはまだありません。［マクロを記録］ボタンで記録するか、［新規］で作成してください。",
     noMatch: "一致するマクロはありません。",
     steps: { other: "{count} ステップ" },
     editNamed: "{name} を編集",

@@ -25,6 +25,7 @@ vi.mock("./localClient", async (importOriginal) => {
       chmod: vi.fn(),
       open: vi.fn(),
       shellCwd: vi.fn(),
+      gitStatus: vi.fn(),
     },
   };
 });
@@ -185,6 +186,34 @@ describe("LocalPanel", () => {
   });
 });
 
+describe("LocalPanel git status", () => {
+  const git = { enabled: true, visible: true, prompt: 0 };
+
+  it("colours entries like VS Code: the letter and tooltip on files, the colour and a dot on folders", async () => {
+    mocked.gitStatus.mockResolvedValue([
+      { path: "notes.txt", status: "modified" },
+      { path: "src/new.ts", status: "untracked" },
+    ]);
+    render(panel({ devStyle: true, git }));
+    const badge = await screen.findByTitle("Modified");
+    expect(badge.textContent).toBe("M");
+    expect(mocked.gitStatus).toHaveBeenCalledWith("/home/me");
+    expect(screen.getByText("notes.txt").className).toContain("git--modified");
+    const folder = screen.getByText("src");
+    expect(folder.className).toContain("git--untracked");
+    expect(screen.getByTitle("Untracked").textContent).toBe("●");
+  });
+
+  it("reads and shows nothing when the setting is off", async () => {
+    mocked.gitStatus.mockResolvedValue([{ path: "notes.txt", status: "modified" }]);
+    render(panel({ devStyle: true, git: { ...git, enabled: false } }));
+    expect(await screen.findByText("notes.txt")).toBeTruthy();
+    expect(mocked.gitStatus).not.toHaveBeenCalled();
+    expect(screen.queryByTitle("Modified")).toBeNull();
+    expect(screen.getByText("notes.txt").className).not.toContain("git--");
+  });
+});
+
 describe("useShellCwd", () => {
   it("prefers OSC 7 and otherwise asks the backend every second while enabled", async () => {
     vi.useFakeTimers();
@@ -221,3 +250,148 @@ describe("useShellCwd", () => {
     expect(mocked.shellCwd.mock.calls.length).toBe(calls);
   });
 });
+
+describe("LocalPanel file-type icons", () => {
+  it("shows an icon for each entry's type at its left, keeping the icon's colour when git colours the name", async () => {
+    render(panel({ devStyle: true }));
+    const iconOf = async (name: string) => (await screen.findByText(name)).closest("li")!.querySelector<HTMLElement>("[data-icon]")!;
+    expect((await iconOf("notes.txt")).dataset.icon).toBe("text");
+    expect((await iconOf("src")).dataset.icon).toBe("folder");
+    expect((await iconOf("src")).querySelector("svg")).toBeTruthy();
+    expect((await iconOf("src")).className).not.toContain("git--");
+  });
+});
+
+describe("LocalPanel tree", () => {
+  const nested = (path: string) => path.split("/").slice(0, -1).join("/");
+  beforeEach(() => {
+    mocked.list.mockImplementation(async (path) => {
+      if (path === "/home/me") return [entry("src", "dir"), entry("notes.txt", "file")];
+      if (path === "/home/me/src") return [entry("lib", "dir", "/home/me/src"), entry("main.ts", "file", "/home/me/src")];
+      if (path === "/home/me/src/lib") return [entry("x.rs", "file", "/home/me/src/lib")];
+      return [];
+    });
+  });
+  const row = (name: string) => screen.getByText(name).closest("li")!;
+
+  it("expands and collapses a folder in place with a chevron, indenting its children", async () => {
+    render(panel({ devStyle: true }));
+    fireEvent.click(await screen.findByText("src"));
+    expect(await screen.findByText("main.ts")).toBeTruthy();
+    expect(row("src").getAttribute("aria-expanded")).toBe("true");
+    expect(row("main.ts").getAttribute("aria-level")).toBe("2");
+    expect(row("main.ts").querySelectorAll(".tree-guide")).toHaveLength(1);
+    // The root stays where it was.
+    expect((screen.getByLabelText("Local path") as HTMLInputElement).value).toBe("/home/me");
+    fireEvent.click(screen.getByText("src"));
+    expect(screen.queryByText("main.ts")).toBeNull();
+    expect(row("src").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("loads a folder's children once, when it is first expanded, with a loading and an error state", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    expect(mocked.list).not.toHaveBeenCalledWith("/home/me/src");
+    fireEvent.click(screen.getByText("src"));
+    await screen.findByText("main.ts");
+    fireEvent.click(screen.getByText("src"));
+    fireEvent.click(screen.getByText("src"));
+    await screen.findByText("main.ts");
+    expect(mocked.list.mock.calls.filter((c) => c.includes("/home/me/src"))).toHaveLength(1);
+    let fail: (e: unknown) => void = () => {};
+    mocked.list.mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)));
+    fireEvent.click(screen.getByText("lib"));
+    expect(await screen.findByText("Loading…")).toBeTruthy();
+    fail("cannot list /home/me/src/lib: denied");
+    expect(await screen.findByText(/denied/)).toBeTruthy();
+  });
+
+  it("keeps the open folders when the list is refreshed", async () => {
+    render(panel({ devStyle: true }));
+    fireEvent.click(await screen.findByText("src"));
+    await screen.findByText("main.ts");
+    fireEvent.click(screen.getByTitle("Refresh"));
+    await waitFor(() => expect(mocked.list.mock.calls.filter((c) => c.includes("/home/me/src"))).toHaveLength(2));
+    expect(screen.getByText("main.ts")).toBeTruthy();
+    expect(row("src").getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("moves with the keyboard: Right opens and enters, Left leaves and closes, Up and Down move", async () => {
+    render(panel({ devStyle: true }));
+    const src = row(await screen.findByText("src").then((e) => e.textContent!));
+    src.focus();
+    fireEvent.keyDown(src, { key: "ArrowRight" });
+    await screen.findByText("main.ts");
+    fireEvent.keyDown(src, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(row("lib"));
+    fireEvent.keyDown(row("lib"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(row("main.ts"));
+    fireEvent.keyDown(row("main.ts"), { key: "ArrowUp" });
+    expect(document.activeElement).toBe(row("lib"));
+    fireEvent.keyDown(row("lib"), { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(row("src"));
+    fireEvent.keyDown(row("src"), { key: "ArrowLeft" });
+    expect(screen.queryByText("main.ts")).toBeNull();
+    fireEvent.keyDown(row("src"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(row("notes.txt"));
+    expect(row("notes.txt").className).toContain("sftp-row--selected");
+  });
+
+  it("shows a dot on folders holding changes and the letter on the file", async () => {
+    mocked.gitStatus.mockResolvedValue([{ path: "src/lib/x.rs", status: "modified" }]);
+    render(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 0 } }));
+    await waitFor(() => expect(row("src").querySelector(".sftp-row__git")?.textContent).toBe("●"));
+    expect(mocked.gitStatus).toHaveBeenCalledWith("/home/me");
+    fireEvent.click(screen.getByText("src"));
+    fireEvent.click(await screen.findByText("lib"));
+    await screen.findByText("x.rs");
+    expect(row("lib").querySelector(".sftp-row__git")?.textContent).toBe("●");
+    expect(row("x.rs").querySelector(".sftp-row__git")?.textContent).toBe("M");
+    expect(row("x.rs").querySelector(".sftp-row__name")!.className).toContain("git--modified");
+  });
+
+  it("keeps the entry actions on nested entries: renaming stays in the entry's own folder", async () => {
+    render(panel({ devStyle: true }));
+    fireEvent.click(await screen.findByText("src"));
+    fireEvent.contextMenu(await screen.findByText("main.ts"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Rename…" }));
+    const field = await screen.findByRole("textbox", { name: 'Rename "main.ts" to' });
+    fireEvent.change(field, { target: { value: "app.ts" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/src/main.ts", "/home/me/src/app.ts"));
+    void nested;
+  });
+});
+
+describe("LocalPanel Open in terminal", () => {
+  it("offers Open in terminal right after Open on folders, never on files", async () => {
+    const onOpenInTerminal = vi.fn();
+    render(panel({ onOpenInTerminal }));
+    fireEvent.contextMenu(await screen.findByText("src"));
+    const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+    expect(items.slice(0, 2)).toEqual(["Open", "Open in terminal"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open in terminal" }));
+    expect(onOpenInTerminal).toHaveBeenCalledWith("/home/me/src");
+    fireEvent.contextMenu(screen.getByText("notes.txt"));
+    expect(screen.queryByRole("menuitem", { name: "Open in terminal" })).toBeNull();
+  });
+});
+
+describe("LocalPanel outside DEV mode", () => {
+  it("keeps the plain list: generic icons, double-click enters folders, a click does not expand, no git call", async () => {
+    mocked.gitStatus.mockResolvedValue([{ path: "notes.txt", status: "modified" }]);
+    const { container } = render(panel({ git: { enabled: true, visible: true, prompt: 0 } }));
+    const folder = await screen.findByText("src");
+    const row = folder.closest("li")!;
+    expect(row.querySelector(".sftp-row__icon")!.textContent).toBe("📁");
+    expect(screen.getByText("notes.txt").closest("li")!.querySelector(".sftp-row__icon")!.textContent).toBe("📄");
+    expect(container.querySelector("[role=tree], .tree-chevron, [data-icon], .sftp-row__git")).toBeNull();
+    fireEvent.click(folder);
+    expect(row.getAttribute("aria-expanded")).toBeNull();
+    fireEvent.doubleClick(folder);
+    await waitFor(() => expect(mocked.list.mock.lastCall!.slice(-1)[0]).toMatch(/\/src$/));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mocked.gitStatus).not.toHaveBeenCalled();
+  });
+});
+

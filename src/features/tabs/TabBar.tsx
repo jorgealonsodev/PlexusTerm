@@ -8,6 +8,8 @@ interface TabBarProps {
   activeKey: string | null;
   /** Tabs whose output is being logged to a file. */
   logging?: ReadonlySet<string>;
+  /** Tabs where a program asked for attention (bell, desktop notification) out of sight. */
+  attention?: ReadonlySet<string>;
   onActivate: (key: string) => void;
   onClose: (key: string) => void;
   onNew: () => void;
@@ -29,7 +31,7 @@ function hostOf(tab: Tab): string | null {
 }
 
 export function TabBar(props: TabBarProps) {
-  const { tabs, activeKey, logging, onActivate, onClose, onNew } = props;
+  const { tabs, activeKey, logging, attention, onActivate, onClose, onNew } = props;
   const t = useT();
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const menuIndex = menu ? tabs.findIndex((t) => t.key === menu.key) : -1;
@@ -59,7 +61,7 @@ export function TabBar(props: TabBarProps) {
           key={tab.key}
           role="tab"
           aria-selected={tab.key === activeKey}
-          className={`tab ${tab.key === activeKey ? "tab--active" : ""}`}
+          className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}`}
           onMouseDown={(e) => {
             if (e.button === 1) onClose(tab.key);
             else if (e.button === 0) onActivate(tab.key);
@@ -74,6 +76,9 @@ export function TabBar(props: TabBarProps) {
             <span className="tab__log" role="img" aria-label={t("app.tabs.logging")} title={t("app.tabs.logging")}>
               ●
             </span>
+          )}
+          {attention?.has(tab.key) && (
+            <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
           )}
           <span className="tab__title" dir="auto">{tabTitle(tab)}</span>
           <button

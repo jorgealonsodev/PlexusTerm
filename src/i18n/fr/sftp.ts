@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "Télécharger",
     follow: "Suivre le dossier du terminal",
     empty: "Ce dossier est vide.",
-    hint: "Double-cliquez sur un dossier pour l'ouvrir ou sur un fichier pour le télécharger. Cliquez avec le bouton droit sur un élément pour plus d'options ; un clic du milieu saisit son chemin dans le terminal. Déposez des fichiers ici pour les envoyer.",
+    hint: "Cliquez sur un dossier pour le déplier sur place ; un double-clic liste à partir de lui. Double-cliquez sur un fichier pour le télécharger. Les flèches déplacent la sélection et ouvrent ou ferment les dossiers. Clic droit sur un élément pour plus d’options ; un clic du milieu écrit son chemin dans le terminal. Déposez des fichiers ici pour les envoyer.",
   },
   dialog: {
     replaceQuestion: "Remplacer {names} dans {dir} ?",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "Échec de l'opération SFTP.",
   },
   menu: {
+    openInTerminal: "Ouvrir dans le terminal",
     openTextEditor: "Ouvrir avec l'éditeur de texte par défaut",
     openDefaultProgram: "Ouvrir avec le programme par défaut",
     openWith: "Ouvrir avec…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "Chemin local",
     deleteFolder: "Supprimer le dossier « {name} » et tout son contenu ?",
-    hint: "Double-cliquez sur un dossier pour l’ouvrir, ou sur un fichier pour l’ouvrir avec son programme par défaut. Clic droit sur un élément pour plus d’options ; un clic du milieu écrit son chemin dans le terminal.",
+    hint: "Cliquez sur un dossier pour le déplier sur place ; un double-clic liste à partir de lui. Double-cliquez sur un fichier pour l’ouvrir avec son programme par défaut. Les flèches déplacent la sélection et ouvrent ou ferment les dossiers. Clic droit sur un élément pour plus d’options ; un clic du milieu écrit son chemin dans le terminal.",
+  },
+  git: {
+    modified: "Modifié",
+    stagedModified: "Modifié (indexé)",
+    added: "Ajouté",
+    deleted: "Supprimé",
+    stagedDeleted: "Supprimé (indexé)",
+    renamed: "Renommé",
+    copied: "Copié",
+    typeChanged: "Type modifié",
+    untracked: "Non suivi",
+    ignored: "Ignoré",
+    conflict: "Conflit",
+  },
+  tree: {
+    loading: "Chargement…",
   },
 };

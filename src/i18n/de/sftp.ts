@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "Herunterladen",
     follow: "Terminal-Ordner folgen",
     empty: "Dieser Ordner ist leer.",
-    hint: "Doppelklicke auf einen Ordner, um ihn zu öffnen, oder auf eine Datei, um sie herunterzuladen. Rechtsklick auf einen Eintrag zeigt weitere Optionen; Mittelklick schreibt seinen Pfad ins Terminal. Lege Dateien hier ab, um sie hochzuladen.",
+    hint: "Klicke auf einen Ordner, um ihn an Ort und Stelle aufzuklappen; ein Doppelklick listet ab ihm. Doppelklicke auf eine Datei, um sie herunterzuladen. Die Pfeiltasten bewegen die Auswahl und öffnen oder schließen Ordner. Rechtsklick auf einen Eintrag zeigt weitere Optionen; Mittelklick schreibt seinen Pfad ins Terminal. Lege Dateien hier ab, um sie hochzuladen.",
   },
   dialog: {
     replaceQuestion: "{names} in {dir} ersetzen?",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP-Vorgang fehlgeschlagen.",
   },
   menu: {
+    openInTerminal: "Im Terminal öffnen",
     openTextEditor: "Mit Standard-Texteditor öffnen",
     openDefaultProgram: "Mit Standardprogramm öffnen",
     openWith: "Öffnen mit…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "Lokaler Pfad",
     deleteFolder: "Ordner \"{name}\" mit seinem gesamten Inhalt löschen?",
-    hint: "Doppelklicken Sie auf einen Ordner, um ihn zu öffnen, oder auf eine Datei, um sie mit ihrem Standardprogramm zu öffnen. Rechtsklick auf einen Eintrag zeigt weitere Optionen; ein Mittelklick schreibt seinen Pfad ins Terminal.",
+    hint: "Klicken Sie auf einen Ordner, um ihn an Ort und Stelle aufzuklappen; ein Doppelklick listet ab ihm. Doppelklicken Sie auf eine Datei, um sie mit ihrem Standardprogramm zu öffnen. Die Pfeiltasten bewegen die Auswahl und öffnen oder schließen Ordner. Rechtsklick auf einen Eintrag zeigt weitere Optionen; ein Mittelklick schreibt seinen Pfad ins Terminal.",
+  },
+  git: {
+    modified: "Geändert",
+    stagedModified: "Geändert (bereitgestellt)",
+    added: "Hinzugefügt",
+    deleted: "Gelöscht",
+    stagedDeleted: "Gelöscht (bereitgestellt)",
+    renamed: "Umbenannt",
+    copied: "Kopiert",
+    typeChanged: "Typ geändert",
+    untracked: "Nicht verfolgt",
+    ignored: "Ignoriert",
+    conflict: "Konflikt",
+  },
+  tree: {
+    loading: "Wird geladen…",
   },
 };

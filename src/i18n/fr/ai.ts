@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "Discussion IA",
     title: "IA",
     close: "Fermer la discussion IA",
-    closeTitle: "Fermer la discussion IA (Ctrl+Shift+W)",
+    closeTitle: "Fermer la discussion IA ({shortcut})",
     empty: "Posez n'importe quelle question. Les commandes ne s'exécutent que lorsque vous cliquez sur Exécuter.",
     question: "Question",
     asking: "Question en cours…",

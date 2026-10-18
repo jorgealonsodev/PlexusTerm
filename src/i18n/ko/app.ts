@@ -85,6 +85,9 @@ export const app: Messages<typeof en> = {
     logging: "파일에 기록 중",
     closeNamed: "{title} 닫기",
     newLocal: "새 로컬 터미널",
+    attention: "확인 필요",
+    attentionNotice: "확인이 필요합니다",
+    branch: "git 브랜치: {branch}",
   },
   update: {
     available: "PlexusTerm {version}을(를) 사용할 수 있습니다.",

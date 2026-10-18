@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "AI 채팅",
     title: "AI",
     close: "AI 채팅 닫기",
-    closeTitle: "AI 채팅 닫기(Ctrl+Shift+W)",
+    closeTitle: "AI 채팅 닫기({shortcut})",
     empty: "무엇이든 물어보십시오. 명령은 실행을 클릭할 때만 실행됩니다.",
     question: "질문",
     asking: "질문하는 중…",

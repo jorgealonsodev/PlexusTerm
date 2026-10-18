@@ -16,6 +16,14 @@ function messages(tree: CatalogTree, prefix = ""): [string, string[]][] {
 const placeholders = (text: string) => [...new Set(text.match(/\{\w+\}/g) ?? [])].sort();
 
 describe("catalogues (S1)", () => {
+  it("names the font picker and the font family field differently in every language", () => {
+    for (const { code } of LOCALES) {
+      const appearance = (catalogs[code] as CatalogTree).settings as CatalogTree;
+      const texts = appearance.appearance as Record<string, string>;
+      expect(texts.font, code).not.toBe(texts.fontFamily);
+    }
+  });
+
   const english = new Map(messages(catalogs.en as CatalogTree));
 
   it("has one catalogue per interface language", () => {

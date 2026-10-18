@@ -26,7 +26,8 @@ export const macros: Messages<typeof en> = {
     readError:
       "Gespeicherte Makros konnten nicht gelesen werden: {message}. Bearbeiten ist deaktiviert, um die Datei zu schützen.",
     saveError: "Makros konnten nicht gespeichert werden: {error}",
-    empty: "Noch keine Makros. Zeichne eines mit Ctrl+Shift+R auf oder erstelle eines mit „Neu“.",
+    empty: "Noch keine Makros. Zeichne eines mit {shortcut} auf oder erstelle eines mit „Neu“.",
+    emptyNoShortcut: "Noch keine Makros. Zeichne eines mit der Schaltfläche „Makro aufzeichnen“ auf oder erstelle eines mit „Neu“.",
     noMatch: "Keine passenden Makros.",
     steps: { one: "{count} Schritt", other: "{count} Schritte" },
     editNamed: "{name} bearbeiten",

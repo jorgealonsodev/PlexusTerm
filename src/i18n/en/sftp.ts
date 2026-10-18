@@ -10,7 +10,7 @@ export const sftp = {
     download: "Download",
     follow: "Follow terminal folder",
     empty: "This folder is empty.",
-    hint: "Double-click a folder to open it or a file to download it. Right-click an entry for more options; middle-click it to type its path in the terminal. Drop files here to upload them.",
+    hint: "Click a folder to expand it in place; double-click it to list it from there. Double-click a file to download it. The arrow keys move and open or close folders. Right-click an entry for more options; middle-click it to type its path in the terminal. Drop files here to upload them.",
   },
   dialog: {
     replaceQuestion: "Replace {names} in {dir}?",
@@ -49,6 +49,7 @@ export const sftp = {
     failed: "SFTP operation failed.",
   },
   menu: {
+    openInTerminal: "Open in terminal",
     openTextEditor: "Open with default text editor",
     openDefaultProgram: "Open with default program",
     openWith: "Open with…",
@@ -99,6 +100,22 @@ export const sftp = {
   local: {
     path: "Local path",
     deleteFolder: "Delete folder \"{name}\" and everything in it?",
-    hint: "Double-click a folder to open it or a file to open it in its default program. Right-click an entry for more options; middle-click it to type its path in the terminal.",
+    hint: "Click a folder to expand it in place; double-click it to list it from there. Double-click a file to open it in its default program. The arrow keys move and open or close folders. Right-click an entry for more options; middle-click it to type its path in the terminal.",
+  },
+  git: {
+    modified: "Modified",
+    stagedModified: "Modified (staged)",
+    added: "Added",
+    deleted: "Deleted",
+    stagedDeleted: "Deleted (staged)",
+    renamed: "Renamed",
+    copied: "Copied",
+    typeChanged: "Type changed",
+    untracked: "Untracked",
+    ignored: "Ignored",
+    conflict: "Conflict",
+  },
+  tree: {
+    loading: "Loading…",
   },
 };

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
 import { startPathDrag } from "../drop/pathDrag";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
-import { formatDate, formatSize } from "../sftp/format";
 import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { PermissionsDialog } from "../sftp/PermissionsDialog";
@@ -14,6 +13,10 @@ import type { OpenWith, SftpEntry } from "../sftp/sftpClient";
 import { describeLocalError, local } from "./localClient";
 import { isRoot, joinPath, parentPath, validName } from "./localPath";
 import { HelpTip } from "../sidebar/HelpTip";
+import { FileTree } from "../files/FileTree";
+import { FlatFileList } from "../files/FlatFileList";
+import { indexGitStatus } from "../files/gitStatus";
+import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
 
 interface LocalPanelProps {
   /** Folder of the active local terminal (OSC 7 or read from its shell); null while unknown. */
@@ -28,23 +31,33 @@ interface LocalPanelProps {
   onUserNavigate?: (path: string) => void;
   /** Show each entry's size and date (Settings → Files); hidden when missing. */
   details?: boolean;
+  /** Colour entries by their git status (Settings → Files), refreshed with the terminal; off when missing. */
+  git?: Omit<GitStatusOptions, "loads">;
+  /**
+   * DEV mode's look: a VS Code-like tree with file-type icons and git status colours. Off (the
+   * default), the plain list, which never reads git.
+   */
+  devStyle?: boolean;
+  /** Opens a new terminal tab in a folder ("Open in terminal"); without it the item is disabled. */
+  onOpenInTerminal?: (path: string) => void;
 }
 
-const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
-
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
   const [path, setPath] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<SftpEntry[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<SftpEntry | null>(null);
+  const selected = selectedEntry?.path ?? null;
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry } | null>(null);
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
+  /** Counts listings, so the git status is read again after each one. */
+  const [loads, setLoads] = useState(0);
   const onUserNavigateRef = useRef(onUserNavigate);
   onUserNavigateRef.current = onUserNavigate;
   // Only the latest listing request may update the view.
@@ -60,7 +73,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       setPath(target);
       setInput(target);
       setEntries(list ?? []);
-      setSelected(null);
+      setLoads((n) => n + 1);
+      setSelectedEntry(null);
       setError(null);
       if (user) onUserNavigateRef.current?.(target);
       return true;
@@ -125,8 +139,6 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     if (await act(t("sftp.status.creating", { name }), create)) await navigate(dir);
   };
 
-  const selectedEntry = entries.find((e) => e.path === selected) ?? null;
-
   const renameEntry = async (entry: SftpEntry | null) => {
     const dir = current.current.path;
     if (!entry || dir === null) return;
@@ -139,7 +151,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     )?.trim();
     if (!name || name === entry.name) return;
     if (!validName(name)) return setError(t("sftp.error.invalidName", { name }));
-    if (await act(t("sftp.status.renaming", { name: entry.name }), () => local.rename(entry.path, joinPath(dir, name)))) {
+    if (await act(t("sftp.status.renaming", { name: entry.name }), () => local.rename(entry.path, joinPath(parentPath(entry.path), name)))) {
       await navigate(dir);
     }
   };
@@ -198,6 +210,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       : [];
     return [
       { label: t("common.open"), onSelect: () => void openEntry(entry) },
+      ...(isFile ? [] : [{ label: t("sftp.menu.openInTerminal"), onSelect: () => onOpenInTerminal?.(entry.path), disabled: !onOpenInTerminal }]),
       ...fileItems,
       { separator: true },
       { label: t("sftp.menu.rename"), onSelect: () => void renameEntry(entry) },
@@ -222,6 +235,35 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   useEffect(() => {
     if (follow && cwd) void navigate(cwd);
   }, [cwd, follow, navigate]);
+
+  const listFolder = useCallback((dir: string) => local.list(dir), []);
+  const readGit = useCallback((root: string) => local.gitStatus(root), []);
+  const gitEntries = useGitStatus(readGit, path, {
+    enabled: devStyle && (git?.enabled ?? false),
+    visible: git?.visible ?? false,
+    prompt: git?.prompt ?? 0,
+    loads,
+    subscribeOutput: git?.subscribeOutput,
+  });
+  const gitIndex = useMemo(() => indexGitStatus(gitEntries), [gitEntries]);
+
+  /** A row's own handlers in either list style: menu, drag onto a terminal, middle click. */
+  const rowProps = (entry: SftpEntry): LiHTMLAttributes<HTMLLIElement> => ({
+    onContextMenu: (e) => {
+      e.preventDefault();
+      setSelectedEntry(entry);
+      setMenu({ x: e.clientX, y: e.clientY, entry });
+    },
+    // Dragged onto a terminal it changes to the folder or types the path (S4).
+    onPointerDown: (e) => startPathDrag(e, { origin: { kind: "local" }, paths: [{ path: entry.path, isDir: entry.kind === "dir" }] }, entry.name),
+    // Middle click types the path into the terminal (and never starts autoscroll).
+    onMouseDown: (e) => e.button === 1 && e.preventDefault(),
+    onAuxClick: (e) => {
+      if (e.button !== 1) return;
+      e.preventDefault();
+      pathToTerminal(entry);
+    },
+  });
 
   const busy = path === null;
 
@@ -283,42 +325,30 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       )}
       {status && <p className="sidebar__note">{status}</p>}
       {path !== null && entries.length === 0 && !error && <p className="sidebar__note">{t("sftp.panel.empty")}</p>}
-      <ul className="sftp__list">
-        {entries.map((entry) => (
-          <li
-            key={entry.path}
-            className={`sftp-row${entry.path === selected ? " sftp-row--selected" : ""}`}
-            tabIndex={0}
-            title={entry.path}
-            onClick={() => setSelected(entry.path)}
-            onDoubleClick={() => void openEntry(entry)}
-            onKeyDown={(e) => e.key === "Enter" && void openEntry(entry)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setSelected(entry.path);
-              setMenu({ x: e.clientX, y: e.clientY, entry });
-            }}
-            // Dragged onto a terminal it changes to the folder or types the path (S4).
-            onPointerDown={(e) => startPathDrag(e, { origin: { kind: "local" }, paths: [{ path: entry.path, isDir: entry.kind === "dir" }] }, entry.name)}
-            // Middle click types the path into the terminal (and never starts autoscroll).
-            onMouseDown={(e) => e.button === 1 && e.preventDefault()}
-            onAuxClick={(e) => {
-              if (e.button !== 1) return;
-              e.preventDefault();
-              pathToTerminal(entry);
-            }}
-          >
-            <span className="sftp-row__icon">{ICONS[entry.kind]}</span>
-            <span className="sftp-row__name">{entry.name}</span>
-            {details && (
-              <>
-                <span className="sftp-row__size">{entry.kind === "dir" ? "" : formatSize(entry.size)}</span>
-                <span className="sftp-row__date">{entry.modified ? formatDate(entry.modified) : ""}</span>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
+      {devStyle ? (
+        <FileTree
+          key={path ?? ""}
+          entries={entries}
+          list={listFolder}
+          describeError={describeLocalError}
+          loads={loads}
+          selected={selected}
+          onSelect={setSelectedEntry}
+          onOpen={(entry) => void openEntry(entry)}
+          details={details}
+          gitIndex={gitIndex}
+          rowProps={rowProps}
+        />
+      ) : (
+        <FlatFileList
+          entries={entries}
+          selected={selected}
+          onSelect={setSelectedEntry}
+          onOpen={(entry) => void openEntry(entry)}
+          details={details}
+          rowProps={rowProps}
+        />
+      )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
       {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
       {dialog?.kind === "permissions" && (

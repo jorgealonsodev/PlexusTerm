@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { OpenWith, SftpEntry } from "../sftp/sftpClient";
+import type { GitStatusEntry } from "../files/gitStatus";
 
 /** Wrappers around the `local_*` commands; entries have the SFTP browser's shape. */
 export const local = {
@@ -17,6 +18,8 @@ export const local = {
   open: (path: string, openWith: OpenWith) => invoke<void>("local_open", { path, with: openWith }),
   /** Working folder of a local terminal's shell (pty id), or null when the system cannot tell. */
   shellCwd: (ptyId: number) => invoke<string | null>("pty_cwd", { id: ptyId }),
+  /** Git status of the files under a folder (paths relative to it); empty outside a repository. */
+  gitStatus: (path: string) => invoke<GitStatusEntry[]>("git_status", { path }),
 };
 
 /** The commands reject with `cannot <action> <path>: <cause>`. */

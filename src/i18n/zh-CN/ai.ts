@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "AI 聊天",
     title: "AI",
     close: "关闭 AI 聊天",
-    closeTitle: "关闭 AI 聊天 (Ctrl+Shift+W)",
+    closeTitle: "关闭 AI 聊天 ({shortcut})",
     empty: "随便问。只有点击“运行”时才会执行命令。",
     question: "问题",
     asking: "正在提问…",

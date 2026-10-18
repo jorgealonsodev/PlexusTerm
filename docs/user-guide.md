@@ -141,13 +141,15 @@ The sidebar has five tabs, **Sessions**, **SFTP**, **Explorer**, **Tunnels** and
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Double-click a folder to open it, or a file to download it (a save dialog asks where).
+- In DEV mode the list looks like VS Code's Explorer instead (see [DEV mode file lists](#dev-mode-file-lists)).
 - Drag an entry onto the terminal of the same SSH session: a folder dropped on an empty command line runs `cd` to it; otherwise its path is typed at the cursor. Dropped on the AI chat, a file is attached to the next question (see [File explorer](#file-explorer)).
 - **Upload** picks one or more local files; dropping files from the desktop onto the panel uploads them too. Both go into the current folder.
 - **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename**, **Delete** (asks for confirmation; only empty folders can be deleted) and **Download** act on the selected entry.
 
 Right-click an entry for more:
 
-- **Open** (enters a folder; opens a file in its default program, like **Open with default program** below), **Download…**, **Rename…**, **Delete**.
+- **Open** (enters a folder; opens a file in its default program, like **Open with default program** below), **Download…**, **Rename…** (in the entry's own folder), **Delete**.
+- On folders, **Open in terminal** (right after **Open**) opens another tab of the same SSH session, authenticated the same way as **Duplicate**, and once its shell is ready runs `cd` to the folder, quoted for the shell.
 - **Copy file path** copies the full remote path; **Copy file path to terminal** types it into the focused pane of the active tab, quoted for the shell when needed. Middle-clicking an entry does the same.
 - **Properties** shows the name, path, type, size, modification time, owner, group and permissions (`rwxr-xr-x (0755)`).
 - **Permissions…** changes the mode (`chmod`) with read/write/execute checkboxes for owner, group and others, kept in sync with the octal value.
@@ -166,9 +168,37 @@ Paths containing special characters may need percent-encoding; many distribution
 The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). A new local terminal brings it to the front when the sidebar shows **Sessions** (any other tab you chose stays), and switching between a local and an SSH tab swaps the Explorer and the SFTP browser. It works like the [SFTP browser](#sftp-browser) on this computer's files:
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
-- Double-click a folder to open it, or a file to open it in its default program.
+- Double-click a folder to open it, or a file to open it in its default program. In DEV mode the list looks like VS Code's Explorer instead (see [DEV mode file lists](#dev-mode-file-lists)).
 - **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete** act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
-- Right-click an entry for **Open**, **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy.
+- Right-click an entry for **Open**, **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy. On folders, **Open in terminal** (right after **Open**) opens a new local terminal tab, with the same shell as the active one, that starts in that folder.
+
+### DEV mode file lists
+
+In DEV mode the Explorer and the SFTP browser look and work like VS Code's Explorer:
+
+- The list is a tree: click a folder (or its chevron) to expand it in place, and again to collapse it; its entries are listed when it is first expanded, indented under it with thin guide lines. Several folders can be open at once, and they stay open when the list is refreshed. Double-click a folder to list from it (it becomes the top of the tree); double-click a file to open it as outside DEV mode. **Rename…** on a nested entry renames it in its own folder.
+- With the keyboard: **↓** / **↑** move between entries, **→** expands a folder or moves into it, **←** collapses it or moves to its parent folder, and **Enter** opens a file or expands a folder.
+- Each entry has an icon for its type (folders, source code by language, configuration, text, images, archives, keys and certificates, `Dockerfile`, `package.json`, `README`, ...), coloured like VS Code's usual icon themes.
+- Inside a git repository, entries show their git status (below).
+
+#### Git status in file lists
+
+When a listed folder is inside a git repository, the Explorer and the SFTP browser colour each entry like VS Code, with the same colours for dark and light colour schemes, and show a letter at the right (hover it for its name):
+
+| Letter | Status | Colour |
+|---|---|---|
+| **M** | Modified, or Modified (staged) | yellow-brown |
+| **A** | Added (staged or intent to add) | green |
+| **D** | Deleted, or Deleted (staged); struck through | red |
+| **R** / **C** | Renamed / Copied | green |
+| **T** | Type changed | yellow-brown |
+| **U** | Untracked | green |
+| **I** | Ignored; the entry is faded | grey |
+| **!** | Conflict | red |
+
+A file with a staged and an unstaged change shows the more important one (conflict, then ignored, then modified, then the others). A folder takes the colour of the most important change inside it and shows a **●** instead of a letter; deleted and ignored files do not colour their folders. A folder that git reports as a whole (untracked, or ignored like `node_modules`) gives its colour to everything inside it. Submodules are not marked.
+
+The status is read with one read-only `git status` (no lock taken, so it never gets in the way of a `git` you or an AI tool run) when the list is loaded or refreshed, when the terminal's prompt comes back, and while the terminal tied to the list prints (so files changed by Claude Code, Codex, OpenCode and other AI command-line tools are marked as they work), at most once every 2 seconds and only while the list is shown; nothing is read while it is idle. SSH lists run that `git` on the server over the same connection. Without git, outside a repository or when it fails, entries are simply not coloured. Very large outputs (many thousands of entries) are cut short rather than slowing the list. Turn it off with Settings → Files → **Show git status in file lists**. Outside DEV mode git is never read for the file lists.
 
 With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`, PowerShell with the prompt below) are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows only OSC 7 is followed; add this to your PowerShell profile (`notepad $PROFILE`):
 
@@ -239,10 +269,11 @@ PlexusTerm's interface comes in English, Spanish, German, French, Japanese, Port
 
 ## Terminal settings
 
-The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (shell of local terminals, copy and paste), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version, project links and updates); **Save** keeps the changes of every section:
+The gear button at the right of the toolbar opens **Settings**, shared by every tab and saved in `settings.json` in the app config directory. A side menu splits it into **Appearance** (colour scheme, font family and size), **Terminal** (shell of local terminals, copy and paste, Shift+Enter, attention notifications, git branch, GPU acceleration), **Shortcuts** (every keyboard shortcut, see [Keyboard shortcuts](#keyboard-shortcuts)), **SSH** (remote monitor bar), **Files** (text editor), **AI** (command suggestions, history and AI provider, see [Command suggestions and AI](#command-suggestions-and-ai)) and **About** (version, project links and updates); **Save** keeps the changes of every section:
 
-- **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 change it too; every terminal follows at once.
-- **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
+- **Font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 (changeable in Settings → Shortcuts) change it too; every terminal follows at once.
+- **Font**: picks the terminal font from a list. **Default** is the first of JetBrains Mono, Cascadia Mono and DejaVu Sans Mono installed on the computer. **Included with PlexusTerm** are JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro and Hack, which ship with the app and look the same everywhere. **Installed on this computer** lists the well-known monospaced fonts found here (Consolas, Ubuntu Mono, DejaVu Sans Mono, Nerd Fonts and others). Choosing one fills **Font family**.
+- **Font family** (default `"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace`): one installed font name, such as `Hack Nerd Font`, or a CSS font list. Type any font here that the list does not show; **Font** then reads **Custom**. A single name falls back to the system monospace font when it is not installed; leaving the field empty restores the default.
 - **Colour scheme** (default Catppuccin Mocha): 57 schemes grouped as Dark and Light, with a preview of the prompt, file colours and the 12 accent colours before saving. Every terminal and the rest of the window switch at once, without restarting any session.
 
 | Family | Schemes |
@@ -271,9 +302,15 @@ Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `ro
 - **Copy on select** (on by default): selecting text with the mouse copies it to the clipboard.
 - **Right click pastes** (on by default). When it is off, right click opens the terminal menu; Ctrl+right click always opens it, and so does a right click on selected text.
 - **Confirm multi-line paste** (on by default): pasting more than one line shows the line count and the first lines before anything is sent. **Don't ask again** turns it off.
+- **Show errors in red** (on by default): output lines that look like errors (`error:`, `fatal:`, `command not found`, `Permission denied`, `No such file or directory`, a Python `Traceback`, and the messages of `cmd` and PowerShell on Windows, also when the system speaks Spanish, Portuguese, German, French, Japanese, Korean, Chinese or Arabic) are shown in the colour scheme's red. A terminal cannot tell errors apart, because programs write errors and normal output to the same stream, so lines are recognised by their text: a line that only mentions an error can be coloured too. The output itself is not changed, and programs that use the whole window (`vim`, `htop`) are left alone.
+- **Shift+Enter starts a new line** (on by default): see [AI command-line tools](#ai-command-line-tools). Off, Shift+Enter sends the same carriage return as Enter.
+- **Desktop notifications when a terminal needs attention** (on by default): see [AI command-line tools](#ai-command-line-tools). Off, a terminal asking for attention only marks its tab.
+- **Show the git branch under the terminal** (on by default): see [Git branch](#git-branch). Off, no branch is shown and nothing is read.
+- **GPU acceleration** (on by default): terminals are drawn with WebGL on the graphics card, which keeps programs that redraw the whole screen many times a second (AI command-line tools, `htop`, `btop`) smooth. When the system has no WebGL 2, or the graphics card drops the context (a driver reset, waking from sleep), terminals switch to the standard renderer by themselves without losing anything. Error colours and selection work the same with both. Turn it off if text looks wrong or flickers with your graphics driver; open terminals switch at once.
 - **Text editor** (default: empty, the system default text editor): the program **Open with default text editor** uses in the SFTP browser. **Browse…** picks a program; you can also type a command with arguments, such as `code --wait` or `"/opt/My Editor/editor" -n`. The file is added as the last argument, or in place of `%f` when the command has one. The command runs directly, never through a shell, and a path to an existing program counts as one program even when it contains spaces. **Use system default** empties the field. A value that is not text or is longer than 1024 characters loads as the system default.
 
 - **Show size and date in file lists** (Settings → Files, off by default): the SFTP browser and the Explorer show each entry's size and modification date next to its name.
+- **Show git status in file lists** (Settings → Files, on by default): DEV mode's file lists colour entries by their git status (see [Git status in file lists](#git-status-in-file-lists)). Off, nothing is read and no entry is coloured.
 - **Change the terminal's folder when you open a folder in the file browser** (Settings → Files, on by default): opening a folder in the SFTP browser or the Explorer (path bar, double-click, **↑**, **⌂**) runs `cd` to it in the terminal of the same machine, only when that panel's **Follow terminal folder** is on (turning it off unlinks the panel and the terminal both ways), nothing is typed on its command line and no full-screen program runs. Folders the browser opens by following the terminal never send `cd`.
 
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
@@ -282,6 +319,26 @@ With text selected, the terminal menu starts with what can be done with it: **Co
 
 The terminal menu has **Copy**, **Paste**, **Select all**, **Clear scrollback**, **Find…** (Ctrl+Shift+F: next/previous, match case, regex; Escape closes it), **Save output to file…** (the whole scrollback of that pane as plain text) and **Log to file…**.
 Logging appends everything the pane receives from then on to the chosen file, without colours or other escape sequences, until **Stop logging** or the pane closes. Tabs being logged show a red dot.
+
+### AI command-line tools
+
+Claude Code, Codex, Gemini CLI, OpenCode and similar tools run in any PlexusTerm terminal, local or remote (SSH, Mosh, Telnet, serial).
+
+- **Shift+Enter** starts a new line in their prompt instead of sending it. A terminal normally sends the same carriage return for Shift+Enter as for Enter, so PlexusTerm sends a line feed instead, the character Ctrl+J sends, which all four tools read as "new line". In a shell a line feed runs the command just like Enter, so nothing changes there. Enter, Ctrl+Enter and Alt+Enter send what they always did. Shift+Enter cannot be given to an application shortcut (shortcuts need Ctrl, Alt or Meta), so it never clashes with one. Turn it off with **Shift+Enter starts a new line** in Settings → Terminal.
+- **Attention marks and notifications.** When a program rings the terminal bell or sends a desktop notification sequence (OSC 9 as iTerm2 uses it, OSC 777 `notify` as Ghostty uses it, or kitty's OSC 99) in a terminal you are not looking at, its tab shows an amber dot, and so does the pane when the tab is split. The mark stays until you focus that pane. While PlexusTerm is in the background, a desktop notification also shows the message, or the tab's title and "Needs your attention" for a bell. A program that keeps ringing produces one notification every ten seconds at most, and no more than three notifications come from all terminals together in ten seconds. Nothing happens for the pane you are looking at, so the bell of tab completion while you type stays quiet. Progress reports (OSC 9;4, which Claude Code sends while it works) are not notifications. Turn the desktop notifications off with **Desktop notifications when a terminal needs attention** in Settings → Terminal; the tab mark stays. The first notification asks the system for permission.
+  - Codex rings the bell by default in terminals it does not know, PlexusTerm included; set `notification_method = "osc9"` under `[tui]` in `~/.codex/config.toml` to get its message in the notification.
+  - Claude Code notifies only in the terminals it recognises (iTerm2, Ghostty, Kitty) unless told otherwise: add `"preferredNotifChannel": "iterm2"` to `~/.claude/settings.json` (or choose it in `/config` → **Local notifications**) to get its message in the notification; `"kitty"` and `"ghostty"` work too, and `"terminal_bell"` only rings the bell.
+- **Smooth redraws.** With **GPU acceleration** on (see above), tools that repaint their whole interface while they stream output stay fluid.
+
+### Git branch
+
+When a terminal's current folder is inside a git repository, a bar under the terminal shows the branch with a branch icon, for example `main`, like the remote monitor bar; on SSH tabs with the remote monitor on, the branch opens that same bar. With no branch checked out (a detached `HEAD`) it shows the short commit instead, such as `72e8845`; outside a repository nothing is shown. A split tab shows the branch of its focused pane.
+
+- **Local terminals** read the branch from the repository's files, without starting `git`: worktrees and submodules (whose `.git` is a file pointing elsewhere) work too.
+- **SSH terminals** run one read-only command on the server over the same connection (`git -C <folder> symbolic-ref --short -q HEAD`, or `git rev-parse --short HEAD` when detached). A server without git shows no branch.
+- Mosh, Telnet and serial terminals show no branch: PlexusTerm has no separate channel to ask through.
+
+The folder is the one the shell reports with OSC 7; for shells that do not, PlexusTerm asks for the shell's folder (Linux servers for SSH). The branch is read again when the folder changes and when the prompt comes back after a command, so `git checkout` or `git switch` shows up as soon as it finishes; it is never polled. Turn it off with **Show the git branch under the terminal** in Settings → Terminal.
 
 ## Command suggestions and AI
 
@@ -304,7 +361,7 @@ The **AI** section of Settings holds:
 - **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model; OpenCode Go: pick one from the list, see [OpenCode Go](#opencode-go)). Changing the provider while the model is still a provider default switches it to the new provider's default.
 - **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once.
 - **History commands sent as context** (0-20, default 5).
-- **Assistant shortcut** (default Ctrl+Shift+Space): click the field and press the new combination; Escape keeps the current one. It needs Ctrl, Alt or Meta, and combinations PlexusTerm already uses are refused.
+- **AI assistant** shortcut (default Ctrl+Shift+Space): changed in Settings → **Shortcuts**, under **AI assistant**.
 
 ### AI suggestions
 
@@ -339,7 +396,7 @@ Choose **OpenCode Go** as the provider and save your OpenCode API key; nothing e
 
 ### AI chat
 
-The AI chat answers any question or request in plain words (explanations, steps, what an error means, general help, any topic), in the language you write in, and offers a command for its terminal only when one fits. Press **Ctrl+Shift+Space** (changeable in Settings → AI → **Assistant shortcut**; the key never reaches the shell) or click the PlexusTerm X at the left of the toolbar: the focused terminal is split and the chat opens in a pane below it, linked to that terminal. The X turns once each time the chat opens or takes the focus (not when the system asks for reduced motion).
+The AI chat answers any question or request in plain words (explanations, steps, what an error means, general help, any topic), in the language you write in, and offers a command for its terminal only when one fits. Press **Ctrl+Shift+Space** (changeable in Settings → Shortcuts → **AI assistant**; the key never reaches the shell) or click the PlexusTerm X at the left of the toolbar: the focused terminal is split and the chat opens in a pane below it, linked to that terminal. The X turns once each time the chat opens or takes the focus (not when the system asks for reduced motion).
 
 - Each terminal has at most one chat: pressing the shortcut in a terminal that already has one moves the focus to it; pressing it in a chat goes back to its terminal. Clicking the X while a chat is open (it or its terminal has the focus) closes that chat, with the same turn of the X.
 - The chat counts as one of the tab's 4 panes. When the tab is full, a notice says so and no chat opens; close a pane first.
@@ -440,7 +497,20 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Right Arrow / End (with a grey suggestion) | Accept the suggested command |
 | Ctrl+Right (with a grey suggestion) | Accept the next word of the suggestion |
 | Ctrl+Shift+Space (changeable) | Open the AI chat below the focused terminal, or switch between a terminal and its chat |
+| Shift+Enter | New line in AI command-line tools (sends a line feed, like Ctrl+J; see [AI command-line tools](#ai-command-line-tools)) |
 | Middle click on a tab | Close that tab |
 | Right click on a tab | Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Close tab, Close other tabs, Close tabs to the right, Close all tabs |
 
-These shortcuts are handled by the app and never reach the shell.
+These are the defaults. Shortcuts handled by the app never reach the shell.
+
+### Changing shortcuts
+
+Settings → **Shortcuts** lists every action PlexusTerm can run from the keyboard, grouped as **Tabs and panes**, **Connections**, **Terminal**, **Font size**, **Sidebar and macros**, **Tools** and **AI assistant**:
+
+- Click a shortcut and press the new combination; Escape keeps the current one. A shortcut needs Ctrl, Alt or Meta with a key. A combination another action already uses is refused, naming that action; so are the fixed keys below and the AI assistant's shortcut.
+- **Clear** removes an action's shortcut: the action shows **Not set** and the keys go to the terminal again. **Reset** gives one action back its default, and **Restore defaults** does it for all of them, the AI assistant included. Changes apply on **Save**.
+- Many actions have no shortcut until you set one: close tab, next and previous tab, new serial, Telnet and Mosh connections, select all, clear the terminal, save output to a file, start or stop logging, ask the AI about the focused terminal, show each sidebar tab (Sessions, SFTP, Explorer, Tunnels, Macros), the SSH key generator, port scanner, network scanner and Wake on LAN, the remote monitor bar, and opening Settings. Terminal actions (find, copy, paste, select all, clear, save output, logging, ask the AI) act on the focused terminal.
+- Tooltips and help texts show the shortcuts as they are set; an action without one shows none.
+- **Fixed keys** are listed for reference and cannot be changed: Ctrl+Alt+1–9 (play the macro bound to that key), Right Arrow / End (accept an inline suggestion) and Ctrl+Right (accept one word of it).
+
+Only the changed shortcuts are saved, under `shortcuts` in `settings.json` (an empty value means **Not set**); the others follow the defaults of the installed version. A changed shortcut that is not valid or clashes with another one loads as that action's default.

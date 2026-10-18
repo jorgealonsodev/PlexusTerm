@@ -33,6 +33,8 @@ serialport = { version = "4", default-features = false }
 keyring = "4.2.0"
 keyring-core = "1.0.1"
 tauri-plugin-clipboard-manager = "2"
+# Desktop notifications when a terminal asks for attention (bell, OSC 9/777/99).
+tauri-plugin-notification = "=2.5.1"
 # OS random source for SSH key generation (Tools > SSH key generator).
 rand = { version = "0.10.3", default-features = false, features = ["sys_rng"] }
 zeroize = "1.8"

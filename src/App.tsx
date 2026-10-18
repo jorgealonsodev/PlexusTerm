@@ -14,6 +14,7 @@ import { UpdateNotice } from "./features/updates/UpdateNotice";
 import { checkForUpdate, type Release } from "./features/updates/updates";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
+import type { AppKey } from "./i18n/catalogs";
 import { forgetChatsExcept } from "./features/ai/chatMemory";
 import { PaneCloseButton } from "./features/panes/PaneCloseButton";
 import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
@@ -21,7 +22,7 @@ import { EditUploads } from "./features/sftp/EditUploads";
 import { writeText } from "./features/terminal/clipboard";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
-import { shortcutFor } from "./features/panes/shortcuts";
+import { shortcutFor, shortcutLabel, type ShortcutActionId } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
@@ -56,7 +57,11 @@ import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
-import { chatAction, initialTabs, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
+import { chatAction, initialTabs, tabTitle, tabsReducer, type ChatLink, type Tab } from "./features/tabs/tabs";
+import type { AttentionNotice } from "./features/terminal/attention";
+import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
+import { createNotifier } from "./features/notifications/notifier";
+import { showSystemNotification } from "./features/notifications/systemNotification";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { setChatSaving } from "./features/ai/chatHistory";
@@ -91,6 +96,7 @@ import {
   Power,
   ScanSearch,
   Wrench,
+  GitBranch,
   KeyRound,
   PanelLeftClose,
   PanelLeftOpen,
@@ -144,9 +150,20 @@ interface PaneMeta {
   excluded: boolean;
   /** The pane's output is being logged to a file (S15.5). */
   logging: boolean;
+  /** A program in the pane asked for attention while the user was not looking at it. */
+  attention: boolean;
+  /** Times the shell's prompt came back (OSC 7, OSC 133 or a command's output going quiet). */
+  prompts: number;
+  /** Git branch of the pane's folder, or null outside a repository. */
+  branch: string | null;
 }
 
-const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false };
+/** "Open in terminal" over SSH: the shell is ready once its login output is quiet this long... */
+const SHELL_QUIET_MS = 400;
+/** ...or when it printed nothing this long after the session started. */
+const SHELL_FIRST_OUTPUT_MS = 1500;
+
+const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null };
 
 const draftSession = (folder: string): SavedSession => ({
   kind: "ssh",
@@ -298,9 +315,20 @@ function AppContent() {
       return next.sessionId === current.sessionId &&
         next.cwd === current.cwd &&
         next.excluded === current.excluded &&
-        next.logging === current.logging
+        next.logging === current.logging &&
+        next.attention === current.attention &&
+        next.prompts === current.prompts &&
+        next.branch === current.branch
         ? prev
         : { ...prev, [paneId]: next };
+    });
+  }, []);
+
+  /** Counts a pane's prompts, so its git branch is read again after each command. */
+  const promptCameBack = useCallback((paneId: string) => {
+    setPaneMeta((prev) => {
+      const current = prev[paneId] ?? NO_SESSION;
+      return { ...prev, [paneId]: { ...current, prompts: current.prompts + 1 } };
     });
   }, []);
 
@@ -335,9 +363,40 @@ function AppContent() {
   const sftpShown =
     sftpSessionId !== null && (sidebarView === "sftp" || sidebarView === "explorer") && !terminalSettings.settings.sidebarCollapsed;
   const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd, sftp.shellCwd);
+  // The file lists read their git status again while the active terminal prints (AI CLIs edit
+  // files as they go), through the same output feed macros wait on.
+  const activeSessionId = activeSession.sessionId;
+  const activePaneOutput = useCallback(
+    (listener: (text: string) => void) =>
+      (activePane !== null && activeSessionId !== null ? macroTargets.get(activePane)?.subscribe(listener) : undefined) ??
+      (() => {}),
+    [activePane, activeSessionId, macroTargets],
+  );
   const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
   const loggingTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
+  );
+  const attentionTabs = new Set(
+    state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.attention)).map((t) => t.key),
+  );
+
+  // The pane being looked at loses its attention mark: when it gets the focus, and when the window
+  // comes back to the front with it focused.
+  const lookedAt = activeTab?.focusedPane ?? null;
+  const lookedAtRef = useRef(lookedAt);
+  lookedAtRef.current = lookedAt;
+  useEffect(() => {
+    if (lookedAt !== null && document.hasFocus()) updatePane(lookedAt, { attention: false });
+  }, [lookedAt, updatePane]);
+  useEffect(() => {
+    const onFocus = () => {
+      if (lookedAtRef.current !== null) updatePane(lookedAtRef.current, { attention: false });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [updatePane]);
+  const [notifier] = useState(() =>
+    createNotifier({ send: (title, body) => void showSystemNotification(title, body) }),
   );
 
   // Terminal panes only: AI chat panes never take part in multi-execution (S9).
@@ -502,6 +561,20 @@ function AppContent() {
   // Settings → AI → keep conversations (S9): read before the first chat is listed.
   setChatSaving(settings.aiSaveChats);
 
+  /**
+   * A program in a pane rang the bell or sent a desktop notification. Nothing happens while the user
+   * is looking at that pane (so a shell's bell while typing raises no noise); otherwise the pane and
+   * its tab are marked, and a desktop notification is shown when the window is in the background.
+   */
+  const attend = (tab: Tab, paneId: string, notice: AttentionNotice) => {
+    const windowFocused = document.hasFocus();
+    if (windowFocused && state.activeKey === tab.key && tab.focusedPane === paneId) return;
+    updatePane(paneId, { attention: true });
+    if (!windowFocused && settings.attentionNotifications) {
+      notifier.notify(paneId, notice.title ?? tabTitle(tab), notice.body ?? t("app.tabs.attentionNotice"));
+    }
+  };
+
   /** One AI conversation ID per pane for its inline suggestions, kept while the app runs (S6). */
   const aiSessions = useRef(new Map<string, string>());
   const aiSessionOf = (paneId: string) => {
@@ -649,6 +722,52 @@ function AppContent() {
     if (action.kind === "run") pane.run(action.command);
   };
 
+  /**
+   * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the
+   * same shell starting there; the SFTP browser opens another tab of the same SSH login (as
+   * Duplicate does, so it authenticates the same way) and changes to the folder once its shell is
+   * ready, with the same quoted `cd` a dropped folder runs.
+   */
+  const openInTerminal = (path: string) => {
+    if (!activeTab) return;
+    const { target } = activeTab;
+    if (target.type === "local") return open({ ...target, cwd: path });
+    if (target.type !== "ssh") return;
+    // The pane the "open" action is about to create (see tabsReducer).
+    pendingCd.current.set(`pane-${state.nextPaneSeq}`, path);
+    open(target);
+  };
+  /** SSH panes opened by "Open in terminal" and the folder each changes to once ready. */
+  const pendingCd = useRef(new Map<string, string>());
+  /**
+   * Runs a pending `cd` in a pane whose session just started, once its shell is ready: when what
+   * it prints at login (banner, prompt) has gone quiet, or soon if it printed before we listened.
+   */
+  const cdWhenReady = (paneId: string, target: SessionTarget) => {
+    const path = pendingCd.current.get(paneId);
+    if (path === undefined) return;
+    pendingCd.current.delete(paneId);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stop: () => void = () => {};
+    const run = () => {
+      stop();
+      const pane = assistTargets.get(paneId);
+      const action = dropAction([{ path, isDir: true }], {
+        lineEmpty: true,
+        sameMachine: true,
+        flavor: shellFlavor(platform, target.type, runningShellOf(target, shells)),
+      });
+      if (action.kind === "unsafe") setNotice(t("sftp.error.unsafePath"));
+      else if (action.kind === "run") pane?.run(action.command);
+    };
+    const wait = (ms: number) => {
+      clearTimeout(timer);
+      timer = setTimeout(run, ms);
+    };
+    stop = macroTargets.get(paneId)?.subscribe(() => wait(SHELL_QUIET_MS)) ?? (() => {});
+    wait(SHELL_FIRST_OUTPUT_MS);
+  };
+
   const dropRef = useRef<(drag: PathDrag, target: Element | null) => void>(() => {});
   dropRef.current = (drag, target) => {
     const paneId = target?.getAttribute("data-drop-pane");
@@ -720,16 +839,36 @@ function AppContent() {
   // Another dialog keeps its place: the shortcut does not replace it.
   const assistantKeys = useRef({ openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null });
   assistantKeys.current = { openAssistant, shortcut: settings.assistantShortcut, blocked: modal !== null };
+  /** The user's shortcut overrides and what the window shortcuts read without re-subscribing. */
+  const shortcutKeys = useRef({
+    overrides: settings.shortcuts,
+    tabs: state.tabs,
+    activeKey: state.activeKey,
+    sidebarCollapsed: settings.sidebarCollapsed,
+  });
+  shortcutKeys.current = {
+    overrides: settings.shortcuts,
+    tabs: state.tabs,
+    activeKey: state.activeKey,
+    sidebarCollapsed: settings.sidebarCollapsed,
+  };
 
   // Terminals let these keys through unhandled (see TerminalView), so the window sees them.
   useEffect(() => {
+    /** The tab `step` places after (or before) the active one, wrapping around. */
+    const tabBeside = (step: 1 | -1) => {
+      const { tabs, activeKey } = shortcutKeys.current;
+      if (tabs.length < 2) return;
+      const index = tabs.findIndex((tab) => tab.key === activeKey);
+      dispatch({ type: "activate", key: tabs[(index + step + tabs.length) % tabs.length].key });
+    };
     const onKey = (e: KeyboardEvent) => {
       if (matchesShortcut(e, assistantKeys.current.shortcut)) {
         e.preventDefault();
         if (!assistantKeys.current.blocked) assistantKeys.current.openAssistant();
         return;
       }
-      const shortcut = shortcutFor(e);
+      const shortcut = shortcutFor(e, shortcutKeys.current.overrides);
       if (!shortcut) return;
       e.preventDefault();
       switch (shortcut.type) {
@@ -737,6 +876,18 @@ function AppContent() {
           return openLocal();
         case "quickConnect":
           return setModal({ kind: "quickConnect" });
+        case "newSerial":
+          return setModal({ kind: "serial" });
+        case "newTelnet":
+          return setModal({ kind: "telnet" });
+        case "newMosh":
+          return setModal({ kind: "mosh" });
+        case "tool":
+          return setModal({ kind: shortcut.tool });
+        case "openSettings":
+          return setModal({ kind: "settings" });
+        case "toggleRemoteMonitor":
+          return updateSettingsWith((s) => ({ remoteMonitor: !s.remoteMonitor }));
         case "toggleMultiExec":
           return setMultiExec((on) => !on);
         case "fontSize":
@@ -745,23 +896,45 @@ function AppContent() {
           return macroKeys.current.toggleRecording();
         case "toggleSidebar":
           return updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }));
+        case "sidebarView":
+          // Like a click on the sidebar tab: a folded sidebar opens.
+          setSidebarView(shortcut.view);
+          if (shortcutKeys.current.sidebarCollapsed) updateSettingsWith(() => ({ sidebarCollapsed: false }));
+          return;
         case "playMacro":
           return macroKeys.current.playHotkey(shortcut.hotkey);
+        case "nextTab":
+          return tabBeside(1);
+        case "previousTab":
+          return tabBeside(-1);
         // Handled by the focused terminal itself.
         case "find":
         case "copy":
         case "paste":
+        case "selectAll":
+        case "clear":
+        case "saveOutput":
+        case "toggleLogging":
+        case "askAi":
           return;
       }
       if (!activeTab) return;
       const key = activeTab.key;
-      if (shortcut.type === "closePane") dispatch({ type: "closePane", key, paneId: activeTab.focusedPane });
+      if (shortcut.type === "closeTab") dispatch({ type: "close", key });
+      else if (shortcut.type === "closePane") dispatch({ type: "closePane", key, paneId: activeTab.focusedPane });
       else if (shortcut.type === "split") dispatch({ type: "split", key, direction: shortcut.direction });
       else dispatch({ type: "focusDirection", key, direction: shortcut.direction });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openLocal, activeTab, updateSettingsWith]);
+
+  /** A title with an action's shortcut in it, or the plain label when the action has none. */
+  const titleWith = (key: AppKey, plainKey: AppKey, action: ShortcutActionId) => {
+    const shortcut = shortcutLabel(action, settings.shortcuts);
+    return shortcut ? t(key, { shortcut }) : t(plainKey);
+  };
+  const sshShortcut = shortcutLabel("quickConnect", settings.shortcuts);
 
   const toolbarRef = useRef<HTMLElement>(null);
   const compactToolbar = useCompactToolbar(toolbarRef);
@@ -792,18 +965,23 @@ function AppContent() {
           type="button"
           className="btn btn--icon toolbar__sidebar"
           aria-label={settings.sidebarCollapsed ? t("app.toolbar.showSidebar") : t("app.toolbar.hideSidebar")}
-          title={t(settings.sidebarCollapsed ? "app.toolbar.showSidebarTitle" : "app.toolbar.hideSidebarTitle", {
-            shortcut: "Ctrl+Shift+B",
-          })}
+          title={
+            settings.sidebarCollapsed
+              ? titleWith("app.toolbar.showSidebarTitle", "app.toolbar.showSidebar", "toggleSidebar")
+              : titleWith("app.toolbar.hideSidebarTitle", "app.toolbar.hideSidebar", "toggleSidebar")
+          }
           onClick={() => updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))}
         >
           {settings.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
-        <button className="btn btn--icon" title={t("app.toolbar.terminalTitle", { shortcut: "Ctrl+Shift+T" })} onClick={openLocal}>
+        <button className="btn btn--icon" title={titleWith("app.toolbar.terminalTitle", "app.toolbar.terminal", "newTerminal")} onClick={openLocal}>
           <SquareTerminal size={16} />
           <span className="btn__label">{t("app.toolbar.terminal")}</span>
         </button>
-        <button className="btn btn--icon" title="SSH (Ctrl+Shift+S)" onClick={() => setModal({ kind: "quickConnect" })}>
+        <button
+          className="btn btn--icon"
+          title={sshShortcut ? `SSH (${sshShortcut})` : "SSH"}
+          onClick={() => setModal({ kind: "quickConnect" })}>
           <KeyRound size={16} />
           <span className="btn__label">SSH</span>
         </button>
@@ -823,18 +1001,18 @@ function AppContent() {
           onWakeOnLan={() => setModal({ kind: "wakeOnLan" })}
           onToggleMonitor={() => terminalSettings.update({ remoteMonitor: !terminalSettings.settings.remoteMonitor })}
         />
-        <button className="btn btn--icon" disabled={!canSplit} title={t("app.toolbar.splitRightTitle", { shortcut: "Ctrl+Shift+D" })} onClick={() => split("row")}>
+        <button className="btn btn--icon" disabled={!canSplit} title={titleWith("app.toolbar.splitRightTitle", "app.toolbar.splitRight", "splitRight")} onClick={() => split("row")}>
           <Columns2 size={16} />
           <span className="btn__label">{t("app.toolbar.splitRight")}</span>
         </button>
-        <button className="btn btn--icon" disabled={!canSplit} title={t("app.toolbar.splitDownTitle", { shortcut: "Ctrl+Shift+E" })} onClick={() => split("column")}>
+        <button className="btn btn--icon" disabled={!canSplit} title={titleWith("app.toolbar.splitDownTitle", "app.toolbar.splitDown", "splitDown")} onClick={() => split("column")}>
           <Rows2 size={16} />
           <span className="btn__label">{t("app.toolbar.splitDown")}</span>
         </button>
         <button
           className={`btn btn--icon${multiExec ? " btn--pressed" : ""}`}
           aria-pressed={multiExec}
-          title={t("app.toolbar.multiExecTitle", { shortcut: "Ctrl+Shift+M" })}
+          title={titleWith("app.toolbar.multiExecTitle", "app.toolbar.multiExec", "toggleMultiExec")}
           onClick={() => setMultiExec((on) => !on)}
         >
           <Radio size={16} />
@@ -843,7 +1021,7 @@ function AppContent() {
         <button
           className={`btn btn--icon${recording ? " btn--pressed btn--recording" : ""}`}
           aria-pressed={recording}
-          title={t("app.toolbar.recordMacroTitle", { shortcut: "Ctrl+Shift+R" })}
+          title={titleWith("app.toolbar.recordMacroTitle", "app.toolbar.recordMacro", "recordMacro")}
           onClick={toggleRecording}
         >
           <Circle size={16} />
@@ -902,6 +1080,15 @@ function AppContent() {
                   }}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
+                  onOpenInTerminal={openInTerminal}
+                  // DEV mode's tree, icons and git status; DEV mode (per tab) will turn it on.
+                  devStyle={false}
+                  git={{
+                    enabled: terminalSettings.settings.gitFileStatus,
+                    visible: localShown,
+                    prompt: activeSession.prompts,
+                    subscribeOutput: activePaneOutput,
+                  }}
                 />
               )
             }
@@ -918,6 +1105,15 @@ function AppContent() {
                   onUserNavigate={(path) => cdFromBrowser(activePane, { kind: "sftp", sessionId: sftpSessionId }, path, followCwd)}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
+                  onOpenInTerminal={openInTerminal}
+                  // DEV mode's tree, icons and git status; DEV mode (per tab) will turn it on.
+                  devStyle={false}
+                  git={{
+                    enabled: terminalSettings.settings.gitFileStatus,
+                    visible: sftpShown,
+                    prompt: activeSession.prompts,
+                    subscribeOutput: activePaneOutput,
+                  }}
                 />
               )
             }
@@ -946,6 +1142,7 @@ function AppContent() {
             }
             macros={
               <MacrosPanel
+                recordShortcut={shortcutLabel("recordMacro", settings.shortcuts)}
                 list={macros.list}
                 status={macros.status}
                 saveError={macros.saveError}
@@ -991,6 +1188,7 @@ function AppContent() {
             tabs={state.tabs}
             activeKey={state.activeKey}
             logging={loggingTabs}
+            attention={attentionTabs}
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
             onNew={openLocal}
@@ -1053,6 +1251,7 @@ function AppContent() {
                             onCwd={(cwd) => updatePane(paneId, { cwd })}
                             onSession={(sessionId) => {
                               updatePane(paneId, { sessionId });
+                              if (sessionId !== null) cdWhenReady(paneId, tab.target);
                               // A new SSH connection brings its file browser to the front; a local terminal
                               // shows the Explorer instead of Sessions, leaving any other tab chosen (L18).
                               if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
@@ -1072,14 +1271,34 @@ function AppContent() {
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                             onAskAi={() => askAiFrom(tab, paneId)}
+                            onAttention={(notice) => attend(tab, paneId, notice)}
+                            onPrompt={() => promptCameBack(paneId)}
                           />
+                          <GitBranchReporter
+                            source={branchSourceOf(tab.target, paneMeta[paneId]?.sessionId ?? null)}
+                            cwd={paneMeta[paneId]?.cwd ?? null}
+                            prompt={paneMeta[paneId]?.prompts ?? 0}
+                            enabled={settings.gitBranch}
+                            onBranch={(branch) => updatePane(paneId, { branch })}
+                          />
+                          {paneIds(tab.layout).length > 1 && paneMeta[paneId]?.attention && (
+                            <span
+                              className="pane__attention"
+                              role="img"
+                              aria-label={t("app.tabs.attention")}
+                              title={t("app.tabs.attention")}
+                            />
+                          )}
                           {aiHints[paneId] && (
                             <div className="pane__ai-hint" title={aiHints[paneId].detail}>
                               {aiHints[paneId].text}
                             </div>
                           )}
                           {paneIds(tab.layout).length > 1 && (
-                            <PaneCloseButton onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })} />
+                            <PaneCloseButton
+                              shortcut={shortcutLabel("closePane", settings.shortcuts)}
+                              onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                            />
                           )}
                           {multiExec && (
                             <button
@@ -1098,9 +1317,23 @@ function AppContent() {
                             </button>
                           )}
                           </div>
-                          {tab.target.type === "ssh" && terminalSettings.settings.remoteMonitor && (
-                            <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />
-                          )}
+                          {(() => {
+                            // One bar under the terminal: its git branch, then (SSH) the remote monitor.
+                            const branch = settings.gitBranch ? paneMeta[paneId]?.branch : null;
+                            const monitor = tab.target.type === "ssh" && settings.remoteMonitor;
+                            if (!branch && !monitor) return null;
+                            return (
+                              <div className="pane-footer">
+                                {branch && (
+                                  <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
+                                    <GitBranch size={12} aria-hidden="true" />
+                                    <span className="pane-footer__branch-name">{branch}</span>
+                                  </span>
+                                )}
+                                {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     }}

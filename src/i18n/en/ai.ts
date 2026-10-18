@@ -28,7 +28,7 @@ export const ai = {
     label: "AI chat",
     title: "AI",
     close: "Close AI chat",
-    closeTitle: "Close AI chat (Ctrl+Shift+W)",
+    closeTitle: "Close AI chat ({shortcut})",
     empty: "Ask anything. Commands run only when you click Run.",
     question: "Question",
     asking: "Asking…",

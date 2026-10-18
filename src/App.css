@@ -888,9 +888,21 @@ body.is-resizing {
 }
 
 .sftp-row__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   width: 16px;
   font-size: 12px;
-  text-align: center;
+}
+
+/* File-type icons keep their own colour (dark or light scheme), not the git status colour. */
+.file-icon {
+  color: var(--icon-dark, var(--muted));
+}
+
+:root[data-theme="light"] .file-icon {
+  color: var(--icon-light, var(--muted));
 }
 
 .sftp-row__name {
@@ -900,6 +912,72 @@ body.is-resizing {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The file lists are trees, like VS Code's Explorer: a chevron on folders, guides per level. */
+.tree-indent {
+  display: flex;
+  flex-shrink: 0;
+  align-self: stretch;
+  gap: 6px;
+  /* Through the row's padding, so the guides of consecutive rows join. */
+  margin: -3px 0;
+}
+
+/* One level: as wide as a chevron, with its guide line under the parent's chevron. */
+.tree-guide {
+  position: relative;
+  width: 14px;
+}
+
+.tree-guide::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  border-left: 1px solid var(--border);
+}
+
+.tree-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--muted);
+}
+
+.sftp-row--note {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Git status of the entries, coloured like VS Code (the colours come from uiTheme.ts). */
+.sftp-row__git {
+  flex-shrink: 0;
+  min-width: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sftp-row--faded {
+  opacity: 0.6;
+}
+
+.git--strike {
+  text-decoration: line-through;
+}
+
+.git--added { color: var(--git-added, #81b88b); }
+.git--modified { color: var(--git-modified, #e2c08d); }
+.git--deleted { color: var(--git-deleted, #c74e39); }
+.git--renamed { color: var(--git-renamed, #73c991); }
+.git--untracked { color: var(--git-untracked, #73c991); }
+.git--ignored { color: var(--git-ignored, #8c8c8c); }
+.git--stageModified { color: var(--git-stageModified, #e2c08d); }
+.git--stageDeleted { color: var(--git-stageDeleted, #c74e39); }
+.git--conflicting { color: var(--git-conflicting, #e4676b); }
 
 .sftp-row__size,
 .sftp-row__date {
@@ -1076,6 +1154,30 @@ body.is-resizing {
 .tab__log {
   color: var(--danger);
   font-size: 9px;
+}
+
+/* A program in the tab rang the bell or sent a notification while nobody was looking. */
+.tab__attention,
+.pane__attention {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 35%, transparent);
+}
+
+/* The git branch of the tab's terminal folder: quiet, and shortened before the title is. */
+.tab--attention .tab__title {
+  color: var(--text);
+}
+
+.pane__attention {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 3;
+  pointer-events: none;
 }
 
 /* Bottom right, clear of the multi-exec "exclude" toggle in the top-right corner. */
@@ -1498,6 +1600,12 @@ body.is-resizing {
   display: none;
 }
 
+/* In a short window the section scrolls; its options never shrink (the colour scheme preview,
+   which hides its overflow, would otherwise be squashed to a sliver). */
+.settings__panel > * {
+  flex-shrink: 0;
+}
+
 .shortcut-capture {
   cursor: pointer;
   max-width: 240px;
@@ -1505,6 +1613,59 @@ body.is-resizing {
 
 .field input.shortcut-capture--active {
   border-color: var(--accent);
+}
+
+/* Settings → Shortcuts: one row per action (name, combination, Clear / Reset). */
+.shortcuts__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shortcuts__intro p {
+  flex: 1;
+  margin: 0;
+}
+
+.shortcuts__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shortcuts__group h3 {
+  margin: 8px 0 2px;
+  font-size: 13px;
+}
+
+.shortcuts__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 200px) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.shortcuts__row input.shortcut-capture {
+  max-width: none;
+}
+
+.shortcuts__buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcuts__note {
+  grid-column: 2 / -1;
+}
+
+.shortcuts__row--fixed {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.shortcuts__row kbd {
+  font-family: inherit;
+  color: var(--text);
 }
 
 .settings__about {
@@ -1999,4 +2160,48 @@ body.is-dragging-path {
 
 .chat__history .chat__chip-remove {
   position: static;
+}
+
+/* The bar under a terminal: its git branch and, on SSH tabs, the remote monitor (same look). */
+.pane-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  min-height: 22px;
+  padding: 2px 10px;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pane-footer .remote-monitor {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-top: none;
+  background: none;
+}
+
+.pane-footer__branch {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 40%;
+  color: var(--text);
+}
+
+.pane-footer__branch svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.pane-footer__branch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

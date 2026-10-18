@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shortcutFor, type KeyLike } from "./shortcuts";
+import { SHORTCUT_ACTIONS, shortcutConflict, shortcutFor, shortcutLabel, type KeyLike } from "./shortcuts";
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -72,5 +72,60 @@ describe("sidebar shortcut", () => {
     expect(shortcutFor(key("B", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "toggleSidebar" });
     expect(shortcutFor(key("b", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "toggleSidebar" });
     expect(shortcutFor(key("b", { ctrlKey: true }))).toBeNull();
+  });
+});
+
+describe("customised shortcuts", () => {
+  it("an override replaces every default combination of its action", () => {
+    const overrides = { newTerminal: "Ctrl+Alt+N", fontIncrease: "Ctrl+Alt+=" };
+    expect(shortcutFor(key("n", { ctrlKey: true, altKey: true }), overrides)).toEqual({ type: "newTerminal" });
+    expect(shortcutFor(ctrlShift("T"), overrides)).toBeNull();
+    expect(shortcutFor(key("=", { ctrlKey: true, altKey: true }), overrides)).toEqual({ type: "fontSize", step: "increase" });
+    expect(shortcutFor(key("=", { ctrlKey: true }), overrides)).toBeNull();
+    expect(shortcutFor(key("+", { ctrlKey: true }), overrides)).toBeNull();
+    // Other actions keep their defaults.
+    expect(shortcutFor(ctrlShift("D"), overrides)).toEqual({ type: "split", direction: "row" });
+  });
+
+  it("an empty override leaves the action unbound", () => {
+    expect(shortcutFor(ctrlShift("B"), { toggleSidebar: "" })).toBeNull();
+    expect(shortcutLabel("toggleSidebar", { toggleSidebar: "" })).toBe("");
+  });
+
+  it("actions without a default do nothing until bound", () => {
+    expect(SHORTCUT_ACTIONS.nextTab.defaults).toEqual([]);
+    expect(shortcutFor(key("PageDown", { ctrlKey: true }))).toBeNull();
+    expect(shortcutFor(key("PageDown", { ctrlKey: true }), { nextTab: "Ctrl+PageDown" })).toEqual({ type: "nextTab" });
+    expect(shortcutFor(key("1", { ctrlKey: true, metaKey: true }), { openSettings: "Ctrl+Meta+1" })).toEqual({ type: "openSettings" });
+  });
+
+  it("keeps Meta combinations, AltGr characters and the macro keys out of the defaults", () => {
+    expect(shortcutFor(key("T", { ctrlKey: true, shiftKey: true, metaKey: true }))).toBeNull();
+    expect(shortcutFor(key("=", { ctrlKey: true, metaKey: true }))).toBeNull();
+    expect(shortcutFor(key("1", { ctrlKey: true, altKey: true, metaKey: true }))).toBeNull();
+    expect(shortcutFor(key("@", { ctrlKey: true, altKey: true }), { newTerminal: "Ctrl+Alt+N" })).toBeNull();
+    expect(shortcutFor(key("3", { ctrlKey: true, altKey: true }), { newTerminal: "Ctrl+Alt+N" })).toEqual({ type: "playMacro", hotkey: 3 });
+  });
+
+  it("shows the first effective combination of an action", () => {
+    expect(shortcutLabel("fontIncrease")).toBe("Ctrl+=");
+    expect(shortcutLabel("closePane", { closePane: "Alt+W" })).toBe("Alt+W");
+    expect(shortcutLabel("keyGen")).toBe("");
+  });
+
+  it("names what already uses a combination", () => {
+    expect(shortcutConflict("Ctrl+Shift+T", {}, { action: "closeTab" })).toEqual({ kind: "action", action: "newTerminal" });
+    expect(shortcutConflict("Ctrl+Shift+T", {}, { action: "newTerminal" })).toBeNull();
+    expect(shortcutConflict("Ctrl+Shift+T", { newTerminal: "Alt+N" }, { action: "closeTab" })).toBeNull();
+    expect(shortcutConflict("Ctrl++", {}, { action: "closeTab" })).toEqual({ kind: "action", action: "fontIncrease" });
+    expect(shortcutConflict("Alt+K", { keyGen: "Alt+K" }, { action: "portScan" })).toEqual({ kind: "action", action: "keyGen" });
+    expect(shortcutConflict("Ctrl+Alt+4", {}, { action: "closeTab" })).toEqual({ kind: "reserved", use: "playMacro" });
+    expect(shortcutConflict("Ctrl+ArrowRight", {}, { action: "closeTab" })).toEqual({ kind: "reserved", use: "acceptWord" });
+    expect(
+      shortcutConflict("Ctrl+Shift+Space", {}, { action: "closeTab", assistantShortcut: "Ctrl+Shift+Space" }),
+    ).toEqual({ kind: "assistant" });
+    // Checking the assistant itself: the actions and fixed keys count.
+    expect(shortcutConflict("Ctrl+Shift+W", {})).toEqual({ kind: "action", action: "closePane" });
+    expect(shortcutConflict("Ctrl+Shift+W", { closePane: "" })).toBeNull();
   });
 });

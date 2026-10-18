@@ -6,6 +6,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
@@ -42,6 +43,8 @@ import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
 import { themeById } from "./themes";
+import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
+import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
 
@@ -80,6 +83,17 @@ interface TerminalViewProps {
   registerAssistTarget?: (target: AssistTarget) => () => void;
   /** Opens this pane's AI chat with its selection attached; without it the menu has no "Ask the AI". */
   onAskAi?: () => void;
+  /**
+   * A program asks for attention: the bell, or a desktop notification sequence (OSC 9, 777, 99)
+   * such as Claude Code and Codex send when they finish or wait for the user.
+   */
+  onAttention?: (notice: AttentionNotice) => void;
+  /**
+   * The shell's prompt came back, so a command may have changed the git branch: the shell reported
+   * its folder (OSC 7) or marked a prompt (OSC 133), or, without that, the output of a command sent
+   * with Enter went quiet.
+   */
+  onPrompt?: () => void;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -116,6 +130,10 @@ export interface AiSuggestContext {
 
 /** Pause in typing before the AI is asked (S2). */
 export const AI_SUGGEST_DELAY_MS = 400;
+/** Without shell integration, the prompt counts as back once a command's output stops this long. */
+export const PROMPT_QUIET_MS = 500;
+/** After a resize, error lines are coloured again once the size has not changed for this long. */
+const ERROR_REFRESH_DELAY_MS = 150;
 
 /** The grey rest of the command drawn after the cursor (S1). */
 interface Ghost {
@@ -125,6 +143,10 @@ interface Ghost {
 
 const sameGhost = (a: Ghost | null, b: Ghost | null) =>
   a === b || (a !== null && b !== null && a.text === b.text && JSON.stringify(a.style) === JSON.stringify(b.style));
+
+/** Shift+Enter alone, not while an input method is composing text. */
+const shiftEnter = (e: KeyboardEvent) =>
+  e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !e.isComposing;
 
 /** The next word of a suggestion, with the spaces before it (Ctrl+Right). */
 const nextWord = (rest: string) => /^\s*\S+/.exec(rest)?.[0] ?? rest;
@@ -199,6 +221,8 @@ export function TerminalView({
   history = commandHistory,
   registerAssistTarget,
   onAskAi,
+  onAttention,
+  onPrompt,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
@@ -208,7 +232,10 @@ export function TerminalView({
   const hostRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const errorsRef = useRef<ErrorHighlight | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
+  /** The WebGL renderer while it draws this terminal; null means xterm's own (DOM) renderer. */
+  const webglRef = useRef<WebglAddon | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const historyRef = useRef(history);
@@ -223,6 +250,8 @@ export function TerminalView({
   const refreshGhostRef = useRef<() => void>(() => {});
   /** Accepts the drawn suggestion for a key event; true when the key was used. */
   const acceptRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
+  /** Sends data as if typed (set by the terminal effect), for keys the key handler translates. */
+  const typedRef = useRef<(data: string) => void>(() => {});
   const [findOpen, setFindOpen] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
   /** What the find bar opens with: the selection it was opened from, or nothing. */
@@ -252,8 +281,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt };
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -273,6 +302,8 @@ export function TerminalView({
       lineHeight: 1.15,
       scrollback: 10000,
       theme: themeById(settingsRef.current.theme).theme,
+      // Decorations, which colour the error lines, are still a proposed API in xterm.
+      allowProposedApi: true,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -281,13 +312,22 @@ export function TerminalView({
     term.loadAddon(search);
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
     // returning false lets the event bubble to the window listener without xterm handling it.
-    // Find, copy and paste belong to this pane and are handled here.
+    // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.
     term.attachCustomKeyEventHandler((e) => {
       if (acceptRef.current(e)) return false;
       // The assistant shortcut (S3) is the window's, like the app shortcuts below.
       if (matchesShortcut(e, settingsRef.current.assistantShortcut)) return false;
-      const shortcut = shortcutFor(e);
-      if (shortcut === null) return true;
+      const shortcut = shortcutFor(e, settingsRef.current.shortcuts);
+      if (shortcut === null) {
+        // xterm sends the same CR for Shift+Enter as for Enter, so AI command-line tools would
+        // submit; a line feed (Ctrl+J) is their "new line" key and a shell's Enter.
+        if (!shiftEnter(e) || !settingsRef.current.shiftEnterNewline) return true;
+        if (e.type === "keydown") {
+          e.preventDefault?.();
+          typedRef.current("\n");
+        }
+        return false;
+      }
       if (e.type === "keydown") {
         // No native paste on top of ours.
         if (shortcut.type === "paste") e.preventDefault();
@@ -298,6 +338,12 @@ export function TerminalView({
     term.open(host);
     fit.fit();
     termRef.current = term;
+    const errors = attachErrorHighlight(term, {
+      enabled: () => settingsRef.current.errorHighlight,
+      color: () => errorColor(themeById(settingsRef.current.theme).theme),
+    });
+    errorsRef.current = errors;
+    let errorsTimer: ReturnType<typeof setTimeout> | null = null;
     fitRef.current = fit;
     searchRef.current = search;
 
@@ -308,6 +354,15 @@ export function TerminalView({
     let ended = false;
     /** Macros waiting for output (S16.3). */
     const outputListeners = new Set<(text: string) => void>();
+    /** A command was sent with Enter and its prompt has not been seen yet. */
+    let awaitingPrompt = false;
+    let promptTimer: ReturnType<typeof setTimeout> | null = null;
+    const promptCame = () => {
+      awaitingPrompt = false;
+      if (promptTimer) clearTimeout(promptTimer);
+      promptTimer = null;
+      callbacks.current.onPrompt?.();
+    };
 
     /** Ends the session but keeps the pane, so what it printed (e.g. an error) stays readable. */
     const endKeepingPane = (note: string) => {
@@ -354,6 +409,10 @@ export function TerminalView({
             term.write(msg.data);
             logRef.current?.write(msg.data);
             outputListeners.forEach((listener) => listener(msg.data));
+            if (awaitingPrompt) {
+              if (promptTimer) clearTimeout(promptTimer);
+              promptTimer = setTimeout(promptCame, PROMPT_QUIET_MS);
+            }
           }
           else if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
           else if (target.type === "mosh" && msg.data !== 0) {
@@ -513,6 +572,7 @@ export function TerminalView({
       } else {
         const result = feedInput(line, data);
         const secret = result.commits.length > 0 && atSecretPrompt();
+        if (result.commits.length > 0) awaitingPrompt = true;
         line = result.state;
         if (settingsRef.current.commandHistory && !secret) {
           for (const command of result.commits) if (!command.startsWith(" ")) historyRef.current.record(hostKey, command);
@@ -533,6 +593,7 @@ export function TerminalView({
       callbacks.current.onInput?.(data);
       track(data);
     };
+    typedRef.current = typed;
     acceptRef.current = (e) => {
       const rest = ghostRestRef.current;
       if (rest === null || e.altKey || e.metaKey || e.shiftKey) return false;
@@ -577,12 +638,32 @@ export function TerminalView({
         !fullScreen() && line.text === "" && !line.uncertain && !cursorRow().textAfter && !atSecretPrompt(),
     });
 
+    /** Reports a request for attention; the sequence is always consumed (xterm has no use for it). */
+    const attention = (notice: AttentionNotice | null) => {
+      if (notice) callbacks.current.onAttention?.(notice);
+      return true;
+    };
+    const readOsc99 = createOsc99Reader();
+
     const subs = [
       term.onData(typed),
+      term.onBell(() => attention({ title: null, body: null })),
+      term.parser.registerOscHandler(9, (data) => attention(parseOsc9(data))),
+      term.parser.registerOscHandler(777, (data) => attention(parseOsc777(data))),
+      term.parser.registerOscHandler(99, (data) => attention(readOsc99(data))),
       term.onWriteParsed(refreshGhost),
       term.onCursorMove(refreshGhost),
       term.onScroll(refreshGhost),
-      term.onResize(({ cols, rows }) => sessionId !== null && void backend.resize(sessionId, cols, rows)),
+      term.onResize(({ cols, rows }) => {
+        if (sessionId !== null) void backend.resize(sessionId, cols, rows);
+        // Rows reflow to the new width: colour them again once the size settles (a window drag
+        // resizes many times in a row).
+        if (errorsTimer) clearTimeout(errorsTimer);
+        errorsTimer = setTimeout(() => {
+          errorsTimer = null;
+          errors.refresh();
+        }, ERROR_REFRESH_DELAY_MS);
+      }),
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
       term.parser.registerOscHandler(7, (data) => {
         const path = parseOsc7(data);
@@ -590,6 +671,13 @@ export function TerminalView({
           cwd = path;
           callbacks.current.onCwd?.(path);
         }
+        // Shells report their folder with every prompt.
+        promptCame();
+        return true;
+      }),
+      // Shell integration marks: A = prompt start, D = command finished.
+      term.parser.registerOscHandler(133, (data) => {
+        if (/^[AD](;|$)/.test(data)) promptCame();
         return true;
       }),
     ];
@@ -626,18 +714,55 @@ export function TerminalView({
       if (aiTimer) clearTimeout(aiTimer);
       aiSeq++;
       acceptRef.current = () => false;
+      typedRef.current = () => {};
       unregisterWriter?.();
       unregisterMacroTarget?.();
       unregisterAssistTarget?.();
       outputListeners.clear();
       observer.disconnect();
       subs.forEach((s) => s.dispose());
+      if (errorsTimer) clearTimeout(errorsTimer);
+      if (promptTimer) clearTimeout(promptTimer);
+      errors.dispose();
+      errorsRef.current = null;
+      // Disposed with the terminal.
+      webglRef.current = null;
       if (sessionId !== null) void backend.close(sessionId);
       term.dispose();
     };
     // The target of a tab never changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // GPU acceleration: WebGL draws redraw-heavy programs (AI command-line tools, htop) smoothly. Without
+  // WebGL2, or when the GPU drops the context (driver reset, sleep), xterm's own renderer takes over.
+  const gpuAcceleration = settings.gpuAcceleration;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    if (!gpuAcceleration) {
+      webglRef.current?.dispose();
+      webglRef.current = null;
+    } else if (!webglRef.current) {
+      let addon: WebglAddon | null = null;
+      try {
+        addon = new WebglAddon();
+        const loaded = addon;
+        loaded.onContextLoss(() => {
+          if (webglRef.current === loaded) webglRef.current = null;
+          loaded.dispose();
+          errorsRef.current?.refresh();
+        });
+        term.loadAddon(loaded);
+        webglRef.current = loaded;
+      } catch {
+        addon?.dispose();
+        webglRef.current = null;
+      }
+    }
+    // The error colours are decorations, drawn by whichever renderer is in use.
+    errorsRef.current?.refresh();
+  }, [gpuAcceleration]);
 
   // Suggestions show only in the visible, focused pane, and follow their settings.
   useEffect(() => {
@@ -666,7 +791,16 @@ export function TerminalView({
     const term = termRef.current;
     if (!term || term.options.theme === theme) return;
     term.options.theme = theme;
+    errorsRef.current?.refresh();
   }, [theme]);
+  // Error lines follow the setting at once: coloured again when it is turned on, cleared when off.
+  const errorHighlight = settings.errorHighlight;
+  const errorHighlightSeen = useRef(errorHighlight);
+  useEffect(() => {
+    if (errorHighlightSeen.current === errorHighlight) return;
+    errorHighlightSeen.current = errorHighlight;
+    errorsRef.current?.refresh();
+  }, [errorHighlight]);
   useEffect(() => {
     const term = termRef.current;
     if (!term || term.options.fontFamily === fontFamily) return;
@@ -796,8 +930,18 @@ export function TerminalView({
     focusTerminal();
   };
 
+  /** The pane's own shortcuts; the others are the window's. Menu actions run as from the menu. */
+  const paneMenuActions: Partial<Record<Shortcut["type"], MenuAction>> = {
+    selectAll: "selectAll",
+    clear: "clear",
+    saveOutput: "save",
+    toggleLogging: "log",
+    askAi: "askAi",
+  };
   paneShortcutRef.current = (shortcut) => {
-    if (shortcut.type === "find") openFind();
+    const action = paneMenuActions[shortcut.type];
+    if (action) runMenuAction(action);
+    else if (shortcut.type === "find") openFind();
     else if (shortcut.type === "copy") copySelection();
     else if (shortcut.type === "paste") pasteFromClipboard();
   };

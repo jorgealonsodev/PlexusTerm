@@ -84,6 +84,9 @@ export const app = {
     logging: "Logging to file",
     closeNamed: "Close {title}",
     newLocal: "New local terminal",
+    attention: "Needs attention",
+    attentionNotice: "Needs your attention",
+    branch: "Git branch: {branch}",
   },
   update: {
     available: "PlexusTerm {version} is available.",

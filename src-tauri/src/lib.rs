@@ -1,4 +1,5 @@
 mod ai;
+mod git;
 mod history;
 mod localfs;
 mod mosh;
@@ -64,6 +65,49 @@ fn pty_write(id: u32, data: String, ptys: State<'_, PtyManager>) -> Result<(), P
 #[tauri::command]
 fn pty_resize(id: u32, cols: u16, rows: u16, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
     ptys.resize(id, cols, rows)
+}
+
+/// The git branch of a local folder (short commit when detached), or null outside a repository.
+/// Reads the repository files; no `git` process is started.
+#[tauri::command]
+async fn git_branch(path: String) -> Option<String> {
+    tauri::async_runtime::spawn_blocking(move || git::branch_of(std::path::Path::new(&path)))
+        .await
+        .ok()
+        .flatten()
+}
+
+/// The git branch of a folder on the server of SSH session `id`, read with one `git` command over
+/// the existing connection; null outside a repository, without git, or when the command fails.
+#[tauri::command]
+async fn ssh_git_branch(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<Option<String>, ()> {
+    let Some(command) = git::remote_command(&path) else {
+        return Ok(None);
+    };
+    Ok(ssh.exec(id, &command).await.ok().and_then(|output| git::parse_remote(&output)))
+}
+
+/// The git status of the files under a local folder (paths relative to it), for colouring the
+/// Explorer like VS Code; empty outside a repository, without git, or when git fails.
+#[tauri::command]
+async fn git_status(path: String) -> Vec<git::StatusEntry> {
+    tauri::async_runtime::spawn_blocking(move || git::status_of(std::path::Path::new(&path)))
+        .await
+        .unwrap_or_default()
+}
+
+/// The git status of the files under a folder on the server of SSH session `id`, read with one
+/// read-only `git` command over the existing connection; empty when it cannot be read.
+#[tauri::command]
+async fn ssh_git_status(id: u32, path: String, ssh: State<'_, SshManager>) -> Result<Vec<git::StatusEntry>, ()> {
+    let Some(command) = git::remote_status_command(&path) else {
+        return Ok(Vec::new());
+    };
+    Ok(ssh
+        .exec(id, &command)
+        .await
+        .map(|output| git::parse_status(output.as_bytes()))
+        .unwrap_or_default())
 }
 
 /// The working folder of a local terminal's shell, or null when it cannot be read.
@@ -465,6 +509,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(PtyManager::default())
         .manage(SerialManager::default())
         .manage(TelnetManager::default())
@@ -507,6 +552,10 @@ pub fn run() {
             ssh_resize,
             ssh_close,
             ssh_shell_cwd,
+            ssh_git_branch,
+            git_branch,
+            ssh_git_status,
+            git_status,
             secret_available,
             secret_exists,
             secret_delete,

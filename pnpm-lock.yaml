@@ -8,6 +8,18 @@ importers:
 
   .:
     dependencies:
+      '@fontsource-variable/cascadia-code':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/fira-code':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/jetbrains-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/source-code-pro':
+        specifier: 5.3.1
+        version: 5.3.1
       '@tauri-apps/api':
         specifier: ^2
         version: 2.12.4
@@ -17,6 +29,9 @@ importers:
       '@tauri-apps/plugin-dialog':
         specifier: ^2
         version: 2.8.3
+      '@tauri-apps/plugin-notification':
+        specifier: 2.5.1
+        version: 2.5.1
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.7.2
@@ -29,9 +44,15 @@ importers:
       '@xterm/addon-web-links':
         specifier: ^0.12.0
         version: 0.12.0
+      '@xterm/addon-webgl':
+        specifier: 0.19.0
+        version: 0.19.0
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
+      hack-font:
+        specifier: 3.3.0
+        version: 3.3.0
       lucide-react:
         specifier: 1.49.0
         version: 1.49.0(@types/react@19.3.0)(react@19.3.1)
@@ -146,6 +167,18 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource-variable/cascadia-code@5.3.0':
+    resolution: {integrity: sha512-6I6M029Lum62MGmP0o+rXRrIBiIiptNDC4slPKLPUJiSB7NHZTLb+Ihk9G7jLvUfWziGXHJLjJPJLBzlEPjS1g==}
+
+  '@fontsource-variable/fira-code@5.3.0':
+    resolution: {integrity: sha512-ZhvHeknlicraKVSJBa1NrJnXDVByUkC407zwgELYfmnx3p9g8vwIPfQCxx8YD3K7dAeCdLuHJOHlpMfRsIcApQ==}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
+
+  '@fontsource-variable/source-code-pro@5.3.1':
+    resolution: {integrity: sha512-N0nZDizh8CQ19+AHHA8Ssb1i/aQf4N2lpRl3qZVH4/9f1yNgWzTkBFpc26v+QQr2hm4By4aiv597BCoEg2SDQg==}
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -344,6 +377,9 @@ packages:
   '@tauri-apps/plugin-dialog@2.8.3':
     resolution: {integrity: sha512-Hd/yBfk2R5v2MFrz/0VArSXeh8xKLLXGunqSiTtcHKn1zNZwaKujuA0VSwUvNfwC4hDoF1PveS+gBDNe3nHspw==}
 
+  '@tauri-apps/plugin-notification@2.5.1':
+    resolution: {integrity: sha512-i0nD48YsLov18siENevC3X7SmJpQE1cImq+JUsjrUPdu73J8cTIOyNIS8H0qxftFAc1k2w6s1E74DoFE02Jirw==}
+
   '@tauri-apps/plugin-opener@2.7.2':
     resolution: {integrity: sha512-LyybP1VSzTMQiaFYcsbAse47KpivlyXdLZMQzGLEnkgQacGESnpjAfFoQ6h5sqWgAdZDH9szYjPzHMpv0Sz+TQ==}
 
@@ -435,6 +471,9 @@ packages:
   '@xterm/addon-web-links@0.12.0':
     resolution: {integrity: sha512-4Smom3RPyVp7ZMYOYDoC/9eGJJJqYhnPLGGqJ6wOBfB8VxPViJNSKdgRYb8NpaM6YSelEKbA2SStD7lGyqaobw==}
 
+  '@xterm/addon-webgl@0.19.0':
+    resolution: {integrity: sha512-b3fMOsyLVuCeNJWxolACEUED0vm7qC0cy4wRvf3oURSzDTYVQiGPhTnhWZwIHdvC48Y+oLhvYXnY4XDXPoJo6A==}
+
   '@xterm/xterm@6.0.0':
     resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
 
@@ -522,6 +561,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  hack-font@3.3.0:
+    resolution: {integrity: sha512-RohrcAr3UaKiIoxDlOytCjObcUAucfFc6V5fKu6gBrvmvTfIXeBqZwR0Q5kb9qpbluThJWt326LClLKIGiFyug==}
 
   html-encoding-sniffer@7.0.0:
     resolution: {integrity: sha512-UikN5yr7xsCDAq87Or5or0PAlD3HJJOKVzM05az588WnpDJ4Ux7a2A53Qi6gofGg2/EtvF/H4hCi/TXfCW4Y6w==}
@@ -928,6 +970,14 @@ snapshots:
 
   '@exodus/bytes@1.16.0': {}
 
+  '@fontsource-variable/cascadia-code@5.3.0': {}
+
+  '@fontsource-variable/fira-code@5.3.0': {}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0': {}
+
+  '@fontsource-variable/source-code-pro@5.3.1': {}
+
   '@jridgewell/resolve-uri@3.1.2': {}
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
@@ -1043,6 +1093,10 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.12.4
 
+  '@tauri-apps/plugin-notification@2.5.1':
+    dependencies:
+      '@tauri-apps/api': 2.12.4
+
   '@tauri-apps/plugin-opener@2.7.2':
     dependencies:
       '@tauri-apps/api': 2.12.4
@@ -1121,6 +1175,8 @@ snapshots:
 
   '@xterm/addon-web-links@0.12.0': {}
 
+  '@xterm/addon-webgl@0.19.0': {}
+
   '@xterm/xterm@6.0.0': {}
 
   ansi-regex@5.0.1: {}
@@ -1183,6 +1239,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  hack-font@3.3.0: {}
 
   html-encoding-sniffer@7.0.0:
     dependencies:

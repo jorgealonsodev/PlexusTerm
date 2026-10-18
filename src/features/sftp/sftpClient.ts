@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { t } from "../../i18n/i18n";
 import { describeSshError, toSshError } from "../ssh/sshErrors";
+import type { GitStatusEntry } from "../files/gitStatus";
 
 /** Mirrors the Rust `sftp::Entry`. */
 export interface SftpEntry {
@@ -59,6 +60,8 @@ export const sftp = {
   compare: (id: number, remote: string, local: string) => invoke<void>("sftp_compare", { id, remote, local }),
   /** Deletes the temporary copies of a session (when the SSH session ends). */
   discardCopies: (id: number) => invoke<void>("sftp_discard_copies", { id }),
+  /** Git status of the files under a remote folder (one read-only git command); empty outside a repository. */
+  gitStatus: (id: number, path: string) => invoke<GitStatusEntry[]>("ssh_git_status", { id, path }),
 };
 
 /** Text for an `sftp_*` rejection: `{ kind: "sftp", message }` or any `SshError`. */

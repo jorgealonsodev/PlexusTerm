@@ -15,12 +15,14 @@ interface MacrosPanelProps {
   onEdit: (macro: Macro) => void;
   onDuplicate: (macro: Macro) => void;
   onDelete: (macro: Macro) => void;
+  /** The record-macro shortcut named in the empty text; "" when it is unbound. */
+  recordShortcut?: string;
 }
 
 /** The "Macros" sidebar tab (S16.3). */
 export function MacrosPanel(props: MacrosPanelProps) {
   const t = useT();
-  const { list, status, saveError, canPlay } = props;
+  const { list, status, saveError, canPlay, recordShortcut = "Ctrl+Shift+R" } = props;
   const [query, setQuery] = useState("");
   const editable = status.state === "ready";
   const needle = query.trim().toLowerCase();
@@ -53,7 +55,7 @@ export function MacrosPanel(props: MacrosPanelProps) {
       )}
       {saveError && <p className="sidebar__note form-error">{t("macros.panel.saveError", { error: saveError })}</p>}
       {editable && list.macros.length === 0 && (
-        <p className="sidebar__note">{t("macros.panel.empty")}</p>
+        <p className="sidebar__note">{recordShortcut ? t("macros.panel.empty", { shortcut: recordShortcut }) : t("macros.panel.emptyNoShortcut")}</p>
       )}
       {list.macros.length > 0 && shown.length === 0 && <p className="sidebar__note">{t("macros.panel.noMatch")}</p>}
       <ul className="tree">

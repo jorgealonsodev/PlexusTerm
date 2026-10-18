@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "AI チャット",
     title: "AI",
     close: "AI チャットを閉じる",
-    closeTitle: "AI チャットを閉じる (Ctrl+Shift+W)",
+    closeTitle: "AI チャットを閉じる ({shortcut})",
     empty: "何でも質問してください。コマンドは［実行］をクリックしたときにのみ実行されます。",
     question: "質問",
     asking: "問い合わせ中…",

@@ -15,6 +15,7 @@ describe("parseSettings", () => {
       copyOnSelect: true,
       rightClickPastes: true,
       confirmMultilinePaste: true,
+      errorHighlight: true,
       theme: "catppuccin-mocha",
       fontFamily: DEFAULT_FONT_FAMILY,
       remoteMonitor: true,
@@ -39,6 +40,12 @@ describe("parseSettings", () => {
       terminalFollowsBrowser: true,
       sidebarAtStartup: "last",
       language: "system",
+      shortcuts: {},
+      shiftEnterNewline: true,
+      attentionNotifications: true,
+      gpuAcceleration: true,
+      gitBranch: true,
+      gitFileStatus: true,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -61,7 +68,7 @@ describe("parseSettings", () => {
 
   it("reads saved values", () => {
     const json =
-      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
+      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"errorHighlight":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
       '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"sidebarWidth":320,"localShell":" /usr/bin/fish ","localShellArgs":" --login ","localCwd":" ~/projects ","checkUpdates":false,"aiSaveChats":false,"fileDetails":true,"terminalFollowsBrowser":false,"sidebarAtStartup":"collapsed","language":"ja"}';
@@ -70,6 +77,7 @@ describe("parseSettings", () => {
       copyOnSelect: false,
       rightClickPastes: false,
       confirmMultilinePaste: false,
+      errorHighlight: false,
       theme: "nord",
       fontFamily: "Fira Code",
       remoteMonitor: false,
@@ -94,6 +102,14 @@ describe("parseSettings", () => {
       terminalFollowsBrowser: false,
       sidebarAtStartup: "collapsed",
       language: "ja",
+      // A file from before customisable shortcuts loads with the defaults.
+      shortcuts: {},
+      // So do the settings added for AI command-line tools.
+      shiftEnterNewline: true,
+      attentionNotifications: true,
+      gpuAcceleration: true,
+      gitBranch: true,
+      gitFileStatus: true,
     });
   });
 
@@ -175,6 +191,37 @@ describe("parseSettings", () => {
     expect(parseSettings('{"assistantShortcut":"Alt+Shift+A"}').assistantShortcut).toBe("Alt+Shift+A");
   });
 
+  it("keeps only usable shortcut overrides", () => {
+    const shortcuts = (value: unknown, extra: Record<string, unknown> = {}) =>
+      parseSettings(JSON.stringify({ shortcuts: value, ...extra })).shortcuts;
+    expect(shortcuts({ newTerminal: "Ctrl+Alt+N", toggleSidebar: "", keyGen: "Alt+K" })).toEqual({
+      newTerminal: "Ctrl+Alt+N",
+      toggleSidebar: "",
+      keyGen: "Alt+K",
+    });
+    // Unknown actions, invalid shortcuts and values that are not text.
+    expect(shortcuts({ launchRocket: "Alt+R", closeTab: "Shift+A", nextTab: 3, previousTab: "Ctrl+" })).toEqual({});
+    // The fixed keys and the assistant shortcut.
+    expect(shortcuts({ closeTab: "Ctrl+Alt+2", nextTab: "Ctrl+ArrowRight", previousTab: "Ctrl+Shift+Space" })).toEqual({});
+    expect(shortcuts({ previousTab: "Alt+A" }, { assistantShortcut: "Alt+A" })).toEqual({});
+    // Taken by another action's default, or by another override.
+    expect(shortcuts({ closeTab: "Ctrl+Shift+T" })).toEqual({});
+    expect(shortcuts({ closeTab: "Alt+X", nextTab: "Alt+X" })).toEqual({ closeTab: "Alt+X" });
+    // Freed by another override: a swap is kept.
+    expect(shortcuts({ newTerminal: "Ctrl+Shift+S", quickConnect: "Ctrl+Shift+T" })).toEqual({
+      newTerminal: "Ctrl+Shift+S",
+      quickConnect: "Ctrl+Shift+T",
+    });
+    expect(shortcuts("Ctrl+Shift+T")).toEqual({});
+    expect(shortcuts(["Alt+X"])).toEqual({});
+  });
+
+  it("lets the assistant take a combination an override freed", () => {
+    const parsed = parseSettings(JSON.stringify({ shortcuts: { newTerminal: "Alt+N" }, assistantShortcut: "Ctrl+Shift+T" }));
+    expect(parsed.assistantShortcut).toBe("Ctrl+Shift+T");
+    expect(parsed.shortcuts).toEqual({ newTerminal: "Alt+N" });
+  });
+
   it("keeps valid values next to invalid ones", () => {
     expect(parseSettings('{"fontSize":20,"copyOnSelect":"no"}')).toEqual({ ...DEFAULT_SETTINGS, fontSize: 20 });
   });
@@ -210,7 +257,14 @@ describe("serializeSettings", () => {
       sidebarAtStartup: "last" as const,
       sidebarWidth: 480,
       checkUpdates: false,
+      errorHighlight: false,
       language: "pt-BR" as const,
+      shortcuts: { newTerminal: "Ctrl+Alt+N", toggleSidebar: "", nextTab: "Ctrl+PageDown" },
+      shiftEnterNewline: false,
+      attentionNotifications: false,
+      gpuAcceleration: false,
+      gitBranch: false,
+      gitFileStatus: false,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 1, ...settings });

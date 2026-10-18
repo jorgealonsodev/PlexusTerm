@@ -88,6 +88,9 @@ export const app: Messages<typeof en> = {
     logging: "Journalisation dans un fichier",
     closeNamed: "Fermer {title}",
     newLocal: "Nouveau terminal local",
+    attention: "Demande votre attention",
+    attentionNotice: "Demande votre attention",
+    branch: "Branche git : {branch}",
   },
   update: {
     available: "PlexusTerm {version} est disponible.",

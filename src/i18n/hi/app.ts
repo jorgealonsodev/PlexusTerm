@@ -86,6 +86,9 @@ export const app: Messages<typeof en> = {
     logging: "फ़ाइल में लॉग हो रहा है",
     closeNamed: "{title} बंद करें",
     newLocal: "नया लोकल टर्मिनल",
+    attention: "ध्यान चाहिए",
+    attentionNotice: "आपका ध्यान चाहिए",
+    branch: "git ब्रांच: {branch}",
   },
   update: {
     available: "PlexusTerm {version} उपलब्ध है।",

@@ -1,6 +1,14 @@
 import { isLanguageSetting, type LanguageSetting } from "../../i18n/i18n";
 import { DEFAULT_THEME_ID, isThemeId } from "../terminal/themes";
-import { appShortcutConflict, isValidShortcut } from "./shortcutCapture";
+import {
+  actionUsing,
+  isShortcutActionId,
+  reservedUse,
+  shortcutConflict,
+  type ShortcutActionId,
+  type ShortcutOverrides,
+} from "../panes/shortcuts";
+import { isValidShortcut } from "./shortcutCapture";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -25,6 +33,8 @@ export interface TerminalSettings {
   rightClickPastes: boolean;
   /** Pasting more than one line asks first. */
   confirmMultilinePaste: boolean;
+  /** Output lines that look like errors are shown in the colour scheme's red. */
+  errorHighlight: boolean;
   /** Colour scheme id (see TERMINAL_THEMES). */
   theme: string;
   /** Font family: one font name, or a CSS font list. */
@@ -75,6 +85,27 @@ export interface TerminalSettings {
   aiSaveChats: boolean;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
   language: LanguageSetting;
+  /**
+   * The user's shortcut changes only (action id -> combination, "" = unbound); every other action
+   * keeps its default from the shortcut table, so defaults can change in later versions.
+   */
+  shortcuts: ShortcutOverrides;
+  /**
+   * Shift+Enter sends a line feed (what Ctrl+J sends), which AI command-line tools such as Claude Code,
+   * Codex, Gemini CLI and OpenCode read as "new line" instead of "submit"; off, it sends Enter's CR.
+   */
+  shiftEnterNewline: boolean;
+  /**
+   * A desktop notification when a terminal rings the bell or sends a notification (OSC 9, 777, 99)
+   * while PlexusTerm is in the background; the tab is marked either way.
+   */
+  attentionNotifications: boolean;
+  /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
+  gpuAcceleration: boolean;
+  /** Tabs show the git branch of their terminal's folder (local and SSH terminals). */
+  gitBranch: boolean;
+  /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
+  gitFileStatus: boolean;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -92,6 +123,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   copyOnSelect: true,
   rightClickPastes: true,
   confirmMultilinePaste: true,
+  errorHighlight: true,
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   remoteMonitor: true,
@@ -116,6 +148,12 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   checkUpdates: true,
   aiSaveChats: true,
   language: "system",
+  shortcuts: {},
+  shiftEnterNewline: true,
+  attentionNotifications: true,
+  gpuAcceleration: true,
+  gitBranch: true,
+  gitFileStatus: true,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -162,9 +200,36 @@ export function cleanAiBaseUrl(value: unknown): string {
 export const clampAiHistoryContext = (count: number) =>
   Math.min(MAX_AI_HISTORY_CONTEXT, Math.max(0, Math.round(count)));
 
-/** A valid shortcut that PlexusTerm does not already use, or the default one. */
-export const cleanAssistantShortcut = (value: unknown): string =>
-  typeof value === "string" && isValidShortcut(value) && !appShortcutConflict(value) ? value : DEFAULT_ASSISTANT_SHORTCUT;
+/**
+ * A valid shortcut that PlexusTerm does not already use (with these shortcut overrides), or the
+ * default one.
+ */
+export const cleanAssistantShortcut = (value: unknown, overrides: ShortcutOverrides = {}): string =>
+  typeof value === "string" && isValidShortcut(value) && shortcutConflict(value, overrides) === null
+    ? value
+    : DEFAULT_ASSISTANT_SHORTCUT;
+
+/**
+ * The usable shortcut overrides of `value`: known actions with "" (unbound) or a valid combination
+ * that is not a fixed key, not the assistant's, and not one another action answers to. When two
+ * overrides clash, the later one is dropped (bringing its defaults back), until none clashes.
+ */
+export function cleanShortcutOverrides(value: unknown, assistantShortcut: string): ShortcutOverrides {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  let kept: ShortcutOverrides = {};
+  for (const [id, shortcut] of Object.entries(value)) {
+    if (!isShortcutActionId(id) || typeof shortcut !== "string") continue;
+    if (shortcut !== "" && (!isValidShortcut(shortcut) || reservedUse(shortcut) || shortcut === assistantShortcut)) continue;
+    kept[id] = shortcut;
+  }
+  for (;;) {
+    const ids = Object.keys(kept) as ShortcutActionId[];
+    const clash = ids.reverse().find((id) => kept[id] !== "" && actionUsing(kept[id]!, kept, id) !== null);
+    if (clash === undefined) return kept;
+    const { [clash]: _dropped, ...rest } = kept;
+    kept = rest;
+  }
+}
 
 /** The CSS font list for a setting: a single name is quoted and falls back to monospace. */
 export const cssFontFamily = (family: string) => (/[,"']/.test(family) ? family : `"${family}", monospace`);
@@ -196,12 +261,22 @@ export function parseSettings(json: string | null): TerminalSettings {
   const value = raw as Record<string, unknown>;
   const d = DEFAULT_SETTINGS;
   const aiProvider = isAiProvider(value.aiProvider) ? value.aiProvider : d.aiProvider;
+  // The assistant and the overrides must not share a combination: the assistant keeps its own
+  // unless an override makes it clash, and then the overrides are checked against the default.
+  const wanted =
+    typeof value.assistantShortcut === "string" && isValidShortcut(value.assistantShortcut) && !reservedUse(value.assistantShortcut)
+      ? value.assistantShortcut
+      : DEFAULT_ASSISTANT_SHORTCUT;
+  let shortcuts = cleanShortcutOverrides(value.shortcuts, wanted);
+  const assistantShortcut = cleanAssistantShortcut(wanted, shortcuts);
+  if (assistantShortcut !== wanted) shortcuts = cleanShortcutOverrides(shortcuts, assistantShortcut);
   return {
     fontSize:
       typeof value.fontSize === "number" && Number.isFinite(value.fontSize) ? clampFontSize(value.fontSize) : d.fontSize,
     copyOnSelect: bool(value.copyOnSelect, d.copyOnSelect),
     rightClickPastes: bool(value.rightClickPastes, d.rightClickPastes),
     confirmMultilinePaste: bool(value.confirmMultilinePaste, d.confirmMultilinePaste),
+    errorHighlight: bool(value.errorHighlight, d.errorHighlight),
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
@@ -219,7 +294,7 @@ export function parseSettings(json: string | null): TerminalSettings {
       typeof value.aiHistoryContext === "number" && Number.isFinite(value.aiHistoryContext)
         ? clampAiHistoryContext(value.aiHistoryContext)
         : d.aiHistoryContext,
-    assistantShortcut: cleanAssistantShortcut(value.assistantShortcut),
+    assistantShortcut,
     // The sidebar opens folded or not as Settings choose, or as it was left (L17).
     sidebarCollapsed:
       sidebarAtStartupOf(value.sidebarAtStartup) === "last"
@@ -236,6 +311,12 @@ export function parseSettings(json: string | null): TerminalSettings {
     checkUpdates: bool(value.checkUpdates, d.checkUpdates),
     aiSaveChats: bool(value.aiSaveChats, d.aiSaveChats),
     language: isLanguageSetting(value.language) ? value.language : d.language,
+    shortcuts,
+    shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
+    attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
+    gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
+    gitBranch: bool(value.gitBranch, d.gitBranch),
+    gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
   };
 }
 

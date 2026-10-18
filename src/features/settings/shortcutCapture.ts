@@ -1,4 +1,4 @@
-import { shortcutFor, type KeyLike } from "../panes/shortcuts";
+import { shortcutConflict, type KeyLike, type ShortcutOverrides } from "../panes/shortcuts";
 
 /** Modifier names, in the order a shortcut lists them ("Ctrl+Alt+Shift+Meta+K"). */
 const MODIFIERS = ["Ctrl", "Alt", "Shift", "Meta"] as const;
@@ -32,18 +32,9 @@ export function isValidShortcut(shortcut: string): boolean {
   return parsed !== null && (parsed.mods.has("Ctrl") || parsed.mods.has("Alt") || parsed.mods.has("Meta"));
 }
 
-/** True when PlexusTerm already uses the combination (pane, macro and font shortcuts, accept-word). */
-export function appShortcutConflict(shortcut: string): boolean {
-  const parsed = parse(shortcut);
-  if (!parsed) return false;
-  const { mods, key } = parsed;
-  const e: KeyLike = {
-    key: key === "Space" ? " " : key.length === 1 ? (mods.has("Shift") ? key.toUpperCase() : key.toLowerCase()) : key,
-    ctrlKey: mods.has("Ctrl"),
-    altKey: mods.has("Alt"),
-    shiftKey: mods.has("Shift"),
-    metaKey: mods.has("Meta"),
-  };
-  // Ctrl+Right accepts the next word of an inline suggestion.
-  return shortcutFor(e) !== null || shortcut === "Ctrl+ArrowRight";
-}
+/**
+ * True when PlexusTerm already uses the combination with these overrides (the defaults when omitted):
+ * any action's binding, the macro keys or accept-word.
+ */
+export const appShortcutConflict = (shortcut: string, overrides: ShortcutOverrides = {}): boolean =>
+  parse(shortcut) !== null && shortcutConflict(shortcut, overrides) !== null;

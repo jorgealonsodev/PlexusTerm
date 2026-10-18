@@ -30,7 +30,7 @@ export const ai: Messages<typeof en> = {
     label: "KI-Chat",
     title: "KI",
     close: "KI-Chat schließen",
-    closeTitle: "KI-Chat schließen (Ctrl+Shift+W)",
+    closeTitle: "KI-Chat schließen ({shortcut})",
     empty: "Frag einfach. Befehle werden nur ausgeführt, wenn du auf „Ausführen“ klickst.",
     question: "Frage",
     asking: "Wird gefragt…",

@@ -86,6 +86,9 @@ export const app: Messages<typeof en> = {
     logging: "ファイルにログを記録中",
     closeNamed: "{title} を閉じる",
     newLocal: "新しいローカルターミナル",
+    attention: "要確認",
+    attentionNotice: "確認が必要です",
+    branch: "git ブランチ: {branch}",
   },
   update: {
     available: "PlexusTerm {version} が利用可能です。",

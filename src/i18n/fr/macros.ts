@@ -27,7 +27,8 @@ export const macros: Messages<typeof en> = {
     readError:
       "Impossible de lire les macros enregistrées : {message}. La modification est désactivée pour protéger le fichier.",
     saveError: "Impossible d'enregistrer les macros : {error}",
-    empty: "Aucune macro pour l'instant. Enregistrez-en une avec Ctrl+Shift+R ou créez-en une avec Nouvelle.",
+    empty: "Aucune macro pour l'instant. Enregistrez-en une avec {shortcut} ou créez-en une avec Nouvelle.",
+    emptyNoShortcut: "Aucune macro pour l'instant. Enregistrez-en une avec le bouton Enregistrer une macro ou créez-en une avec Nouvelle.",
     noMatch: "Aucune macro ne correspond.",
     steps: { one: "{count} étape", many: "{count} étapes", other: "{count} étapes" },
     editNamed: "Modifier {name}",

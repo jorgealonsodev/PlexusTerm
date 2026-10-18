@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FileText, Globe, Info, KeyRound, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { FileText, Globe, Info, KeyRound, Keyboard, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
@@ -24,6 +24,7 @@ import {
   cleanFontFamily,
   cleanTextEditor,
   cssFontFamily,
+  DEFAULT_FONT_FAMILY,
   AI_PROVIDERS,
   DEFAULT_AI_MODELS,
   isAiProvider,
@@ -36,7 +37,9 @@ import {
   MIN_FONT_SIZE,
   type AiProvider,
   type TerminalSettings, type SidebarAtStartup } from "./settings";
-import { appShortcutConflict, isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
+import { ShortcutsPanel } from "./ShortcutsPanel";
+import { shortcutLabel } from "../panes/shortcuts";
+import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -80,12 +83,13 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
   );
 }
 
-export type SettingsSection = "appearance" | "terminal" | "ssh" | "files" | "ai" | "about";
+export type SettingsSection = "appearance" | "terminal" | "shortcuts" | "ssh" | "files" | "ai" | "about";
 type Section = SettingsSection;
 
 const SECTIONS: { id: Section; icon: LucideIcon }[] = [
   { id: "appearance", icon: Palette },
   { id: "terminal", icon: SquareTerminal },
+  { id: "shortcuts", icon: Keyboard },
   { id: "ssh", icon: KeyRound },
   { id: "files", icon: FileText },
   { id: "ai", icon: Sparkles },
@@ -248,58 +252,6 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
   );
 }
 
-/** Press a key combination to set it; Escape cancels; app shortcuts are refused. */
-function ShortcutField({ value, onChange }: { value: string; onChange: (shortcut: string) => void }) {
-  const t = useT();
-  const [capturing, setCapturing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (!capturing) return;
-    const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
-    if (plain && e.key === "Tab") return; // keep moving through the form
-    e.preventDefault();
-    e.stopPropagation();
-    if (plain && e.key === "Escape") {
-      setCapturing(false);
-      setError(null);
-      return;
-    }
-    const shortcut = shortcutFromEvent(e);
-    if (shortcut === null) return;
-    if (!isValidShortcut(shortcut)) setError(t("settings.ai.shortcutInvalid"));
-    else if (appShortcutConflict(shortcut)) setError(t("settings.ai.shortcutTaken", { shortcut }));
-    else {
-      setError(null);
-      setCapturing(false);
-      onChange(shortcut);
-    }
-  };
-
-  return (
-    <div className="field">
-      <label htmlFor="settings-assistant-shortcut">{t("settings.ai.assistantShortcut")}</label>
-      <input
-        id="settings-assistant-shortcut"
-        className={capturing ? "shortcut-capture shortcut-capture--active" : "shortcut-capture"}
-        readOnly
-        value={value}
-        onFocus={() => setCapturing(true)}
-        onClick={() => setCapturing(true)}
-        onBlur={() => {
-          setCapturing(false);
-          setError(null);
-        }}
-        onKeyDown={onKeyDown}
-      />
-      <span className="muted">
-        {t(capturing ? "settings.ai.shortcutCapturing" : "settings.ai.shortcutIdle")}
-      </span>
-      {error && <span className="form-error">{error}</span>}
-    </div>
-  );
-}
-
 const APP_VERSION = packageJson.version;
 const REPO_URL = "https://github.com/jorgealonsodev/PlexusTerm";
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD_PARTY_NOTICES.md`;
@@ -326,8 +278,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
+  const [errorHighlight, setErrorHighlight] = useState(settings.errorHighlight);
+  const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
+  const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
+  const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
+  const [gitBranch, setGitBranch] = useState(settings.gitBranch);
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
+  /** The well-known monospaced fonts installed here, looked for once per dialog. */
+  const installedFonts = useMemo(() => detectInstalledFonts(), []);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [sidebarAtStartup, setSidebarAtStartup] = useState(settings.sidebarAtStartup);
@@ -350,6 +309,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   };
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [fileDetails, setFileDetails] = useState(settings.fileDetails);
+  const [gitFileStatus, setGitFileStatus] = useState(settings.gitFileStatus);
   const [terminalFollowsBrowser, setTerminalFollowsBrowser] = useState(settings.terminalFollowsBrowser);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
@@ -363,6 +323,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [aiModel, setAiModel] = useState(settings.aiModel);
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
+  const [shortcuts, setShortcuts] = useState(settings.shortcuts);
   const [section, setSection] = useState<Section>(initialSection ?? "appearance");
   const dark = TERMINAL_THEMES.filter((scheme) => scheme.dark);
   const light = TERMINAL_THEMES.filter((scheme) => !scheme.dark);
@@ -405,11 +366,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       copyOnSelect,
       rightClickPastes,
       confirmMultilinePaste,
+      errorHighlight,
       theme,
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
       textEditor: cleanTextEditor(textEditor),
       fileDetails,
+      gitFileStatus,
       terminalFollowsBrowser,
       inlineSuggestions,
       commandHistory: history,
@@ -429,12 +392,24 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       checkUpdates,
       aiSaveChats,
       language,
+      shortcuts,
+      shiftEnterNewline,
+      attentionNotifications,
+      gpuAcceleration,
+      gitBranch,
     });
   };
 
   // Sentences with markup inside: the placeholder marks where the code or the link goes.
   const [editorHelpBefore, editorHelpAfter = ""] = t("settings.files.textEditorHelp").split("{command}");
   const [creditsBefore, creditsAfter = ""] = t("settings.about.credits").split("{notices}");
+
+  // The help texts name the shortcuts as they are set now.
+  const fontShortcuts = (["fontIncrease", "fontDecrease", "fontReset"] as const)
+    .map((action) => shortcutLabel(action, shortcuts))
+    .filter(Boolean)
+    .join(" / ");
+  const sidebarShortcut = shortcutLabel("toggleSidebar", shortcuts);
 
   const panel = (id: Section) => ({
     role: "tabpanel" as const,
@@ -514,6 +489,31 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             </label>
             <ThemePreview entry={themeById(theme)} fontFamily={cleanFontFamily(fontFamily)} />
             <label className="field">
+              {t("settings.appearance.font")}
+              <select value={catalogChoice(fontFamily, installedFonts)} onChange={(e) => e.target.value && setFontFamily(e.target.value)}>
+                <option value={DEFAULT_FONT_FAMILY}>{t("settings.appearance.fontDefault")}</option>
+                <optgroup label={t("settings.appearance.fontsBundled")}>
+                  {BUNDLED_FONTS.map((font) => (
+                    <option key={font.family} value={font.family}>
+                      {font.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {installedFonts.length > 0 && (
+                  <optgroup label={t("settings.appearance.fontsInstalled")}>
+                    {installedFonts.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <option value="" disabled>
+                  {t("settings.appearance.fontCustom")}
+                </option>
+              </select>
+            </label>
+            <label className="field">
               {t("settings.appearance.fontFamily")}
               <input
                 value={fontFamily}
@@ -533,7 +533,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">{t("settings.appearance.fontHelp")}</p>
+            <p className="muted">
+              {fontShortcuts
+                ? t("settings.appearance.fontHelp", { shortcuts: fontShortcuts })
+                : t("settings.appearance.fontHelpNoShortcut")}
+            </p>
             <label className="check">
               <input
                 type="checkbox"
@@ -542,7 +546,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
               {t("settings.appearance.hideSidebar")}
             </label>
-            <p className="muted">{t("settings.appearance.sidebarHelp")}</p>
+            <p className="muted">
+              {sidebarShortcut
+                ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut })
+                : t("settings.appearance.sidebarHelpNoShortcut")}
+            </p>
             <label className="field">
               {t("settings.appearance.sidebarAtStartup")}
               <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
@@ -606,6 +614,48 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.terminal.confirmMultilinePaste")}
             </label>
             <p className="muted">{t("settings.terminal.rightClickHelp")}</p>
+            <label className="check">
+              <input type="checkbox" checked={errorHighlight} onChange={(e) => setErrorHighlight(e.target.checked)} />
+              {t("settings.terminal.errorHighlight")}
+            </label>
+            <p className="muted">{t("settings.terminal.errorHighlightHelp")}</p>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={shiftEnterNewline}
+                onChange={(e) => setShiftEnterNewline(e.target.checked)}
+              />
+              {t("settings.terminal.shiftEnterNewline")}
+            </label>
+            <p className="muted">{t("settings.terminal.shiftEnterNewlineHelp")}</p>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={attentionNotifications}
+                onChange={(e) => setAttentionNotifications(e.target.checked)}
+              />
+              {t("settings.terminal.attentionNotifications")}
+            </label>
+            <p className="muted">{t("settings.terminal.attentionNotificationsHelp")}</p>
+            <label className="check">
+              <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />
+              {t("settings.terminal.gpuAcceleration")}
+            </label>
+            <p className="muted">{t("settings.terminal.gpuAccelerationHelp")}</p>
+            <label className="check">
+              <input type="checkbox" checked={gitBranch} onChange={(e) => setGitBranch(e.target.checked)} />
+              {t("settings.terminal.gitBranch")}
+            </label>
+            <p className="muted">{t("settings.terminal.gitBranchHelp")}</p>
+          </div>
+
+          <div {...panel("shortcuts")}>
+            <ShortcutsPanel
+              overrides={shortcuts}
+              assistantShortcut={assistantShortcut}
+              onChange={setShortcuts}
+              onAssistantChange={setAssistantShortcut}
+            />
           </div>
 
           <div {...panel("ssh")}>
@@ -645,6 +695,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
               {t("settings.files.details")}
             </label>
+            <label className="check">
+              <input type="checkbox" checked={gitFileStatus} onChange={(e) => setGitFileStatus(e.target.checked)} />
+              {t("settings.files.gitStatus")}
+            </label>
+            <p className="muted">{t("settings.files.gitStatusHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
@@ -731,7 +786,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setAiHistoryContext(e.target.value)}
               />
             </label>
-            <ShortcutField value={assistantShortcut} onChange={setAssistantShortcut} />
             <label className="check">
               <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />
               {t("settings.ai.saveChats")}

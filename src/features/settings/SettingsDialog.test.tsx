@@ -1,14 +1,19 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { SettingsDialog } from "./SettingsDialog";
 import packageJson from "../../../package.json";
-import { DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
+import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
 import { ShellsContext } from "../platform/useShells";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+// jsdom cannot draw text: the dialog sees one installed font.
+vi.mock("./fontCatalog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./fontCatalog")>()),
+  detectInstalledFonts: () => ["Consolas"],
+}));
 const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-opener", () => opener);
 /** What `update_check` answers (a function so a test can make it fail). */
@@ -58,7 +63,7 @@ describe("SettingsDialog", () => {
   it("shows one section at a time from the side menu, starting with Appearance", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     const sections = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(sections).toEqual(["Appearance", "Terminal", "SSH", "Files", "AI", "About"]);
+    expect(sections).toEqual(["Appearance", "Terminal", "Shortcuts", "SSH", "Files", "AI", "About"]);
     const visible = () => screen.getAllByRole("tabpanel").filter((p) => !p.hidden).map((p) => p.getAttribute("aria-label"));
     expect(visible()).toEqual(["Appearance"]);
     expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");
@@ -103,6 +108,7 @@ describe("SettingsDialog", () => {
     expect((screen.getByLabelText("Copy on select") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Right click pastes") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Confirm multi-line paste") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Show errors in red") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Colour scheme") as HTMLSelectElement).value).toBe("catppuccin-mocha");
     expect((screen.getByLabelText("Font family") as HTMLInputElement).value).toBe(DEFAULT_SETTINGS.fontFamily);
     expect((screen.getByLabelText("Remote monitor bar (SSH tabs)") as HTMLInputElement).checked).toBe(true);
@@ -134,12 +140,32 @@ describe("SettingsDialog", () => {
 
   it("lists dark and light schemes separately and previews the selected one", () => {
     setup();
-    const groups = [...document.querySelectorAll("optgroup")].map((g) => g.label);
+    const groups = [...screen.getByLabelText("Colour scheme").querySelectorAll("optgroup")].map((g) => g.label);
     expect(groups).toEqual(["Dark", "Light"]);
     expect(screen.getByRole("option", { name: "Catppuccin Latte" }).parentElement?.getAttribute("label")).toBe("Light");
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "nord" } });
     const preview = screen.getByLabelText("Preview of Nord");
     expect(preview.style.background).toBe("rgb(46, 52, 64)");
+  });
+
+  it("picks the font from the catalogue: default, bundled, installed, or typed by hand", () => {
+    const { onSave } = setup();
+    const font = screen.getByLabelText("Font") as HTMLSelectElement;
+    const family = screen.getByLabelText("Font family") as HTMLInputElement;
+    expect(font.value).toBe(DEFAULT_FONT_FAMILY);
+    expect(screen.getByRole("group", { name: "Included with PlexusTerm" }).textContent).toBe(
+      "JetBrains MonoFira CodeCascadia CodeSource Code ProHack",
+    );
+    expect(screen.getByRole("group", { name: "Installed on this computer" }).textContent).toBe("Consolas");
+    fireEvent.change(font, { target: { value: '"Fira Code Variable", monospace' } });
+    expect(family.value).toBe('"Fira Code Variable", monospace');
+    fireEvent.change(font, { target: { value: "Consolas" } });
+    expect(family.value).toBe("Consolas");
+    fireEvent.change(family, { target: { value: "Hack Nerd Font" } });
+    expect(font.value).toBe("");
+    fireEvent.change(font, { target: { value: '"Cascadia Code Variable", monospace' } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, fontFamily: '"Cascadia Code Variable", monospace' });
   });
 
   it("saves the edited settings, clamping the font size", () => {
@@ -148,6 +174,11 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByLabelText("Copy on select"));
     fireEvent.click(screen.getByLabelText("Right click pastes"));
     fireEvent.click(screen.getByLabelText("Confirm multi-line paste"));
+    fireEvent.click(screen.getByLabelText("Show errors in red"));
+    fireEvent.click(screen.getByLabelText("Shift+Enter starts a new line"));
+    fireEvent.click(screen.getByLabelText("Desktop notifications when a terminal needs attention"));
+    fireEvent.click(screen.getByLabelText("GPU acceleration"));
+    fireEvent.click(screen.getByLabelText("Show the git branch under the terminal"));
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: " Hack Nerd Font " } });
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
@@ -158,6 +189,11 @@ describe("SettingsDialog", () => {
       copyOnSelect: false,
       rightClickPastes: false,
       confirmMultilinePaste: false,
+      errorHighlight: false,
+      shiftEnterNewline: false,
+      attentionNotifications: false,
+      gpuAcceleration: false,
+      gitBranch: false,
       theme: "solarized-light",
       fontFamily: "Hack Nerd Font",
       remoteMonitor: false,
@@ -210,7 +246,6 @@ describe("SettingsDialog", () => {
       ]);
       expect(field("Model").value).toBe("claude-opus-5-5");
       expect(field("History commands sent as context").value).toBe("5");
-      expect(field("Assistant shortcut").value).toBe("Ctrl+Shift+Space");
       expect(screen.queryByLabelText("Base URL")).toBeNull();
       expect(await screen.findByText("No key saved")).toBeTruthy();
     });
@@ -365,6 +400,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("shows git status in file lists by default and saves the choice", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const git = field("Show git status in file lists");
+      expect(git.checked).toBe(true);
+      fireEvent.click(git);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gitFileStatus: false }));
+    });
+
     it("chooses how the sidebar opens at startup (L17)", () => {
       const { onSave } = setup();
       const select = screen.getByLabelText("Sidebar when PlexusTerm opens") as HTMLSelectElement;
@@ -412,26 +457,114 @@ describe("SettingsDialog", () => {
       expect(invoke).toHaveBeenCalledWith("history_save", { contents: '{"version":1,"hosts":{}}' });
     });
 
-    it("captures the assistant shortcut, refusing app shortcuts; Escape cancels without closing", () => {
-      const { onSave, onCancel } = openAi();
-      const input = field("Assistant shortcut");
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: "Control", ctrlKey: true });
-      fireEvent.keyDown(input, { key: "T", ctrlKey: true, shiftKey: true });
-      expect(screen.getByText("Ctrl+Shift+T is already used by PlexusTerm.")).toBeTruthy();
-      fireEvent.keyDown(input, { key: "a" });
-      expect(screen.getByText("Use Ctrl, Alt or Meta with a key.")).toBeTruthy();
-      fireEvent.keyDown(input, { key: "k", ctrlKey: true, altKey: true });
-      expect(input.value).toBe("Ctrl+Alt+K");
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: "j", ctrlKey: true, altKey: true });
-      fireEvent.focus(input);
-      fireEvent.keyDown(input, { key: "Escape" });
-      expect(onCancel).not.toHaveBeenCalled();
-      expect(input.value).toBe("Ctrl+Alt+J");
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
-      expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+J" });
+    it("no longer edits the assistant shortcut, which moved to Shortcuts", () => {
+      openAi();
+      expect(within(screen.getByRole("tabpanel", { name: "AI" })).queryByLabelText("AI assistant")).toBeNull();
     });
+  });
+});
+
+describe("Shortcuts section", () => {
+  const openShortcuts = (settings: TerminalSettings = DEFAULT_SETTINGS) => {
+    const onSave = vi.fn();
+    const onCancel = vi.fn();
+    render(<SettingsDialog settings={settings} onSave={onSave} onCancel={onCancel} initialSection="shortcuts" />);
+    return { onSave, onCancel };
+  };
+  const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+  const press = (input: HTMLElement, init: Record<string, unknown>) => {
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, init);
+  };
+  const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  it("lists the actions by group, with the fixed keys for reference", () => {
+    openShortcuts();
+    for (const group of ["Tabs and panes", "Connections", "Terminal", "Font size", "Sidebar and macros", "Tools", "AI assistant", "Fixed keys"]) {
+      expect(screen.getByRole("heading", { name: group })).toBeTruthy();
+    }
+    expect(field("New terminal").value).toBe("Ctrl+Shift+T");
+    expect(field("Bigger font").value).toBe("Ctrl+=");
+    expect(field("Next tab").value).toBe("");
+    expect(field("Next tab").placeholder).toBe("Not set");
+    expect(screen.getByText("Ctrl+Alt+1–9")).toBeTruthy();
+    expect(screen.getByText("Play the macro bound to that key")).toBeTruthy();
+  });
+
+  it("captures a new combination; Escape cancels without closing; saving emits the overrides", () => {
+    const { onSave, onCancel } = openShortcuts();
+    const input = field("New terminal");
+    press(input, { key: "Control", ctrlKey: true });
+    press(input, { key: "n", ctrlKey: true, altKey: true });
+    expect(input.value).toBe("Ctrl+Alt+N");
+    press(input, { key: "Escape" });
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(input.value).toBe("Ctrl+Alt+N");
+    press(field("Next tab"), { key: "PageDown", ctrlKey: true });
+    save();
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, shortcuts: { newTerminal: "Ctrl+Alt+N", nextTab: "Ctrl+PageDown" } });
+  });
+
+  it("refuses a combination another action, a fixed key or the assistant uses, naming it", () => {
+    openShortcuts();
+    const input = field("Close tab");
+    press(input, { key: "T", ctrlKey: true, shiftKey: true });
+    expect(screen.getByText("Ctrl+Shift+T is already used by “New terminal”.")).toBeTruthy();
+    press(input, { key: "2", ctrlKey: true, altKey: true });
+    expect(screen.getByText("Ctrl+Alt+2 is already used by “Play the macro bound to that key”.")).toBeTruthy();
+    press(input, { key: " ", ctrlKey: true, shiftKey: true });
+    expect(screen.getByText("Ctrl+Shift+Space is already used by “AI assistant”.")).toBeTruthy();
+    press(input, { key: "a" });
+    expect(screen.getByText("Use Ctrl, Alt or Meta with a key.")).toBeTruthy();
+    expect(input.value).toBe("");
+  });
+
+  it("lets a freed default be taken by another action", () => {
+    const { onSave } = openShortcuts();
+    press(field("New terminal"), { key: "n", ctrlKey: true, altKey: true });
+    press(field("Close tab"), { key: "T", ctrlKey: true, shiftKey: true });
+    expect(field("Close tab").value).toBe("Ctrl+Shift+T");
+    save();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ shortcuts: { newTerminal: "Ctrl+Alt+N", closeTab: "Ctrl+Shift+T" } }));
+  });
+
+  it("clears a shortcut, and resets one row to its default", () => {
+    const { onSave } = openShortcuts({ ...DEFAULT_SETTINGS, shortcuts: { splitRight: "Alt+R" } });
+    expect(field("Split right").value).toBe("Alt+R");
+    fireEvent.click(screen.getByRole("button", { name: "Reset “Split right” to its default" }));
+    expect(field("Split right").value).toBe("Ctrl+Shift+D");
+    fireEvent.click(screen.getByRole("button", { name: "Remove the shortcut of “Toggle sidebar”" }));
+    expect(field("Toggle sidebar").value).toBe("");
+    save();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ shortcuts: { toggleSidebar: "" } }));
+  });
+
+  it("refuses a reset whose default another action took meanwhile", () => {
+    openShortcuts({ ...DEFAULT_SETTINGS, shortcuts: { newTerminal: "Alt+N", closeTab: "Ctrl+Shift+T" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reset “New terminal” to its default" }));
+    expect(screen.getByText("Ctrl+Shift+T is already used by “Close tab”.")).toBeTruthy();
+    expect(field("New terminal").value).toBe("Alt+N");
+  });
+
+  it("restores every default, the assistant's too", () => {
+    const { onSave } = openShortcuts({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+K", shortcuts: { keyGen: "Alt+K", find: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Restore defaults" }));
+    expect(field("SSH key generator").value).toBe("");
+    expect(field("Find").value).toBe("Ctrl+Shift+F");
+    expect(field("AI assistant").value).toBe("Ctrl+Shift+Space");
+    save();
+    expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
+  });
+
+  it("captures the assistant shortcut, refusing app shortcuts", () => {
+    const { onSave } = openShortcuts();
+    const input = field("AI assistant");
+    press(input, { key: "T", ctrlKey: true, shiftKey: true });
+    expect(screen.getByText("Ctrl+Shift+T is already used by “New terminal”.")).toBeTruthy();
+    press(input, { key: "j", ctrlKey: true, altKey: true });
+    expect(input.value).toBe("Ctrl+Alt+J");
+    save();
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, assistantShortcut: "Ctrl+Alt+J" });
   });
 });
 

@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "Baixar",
     follow: "Acompanhar a pasta do terminal",
     empty: "Esta pasta está vazia.",
-    hint: "Clique duas vezes em uma pasta para abri-la ou em um arquivo para baixá-lo. Clique com o botão direito em um item para ver mais opções; clique com o botão do meio para digitar o caminho dele no terminal. Solte arquivos aqui para enviá-los.",
+    hint: "Clique em uma pasta para expandi-la no lugar; com clique duplo, a lista passa a partir dela. Clique duas vezes em um arquivo para baixá-lo. As setas movem a seleção e abrem ou fecham pastas. Clique com o botão direito em um item para mais opções; o clique do meio digita o caminho no terminal. Solte arquivos aqui para enviá-los.",
   },
   dialog: {
     replaceQuestion: "Substituir {names} em {dir}?",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "Falha na operação SFTP.",
   },
   menu: {
+    openInTerminal: "Abrir no terminal",
     openTextEditor: "Abrir com o editor de texto padrão",
     openDefaultProgram: "Abrir com o programa padrão",
     openWith: "Abrir com…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "Caminho local",
     deleteFolder: "Excluir a pasta \"{name}\" e todo o seu conteúdo?",
-    hint: "Clique duas vezes em uma pasta para abri-la ou em um arquivo para abri-lo no programa padrão. Clique com o botão direito em um item para mais opções; o clique do meio digita o caminho no terminal.",
+    hint: "Clique em uma pasta para expandi-la no lugar; com clique duplo, a lista passa a partir dela. Clique duas vezes em um arquivo para abri-lo no programa padrão. As setas movem a seleção e abrem ou fecham pastas. Clique com o botão direito em um item para mais opções; o clique do meio digita o caminho no terminal.",
+  },
+  git: {
+    modified: "Modificado",
+    stagedModified: "Modificado (preparado)",
+    added: "Adicionado",
+    deleted: "Excluído",
+    stagedDeleted: "Excluído (preparado)",
+    renamed: "Renomeado",
+    copied: "Copiado",
+    typeChanged: "Tipo alterado",
+    untracked: "Não rastreado",
+    ignored: "Ignorado",
+    conflict: "Conflito",
+  },
+  tree: {
+    loading: "Carregando…",
   },
 };

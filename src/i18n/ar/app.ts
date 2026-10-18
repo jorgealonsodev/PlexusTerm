@@ -90,6 +90,9 @@ export const app: Messages<typeof en> = {
     logging: "يجري التسجيل في ملف",
     closeNamed: "إغلاق {title}",
     newLocal: "طرفية محلية جديدة",
+    attention: "يحتاج إلى انتباهك",
+    attentionNotice: "يحتاج إلى انتباهك",
+    branch: "فرع git: {branch}",
   },
   update: {
     available: "يتوفر PlexusTerm {version}.",

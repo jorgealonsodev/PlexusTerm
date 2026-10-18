@@ -16,6 +16,19 @@ vi.mock("./clipboard", () => clipboard);
 // Only the keyring commands reach `invoke` here (the backend is mocked): a keyring is available.
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => true) }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
+// Error colouring is tested on its own (errorHighlight.test.ts); here only its wiring is checked.
+const errors = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  dispose: vi.fn(),
+  enabled: null as null | (() => boolean),
+}));
+vi.mock("./errorHighlight", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./errorHighlight")>()),
+  attachErrorHighlight: (_term: unknown, options: { enabled: () => boolean }) => {
+    errors.enabled = options.enabled;
+    return { refresh: errors.refresh, dispose: errors.dispose };
+  },
+}));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/session.log") }));
 const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-opener", () => opener);
@@ -23,6 +36,7 @@ vi.mock("@tauri-apps/plugin-opener", () => opener);
 /** Every fake xterm created, newest last. */
 const terms = vi.hoisted(() => [] as FakeTerminal[]);
 interface FakeTerminal {
+  resize(cols: number, rows: number): void;
   options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
   keyHandler: (e: Partial<KeyboardEvent>) => boolean;
   paste: ReturnType<typeof vi.fn>;
@@ -34,6 +48,12 @@ interface FakeTerminal {
   bufferType: "normal" | "alternate";
   /** What xterm's onData would emit for typed keys. */
   type: (data: string) => void;
+  /** Sends an OSC sequence's data to the handler registered for `ident`; false when none is. */
+  osc: (ident: number, data: string) => boolean;
+  /** Rings the bell (BEL), as xterm's onBell does. */
+  bell: () => void;
+  /** Addons loaded into the terminal, in order. */
+  addons: unknown[];
 }
 
 vi.mock("@xterm/xterm", () => ({
@@ -41,7 +61,24 @@ vi.mock("@xterm/xterm", () => ({
     cols = 80;
     rows = 24;
     options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
-    parser = { registerOscHandler: () => ({ dispose() {} }) };
+    oscHandlers = new Map<number, (data: string) => boolean>();
+    parser = {
+      registerOscHandler: (ident: number, handler: (data: string) => boolean) => {
+        this.oscHandlers.set(ident, handler);
+        return { dispose: () => this.oscHandlers.delete(ident) };
+      },
+    };
+    osc(ident: number, data: string) {
+      return this.oscHandlers.get(ident)?.(data) ?? false;
+    }
+    bellHandlers: (() => void)[] = [];
+    onBell = (handler: () => void) => {
+      this.bellHandlers.push(handler);
+      return { dispose() {} };
+    };
+    bell() {
+      this.bellHandlers.forEach((handler) => handler());
+    }
     keyHandler: (e: unknown) => boolean = () => true;
     paste = vi.fn();
     clear = vi.fn();
@@ -75,7 +112,10 @@ vi.mock("@xterm/xterm", () => ({
       this.options = { ...options };
       terms.push(this as unknown as FakeTerminal);
     }
-    loadAddon() {}
+    addons: unknown[] = [];
+    loadAddon(addon: unknown) {
+      this.addons.push(addon);
+    }
     attachCustomKeyEventHandler(handler: (e: unknown) => boolean) {
       this.keyHandler = handler;
     }
@@ -99,11 +139,46 @@ vi.mock("@xterm/xterm", () => ({
     onWriteParsed = () => ({ dispose() {} });
     onCursorMove = () => ({ dispose() {} });
     onScroll = () => ({ dispose() {} });
-    onResize = () => ({ dispose() {} });
+    resizeHandlers: ((size: { cols: number; rows: number }) => void)[] = [];
+    onResize = (handler: (size: { cols: number; rows: number }) => void) => {
+      this.resizeHandlers.push(handler);
+      return { dispose() {} };
+    };
+    resize(cols: number, rows: number) {
+      this.resizeHandlers.forEach((handler) => handler({ cols, rows }));
+    }
     onTitleChange = () => ({ dispose() {} });
   },
 }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class { fit() {} } }));
+/** Every fake WebGL renderer created, newest last; `failNext` makes the next one fail to load. */
+const webgl = vi.hoisted(() => ({
+  addons: [] as { disposed: boolean; loseContext: () => void }[],
+  failNext: false,
+}));
+vi.mock("@xterm/addon-webgl", () => ({
+  WebglAddon: class {
+    disposed = false;
+    lossHandlers: (() => void)[] = [];
+    constructor() {
+      if (webgl.failNext) {
+        webgl.failNext = false;
+        throw new Error("WebGL2 not supported");
+      }
+      webgl.addons.push(this);
+    }
+    onContextLoss(handler: () => void) {
+      this.lossHandlers.push(handler);
+      return { dispose() {} };
+    }
+    loseContext() {
+      this.lossHandlers.forEach((handler) => handler());
+    }
+    dispose() {
+      this.disposed = true;
+    }
+  },
+}));
 vi.mock("@xterm/addon-web-links", () => ({ WebLinksAddon: class {} }));
 vi.mock("@xterm/addon-search", () => ({
   SearchAddon: class {
@@ -173,6 +248,44 @@ describe("TerminalView", () => {
       fireEvent.mouseDown(host, { button: 2, ...mods });
       fireEvent.contextMenu(host, { clientX: 5, clientY: 6, ...mods });
     };
+
+    it("colours error lines again when the setting or the scheme changes, and stops on close", () => {
+      const view = (settings: typeof DEFAULT_SETTINGS) => (
+        <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />
+      );
+      const { rerender, unmount } = render(view(DEFAULT_SETTINGS));
+      errors.refresh.mockClear();
+      errors.dispose.mockClear();
+      expect(errors.enabled?.()).toBe(true);
+      rerender(view({ ...DEFAULT_SETTINGS, errorHighlight: false }));
+      expect(errors.enabled?.()).toBe(false);
+      expect(errors.refresh).toHaveBeenCalledTimes(1);
+      rerender(view({ ...DEFAULT_SETTINGS, errorHighlight: false, theme: "nord" }));
+      expect(errors.refresh).toHaveBeenCalledTimes(2);
+      unmount();
+      expect(errors.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it("colours error lines again once, after a window resize settles", () => {
+      vi.useFakeTimers();
+      try {
+        renderView();
+        errors.refresh.mockClear();
+        term().resize(100, 30);
+        term().resize(110, 32);
+        term().resize(120, 34);
+        expect(errors.refresh).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(150);
+        expect(errors.refresh).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("enables the proposed API that colours the error lines", () => {
+      renderView();
+      expect((term().options as { allowProposedApi?: boolean }).allowProposedApi).toBe(true);
+    });
 
     it("starts with the font size of the settings and follows its changes", () => {
       const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, fontSize: 18 } });
@@ -344,6 +457,199 @@ describe("TerminalView", () => {
       );
       expect(press("k", { altKey: true })).toBe(false);
       expect(press(" ", { ctrlKey: true, shiftKey: true })).toBe(true);
+    });
+
+    it("lets the user's app shortcuts through and keeps the freed default for the shell", () => {
+      renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { newTerminal: "Alt+N", nextTab: "Ctrl+PageDown" } } });
+      const press = (key: string, mods: Partial<KeyboardEvent>) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      expect(press("n", { altKey: true })).toBe(false);
+      expect(press("PageDown", { ctrlKey: true })).toBe(false);
+      expect(press("T", { ctrlKey: true, shiftKey: true })).toBe(true);
+      // Default app shortcuts still stay out of the shell.
+      expect(press("D", { ctrlKey: true, shiftKey: true })).toBe(false);
+    });
+
+    describe("GPU acceleration (WebGL renderer)", () => {
+      const view = (gpuAcceleration: boolean) => (
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, gpuAcceleration }}
+        />
+      );
+      const lastWebgl = () => webgl.addons[webgl.addons.length - 1];
+
+      it("draws with WebGL when it is on, after the terminal is open", () => {
+        const before = webgl.addons.length;
+        render(view(true));
+        expect(webgl.addons.length).toBe(before + 1);
+        expect(term().addons).toContain(lastWebgl());
+      });
+
+      it("keeps xterm's own renderer when it is off, and switches live both ways", () => {
+        const before = webgl.addons.length;
+        const { rerender } = render(view(false));
+        expect(webgl.addons.length).toBe(before);
+        rerender(view(true));
+        expect(webgl.addons.length).toBe(before + 1);
+        const addon = lastWebgl();
+        rerender(view(false));
+        expect(addon.disposed).toBe(true);
+      });
+
+      it("falls back to xterm's own renderer when the WebGL context is lost", () => {
+        render(view(true));
+        const addon = lastWebgl();
+        addon.loseContext();
+        expect(addon.disposed).toBe(true);
+      });
+
+      it("falls back without an error when WebGL cannot start", () => {
+        webgl.failNext = true;
+        const before = webgl.addons.length;
+        expect(() => render(view(true))).not.toThrow();
+        expect(webgl.addons.length).toBe(before);
+        expect(term()).toBeTruthy();
+      });
+    });
+
+    describe("attention requests from command-line tools", () => {
+      it("reports a bell and the OSC 9, 777 and 99 notifications, with their text", () => {
+        const onAttention = vi.fn();
+        renderView({ onAttention });
+        term().bell();
+        expect(onAttention).toHaveBeenLastCalledWith({ title: null, body: null });
+        expect(term().osc(9, "\n\nClaude is waiting for your input")).toBe(true);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: null, body: "Claude is waiting for your input" });
+        expect(term().osc(777, "notify;Claude Code;Task finished")).toBe(true);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Claude Code", body: "Task finished" });
+        term().osc(99, "i=3:d=0:p=title;Codex");
+        term().osc(99, "i=3:p=body;Approval needed");
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Codex", body: "Approval needed" });
+        expect(onAttention).toHaveBeenCalledTimes(4);
+      });
+
+      it("ignores progress reports (OSC 9;4), which Claude Code sends while it works", () => {
+        const onAttention = vi.fn();
+        renderView({ onAttention });
+        term().osc(9, "4;3;");
+        term().osc(9, "4;1;40");
+        expect(onAttention).not.toHaveBeenCalled();
+      });
+
+      it("still keeps the folder reported through OSC 7", () => {
+        const onCwd = vi.fn();
+        renderView({ onCwd });
+        term().osc(7, "file://host/home/me/project");
+        expect(onCwd).toHaveBeenCalledWith("/home/me/project");
+      });
+    });
+
+    describe("prompt signal (git branch refresh)", () => {
+      it("signals the prompt when the shell reports its folder (OSC 7) or marks a prompt (OSC 133)", () => {
+        const onPrompt = vi.fn();
+        renderView({ onPrompt });
+        term().osc(7, "file://host/home/me");
+        term().osc(7, "file://host/home/me");
+        expect(onPrompt).toHaveBeenCalledTimes(2);
+        term().osc(133, "A");
+        term().osc(133, "D;0");
+        expect(onPrompt).toHaveBeenCalledTimes(4);
+        // Command start / output start marks are not a prompt.
+        term().osc(133, "B");
+        term().osc(133, "C");
+        expect(onPrompt).toHaveBeenCalledTimes(4);
+      });
+
+      it("without shell integration, signals once the output of a command sent with Enter goes quiet", async () => {
+        vi.useFakeTimers();
+        try {
+          const onPrompt = vi.fn();
+          let emit: (msg: { event: "output"; data: string }) => void = () => {};
+          backend.start.mockImplementationOnce((_options, onEvent) => {
+            emit = onEvent as typeof emit;
+            return Promise.resolve(7);
+          });
+          renderView({ onPrompt });
+          await act(() => vi.advanceTimersByTimeAsync(10));
+          // Output without a command (a banner) is no prompt.
+          act(() => emit({ event: "output", data: "Welcome\r\n$ " }));
+          await act(() => vi.advanceTimersByTimeAsync(2000));
+          expect(onPrompt).not.toHaveBeenCalled();
+          act(() => term().type("git checkout -b topic\r"));
+          act(() => emit({ event: "output", data: "Switched to a new branch 'topic'\r\n" }));
+          await act(() => vi.advanceTimersByTimeAsync(100));
+          act(() => emit({ event: "output", data: "$ " }));
+          await act(() => vi.advanceTimersByTimeAsync(2000));
+          expect(onPrompt).toHaveBeenCalledTimes(1);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+    });
+
+    describe("Shift+Enter in AI command-line tools", () => {
+      const press = (key: string, mods: Partial<KeyboardEvent> = {}, type = "keydown") =>
+        term().keyHandler({ type, key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      const connected = async (settings = DEFAULT_SETTINGS) => {
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        const view = renderView({ settings });
+        await settle();
+        return view;
+      };
+
+      it("sends a line feed (Ctrl+J), the new-line key of Claude Code, Codex, Gemini CLI and OpenCode", async () => {
+        const onInput = vi.fn();
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        renderView({ onInput });
+        await settle();
+        let passed = true;
+        act(() => {
+          passed = press("Enter", { shiftKey: true });
+        });
+        expect(passed).toBe(false);
+        expect(backend.write).toHaveBeenCalledTimes(1);
+        expect(backend.write).toHaveBeenCalledWith(7, "\n");
+        // Like typing: multi-execution and macros see it too.
+        expect(onInput).toHaveBeenCalledWith("\n");
+        // keypress / keyup of the same key are kept from xterm without sending again.
+        expect(press("Enter", { shiftKey: true }, "keypress")).toBe(false);
+        expect(press("Enter", { shiftKey: true }, "keyup")).toBe(false);
+        expect(backend.write).toHaveBeenCalledTimes(1);
+      });
+
+      it("leaves Enter, Ctrl+Enter, Alt+Enter and Ctrl+Shift+Enter to xterm unchanged", async () => {
+        await connected();
+        for (const mods of [{}, { ctrlKey: true }, { altKey: true }, { ctrlKey: true, shiftKey: true }, { metaKey: true, shiftKey: true }]) {
+          expect(press("Enter", mods)).toBe(true);
+        }
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+
+      it("sends Enter's carriage return like before when the setting is off", async () => {
+        await connected({ ...DEFAULT_SETTINGS, shiftEnterNewline: false });
+        expect(press("Enter", { shiftKey: true })).toBe(true);
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+
+      it("leaves a key being composed by an input method alone", async () => {
+        await connected();
+        expect(press("Enter", { shiftKey: true, isComposing: true })).toBe(true);
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+    });
+
+    it("runs the pane actions bound by the user: select all and clear", () => {
+      renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { selectAll: "Alt+A", clear: "Alt+L" } } });
+      const press = (key: string, mods: Partial<KeyboardEvent>) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      act(() => void press("a", { altKey: true }));
+      expect(term().selectAll).toHaveBeenCalled();
+      act(() => void press("l", { altKey: true }));
+      expect(term().clear).toHaveBeenCalled();
     });
 
     it("hands the assistant the pane's selection and a way to focus it back (S3)", () => {

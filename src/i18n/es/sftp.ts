@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "Descargar",
     follow: "Seguir la carpeta del terminal",
     empty: "Esta carpeta está vacía.",
-    hint: "Haz doble clic en una carpeta para abrirla o en un archivo para descargarlo. Haz clic derecho en un elemento para ver más opciones; con el clic central se escribe su ruta en el terminal. Suelta archivos aquí para subirlos.",
+    hint: "Haz clic en una carpeta para desplegarla en el sitio; con doble clic se lista desde ella. Haz doble clic en un archivo para descargarlo. Las flechas mueven la selección y abren o cierran carpetas. Haz clic derecho en un elemento para ver más opciones; con el clic central se escribe su ruta en el terminal. Suelta archivos aquí para subirlos.",
   },
   dialog: {
     replaceQuestion: "¿Reemplazar {names} en {dir}?",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "Error en la operación SFTP.",
   },
   menu: {
+    openInTerminal: "Abrir en terminal",
     openTextEditor: "Abrir con el editor de texto predeterminado",
     openDefaultProgram: "Abrir con el programa predeterminado",
     openWith: "Abrir con…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "Ruta local",
     deleteFolder: "¿Eliminar la carpeta \"{name}\" y todo su contenido?",
-    hint: "Haz doble clic en una carpeta para abrirla o en un archivo para abrirlo con su programa predeterminado. Haz clic derecho en un elemento para ver más opciones; con el botón central se escribe su ruta en la terminal.",
+    hint: "Haz clic en una carpeta para desplegarla en el sitio; con doble clic se lista desde ella. Haz doble clic en un archivo para abrirlo con su programa predeterminado. Las flechas mueven la selección y abren o cierran carpetas. Haz clic derecho en un elemento para ver más opciones; con el botón central se escribe su ruta en la terminal.",
+  },
+  git: {
+    modified: "Modificado",
+    stagedModified: "Modificado (preparado)",
+    added: "Añadido",
+    deleted: "Eliminado",
+    stagedDeleted: "Eliminado (preparado)",
+    renamed: "Renombrado",
+    copied: "Copiado",
+    typeChanged: "Tipo cambiado",
+    untracked: "Sin seguimiento",
+    ignored: "Ignorado",
+    conflict: "Conflicto",
+  },
+  tree: {
+    loading: "Cargando…",
   },
 };

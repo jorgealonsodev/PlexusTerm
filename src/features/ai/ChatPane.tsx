@@ -2,6 +2,7 @@ import { FileText, History, MessageSquarePlus, Play, Trash2, X } from "lucide-re
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import type { TerminalSettings } from "../settings/settings";
+import { shortcutLabel } from "../panes/shortcuts";
 import { writeText } from "../terminal/clipboard";
 import { AnswerText } from "./AnswerText";
 import { aiAssist, aiKeyStatus, describeAiError, isAiError, type AiProvider, type AiTurn } from "./aiClient";
@@ -339,7 +340,11 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
           type="button"
           className="chat__close"
           aria-label={t("ai.chat.close")}
-          title={t("ai.chat.closeTitle")}
+          title={
+            shortcutLabel("closePane", settings.shortcuts)
+              ? t("ai.chat.closeTitle", { shortcut: shortcutLabel("closePane", settings.shortcuts) })
+              : t("ai.chat.close")
+          }
           onClick={onClose}
         >
           <X size={16} />

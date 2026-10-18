@@ -85,6 +85,9 @@ export const app: Messages<typeof en> = {
     logging: "正在记录到文件",
     closeNamed: "关闭 {title}",
     newLocal: "新建本地终端",
+    attention: "需要关注",
+    attentionNotice: "需要你的关注",
+    branch: "git 分支：{branch}",
   },
   update: {
     available: "PlexusTerm {version} 已发布。",

@@ -20,6 +20,22 @@ const luminance = (hex: string) => {
 const readableOn = (background: string) => (luminance(background) > 0.4 ? "#000000" : "#ffffff");
 
 /**
+ * VS Code's `gitDecoration.*ResourceForeground` defaults (dark, light), for the git status of the
+ * file lists (`--git-<name>`).
+ */
+const GIT_COLORS: Record<string, [string, string]> = {
+  added: ["#81b88b", "#587c0c"],
+  modified: ["#e2c08d", "#895503"],
+  deleted: ["#c74e39", "#ad0707"],
+  renamed: ["#73c991", "#007100"],
+  untracked: ["#73c991", "#007100"],
+  ignored: ["#8c8c8c", "#8e8e90"],
+  stageModified: ["#e2c08d", "#895503"],
+  stageDeleted: ["#c74e39", "#ad0707"],
+  conflicting: ["#e4676b", "#ad0707"],
+};
+
+/**
  * CSS custom properties of the window (toolbar, sidebar, dialogs) for a colour scheme,
  * so the whole interface follows the terminal's scheme. Panels and borders are layered
  * from the background towards the text; status colours come from the ANSI palette.
@@ -41,6 +57,7 @@ export function uiColors({ dark, theme }: TerminalThemeEntry): Record<string, st
     "--danger": theme.red!,
     "--warning": theme.yellow!,
     "--success": theme.green!,
+    ...Object.fromEntries(Object.entries(GIT_COLORS).map(([name, [onDark, onLight]]) => [`--git-${name}`, dark ? onDark : onLight])),
     "color-scheme": dark ? "dark" : "light",
   };
 }

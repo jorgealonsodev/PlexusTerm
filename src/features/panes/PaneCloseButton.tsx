@@ -5,8 +5,9 @@ import { useT } from "../../i18n/i18n";
 /**
  * The top-right corner of a split pane: the × appears while the pointer is in it. Shown with
  * mouse events rather than CSS :hover, which WebKitGTK does not update over the terminal.
+ * `shortcut` is the close-pane shortcut shown in the tooltip ("" when it is unbound).
  */
-export function PaneCloseButton({ onClose }: { onClose: () => void }) {
+export function PaneCloseButton({ onClose, shortcut = "Ctrl+Shift+W" }: { onClose: () => void; shortcut?: string }) {
   const t = useT();
   const [shown, setShown] = useState(false);
   return (
@@ -15,7 +16,7 @@ export function PaneCloseButton({ onClose }: { onClose: () => void }) {
         <button
           className="pane__close"
           aria-label={t("app.pane.close")}
-          title={t("app.pane.closeTitle", { shortcut: "Ctrl+Shift+W" })}
+          title={shortcut ? t("app.pane.closeTitle", { shortcut }) : t("app.pane.close")}
           // Keep the keyboard focus where it is.
           onMouseDown={(e) => {
             e.preventDefault();

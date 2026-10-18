@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "下载",
     follow: "跟随终端文件夹",
     empty: "此文件夹为空。",
-    hint: "双击文件夹可打开，双击文件可下载。右键单击条目可查看更多选项；中键单击可将其路径输入到终端。将文件拖放到此处即可上传。",
+    hint: "单击文件夹可就地展开,双击则从该文件夹开始列出。双击文件将其下载。方向键可移动选择并展开或折叠文件夹。右键单击条目查看更多选项;中键单击会将其路径输入终端。将文件拖放到此处即可上传。",
   },
   dialog: {
     replaceQuestion: "替换 {dir} 中的 {names}？",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 操作失败。",
   },
   menu: {
+    openInTerminal: "在终端中打开",
     openTextEditor: "用默认文本编辑器打开",
     openDefaultProgram: "用默认程序打开",
     openWith: "打开方式…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "本地路径",
     deleteFolder: "删除文件夹“{name}”及其全部内容?",
-    hint: "双击文件夹将其打开,双击文件则用默认程序打开。右键单击条目查看更多选项;中键单击会将其路径输入终端。",
+    hint: "单击文件夹可就地展开,双击则从该文件夹开始列出。双击文件则用默认程序打开。方向键可移动选择并展开或折叠文件夹。右键单击条目查看更多选项;中键单击会将其路径输入终端。",
+  },
+  git: {
+    modified: "已修改",
+    stagedModified: "已修改 (已暂存)",
+    added: "已添加",
+    deleted: "已删除",
+    stagedDeleted: "已删除 (已暂存)",
+    renamed: "已重命名",
+    copied: "已复制",
+    typeChanged: "类型已更改",
+    untracked: "未跟踪",
+    ignored: "已忽略",
+    conflict: "冲突",
+  },
+  tree: {
+    loading: "正在加载…",
   },
 };

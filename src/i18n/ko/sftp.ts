@@ -12,7 +12,7 @@ export const sftp: Messages<typeof en> = {
     download: "다운로드",
     follow: "터미널 폴더 따라가기",
     empty: "이 폴더는 비어 있습니다.",
-    hint: "폴더를 두 번 클릭하면 열리고 파일을 두 번 클릭하면 다운로드됩니다. 항목을 마우스 오른쪽 단추로 클릭하면 추가 옵션이 표시되고, 가운데 단추로 클릭하면 터미널에 경로가 입력됩니다. 파일을 여기에 놓으면 업로드됩니다.",
+    hint: "폴더를 클릭하면 그 자리에서 펼쳐지고, 두 번 클릭하면 그 폴더부터 목록을 보여 줍니다. 파일을 두 번 클릭하면 다운로드됩니다. 화살표 키로 이동하고 폴더를 열거나 닫습니다. 항목을 마우스 오른쪽 버튼으로 클릭하면 더 많은 옵션이 표시되고, 가운데 버튼으로 클릭하면 경로가 터미널에 입력됩니다. 여기에 파일을 놓으면 업로드됩니다.",
   },
   dialog: {
     replaceQuestion: "{dir}의 {names}을(를) 바꾸시겠습니까?",
@@ -51,6 +51,7 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 작업에 실패했습니다.",
   },
   menu: {
+    openInTerminal: "터미널에서 열기",
     openTextEditor: "기본 텍스트 편집기로 열기",
     openDefaultProgram: "기본 프로그램으로 열기",
     openWith: "연결 프로그램…",
@@ -101,6 +102,22 @@ export const sftp: Messages<typeof en> = {
   local: {
     path: "로컬 경로",
     deleteFolder: "\"{name}\" 폴더와 그 안의 모든 항목을 삭제할까요?",
-    hint: "폴더를 두 번 클릭하면 열리고, 파일은 기본 프로그램으로 열립니다. 항목을 마우스 오른쪽 버튼으로 클릭하면 더 많은 옵션이 표시되고, 가운데 버튼으로 클릭하면 경로가 터미널에 입력됩니다.",
+    hint: "폴더를 클릭하면 그 자리에서 펼쳐지고, 두 번 클릭하면 그 폴더부터 목록을 보여 줍니다. 파일을 두 번 클릭하면 기본 프로그램으로 열립니다. 화살표 키로 이동하고 폴더를 열거나 닫습니다. 항목을 마우스 오른쪽 버튼으로 클릭하면 더 많은 옵션이 표시되고, 가운데 버튼으로 클릭하면 경로가 터미널에 입력됩니다.",
+  },
+  git: {
+    modified: "수정됨",
+    stagedModified: "수정됨 (스테이징됨)",
+    added: "추가됨",
+    deleted: "삭제됨",
+    stagedDeleted: "삭제됨 (스테이징됨)",
+    renamed: "이름 변경됨",
+    copied: "복사됨",
+    typeChanged: "형식 변경됨",
+    untracked: "추적되지 않음",
+    ignored: "무시됨",
+    conflict: "충돌",
+  },
+  tree: {
+    loading: "불러오는 중…",
   },
 };
