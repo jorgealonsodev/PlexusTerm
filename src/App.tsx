@@ -1266,9 +1266,12 @@ function AppContent() {
             onActivate={(key) => dispatch({ type: "activate", key })}
             onClose={(key) => dispatch({ type: "close", key })}
             onNew={() => {
-              // From the DEV column the new terminal stays in DEV mode, as the column does.
-              if (activeDev) devOnStart.current = `tab-${state.nextSeq}`;
-              openLocal();
+              if (!activeDev) return openLocal();
+              // From the DEV column the new terminal stays in DEV mode, as the column does, and starts
+              // in the Explorer's folder when that folder is on this computer.
+              devOnStart.current = `tab-${state.nextSeq}`;
+              const here = activeTab?.target.type === "local" ? devAnchor : null;
+              open(localTargetOf({ localShell, localShellArgs, localCwd: here ?? localStart }));
             }}
             onDuplicate={(key) => {
               const tab = state.tabs.find((t) => t.key === key);

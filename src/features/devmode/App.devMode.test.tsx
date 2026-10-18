@@ -19,6 +19,7 @@ const system = vi.hoisted(() => ({ showSystemNotification: vi.fn(async () => {})
 vi.mock("../notifications/systemNotification", () => system);
 
 interface StubProps {
+  target: { type: string; cwd?: string };
   onSession?: (id: number | null) => void;
   onCwd?: (path: string) => void;
   onTitle: (title: string) => void;
@@ -224,11 +225,12 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
-  it("opens the column's new terminal in DEV mode; the + on top still opens a plain one", async () => {
-    await renderApp();
+  it("opens the column's new terminal in DEV mode at the Explorer's folder; the + on top still opens a plain one", async () => {
+    await renderApp({ localCwd: "/srv/default" });
     fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
     await settle();
     expect(within(tabBar()).getAllByRole("tab")).toHaveLength(2);
+    expect(stub.props.target.cwd).toBe("/srv/default");
     expect(devOn()).toBe(false);
     expect(tabBar().classList.contains("tabbar--column")).toBe(false);
 
@@ -242,6 +244,8 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
     expect(tabBar().classList.contains("tabbar--column")).toBe(true);
     expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
+    // It starts in the Explorer's folder, not in the default one.
+    expect(stub.props.target.cwd).toBe("/home/me/repo/src");
   });
 
   it("marks a tab as working while its CLI prints, and only while a CLI runs there", async () => {
