@@ -158,18 +158,22 @@ describe("TabBar", () => {
         />,
       );
 
-    it("lists one row per tab with its CLI's icon, title and project folder", () => {
+    it("lists one row per tab with its CLI's icon and its folder, or its title without a folder", () => {
       const { container } = renderColumn();
       expect(container.querySelector(".tabbar--column")).not.toBeNull();
       expect(screen.getByRole("tablist").getAttribute("aria-orientation")).toBe("vertical");
       const rows = screen.getAllByRole("tab");
       expect(rows).toHaveLength(3);
+      const title = (row: HTMLElement) => row.querySelector(".tab__title")?.textContent;
       expect(rows[0].querySelector(".cli-icon--claude")).not.toBeNull();
-      expect(rows[0].querySelector(".tab__folder")?.textContent).toBe("plexusterm");
+      expect(title(rows[0])).toBe("plexusterm");
       expect(rows[1].querySelector(".cli-icon--codex")).not.toBeNull();
+      expect(title(rows[1])).toBe("api");
       expect(rows[2].querySelector(".cli-icon--terminal")).not.toBeNull();
-      expect(rows[2].querySelector(".tab__folder")).toBeNull();
-      expect(rows[0].textContent).toContain("one");
+      expect(title(rows[2])).toBe("three");
+      // Only one text per row: the folder is not repeated in grey.
+      expect(document.querySelector(".tab__folder")).toBeNull();
+      expect(rows[0].textContent).not.toContain("one");
     });
 
     it("drops the CLI's own mark from the title when its icon is shown", () => {
@@ -192,10 +196,9 @@ describe("TabBar", () => {
       );
       const rows = screen.getAllByRole("tab");
       const title = (row: HTMLElement) => row.querySelector(".tab__title")?.textContent ?? null;
-      // A title that only names the CLI is left out: the icon says it, the folder follows.
-      expect(rows.map(title)).toEqual(["daily-work", null, "π - notes", null, "work"]);
+      // Rows with a folder show it; the one without keeps its own title.
+      expect(rows.map(title)).toEqual(["daily-work", "app", "π - notes", "app", "app"]);
       expect(rows[1].querySelector(".cli-icon--claude")).not.toBeNull();
-      expect(rows[1].querySelector(".tab__folder")?.textContent).toBe("app");
       // The tooltip and the close button still name the tab.
       expect(within(rows[1]).getByRole("button", { name: /✳ Claude Code/ })).toBeTruthy();
     });
@@ -224,7 +227,7 @@ describe("TabBar", () => {
 
     it("keeps the attention and logging marks and the right-click menu", () => {
       renderColumn({ attention: new Set(["t1"]), logging: new Set(["t3"]), onDuplicate: () => {} });
-      expect(screen.getByLabelText("Needs attention").closest("[role=tab]")?.textContent).toContain("one");
+      expect(screen.getByLabelText("Needs attention").closest("[role=tab]")?.textContent).toContain("plexusterm");
       expect(screen.getByLabelText("Logging to file").closest("[role=tab]")?.textContent).toContain("three");
       fireEvent.contextMenu(screen.getAllByRole("tab")[1], { clientX: 1, clientY: 1 });
       expect(screen.getByText("Duplicate tab")).toBeTruthy();

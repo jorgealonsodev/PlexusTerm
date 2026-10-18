@@ -2315,6 +2315,7 @@ body.is-dragging-path {
 
 .tab--row {
   max-width: none;
+  font-size: 14px;
   gap: 6px;
   padding: 4px 4px 4px 10px;
   border-inline-end: none;
@@ -2325,19 +2326,10 @@ body.is-dragging-path {
 }
 
 .tab--row .tab__title {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.tab__folder {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .tab--row .tab__close {
   margin-inline-start: auto;
