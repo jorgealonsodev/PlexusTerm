@@ -56,4 +56,15 @@ describe("custom colour", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
+
+  it("says why picking from the screen failed", async () => {
+    const pick = vi.fn(async () => {
+      throw "cannot pick a colour from the screen: another program is holding the pointer";
+    });
+    render(<CustomColorDialog initial="#2e86de" pickFromScreen={pick} onAccept={() => {}} onCancel={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Pick from the screen" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "cannot pick a colour from the screen: another program is holding the pointer",
+    );
+  });
 });

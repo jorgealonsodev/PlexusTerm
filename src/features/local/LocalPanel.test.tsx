@@ -616,5 +616,19 @@ describe("LocalPanel repository of the selection", () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(mocked.repoInfo).not.toHaveBeenCalled();
   });
-});
 
+  it("keeps showing the repository while it is read again, without flickering", async () => {
+    mocked.repoInfo.mockResolvedValue({ root: "/home/me/app", branch: "main", dirty: false });
+    const { rerender } = render(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 0 } }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    await waitFor(() => expect(footer()?.textContent).toBe("appmain"));
+    let answer: (info: { root: string; branch: string; dirty: boolean }) => void = () => {};
+    mocked.repoInfo.mockImplementationOnce(() => new Promise((r) => (answer = r)));
+    rerender(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 1 } }));
+    // The prompt came back: read again, the bar stays meanwhile.
+    await waitFor(() => expect(mocked.repoInfo).toHaveBeenCalledTimes(2));
+    expect(footer()?.textContent).toBe("appmain");
+    await act(async () => answer({ root: "/home/me/app", branch: "main", dirty: true }));
+    expect(footer()?.textContent).toBe("appmain*");
+  });
+});

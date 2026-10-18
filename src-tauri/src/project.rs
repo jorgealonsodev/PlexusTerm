@@ -89,6 +89,11 @@ pub fn set_color(project: &Path, kind: ColorKind, color: Option<&str>) -> Result
     if color.is_none() && !settings_path(project).exists() {
         return Ok(());
     }
+    // One read-change-write at a time, so two colours saved together are both kept.
+    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _saving = SAVING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut settings = read_settings(project)?;
     match color {
         Some(c) => settings.insert(kind.key().into(), Value::String(c)),
@@ -215,6 +220,23 @@ mod tests {
             fs::read_to_string(dir.path().join(".plexusterm/.gitignore")).unwrap(),
             "# shared\n"
         );
+    }
+
+    #[test]
+    fn colours_saved_at_the_same_time_are_both_kept() {
+        for _ in 0..20 {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().to_path_buf();
+            let other = path.clone();
+            let tab = std::thread::spawn(move || {
+                set_color(&other, ColorKind::Tab, Some("#111111")).unwrap()
+            });
+            set_color(&path, ColorKind::Toolbar, Some("#222222")).unwrap();
+            tab.join().unwrap();
+            let colors = colors_of(&path);
+            assert_eq!(colors.tab_color.as_deref(), Some("#111111"));
+            assert_eq!(colors.toolbar_color.as_deref(), Some("#222222"));
+        }
     }
 
     #[test]

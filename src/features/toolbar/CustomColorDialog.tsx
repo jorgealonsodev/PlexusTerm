@@ -21,11 +21,13 @@ interface CustomColorDialogProps {
 export function CustomColorDialog({ initial, pickFromScreen, onAccept, onCancel }: CustomColorDialogProps) {
   const t = useT();
   const [code, setCode] = useState(initial ?? "#2e86de");
+  const [pickError, setPickError] = useState<string | null>(null);
   const color = VALID.test(code.trim()) ? code.trim().toLowerCase() : null;
   const pick = () => {
+    setPickError(null);
     void pickFromScreen?.()
       .then((picked) => picked && VALID.test(picked) && setCode(picked.toLowerCase()))
-      .catch(() => {});
+      .catch((err) => setPickError(typeof err === "string" ? err : err instanceof Error ? err.message : String(err)));
   };
   return (
     <div
@@ -71,6 +73,11 @@ export function CustomColorDialog({ initial, pickFromScreen, onAccept, onCancel 
             </button>
           )}
         </div>
+        {pickError && (
+          <p className="form-error" role="alert">
+            {pickError}
+          </p>
+        )}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>
             {t("common.cancel")}

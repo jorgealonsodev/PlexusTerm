@@ -283,8 +283,9 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   // The repository of the selected entry, as VS Code's status bar shows it (DEV mode, git status on).
   const [repo, setRepo] = useState<{ root: string; branch: string; dirty: boolean } | null>(null);
   const readRepo = devStyle && (git?.enabled ?? false) && selected !== null;
+  // Another entry (or none) clears it; reading the same entry again keeps it until the answer.
+  useEffect(() => setRepo(null), [readRepo, selected]);
   useEffect(() => {
-    setRepo(null);
     if (!readRepo || selected === null) return;
     let live = true;
     local
