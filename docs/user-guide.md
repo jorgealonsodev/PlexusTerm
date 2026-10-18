@@ -344,6 +344,7 @@ While a tab is in DEV mode:
 - The bar under the terminal shows the [git branch](#git-branch).
 - The Explorer (local tabs) or the SFTP browser (SSH tabs) lists the project the tool started in, the git repository that holds the folder the command ran in (or that folder, outside a repository), and stays there while the terminal changes folder; it also looks like VS Code (see [DEV mode file lists](#dev-mode-file-lists)). Opening folders in it never types `cd` in the terminal, where the tool is running. When DEV mode ends, the list follows the terminal's folder again.
 - Desktop notifications for that tab are sent even when **Desktop notifications when a terminal needs attention** is off.
+- The list's **Follow terminal folder** box is hidden: the list stays at the project folder.
 
 ### Git branch
 

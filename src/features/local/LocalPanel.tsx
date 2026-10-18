@@ -314,10 +314,13 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           {t("common.delete")}
         </button>
       </div>
-      <label className="sftp__follow">
-        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-        {t("sftp.panel.follow")}
-      </label>
+      {/* DEV mode keeps the list at the project folder: following the terminal does not apply. */}
+      {!devStyle && (
+        <label className="sftp__follow">
+          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+          {t("sftp.panel.follow")}
+        </label>
+      )}
       {error && (
         <p className="sidebar__note form-error" role="alert">
           {error}
