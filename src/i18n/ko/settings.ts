@@ -200,6 +200,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "오픈 소스 라이선스",
+    licensesIntro: "PlexusTerm은 다음 오픈 소스 라이브러리로 만들어졌습니다. 하나를 선택하면 라이선스를 볼 수 있습니다.",
+    licensesSearch: "라이브러리 검색",
+    licensesList: "라이브러리",
+    licensesLoading: "라이선스를 불러오는 중…",
+    licensesFailed: "라이선스를 불러올 수 없습니다.",
+    licensesCount: { other: "라이브러리 {count}개" },
     checkUpdates: "업데이트 확인",
     checking: "업데이트 확인 중…",
     upToDate: "PlexusTerm이 최신 버전입니다 ({version}).",

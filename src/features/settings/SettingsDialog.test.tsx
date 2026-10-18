@@ -738,3 +738,23 @@ describe("Feedback in About", () => {
     expect(opener.openUrl).toHaveBeenCalledWith(`${issues}?template=feature_request.yml`);
   });
 });
+
+describe("Open-source licenses in About", () => {
+  it("lists the shipped libraries in their own dialog and goes back to Settings", async () => {
+    const onCancel = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={onCancel} initialSection="about" />);
+    fireEvent.click(screen.getByRole("button", { name: "Open-source licenses" }));
+    const list = await screen.findByRole("list", { name: "Libraries" }, { timeout: 5000 });
+    expect(within(list).getByRole("button", { name: /^react \d/ })).toBeTruthy();
+    expect(within(list).getByRole("button", { name: /^russh \d/ })).toBeTruthy();
+    // Escape closes the licenses only, not Settings under them.
+    fireEvent.keyDown(list, { key: "Escape" });
+    expect(screen.queryByRole("list", { name: "Libraries" })).toBeNull();
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Open-source licenses" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("list", { name: "Libraries" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open-source licenses" })).toBeTruthy();
+  });
+});
+

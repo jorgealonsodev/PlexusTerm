@@ -200,6 +200,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "تراخيص المصادر المفتوحة",
+    licensesIntro: "بُني PlexusTerm بهذه المكتبات مفتوحة المصدر. اختر مكتبة لعرض ترخيصها.",
+    licensesSearch: "البحث في المكتبات",
+    licensesList: "المكتبات",
+    licensesLoading: "جارٍ تحميل التراخيص…",
+    licensesFailed: "تعذّر تحميل التراخيص.",
+    licensesCount: { zero: "لا مكتبات", one: "مكتبة واحدة", two: "مكتبتان", few: "{count} مكتبات", many: "{count} مكتبة", other: "{count} مكتبة" },
     checkUpdates: "التحقق من التحديثات",
     checking: "جارٍ التحقق من التحديثات…",
     upToDate: "PlexusTerm محدَّث ({version}).",

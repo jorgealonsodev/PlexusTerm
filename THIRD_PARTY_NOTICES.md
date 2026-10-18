@@ -1,5 +1,7 @@
 # Third-party notices and credits
 
+The libraries compiled into PlexusTerm (Rust crates and npm packages) and their license texts are listed in the app, in **Settings → About → Open-source licenses**, generated from the lockfiles with `pnpm licenses:generate` (`src/features/licenses/licenses.generated.json`). This file credits the other material bundled with the app.
+
 ## Terminal colour schemes
 
 Thanks to the authors of every colour scheme PlexusTerm ships. Each scheme belongs to its author; the links point to the original project.

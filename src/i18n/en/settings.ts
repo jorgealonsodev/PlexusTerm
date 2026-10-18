@@ -198,6 +198,13 @@ export const settings = {
     },
   },
   about: {
+    licenses: "Open-source licenses",
+    licensesIntro: "PlexusTerm is built with these open-source libraries. Select one to see its license.",
+    licensesSearch: "Search libraries",
+    licensesList: "Libraries",
+    licensesLoading: "Loading the licenses…",
+    licensesFailed: "The licenses could not be loaded.",
+    licensesCount: { one: "{count} library", other: "{count} libraries" },
     checkUpdates: "Check for updates",
     checking: "Checking for updates…",
     upToDate: "PlexusTerm is up to date ({version}).",

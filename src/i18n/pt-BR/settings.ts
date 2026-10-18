@@ -200,6 +200,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "Licenças de código aberto",
+    licensesIntro: "O PlexusTerm é feito com estas bibliotecas de código aberto. Selecione uma para ver sua licença.",
+    licensesSearch: "Buscar bibliotecas",
+    licensesList: "Bibliotecas",
+    licensesLoading: "Carregando as licenças…",
+    licensesFailed: "Não foi possível carregar as licenças.",
+    licensesCount: { one: "{count} biblioteca", many: "{count} bibliotecas", other: "{count} bibliotecas" },
     checkUpdates: "Procurar atualizações",
     checking: "Procurando atualizações…",
     upToDate: "O PlexusTerm está atualizado ({version}).",

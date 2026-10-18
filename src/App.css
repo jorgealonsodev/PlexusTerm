@@ -2628,3 +2628,63 @@ body.is-dragging-path {
   min-width: 0;
   white-space: nowrap;
 }
+
+/* Settings → About → Open-source licenses. */
+.licenses {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(720px, 92vw);
+  max-height: 86vh;
+}
+
+.licenses__list {
+  flex: 1 1 auto;
+  min-height: 120px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.licenses__row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 10px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.licenses__row:hover,
+.licenses__row[aria-expanded="true"] {
+  background: var(--surface-2);
+}
+
+.licenses__license {
+  flex: none;
+  color: var(--muted);
+}
+
+.licenses__detail {
+  padding: 6px 10px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.licenses__text {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 8px;
+  overflow: auto;
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 11px;
+  white-space: pre-wrap;
+}

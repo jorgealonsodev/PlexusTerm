@@ -197,6 +197,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "开源许可证",
+    licensesIntro: "PlexusTerm 使用以下开源库构建。选择一个可查看其许可证。",
+    licensesSearch: "搜索库",
+    licensesList: "库",
+    licensesLoading: "正在加载许可证…",
+    licensesFailed: "无法加载许可证。",
+    licensesCount: { other: "{count} 个库" },
     checkUpdates: "检查更新",
     checking: "正在检查更新…",
     upToDate: "PlexusTerm 已是最新版本 ({version})。",

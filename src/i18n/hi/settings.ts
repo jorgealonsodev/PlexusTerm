@@ -200,6 +200,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "ओपन-सोर्स लाइसेंस",
+    licensesIntro: "PlexusTerm इन ओपन-सोर्स लाइब्रेरियों से बना है। किसी एक को चुनकर उसका लाइसेंस देखें।",
+    licensesSearch: "लाइब्रेरी खोजें",
+    licensesList: "लाइब्रेरियाँ",
+    licensesLoading: "लाइसेंस लोड हो रहे हैं…",
+    licensesFailed: "लाइसेंस लोड नहीं हो सके।",
+    licensesCount: { one: "{count} लाइब्रेरी", other: "{count} लाइब्रेरियाँ" },
     checkUpdates: "अपडेट जाँचें",
     checking: "अपडेट जाँचे जा रहे हैं…",
     upToDate: "PlexusTerm अप टू डेट है ({version})।",

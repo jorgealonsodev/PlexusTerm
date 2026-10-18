@@ -200,6 +200,13 @@ export const settings: Messages<typeof en> = {
     },
   },
   about: {
+    licenses: "オープンソース ライセンス",
+    licensesIntro: "PlexusTerm は次のオープンソース ライブラリで作られています。選択するとライセンスを表示します。",
+    licensesSearch: "ライブラリを検索",
+    licensesList: "ライブラリ",
+    licensesLoading: "ライセンスを読み込んでいます…",
+    licensesFailed: "ライセンスを読み込めませんでした。",
+    licensesCount: { other: "{count} 個のライブラリ" },
     checkUpdates: "更新を確認",
     checking: "更新を確認しています…",
     upToDate: "PlexusTerm は最新です ({version})。",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -268,6 +269,7 @@ function openLink(e: MouseEvent, url: string) {
 
 /** Terminal settings shared by every tab (S15.6), in sections chosen from a side menu. */
 export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow }: SettingsDialogProps) {
+  const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
   const platform = usePlatform();
   const [language, setLanguage] = useState<LanguageSetting>(settings.language);
@@ -857,6 +859,14 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </a>
                 {creditsAfter}
               </p>
+              <p>
+                <button type="button" className="btn" onClick={() => setLicensesOpen(true)}>
+                  {t("settings.about.licenses")}
+                </button>
+              </p>
+              {licensesOpen && (
+                <LicensesDialog onClose={() => setLicensesOpen(false)} onOpenLink={(url) => void openUrl(url).catch(() => {})} />
+              )}
             </div>
           </div>
         </div>
