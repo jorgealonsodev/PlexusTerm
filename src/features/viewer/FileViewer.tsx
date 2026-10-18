@@ -3,7 +3,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
-import { createCodeView } from "./codeView";
+import { createCodeView, reloadText } from "./codeView";
+import type { EditorView } from "@codemirror/view";
 import { isMarkdown, renderMarkdown } from "./markdown";
 
 /** A file's text as the backend reads it for the viewer. */
@@ -21,17 +22,36 @@ interface FileViewerProps {
   onClose: () => void;
   /** Opens a web link of a Markdown preview; the system browser by default. */
   onOpenLink?: (url: string) => void;
+  /**
+   * Listens to the output of the viewer's terminal: while it prints (an AI tool editing files) the
+   * file is read again, at most once every REFRESH_MS. Returns the function that stops listening.
+   */
+  subscribeOutput?: (listener: (text: string) => void) => () => void;
+  /** Changes each time the terminal's prompt comes back: the file is read again. */
+  prompt?: number;
 }
+
+/** The file is read again at most this often while its terminal prints. */
+export const REFRESH_MS = 1000;
 
 type Loaded = { state: "loading" } | { state: "error"; message: string } | { state: "ok"; file: ViewedText };
 
-/** The text of a file in a CodeMirror view. */
+/** The text of a file in a CodeMirror view; a new text replaces the old one in the same view. */
 function CodeView({ text, name }: { text: string; name: string }) {
   const host = useRef<HTMLDivElement>(null);
+  const view = useRef<EditorView | null>(null);
+  const textRef = useRef(text);
+  textRef.current = text;
   useEffect(() => {
-    const view = createCodeView(host.current!, text, name);
-    return () => view.destroy();
-  }, [text, name]);
+    view.current = createCodeView(host.current!, textRef.current, name);
+    return () => {
+      view.current?.destroy();
+      view.current = null;
+    };
+  }, [name]);
+  useEffect(() => {
+    if (view.current) reloadText(view.current, text);
+  }, [text]);
   return <div className="viewer__code" ref={host} />;
 }
 
@@ -70,7 +90,7 @@ function MarkdownPreview({ text, onOpenLink }: { text: string; onOpenLink: (url:
 }
 
 /** The file viewer pane (S1-S5): a file's text, read-only, next to its terminal. */
-export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser }: FileViewerProps) {
+export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, subscribeOutput, prompt }: FileViewerProps) {
   const t = useT();
   const name = fileName(path);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
@@ -91,6 +111,38 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser }: 
       live = false;
     };
   }, [path]);
+
+  /** Reads the file again; its new text replaces the shown one, a failed read keeps it. */
+  const refreshRef = useRef<() => void>(() => {});
+  refreshRef.current = () => {
+    loadRef.current().then(
+      (file) =>
+        setLoaded((prev) =>
+          prev.state === "ok" && prev.file.content === file.content && prev.file.truncated === file.truncated
+            ? prev
+            : { state: "ok", file },
+        ),
+      () => {},
+    );
+  };
+  const firstPrompt = useRef(prompt);
+  useEffect(() => {
+    if (prompt !== firstPrompt.current) refreshRef.current();
+  }, [prompt]);
+  useEffect(() => {
+    if (!subscribeOutput) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = subscribeOutput(() => {
+      timer ??= setTimeout(() => {
+        timer = null;
+        refreshRef.current();
+      }, REFRESH_MS);
+    });
+    return () => {
+      stop();
+      if (timer) clearTimeout(timer);
+    };
+  }, [subscribeOutput]);
 
   return (
     <section className="viewer" aria-label={name}>

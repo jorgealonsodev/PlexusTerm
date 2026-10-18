@@ -66,6 +66,9 @@ const entry = (path: string, kind = "file") => ({
   group: null,
 });
 
+/** Times the viewed local file was "edited" on disk. */
+const edits = { n: 0 };
+
 const library = {
   version: 1,
   folders: [],
@@ -76,6 +79,7 @@ const library = {
 
 beforeEach(() => {
   terminals.length = 0;
+  edits.n = 0;
   vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
     const path = (args as { path?: string } | undefined)?.path;
     if (cmd === "sessions_load") return JSON.stringify(library);
@@ -83,7 +87,7 @@ beforeEach(() => {
     if (cmd === "local_list") return path === "/home/me" ? [entry("/home/me/my proj", "dir"), entry("/home/me/a.txt")] : [];
     if (cmd === "sftp_home") return "/srv";
     if (cmd === "sftp_list") return path === "/srv" ? [entry("/srv/it's here", "dir"), entry("/srv/b.txt")] : [];
-    if (cmd === "local_view_text") return { path, content: `local ${path}`, truncated: false };
+    if (cmd === "local_view_text") return { path, content: `local ${path}${edits.n ? ` v${edits.n}` : ""}`, truncated: false };
     if (cmd === "sftp_view_text") return { path, content: `remote ${path}`, truncated: false };
     return null;
   });
@@ -134,5 +138,15 @@ describe("File viewer in a tab", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "View" }));
     await waitFor(() => expect(viewerText()).toBe("remote /srv/b.txt"));
     expect(vi.mocked(invoke)).toHaveBeenCalledWith("sftp_view_text", { id: 2, path: "/srv/b.txt" });
+  });
+
+  it("shows the file's new text when its terminal prints while it is open", async () => {
+    render(<App />);
+    fireEvent.contextMenu(await screen.findByText("a.txt"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "View" }));
+    await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt"));
+    edits.n = 1;
+    act(() => terminals[0].print("Editing a.txt…"));
+    await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt v1"), { timeout: 3000 });
   });
 });

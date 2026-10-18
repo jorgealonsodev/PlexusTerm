@@ -119,3 +119,51 @@ describe("FileViewer Markdown (S4)", () => {
     expect(onOpenLink).not.toHaveBeenCalled();
   });
 });
+
+describe("FileViewer follows the file while its terminal works", () => {
+  it("reads the file again when the terminal prints, at most once a second, keeping the same view", async () => {
+    vi.useFakeTimers();
+    try {
+      const listeners = new Set<(text: string) => void>();
+      const subscribeOutput = (l: (text: string) => void) => (listeners.add(l), () => void listeners.delete(l));
+      let content = "v1";
+      const load = vi.fn(async () => ({ path: "/p/a.ts", content, truncated: false }));
+      render(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} subscribeOutput={subscribeOutput} prompt={0} />);
+      await act(() => vi.advanceTimersByTimeAsync(10));
+      const view = editorView();
+      expect(view.state.doc.toString()).toBe("v1");
+      // The AI tool prints while it edits the file: one read a second, not one per output.
+      content = "v2";
+      for (let i = 0; i < 5; i++) act(() => listeners.forEach((l) => l("working")));
+      await act(() => vi.advanceTimersByTimeAsync(1100));
+      expect(load).toHaveBeenCalledTimes(2);
+      expect(editorView()).toBe(view);
+      expect(view.state.doc.toString()).toBe("v2");
+      // Unchanged text changes nothing.
+      act(() => listeners.forEach((l) => l("more")));
+      await act(() => vi.advanceTimersByTimeAsync(1100));
+      expect(load).toHaveBeenCalledTimes(3);
+      expect(view.state.doc.toString()).toBe("v2");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reads it again when the terminal's prompt comes back, and keeps the text when a read fails", async () => {
+    let content = "first";
+    let fail = false;
+    const load = vi.fn(async () => {
+      if (fail) throw "cannot read /p/a.ts: gone";
+      return { path: "/p/a.ts", content, truncated: false };
+    });
+    const { rerender } = render(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} prompt={0} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("first"));
+    content = "second";
+    rerender(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} prompt={1} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("second"));
+    fail = true;
+    rerender(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} prompt={2} />);
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(3));
+    expect(document.querySelector(".cm-content")?.textContent).toBe("second");
+  });
+});

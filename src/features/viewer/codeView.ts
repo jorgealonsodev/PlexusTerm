@@ -1,4 +1,4 @@
-import { Compartment, EditorState } from "@codemirror/state";
+import { Annotation, Compartment, EditorState } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLineGutter, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
@@ -37,6 +37,23 @@ const theme = EditorView.theme({
   ".cm-panels": { backgroundColor: "var(--surface)", color: "var(--text)" },
 });
 
+/** Marks the transaction that puts the file's new text in the view. */
+const reload = Annotation.define<boolean>();
+
+/** Shows the file's new text in place, at the same scroll position (the file changed on disk). */
+export function reloadText(view: EditorView, text: string) {
+  if (view.state.doc.toString() === text) return;
+  const { scrollTop, scrollLeft } = view.scrollDOM;
+  const head = Math.min(view.state.selection.main.head, text.length);
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: text },
+    selection: { anchor: head },
+    annotations: reload.of(true),
+  });
+  view.scrollDOM.scrollTop = scrollTop;
+  view.scrollDOM.scrollLeft = scrollLeft;
+}
+
 /**
  * A read-only CodeMirror view of a file (S2): line numbers, long lines wrapped to the width (S5),
  * search with Ctrl+F, and the language its name says highlighted once loaded (S3).
@@ -53,8 +70,8 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
         highlightSpecialChars(),
         drawSelection(),
         EditorState.readOnly.of(true),
-        // A viewer: nothing changes the text, typed or not (another file gets a new view).
-        EditorState.changeFilter.of(() => false),
+        // A viewer: only a reload of the file changes the text, nothing typed.
+        EditorState.changeFilter.of((tr) => tr.annotation(reload) === true),
         EditorView.lineWrapping,
         search({ top: true }),
         highlightSelectionMatches(),

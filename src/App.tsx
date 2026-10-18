@@ -795,6 +795,16 @@ function AppContent() {
    * Duplicate does, so it authenticates the same way) and changes to the folder once its shell is
    * ready, with the same quoted `cd` a dropped folder runs.
    */
+  /** A stable way to listen to each terminal pane's output (a file viewer follows its terminal's). */
+  const outputListeners = useRef(new Map<string, (listener: (text: string) => void) => () => void>());
+  const outputOf = (paneId: string) => {
+    let subscribe = outputListeners.current.get(paneId);
+    if (!subscribe) {
+      subscribe = (listener) => macroTargets.get(paneId)?.subscribe(listener) ?? (() => {});
+      outputListeners.current.set(paneId, subscribe);
+    }
+    return subscribe;
+  };
   /** The text of a viewer's file, from this computer or through its SFTP session. */
   const viewFile = (viewer: ViewerLink) =>
     viewer.origin.kind === "local" ? local.viewText(viewer.path) : sftp.viewText(viewer.origin.sessionId, viewer.path);
@@ -1346,6 +1356,9 @@ function AppContent() {
                             key={viewer.opened}
                             path={viewer.path}
                             load={() => viewFile(viewer)}
+                            // It follows the file while its terminal works (an AI tool editing it).
+                            subscribeOutput={outputOf(viewer.terminalPaneId)}
+                            prompt={paneMeta[viewer.terminalPaneId]?.prompts ?? 0}
                             onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
                           />
                         );
