@@ -341,6 +341,9 @@ fn run_git(folder: &Path, args: &[&str]) -> Option<Vec<u8>> {
     let mut command = Command::new("git");
     command
         .arg("--no-optional-locks")
+        // Never the repository's own fsmonitor command: a folder from elsewhere (a downloaded
+        // archive with a `.git`) could otherwise run any program just by being listed.
+        .args(["-c", "core.fsmonitor=false"])
         .args(args)
         .current_dir(folder)
         .stdin(Stdio::null())
@@ -379,7 +382,7 @@ pub fn remote_status_command(folder: &str) -> Option<String> {
     let dir = quote(folder);
     let status = STATUS_ARGS.join(" ");
     let script = format!(
-        "{{ p=$(git --no-optional-locks -C {dir} rev-parse --show-prefix) && printf '%s\\000' \"$p\" && git --no-optional-locks -C {dir} {status}; }} 2>/dev/null; exit 0"
+        "{{ p=$(git --no-optional-locks -C {dir} rev-parse --show-prefix) && printf '%s\\000' \"$p\" && git --no-optional-locks -c core.fsmonitor=false -C {dir} {status}; }} 2>/dev/null; exit 0"
     );
     Some(through_sh(&script))
 }
@@ -804,6 +807,35 @@ mod status_tests {
         fs::write(dir.path().join("f.txt"), "f").unwrap();
         assert_eq!(status_of(dir.path()), vec![]);
         assert_eq!(status_of(Path::new("/definitely/not/here")), vec![]);
+    }
+
+    /// A repository's own `core.fsmonitor` command would run on every status read: a folder from
+    /// elsewhere (a downloaded archive with a `.git`) could run anything just by being listed.
+    #[test]
+    fn status_never_runs_the_repository_fsmonitor_command() {
+        let dir = repo();
+        let root = dir.path();
+        let marker = root.join("ran");
+        git(
+            root,
+            &[
+                "config",
+                "core.fsmonitor",
+                &format!("touch '{}'", marker.display()),
+            ],
+        );
+        fs::write(root.join("a.txt"), "changed\n").unwrap();
+        assert!(!status_of(root).is_empty());
+        assert!(repo_of(root).unwrap().dirty);
+        assert!(
+            !marker.exists(),
+            "git ran the repository's fsmonitor command"
+        );
+        let script = super::tests::sh_script(&remote_status_command("/srv/app").unwrap());
+        assert!(
+            script.contains("git --no-optional-locks -c core.fsmonitor=false -C "),
+            "{script}"
+        );
     }
 
     #[test]
