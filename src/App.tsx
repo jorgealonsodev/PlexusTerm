@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
-import { ContextMenu } from "./features/menu/ContextMenu";
-import { loadToolbarColor, saveToolbarColor, TOOLBAR_COLORS } from "./features/toolbar/toolbarColor";
+import { ColorMenu } from "./features/toolbar/ColorMenu";
+import { loadToolbarColor, saveToolbarColor } from "./features/toolbar/toolbarColor";
 import { readableOn } from "./features/settings/uiTheme";
 import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
 import { MacroEditDialog } from "./features/macros/MacroEditDialog";
@@ -1060,30 +1060,13 @@ function AppContent() {
         }}
       >
         {toolbarMenu && (
-          <ContextMenu
+          <ColorMenu
             x={toolbarMenu.x}
             y={toolbarMenu.y}
+            current={toolbarColor}
+            onPick={setToolbarColor}
             onClose={() => setToolbarMenu(null)}
-            items={[
-              ...TOOLBAR_COLORS.map(([name, color]) => ({
-                label: t(`app.toolbarColor.${name}`),
-                swatch: color,
-                onSelect: () => setToolbarColor(color),
-              })),
-              { separator: true as const },
-              { label: t("app.toolbarColor.none"), onSelect: () => setToolbarColor(null), disabled: !toolbarColor },
-            ]}
-          >
-            <label className="context-menu__custom">
-              {t("app.toolbarColor.custom")}
-              <input
-                type="color"
-                aria-label={t("app.toolbarColor.custom")}
-                value={toolbarColor ?? "#2e86de"}
-                onChange={(e) => setToolbarColor(e.target.value.toLowerCase())}
-              />
-            </label>
-          </ContextMenu>
+          />
         )}
         <button
           type="button"
@@ -1369,12 +1352,11 @@ function AppContent() {
               openLocal();
             }}
             onDuplicate={(key) => {
-              const tab = state.tabs.find((t) => t.key === key);
-              if (!tab) return;
               // The copy of a DEV tab is a DEV tab too.
               if (dev.state[key]) devOnStart.current = `tab-${state.nextSeq}`;
-              dispatch({ type: "open", target: tab.target });
+              dispatch({ type: "duplicate", key });
             }}
+            onColor={(key, color) => dispatch({ type: "setColor", key, color })}
             onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
             onCloseRight={(key) => dispatch({ type: "closeRight", key })}
             onCloseAll={() => dispatch({ type: "closeAll" })}

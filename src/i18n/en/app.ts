@@ -77,6 +77,7 @@ export const app = {
   tabs: {
     copyHost: "Copy host address ({host})",
     duplicate: "Duplicate tab",
+    colour: "Tab colour…",
     close: "Close tab",
     closeOthers: "Close other tabs",
     closeRight: "Close tabs to the right",

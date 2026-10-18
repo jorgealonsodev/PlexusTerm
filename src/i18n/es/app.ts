@@ -81,6 +81,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "Copiar dirección del host ({host})",
     duplicate: "Duplicar pestaña",
+    colour: "Color de la pestaña…",
     close: "Cerrar pestaña",
     closeOthers: "Cerrar las demás pestañas",
     closeRight: "Cerrar pestañas a la derecha",

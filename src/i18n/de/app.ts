@@ -80,6 +80,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "Hostadresse kopieren ({host})",
     duplicate: "Tab duplizieren",
+    colour: "Tab-Farbe …",
     close: "Tab schließen",
     closeOthers: "Andere Tabs schließen",
     closeRight: "Tabs rechts schließen",

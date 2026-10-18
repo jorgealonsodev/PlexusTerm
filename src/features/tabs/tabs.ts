@@ -47,6 +47,8 @@ export interface Tab {
   chats: Record<string, ChatLink>;
   /** File viewer panes by pane id; at most one per terminal pane. */
   viewers?: Record<string, ViewerLink>;
+  /** The colour the user gave the tab (#rrggbb), to tell tabs apart. */
+  color?: string;
 }
 
 /** A pane that runs a terminal (not an AI chat or a file viewer). */
@@ -92,6 +94,9 @@ export type TabsAction =
   | { type: "closeAll" }
   | { type: "activate"; key: string }
   | { type: "rename"; key: string; title: string }
+  /** A new tab for the same target, with the same colour. */
+  | { type: "duplicate"; key: string }
+  | { type: "setColor"; key: string; color: string | null }
   | { type: "split"; key: string; direction: SplitDirection }
   /** The AI chat key (S9): see `chatAction`. */
   | { type: "openChat"; key: string; selection: string }
@@ -164,6 +169,20 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       return state.tabs.some((t) => t.key === action.key)
         ? { ...state, activeKey: action.key }
         : state;
+    case "duplicate": {
+      const tab = state.tabs.find((t) => t.key === action.key);
+      if (!tab) return state;
+      const next = tabsReducer(state, { type: "open", target: tab.target });
+      if (!tab.color) return next;
+      const key = next.activeKey!;
+      return updateTab(next, key, (t) => ({ ...t, color: tab.color }));
+    }
+    case "setColor":
+      return updateTab(state, action.key, (tab) => {
+        if ((tab.color ?? null) === action.color) return tab;
+        const { color: _old, ...rest } = tab;
+        return action.color ? { ...rest, color: action.color } : rest;
+      });
     case "rename":
       return {
         ...state,

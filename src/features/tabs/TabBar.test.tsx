@@ -294,3 +294,38 @@ describe("TabBar", () => {
     });
   });
 });
+
+describe("tab colours", () => {
+  const coloured = [{ ...tab("t1", "one"), color: "#c0392b" }, tab("t2", "two")];
+
+  it("picks a tab's colour from its menu, and clears it", () => {
+    const onColor = vi.fn();
+    render(<TabBar tabs={coloured} activeKey="t1" onActivate={() => {}} onClose={() => {}} onNew={() => {}} onColor={onColor} />);
+    fireEvent.contextMenu(screen.getAllByRole("tab")[1], { clientX: 1, clientY: 1 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Tab colour…" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Blue" }));
+    expect(onColor).toHaveBeenCalledWith("t2", "#2e86de");
+    fireEvent.contextMenu(screen.getAllByRole("tab")[0], { clientX: 1, clientY: 1 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Tab colour…" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "No colour" }));
+    expect(onColor).toHaveBeenCalledWith("t1", null);
+  });
+
+  it("shows the colour on the tab on top and on the DEV row", () => {
+    const { unmount } = render(<TabBar tabs={coloured} activeKey="t2" onActivate={() => {}} onClose={() => {}} onNew={() => {}} />);
+    const [one, two] = screen.getAllByRole("tab");
+    expect(one.style.getPropertyValue("--tab-color")).toBe("#c0392b");
+    expect(one.classList.contains("tab--coloured")).toBe(true);
+    expect(two.classList.contains("tab--coloured")).toBe(false);
+    unmount();
+    render(<TabBar tabs={coloured} activeKey="t2" column onActivate={() => {}} onClose={() => {}} onNew={() => {}} />);
+    expect(screen.getAllByRole("tab")[0].classList.contains("tab--coloured")).toBe(true);
+  });
+
+  it("offers no colour item without a handler", () => {
+    render(<TabBar tabs={coloured} activeKey="t1" onActivate={() => {}} onClose={() => {}} onNew={() => {}} />);
+    fireEvent.contextMenu(screen.getAllByRole("tab")[0], { clientX: 1, clientY: 1 });
+    expect(screen.queryByRole("menuitem", { name: "Tab colour…" })).toBeNull();
+  });
+});
+

@@ -79,6 +79,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "होस्ट पता कॉपी करें ({host})",
     duplicate: "टैब की प्रतिलिपि बनाएँ",
+    colour: "टैब का रंग…",
     close: "टैब बंद करें",
     closeOthers: "अन्य टैब बंद करें",
     closeRight: "दाईं ओर के टैब बंद करें",

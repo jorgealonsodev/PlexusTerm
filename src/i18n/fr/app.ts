@@ -81,6 +81,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "Copier l'adresse de l'hôte ({host})",
     duplicate: "Dupliquer l'onglet",
+    colour: "Couleur de l’onglet…",
     close: "Fermer l'onglet",
     closeOthers: "Fermer les autres onglets",
     closeRight: "Fermer les onglets à droite",

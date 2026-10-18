@@ -78,6 +78,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "호스트 주소 복사({host})",
     duplicate: "탭 복제",
+    colour: "탭 색…",
     close: "탭 닫기",
     closeOthers: "다른 탭 닫기",
     closeRight: "오른쪽 탭 닫기",

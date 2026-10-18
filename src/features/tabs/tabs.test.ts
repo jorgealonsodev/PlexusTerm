@@ -275,3 +275,18 @@ describe("file viewer panes", () => {
     expect(chatAction(tab(state))).toEqual({ kind: "open", terminalPaneId: "pane-1" });
   });
 });
+
+describe("tab colours", () => {
+  it("colours a tab, clears it, and gives a duplicate the same colour", () => {
+    let state = open(initialTabs);
+    state = tabsReducer(state, { type: "setColor", key: "tab-1", color: "#c0392b" });
+    expect(state.tabs[0].color).toBe("#c0392b");
+    state = tabsReducer(state, { type: "duplicate", key: "tab-1" });
+    expect(state.tabs[1].color).toBe("#c0392b");
+    expect(state.tabs[1].target).toEqual(state.tabs[0].target);
+    state = tabsReducer(state, { type: "setColor", key: "tab-1", color: null });
+    expect(state.tabs[0].color).toBeUndefined();
+    expect(tabsReducer(state, { type: "setColor", key: "nope", color: "#000000" })).toBe(state);
+  });
+});
+

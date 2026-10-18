@@ -83,6 +83,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "نسخ عنوان المضيف ({host})",
     duplicate: "تكرار علامة التبويب",
+    colour: "لون علامة التبويب…",
     close: "إغلاق علامة التبويب",
     closeOthers: "إغلاق علامات التبويب الأخرى",
     closeRight: "إغلاق علامات التبويب على اليمين",

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
+import { ColorMenu } from "../toolbar/ColorMenu";
 import { Code } from "lucide-react";
 import { CliIcon, cliName } from "../devmode/CliIcon";
 import { titleWithoutCliMark } from "../devmode/devMode";
@@ -36,6 +37,8 @@ interface TabBarProps {
   onCloseAll?: () => void;
   /** Copies a tab's host address (SSH, Telnet and Mosh tabs). */
   onCopyHost?: (host: string) => void;
+  /** Gives a tab a colour (null: none); without it the menu has no colour item. */
+  onColor?: (key: string, color: string | null) => void;
 }
 
 /**
@@ -62,6 +65,7 @@ export function TabBar(props: TabBarProps) {
   const { tabs, activeKey, logging, attention, dev, busy, column = false, details, onActivate, onClose, onNew } = props;
   const t = useT();
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [colorMenu, setColorMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [dragged, setDragged] = useState<number | null>(null);
   const stopDrag = useRef<(() => void) | null>(null);
@@ -115,6 +119,7 @@ export function TabBar(props: TabBarProps) {
     return [
       props.onCopyHost && host && { label: t("app.tabs.copyHost", { host }), onSelect: () => props.onCopyHost!(host) },
       props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
+      props.onColor && menu && { label: t("app.tabs.colour"), onSelect: () => setColorMenu({ key, x: menu.x, y: menu.y }) },
       { label: t("app.tabs.close"), onSelect: () => onClose(key) },
       props.onCloseOthers && {
         label: t("app.tabs.closeOthers"),
@@ -143,7 +148,8 @@ export function TabBar(props: TabBarProps) {
             key={tab.key}
             role="tab"
             aria-selected={tab.key === activeKey}
-            className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}${column ? " tab--row" : ""}`}
+            className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}${column ? " tab--row" : ""}${tab.color ? " tab--coloured" : ""}`}
+            style={tab.color ? ({ "--tab-color": tab.color } as CSSProperties) : undefined}
             onMouseDown={(e) => {
               if (e.button === 1) onClose(tab.key);
               else if (e.button === 0) onActivate(tab.key);
@@ -197,6 +203,15 @@ export function TabBar(props: TabBarProps) {
         <button className="tabbar__new" aria-label={t("app.tabs.newLocal")} onClick={onNew}>
           +
         </button>
+        {colorMenu && props.onColor && (
+          <ColorMenu
+            x={colorMenu.x}
+            y={colorMenu.y}
+            current={tabs.find((tab) => tab.key === colorMenu.key)?.color ?? null}
+            onPick={(color) => props.onColor!(colorMenu.key, color)}
+            onClose={() => setColorMenu(null)}
+          />
+        )}
         {menu && menuIndex !== -1 && (
           <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.key)} onClose={() => setMenu(null)} />
         )}

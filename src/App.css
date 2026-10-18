@@ -2722,3 +2722,17 @@ body.is-dragging-path {
   background: none;
   cursor: pointer;
 }
+
+/* A tab's colour: a tinted background and a bar on top (on the left in DEV mode's column). */
+.tab--coloured {
+  background: color-mix(in srgb, var(--tab-color) 18%, transparent);
+  box-shadow: inset 0 2px 0 var(--tab-color);
+}
+
+.tab--coloured.tab--active {
+  background: color-mix(in srgb, var(--tab-color) 30%, var(--bg));
+}
+
+.tab--row.tab--coloured {
+  box-shadow: inset 3px 0 0 var(--tab-color);
+}

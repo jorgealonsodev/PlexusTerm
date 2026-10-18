@@ -78,6 +78,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "复制主机地址 ({host})",
     duplicate: "复制标签页",
+    colour: "标签页颜色…",
     close: "关闭标签页",
     closeOthers: "关闭其他标签页",
     closeRight: "关闭右侧标签页",

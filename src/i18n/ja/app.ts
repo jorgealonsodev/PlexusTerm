@@ -79,6 +79,7 @@ export const app: Messages<typeof en> = {
   tabs: {
     copyHost: "ホストアドレスをコピー ({host})",
     duplicate: "タブを複製",
+    colour: "タブの色…",
     close: "タブを閉じる",
     closeOthers: "他のタブを閉じる",
     closeRight: "右側のタブを閉じる",
