@@ -225,7 +225,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
-  it("opens the column's new terminal in DEV mode at the Explorer's folder; the + on top still opens a plain one", async () => {
+  it("opens the column's new terminal in DEV mode, in the default folder; the + on top still opens a plain one", async () => {
     await renderApp({ localCwd: "/srv/default" });
     fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
     await settle();
@@ -244,8 +244,8 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
     expect(tabBar().classList.contains("tabbar--column")).toBe(true);
     expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
-    // It starts in the Explorer's folder, not in the default one.
-    expect(stub.props.target.cwd).toBe("/home/me/repo/src");
+    // It starts in the default folder, like any new terminal.
+    expect(stub.props.target.cwd).toBe("/srv/default");
   });
 
   it("marks a tab as working while its CLI prints, and only while a CLI runs there", async () => {
