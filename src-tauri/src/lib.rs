@@ -97,6 +97,15 @@ async fn ssh_git_branch(
 
 /// The git status of the files under a local folder (paths relative to it), for colouring the
 /// Explorer like VS Code; empty outside a repository, without git, or when git fails.
+/// The repository of a local file or folder: its folder, branch and whether it has changes.
+#[tauri::command]
+async fn git_repo(path: String) -> Option<git::RepoInfo> {
+    tauri::async_runtime::spawn_blocking(move || git::repo_of(std::path::Path::new(&path)))
+        .await
+        .ok()
+        .flatten()
+}
+
 #[tauri::command]
 async fn git_status(path: String) -> Vec<git::StatusEntry> {
     tauri::async_runtime::spawn_blocking(move || git::status_of(std::path::Path::new(&path)))
@@ -578,6 +587,7 @@ pub fn run() {
             git_branch,
             ssh_git_status,
             git_status,
+            git_repo,
             secret_available,
             secret_exists,
             secret_delete,

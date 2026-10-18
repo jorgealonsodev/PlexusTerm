@@ -17,18 +17,52 @@ const SHORT_HASH: usize = 7;
 /// The branch checked out in the repository holding `folder` (the short commit hash when `HEAD`
 /// is detached), or `None` outside a repository or when `HEAD` cannot be read or makes no sense.
 pub fn branch_of(folder: &Path) -> Option<String> {
+    let (_, gitdir) = repository_of(folder)?;
+    head_of(&gitdir?)
+}
+
+/// The folder of the repository holding `folder` (the first one up with a `.git`) and its git
+/// folder (`None` when a `.git` file points nowhere).
+fn repository_of(folder: &Path) -> Option<(&Path, Option<PathBuf>)> {
     let mut dir = Some(folder);
     while let Some(current) = dir {
         let dotgit = current.join(".git");
         if dotgit.is_dir() {
-            return head_of(&dotgit);
+            return Some((current, Some(dotgit)));
         }
         if dotgit.is_file() {
-            return head_of(&gitdir_of(&dotgit)?);
+            return Some((current, gitdir_of(&dotgit)));
         }
         dir = current.parent();
     }
     None
+}
+
+/// The repository of a file or folder, as VS Code's status bar shows it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct RepoInfo {
+    /// The repository's folder.
+    pub root: String,
+    /// The branch checked out (the short commit when `HEAD` is detached).
+    pub branch: String,
+    /// Some file is changed, staged or untracked (ignored files do not count).
+    pub dirty: bool,
+}
+
+/// The repository holding `path` (a file or a folder), or `None` outside one or when its `HEAD`
+/// cannot be read. Whether it has changes is one read-only `git status` of the whole repository.
+pub fn repo_of(path: &Path) -> Option<RepoInfo> {
+    let folder = if path.is_dir() { path } else { path.parent()? };
+    let (root, gitdir) = repository_of(folder)?;
+    let branch = head_of(&gitdir?)?;
+    let dirty = status_of(root)
+        .iter()
+        .any(|entry| entry.status != FileStatus::Ignored);
+    Some(RepoInfo {
+        root: root.to_string_lossy().into_owned(),
+        branch,
+        dirty,
+    })
 }
 
 /// The repository folder a `.git` file points to (`gitdir: <path>`, relative to the file's folder).
@@ -559,6 +593,36 @@ mod status_tests {
         git(p, &["add", "."]);
         git(p, &["commit", "-q", "-m", "init"]);
         dir
+    }
+
+    #[test]
+    fn repo_of_names_the_repository_its_branch_and_whether_it_has_changes() {
+        let dir = repo();
+        let root = dir.path();
+        git(root, &["checkout", "-q", "-b", "feature"]);
+        fs::write(root.join(".gitignore"), "*.log\n").unwrap();
+        git(root, &["add", ".gitignore"]);
+        git(root, &["commit", "-q", "-m", "ignore logs"]);
+        // From a file deep inside, or from a folder: the repository's root.
+        let info = repo_of(&root.join("src/deep/x.rs")).unwrap();
+        assert_eq!(
+            info,
+            RepoInfo {
+                root: root.to_string_lossy().into_owned(),
+                branch: "feature".into(),
+                dirty: false,
+            }
+        );
+        assert_eq!(repo_of(&root.join("src")).unwrap().root, info.root);
+        // Ignored files are not changes; an edited file is.
+        fs::write(root.join("debug.log"), "x\n").unwrap();
+        assert!(!repo_of(root).unwrap().dirty);
+        fs::write(root.join("src/lib.rs"), "changed\n").unwrap();
+        assert!(repo_of(&root.join("a.txt")).unwrap().dirty);
+        // Outside any repository.
+        let plain = tempfile::tempdir().unwrap();
+        fs::write(plain.path().join("f.txt"), "").unwrap();
+        assert_eq!(repo_of(&plain.path().join("f.txt")), None);
     }
 
     fn entry(path: &str, status: FileStatus) -> StatusEntry {

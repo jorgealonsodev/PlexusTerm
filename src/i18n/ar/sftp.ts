@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "ملف جديد",
     download: "تنزيل",
     follow: "متابعة مجلد الطرفية",
+    branch: "الفرع {branch}",
+    branchDirty: "الفرع {branch}، مع تغييرات غير مُثبتة",
     workspace: {
       add: "إضافة مجلد",
       choose: "إضافة مجلد إلى مساحة العمل",

@@ -2606,3 +2606,24 @@ body.is-dragging-path {
 .viewer__markdown img {
   max-width: 100%;
 }
+
+/* The selected entry's repository under the Explorer, like VS Code's status bar: project and branch. */
+.explorer-repo {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.explorer-repo__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}

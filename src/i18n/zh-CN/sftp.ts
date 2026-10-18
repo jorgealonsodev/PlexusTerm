@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "新建文件",
     download: "下载",
     follow: "跟随终端文件夹",
+    branch: "分支 {branch}",
+    branchDirty: "分支 {branch}，有未提交的更改",
     workspace: {
       add: "添加文件夹",
       choose: "将文件夹添加到工作区",

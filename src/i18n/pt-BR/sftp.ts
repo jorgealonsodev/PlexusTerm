@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "Novo arquivo",
     download: "Baixar",
     follow: "Acompanhar a pasta do terminal",
+    branch: "Branch {branch}",
+    branchDirty: "Branch {branch}, com alterações não confirmadas",
     workspace: {
       add: "Adicionar pasta",
       choose: "Adicionar uma pasta ao espaço de trabalho",

@@ -9,6 +9,8 @@ export const sftp = {
     newFile: "New file",
     download: "Download",
     follow: "Follow terminal folder",
+    branch: "Branch {branch}",
+    branchDirty: "Branch {branch}, with uncommitted changes",
     workspace: {
       add: "Add folder",
       choose: "Add a folder to the workspace",

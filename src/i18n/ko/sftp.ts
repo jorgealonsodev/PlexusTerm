@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "새 파일",
     download: "다운로드",
     follow: "터미널 폴더 따라가기",
+    branch: "브랜치 {branch}",
+    branchDirty: "브랜치 {branch}, 커밋되지 않은 변경 사항 있음",
     workspace: {
       add: "폴더 추가",
       choose: "작업 영역에 폴더 추가",

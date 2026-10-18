@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "नई फ़ाइल",
     download: "डाउनलोड करें",
     follow: "टर्मिनल फ़ोल्डर का अनुसरण करें",
+    branch: "ब्रांच {branch}",
+    branchDirty: "ब्रांच {branch}, बिना कमिट किए बदलावों के साथ",
     workspace: {
       add: "फ़ोल्डर जोड़ें",
       choose: "कार्यक्षेत्र में फ़ोल्डर जोड़ें",

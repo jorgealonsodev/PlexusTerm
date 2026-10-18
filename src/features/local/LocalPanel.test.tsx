@@ -29,6 +29,8 @@ vi.mock("./localClient", async (importOriginal) => {
       gitStatus: vi.fn(),
       readText: vi.fn(),
       saveText: vi.fn(),
+      viewText: vi.fn(),
+      repoInfo: vi.fn(),
     },
   };
 });
@@ -51,6 +53,8 @@ const mocked = vi.mocked(local);
 beforeEach(() => {
   vi.resetAllMocks();
   mocked.home.mockResolvedValue("/home/me");
+  mocked.repoInfo.mockResolvedValue(null);
+  mocked.gitStatus.mockResolvedValue([]);
   mocked.list.mockImplementation(async (path) =>
     path === "/home/me" ? [entry("src", "dir"), entry("notes.txt", "file")] : [],
   );
@@ -553,6 +557,39 @@ describe("LocalPanel file viewer", () => {
     fireEvent.doubleClick(await screen.findByText("notes.txt"));
     expect(onView).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mocked.open).toHaveBeenCalledWith("/home/me/notes.txt", { kind: "default" }));
+  });
+});
+
+describe("LocalPanel repository of the selection", () => {
+  const footer = () => document.querySelector<HTMLElement>(".explorer-repo");
+
+  it("shows the selected file's project and branch under the list in DEV mode, with * for changes", async () => {
+    mocked.repoInfo.mockResolvedValue({ root: "/home/me/PlexusTerm-landing", branch: "main", dirty: true });
+    render(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 0 } }));
+    await screen.findByText("notes.txt");
+    expect(footer()).toBeNull();
+    fireEvent.click(screen.getByText("notes.txt"));
+    await waitFor(() => expect(footer()?.textContent).toBe("PlexusTerm-landingmain*"));
+    expect(mocked.repoInfo).toHaveBeenCalledWith("/home/me/notes.txt");
+    expect(within(footer()!).getByTitle("/home/me/PlexusTerm-landing")).toBeTruthy();
+    expect(within(footer()!).getByTitle("Branch main, with uncommitted changes")).toBeTruthy();
+  });
+
+  it("shows nothing outside a repository, and reads nothing outside DEV mode or with git status off", async () => {
+    mocked.repoInfo.mockResolvedValue(null);
+    const { unmount } = render(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 0 } }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    await waitFor(() => expect(mocked.repoInfo).toHaveBeenCalled());
+    expect(footer()).toBeNull();
+    unmount();
+    mocked.repoInfo.mockClear();
+    const plain = render(panel({ git: { enabled: true, visible: true, prompt: 0 } }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    plain.unmount();
+    render(panel({ devStyle: true, git: { enabled: false, visible: true, prompt: 0 } }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mocked.repoInfo).not.toHaveBeenCalled();
   });
 });
 

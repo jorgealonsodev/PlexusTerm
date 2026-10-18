@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
 import { ToolButton } from "../files/ToolButton";
+import { GitBranch, Laptop } from "lucide-react";
 import { FilePlus, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2 } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
@@ -276,6 +277,22 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     subscribeOutput: git?.subscribeOutput,
   };
   const showWorkspace = devStyle && workspace !== undefined;
+
+  // The repository of the selected entry, as VS Code's status bar shows it (DEV mode, git status on).
+  const [repo, setRepo] = useState<{ root: string; branch: string; dirty: boolean } | null>(null);
+  const readRepo = devStyle && (git?.enabled ?? false) && selected !== null;
+  useEffect(() => {
+    setRepo(null);
+    if (!readRepo || selected === null) return;
+    let live = true;
+    local
+      .repoInfo(selected)
+      .then((info) => live && setRepo(info))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [readRepo, selected, git?.prompt, loads]);
   /** With added folders, every folder shows as a root, as in a VS Code workspace. */
   const asRoots = showWorkspace && workspace.folders.length > 0;
   const [mainOpen, setMainOpen] = useState(true);
@@ -462,6 +479,22 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           describeError={describeLocalError}
           onClose={() => setDialog(null)}
         />
+      )}
+      {repo && (
+        <div className="explorer-repo">
+          <span className="explorer-repo__item" title={repo.root}>
+            <Laptop size={13} aria-hidden="true" />
+            {basename(repo.root)}
+          </span>
+          <span
+            className="explorer-repo__item"
+            title={t(repo.dirty ? "sftp.panel.branchDirty" : "sftp.panel.branch", { branch: repo.branch })}
+          >
+            <GitBranch size={13} aria-hidden="true" />
+            {repo.branch}
+            {repo.dirty && "*"}
+          </span>
+        </div>
       )}
       <div className="sidebar__help">
         <HelpTip text={t("sftp.local.hint")} />

@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "新しいファイル",
     download: "ダウンロード",
     follow: "ターミナルのフォルダーに追従",
+    branch: "ブランチ {branch}",
+    branchDirty: "ブランチ {branch}（未コミットの変更あり）",
     workspace: {
       add: "フォルダーを追加",
       choose: "ワークスペースにフォルダーを追加",
