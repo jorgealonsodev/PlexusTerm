@@ -72,6 +72,8 @@ interface WorkspaceFolderProps {
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
   onRemove: () => void;
+  /** Collapse Folders: changes when every open folder should close. */
+  collapse: number;
 }
 
 /** A folder added to the DEV mode workspace: a root with its own tree and its own git status. */
@@ -126,6 +128,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           details={props.details}
           gitIndex={gitIndex}
           rowProps={props.rowProps}
+          collapse={props.collapse}
         />
       )}
     </WorkspaceRoot>

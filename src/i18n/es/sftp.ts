@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "Nuevo archivo",
     download: "Descargar",
     follow: "Seguir la carpeta del terminal",
+    refreshAll: "Actualizar el explorador",
+    collapseAll: "Contraer las carpetas del explorador",
     branch: "Rama {branch}",
     branchDirty: "Rama {branch}, con cambios sin confirmar",
     workspace: {

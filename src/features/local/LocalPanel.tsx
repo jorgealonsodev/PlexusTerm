@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
-import { FilePlus, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2 } from "lucide-react";
+import { ChevronsDownUp, FilePlus, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
@@ -77,6 +77,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
   /** Counts listings, so the git status is read again after each one. */
   const [loads, setLoads] = useState(0);
+  /** Bumped by Collapse Folders (DEV mode): every open folder of the tree closes. */
+  const [collapse, setCollapse] = useState(0);
   const onUserNavigateRef = useRef(onUserNavigate);
   onUserNavigateRef.current = onUserNavigate;
   // Only the latest listing request may update the view.
@@ -368,6 +370,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       details={details}
       gitIndex={gitIndex}
       rowProps={rowProps}
+      collapse={collapse}
     />
   );
 
@@ -414,6 +417,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             <ToolButton icon={FolderInput} label={t("sftp.panel.workspace.add")} onClick={() => void addFolder()} />
             <ToolButton icon={Save} label={t("sftp.panel.workspace.save")} disabled={busy} onClick={() => void saveWorkspace()} />
             <ToolButton icon={FolderOpen} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
+          </>
+        )}
+        {devStyle && (
+          <>
+            <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
+            <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={() => setCollapse((n) => n + 1)} />
           </>
         )}
       </div>
@@ -468,6 +477,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             details={details}
             rowProps={rowProps}
             onRemove={() => workspace.onRemove(folder)}
+            collapse={collapse}
           />
         ))}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}

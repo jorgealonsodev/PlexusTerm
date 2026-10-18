@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "新建文件",
     download: "下载",
     follow: "跟随终端文件夹",
+    refreshAll: "刷新资源管理器",
+    collapseAll: "在资源管理器中折叠文件夹",
     branch: "分支 {branch}",
     branchDirty: "分支 {branch}，有未提交的更改",
     workspace: {

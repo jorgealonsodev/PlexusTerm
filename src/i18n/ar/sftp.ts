@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "ملف جديد",
     download: "تنزيل",
     follow: "متابعة مجلد الطرفية",
+    refreshAll: "تحديث المستكشف",
+    collapseAll: "طي المجلدات في المستكشف",
     branch: "الفرع {branch}",
     branchDirty: "الفرع {branch}، مع تغييرات غير مُثبتة",
     workspace: {

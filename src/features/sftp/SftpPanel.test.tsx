@@ -607,3 +607,23 @@ describe("SftpPanel file viewer", () => {
   });
 });
 
+describe("SftpPanel DEV toolbar", () => {
+  it("collapses the open folders and lists again with its icons, only in DEV mode", async () => {
+    const { unmount } = render(panel());
+    await screen.findByText("src");
+    expect(screen.queryByRole("button", { name: "Collapse Folders in Explorer" })).toBeNull();
+    unmount();
+    mocked.list.mockImplementation(async (_id, path) =>
+      path === "/home/u/src" ? [entry("main.ts", "file", "/home/u/src")] : [entry("src", "dir"), entry("notes.txt", "file")],
+    );
+    render(panel({ devStyle: true }));
+    fireEvent.click(await screen.findByText("src"));
+    expect(await screen.findByText("main.ts")).toBeTruthy();
+    const calls = mocked.list.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh Explorer" }));
+    await waitFor(() => expect(mocked.list.mock.calls.length).toBeGreaterThanOrEqual(calls + 2));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Folders in Explorer" }));
+    expect(screen.queryByText("main.ts")).toBeNull();
+  });
+});
+

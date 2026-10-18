@@ -11,6 +11,8 @@ export const sftp: Messages<typeof en> = {
     newFile: "新しいファイル",
     download: "ダウンロード",
     follow: "ターミナルのフォルダーに追従",
+    refreshAll: "エクスプローラーを最新の情報に更新",
+    collapseAll: "エクスプローラーのフォルダーを折りたたむ",
     branch: "ブランチ {branch}",
     branchDirty: "ブランチ {branch}（未コミットの変更あり）",
     workspace: {

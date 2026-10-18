@@ -23,6 +23,8 @@ interface FileTreeProps {
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
   gitIndex: GitStatusIndex;
+  /** Changes each time every open folder should close (the Explorer's Collapse Folders). */
+  collapse?: number;
 }
 
 type Children = { state: "loading" } | { state: "error"; message: string } | { state: "ok"; entries: SftpEntry[] };
@@ -37,10 +39,16 @@ type Row =
  * open folders stay open while the tree shows the same folder (key it by that folder), and are
  * listed again when the list is.
  */
-export function FileTree({ entries, list, describeError, loads, selected, onSelect, onOpen, rowProps, details, gitIndex }: FileTreeProps) {
+export function FileTree({ entries, list, describeError, loads, selected, onSelect, onOpen, rowProps, details, gitIndex, collapse = 0 }: FileTreeProps) {
   const t = useT();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const [children, setChildren] = useState<Record<string, Children>>({});
+  const collapsedAt = useRef(collapse);
+  useEffect(() => {
+    if (collapse === collapsedAt.current) return;
+    collapsedAt.current = collapse;
+    setExpanded(new Set());
+  }, [collapse]);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const seq = useRef(new Map<string, number>());
   const listRef = useRef(list);

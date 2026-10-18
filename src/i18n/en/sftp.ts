@@ -9,6 +9,8 @@ export const sftp = {
     newFile: "New file",
     download: "Download",
     follow: "Follow terminal folder",
+    refreshAll: "Refresh Explorer",
+    collapseAll: "Collapse Folders in Explorer",
     branch: "Branch {branch}",
     branchDirty: "Branch {branch}, with uncommitted changes",
     workspace: {

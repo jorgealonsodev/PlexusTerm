@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
 import { ToolButton } from "../files/ToolButton";
-import { Download, FilePlus, FolderPlus, Pencil, Trash2, Upload } from "lucide-react";
+import { ChevronsDownUp, Download, FilePlus, FolderPlus, Pencil, Trash2, Upload, RefreshCw } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
@@ -69,6 +69,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
   /** Counts listings, so the git status is read again after each one. */
   const [loads, setLoads] = useState(0);
+  /** Bumped by Collapse Folders (DEV mode): every open folder of the tree closes. */
+  const [collapse, setCollapse] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const onUserNavigateRef = useRef(onUserNavigate);
   onUserNavigateRef.current = onUserNavigate;
@@ -424,6 +426,12 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
         <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
         <ToolButton icon={Download} label={t("sftp.panel.download")} disabled={!selectedEntry || selectedEntry.kind === "dir"} onClick={() => selectedEntry && void download(selectedEntry)} />
+        {devStyle && (
+          <>
+            <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
+            <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={() => setCollapse((n) => n + 1)} />
+          </>
+        )}
       </div>
       <label className="sftp__follow">
         <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
@@ -449,6 +457,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           details={details}
           gitIndex={gitIndex}
           rowProps={rowProps}
+          collapse={collapse}
         />
       ) : (
         <FlatFileList

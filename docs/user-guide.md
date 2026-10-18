@@ -177,6 +177,7 @@ The **Explorer** tab of the sidebar browses the local disk while the active tab 
 In [DEV mode](#dev-mode) the Explorer and the SFTP browser start at the project the AI tool runs in, and look and work like VS Code's Explorer:
 
 - The list is a tree: click a folder (or its chevron) to expand it in place, and again to collapse it; its entries are listed when it is first expanded, indented under it with thin guide lines. Several folders can be open at once, and they stay open when the list is refreshed. Double-click a folder to list from it (it becomes the top of the tree); double-click a file to open it as outside DEV mode. **Rename…** on a nested entry renames it in its own folder.
+- The toolbar's last two icons, as in VS Code: **Refresh Explorer** lists everything again (open folders stay open) and **Collapse Folders in Explorer** closes every open folder.
 - With the keyboard: **↓** / **↑** move between entries, **→** expands a folder or moves into it, **←** collapses it or moves to its parent folder, and **Enter** opens a file or expands a folder.
 - Each file has the icon VS Code shows for its type with its default Seti icon theme (chosen by the file's name, its extension or its language, coloured as in VS Code for dark and light schemes); folders have a folder icon.
 - Inside a git repository, entries show their git status (below).

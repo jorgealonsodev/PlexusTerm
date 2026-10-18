@@ -295,6 +295,29 @@ describe("LocalPanel tree", () => {
     expect(row("src").getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("collapses every open folder and lists everything again from the DEV toolbar, as VS Code's Explorer", async () => {
+    render(panel({ devStyle: true }));
+    fireEvent.click(await screen.findByText("src"));
+    fireEvent.click(await screen.findByText("lib"));
+    expect(await screen.findByText("x.rs")).toBeTruthy();
+    const calls = mocked.list.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh Explorer" }));
+    // Listed again, the open folders too, which stay open.
+    await waitFor(() => expect(mocked.list.mock.calls.length).toBeGreaterThanOrEqual(calls + 3));
+    expect(screen.getByText("x.rs")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Folders in Explorer" }));
+    expect(screen.queryByText("main.ts")).toBeNull();
+    expect(screen.queryByText("x.rs")).toBeNull();
+    expect(row("src").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("has no collapse or refresh icons outside DEV mode", async () => {
+    render(panel());
+    await screen.findByText("src");
+    expect(screen.queryByRole("button", { name: "Collapse Folders in Explorer" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Refresh Explorer" })).toBeNull();
+  });
+
   it("loads a folder's children once, when it is first expanded, with a loading and an error state", async () => {
     render(panel({ devStyle: true }));
     await screen.findByText("src");
