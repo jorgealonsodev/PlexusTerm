@@ -1162,6 +1162,30 @@ body.is-resizing {
 }
 
 /* A program in the tab rang the bell or sent a notification while nobody was looking. */
+/* An AI CLI at work: a ring turning while its pane prints, like the spinner in its own title. */
+.tab__busy {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  animation: tab-busy 0.8s linear infinite;
+}
+
+@keyframes tab-busy {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab__busy {
+    animation: none;
+    border-color: var(--accent);
+  }
+}
+
 .tab__attention,
 .pane__attention {
   flex: none;

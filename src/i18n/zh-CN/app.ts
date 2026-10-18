@@ -86,6 +86,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "关闭 {title}",
     newLocal: "新建本地终端",
     attention: "需要关注",
+    working: "工作中",
     attentionNotice: "需要你的关注",
     branch: "git 分支：{branch}",
     dev: "DEV 模式",

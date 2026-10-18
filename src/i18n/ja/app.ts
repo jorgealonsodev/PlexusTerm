@@ -87,6 +87,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} を閉じる",
     newLocal: "新しいローカルターミナル",
     attention: "要確認",
+    working: "作業中",
     attentionNotice: "確認が必要です",
     branch: "git ブランチ: {branch}",
     dev: "DEV モード",

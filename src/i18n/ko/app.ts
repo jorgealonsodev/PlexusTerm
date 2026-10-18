@@ -86,6 +86,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} 닫기",
     newLocal: "새 로컬 터미널",
     attention: "확인 필요",
+    working: "작업 중",
     attentionNotice: "확인이 필요합니다",
     branch: "git 브랜치: {branch}",
     dev: "DEV 모드",

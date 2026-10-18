@@ -85,6 +85,7 @@ export const app = {
     closeNamed: "Close {title}",
     newLocal: "New local terminal",
     attention: "Needs attention",
+    working: "Working",
     attentionNotice: "Needs your attention",
     branch: "Git branch: {branch}",
     dev: "DEV mode",

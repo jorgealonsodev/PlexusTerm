@@ -159,6 +159,8 @@ interface PaneMeta {
   prompts: number;
   /** Git branch of the pane's folder, or null outside a repository. */
   branch: string | null;
+  /** The pane is printing on its own (an AI CLI working). */
+  busy: boolean;
 }
 
 /** "Open in terminal" over SSH: the shell is ready once its login output is quiet this long... */
@@ -169,7 +171,7 @@ const SHELL_FIRST_OUTPUT_MS = 1500;
 /** Terminals that can run AI command-line tools, so their bar has the DEV button (S10). */
 const DEV_TARGETS: ReadonlySet<string> = new Set(["local", "ssh", "mosh"]);
 
-const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null };
+const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null, busy: false };
 
 /** The terminal pane a tab's focus stands for: an AI chat pane stands for its terminal (S9). */
 const terminalPaneOf = (tab: Tab) => tab.chats[tab.focusedPane]?.terminalPaneId ?? tab.focusedPane;
@@ -327,7 +329,8 @@ function AppContent() {
         next.logging === current.logging &&
         next.attention === current.attention &&
         next.prompts === current.prompts &&
-        next.branch === current.branch
+        next.branch === current.branch &&
+        next.busy === current.busy
         ? prev
         : { ...prev, [paneId]: next };
     });
@@ -421,6 +424,12 @@ function AppContent() {
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.attention)).map((t) => t.key),
   );
   const devTabs = new Set(Object.keys(dev.state));
+  /** Tabs whose CLI is working: its pane is printing (S13). */
+  const busyTabs = new Set(
+    Object.entries(dev.state)
+      .filter(([, tabDev]) => tabDev.cli !== null && tabDev.pane !== null && paneMeta[tabDev.pane]?.busy)
+      .map(([key]) => key),
+  );
   /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
   const tabDetails = new Map(
     state.tabs.map((t) => {
@@ -1249,6 +1258,7 @@ function AppContent() {
             logging={loggingTabs}
             attention={attentionTabs}
             dev={devTabs}
+            busy={busyTabs}
             column={activeDev !== undefined}
             details={tabDetails}
             columnWidth={settings.tabColumnWidth}
@@ -1347,6 +1357,7 @@ function AppContent() {
                               if (mark) dev.promptMark(tab.key, paneId);
                             }}
                             onCommand={(command, prompt) => dev.command(tab.key, paneId, command, prompt, settings.devCommands)}
+                            onActivity={(busy) => updatePane(paneId, { busy })}
                             onOutputQuiet={
                               tabDev?.pane === paneId && tabDev.prompt
                                 ? (row) => dev.quiet(tab.key, paneId, row)

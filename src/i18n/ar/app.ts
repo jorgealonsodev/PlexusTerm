@@ -91,6 +91,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "إغلاق {title}",
     newLocal: "طرفية محلية جديدة",
     attention: "يحتاج إلى انتباهك",
+    working: "قيد العمل",
     attentionNotice: "يحتاج إلى انتباهك",
     branch: "فرع git: {branch}",
     dev: "وضع DEV",

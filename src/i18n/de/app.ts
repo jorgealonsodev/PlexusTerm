@@ -88,6 +88,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} schließen",
     newLocal: "Neues lokales Terminal",
     attention: "Braucht Aufmerksamkeit",
+    working: "Arbeitet",
     attentionNotice: "Braucht deine Aufmerksamkeit",
     branch: "Git-Branch: {branch}",
     dev: "DEV-Modus",

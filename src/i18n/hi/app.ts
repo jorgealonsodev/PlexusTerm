@@ -87,6 +87,7 @@ export const app: Messages<typeof en> = {
     closeNamed: "{title} बंद करें",
     newLocal: "नया लोकल टर्मिनल",
     attention: "ध्यान चाहिए",
+    working: "काम चल रहा है",
     attentionNotice: "आपका ध्यान चाहिए",
     branch: "git ब्रांच: {branch}",
     dev: "DEV मोड",

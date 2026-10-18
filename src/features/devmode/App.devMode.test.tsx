@@ -25,6 +25,7 @@ interface StubProps {
   onPrompt?: (mark: boolean) => void;
   onCommand?: (command: string, prompt: string) => void;
   onOutputQuiet?: (row: string) => void;
+  onActivity?: (busy: boolean) => void;
   onAttention?: (notice: AttentionNotice) => void;
 }
 
@@ -241,6 +242,23 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
     expect(tabBar().classList.contains("tabbar--column")).toBe(true);
     expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
+  });
+
+  it("marks a tab as working while its CLI prints, and only while a CLI runs there", async () => {
+    await renderApp();
+    const working = () => within(tabBar()).queryByRole("img", { name: "Working" });
+    act(() => stub.props.onActivity?.(true));
+    await settle();
+    expect(working()).toBeNull();
+    act(() => stub.props.onActivity?.(false));
+    await run("claude");
+    act(() => stub.props.onActivity?.(true));
+    await settle();
+    expect(working()).not.toBeNull();
+    expect(working()!.closest(".tab--row")).not.toBeNull();
+    act(() => stub.props.onActivity?.(false));
+    await settle();
+    expect(working()).toBeNull();
   });
 
   it("is toggled by its shortcut once one is set", async () => {

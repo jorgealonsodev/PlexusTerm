@@ -105,6 +105,11 @@ interface TerminalViewProps {
    * cursor, so DEV mode can tell when the shell's prompt is back after an AI CLI (S10).
    */
   onOutputQuiet?: (row: string) => void;
+  /**
+   * Given, it is called with true when the pane starts printing on its own (not the echo of what is
+   * typed) and with false once it has printed nothing for `ACTIVITY_QUIET_MS`: an AI CLI working.
+   */
+  onActivity?: (busy: boolean) => void;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -143,6 +148,10 @@ export interface AiSuggestContext {
 export const AI_SUGGEST_DELAY_MS = 400;
 /** Without shell integration, the prompt counts as back once a command's output stops this long. */
 export const PROMPT_QUIET_MS = 500;
+/** A pane stops counting as working after printing nothing this long (an AI CLI's spinner ticks faster). */
+export const ACTIVITY_QUIET_MS = 1500;
+/** Output this soon after a key is taken as its echo. */
+const ECHO_MS = 150;
 /** After a resize, error lines are coloured again once the size has not changed for this long. */
 const ERROR_REFRESH_DELAY_MS = 150;
 
@@ -236,6 +245,7 @@ export function TerminalView({
   onPrompt,
   onCommand,
   onOutputQuiet,
+  onActivity,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
@@ -294,8 +304,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity };
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -379,6 +389,18 @@ export function TerminalView({
     };
     /** Output went quiet, for DEV mode (only while it listens). */
     let quietTimer: ReturnType<typeof setTimeout> | null = null;
+    let activityTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastTyped = -Infinity;
+    /** Output arrived: working, unless it is the echo of a key and the pane was idle. */
+    const active = () => {
+      if (!activityTimer && performance.now() - lastTyped < ECHO_MS) return;
+      if (activityTimer) clearTimeout(activityTimer);
+      else callbacks.current.onActivity?.(true);
+      activityTimer = setTimeout(() => {
+        activityTimer = null;
+        callbacks.current.onActivity?.(false);
+      }, ACTIVITY_QUIET_MS);
+    };
 
     /** Ends the session but keeps the pane, so what it printed (e.g. an error) stays readable. */
     const endKeepingPane = (note: string) => {
@@ -425,6 +447,7 @@ export function TerminalView({
             term.write(msg.data);
             logRef.current?.write(msg.data);
             outputListeners.forEach((listener) => listener(msg.data));
+            active();
             if (awaitingPrompt) {
               if (promptTimer) clearTimeout(promptTimer);
               promptTimer = setTimeout(() => promptCame(false), PROMPT_QUIET_MS);
@@ -624,6 +647,7 @@ export function TerminalView({
     });
     /** The normal input path: typing, pastes and macros all go through it (multi-execution included). */
     const typed = (data: string) => {
+      lastTyped = performance.now();
       write(data);
       callbacks.current.onInput?.(data);
       track(data);
@@ -759,6 +783,7 @@ export function TerminalView({
       if (errorsTimer) clearTimeout(errorsTimer);
       if (promptTimer) clearTimeout(promptTimer);
       if (quietTimer) clearTimeout(quietTimer);
+      if (activityTimer) clearTimeout(activityTimer);
       errors.dispose();
       errorsRef.current = null;
       // Disposed with the terminal.

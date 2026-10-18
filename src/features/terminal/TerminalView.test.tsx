@@ -193,7 +193,7 @@ vi.mock("@xterm/addon-search", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
-import { TerminalView } from "./TerminalView";
+import { ACTIVITY_QUIET_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
 import { PlatformContext } from "../platform/usePlatform";
@@ -677,6 +677,36 @@ describe("TerminalView", () => {
           vi.useRealTimers();
         }
       });
+    });
+
+    it("reports when its output starts and when it stops for a while, not the echo of what is typed", async () => {
+      vi.useFakeTimers();
+      try {
+        const onActivity = vi.fn();
+        let emit: (msg: { event: "output"; data: string }) => void = () => {};
+        backend.start.mockImplementationOnce((_options, onEvent) => {
+          emit = onEvent as typeof emit;
+          return Promise.resolve(7);
+        });
+        render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} onActivity={onActivity} />);
+        await act(() => vi.advanceTimersByTimeAsync(10));
+        // The echo of a key is not the program working.
+        act(() => term().type("a"));
+        act(() => emit({ event: "output", data: "a" }));
+        expect(onActivity).not.toHaveBeenCalled();
+        await act(() => vi.advanceTimersByTimeAsync(500));
+        // Output nobody typed for: working, once, until it stops for ACTIVITY_QUIET_MS.
+        act(() => emit({ event: "output", data: "⠂ Thinking" }));
+        await act(() => vi.advanceTimersByTimeAsync(800));
+        act(() => emit({ event: "output", data: "⠐ Thinking" }));
+        expect(onActivity.mock.calls).toEqual([[true]]);
+        await act(() => vi.advanceTimersByTimeAsync(ACTIVITY_QUIET_MS - 100));
+        expect(onActivity.mock.calls).toEqual([[true]]);
+        await act(() => vi.advanceTimersByTimeAsync(200));
+        expect(onActivity.mock.calls).toEqual([[true], [false]]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     describe("Shift+Enter in AI command-line tools", () => {

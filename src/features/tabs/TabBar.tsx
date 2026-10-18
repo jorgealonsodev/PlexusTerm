@@ -16,6 +16,8 @@ interface TabBarProps {
   attention?: ReadonlySet<string>;
   /** Tabs in DEV mode (S10). */
   dev?: ReadonlySet<string>;
+  /** Tabs whose AI CLI is working: a spinner shows it. */
+  busy?: ReadonlySet<string>;
   /** DEV mode's layout (S13): a column of rows, each with its CLI's icon and project folder. */
   column?: boolean;
   /** What the column shows of each tab: the CLI it runs (null for none) and its project folder's name. */
@@ -51,7 +53,7 @@ function hostOf(tab: Tab): string | null {
 }
 
 export function TabBar(props: TabBarProps) {
-  const { tabs, activeKey, logging, attention, dev, column = false, details, onActivate, onClose, onNew } = props;
+  const { tabs, activeKey, logging, attention, dev, busy, column = false, details, onActivate, onClose, onNew } = props;
   const t = useT();
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -147,6 +149,9 @@ export function TabBar(props: TabBarProps) {
             }}
           >
             {column && <CliIcon cli={details?.get(tab.key)?.cli ?? null} />}
+            {busy?.has(tab.key) && (
+              <span className="tab__busy" role="img" aria-label={t("app.tabs.working")} title={t("app.tabs.working")} />
+            )}
             {logging?.has(tab.key) && (
               <span className="tab__log" role="img" aria-label={t("app.tabs.logging")} title={t("app.tabs.logging")}>
                 ●
