@@ -48,9 +48,25 @@ function MarkdownPreview({ text, onOpenLink }: { text: string; onOpenLink: (url:
     if (!link) return;
     e.preventDefault();
     const href = link.getAttribute("href") ?? "";
-    if (/^https?:\/\//i.test(href)) onOpenLink(new URL(href).href);
+    if (!/^https?:\/\//i.test(href)) return;
+    try {
+      onOpenLink(new URL(href).href);
+    } catch {
+      // Not a valid address (`http://` alone): nothing to open.
+    }
   };
-  return <article className="viewer__markdown" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />;
+  // A middle click would open the link in a new window of the app's own.
+  const onAuxClick = (e: MouseEvent<HTMLElement>) => {
+    if ((e.target as Element).closest("a")) e.preventDefault();
+  };
+  return (
+    <article
+      className="viewer__markdown"
+      onClick={onClick}
+      onAuxClick={onAuxClick}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 /** The file viewer pane (S1-S5): a file's text, read-only, next to its terminal. */

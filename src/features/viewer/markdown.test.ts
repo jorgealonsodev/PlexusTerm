@@ -44,4 +44,10 @@ describe("Markdown preview (S4)", () => {
     for (const name of ["README.md", "notes.MARKDOWN", "a.mdx", "doc.mkd"]) expect(isMarkdown(name)).toBe(true);
     for (const name of ["md", "a.mdown.txt", "main.ts", "Makefile"]) expect(isMarkdown(name)).toBe(false);
   });
+
+  it("keeps the file's element ids from clobbering the window's globals", () => {
+    const host = html('<a id="__TAURI_INTERNALS__" name="cookie">x</a>');
+    expect(host.querySelector("#__TAURI_INTERNALS__")).toBeNull();
+    expect(host.querySelector("a")?.textContent).toBe("x");
+  });
 });

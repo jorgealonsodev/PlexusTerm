@@ -15,5 +15,7 @@ export function renderMarkdown(text: string): string {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["style", "form", "input", "button", "select", "textarea", "iframe", "frame", "object", "embed", "base", "meta", "link"],
     FORBID_ATTR: ["style"],
+    // Ids and names get a `user-content-` prefix, so none can stand for a global of the window.
+    SANITIZE_NAMED_PROPS: true,
   });
 }

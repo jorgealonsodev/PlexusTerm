@@ -105,4 +105,17 @@ describe("FileViewer Markdown (S4)", () => {
     expect(click("rel")).toBe(true);
     expect(onOpenLink).toHaveBeenCalledTimes(1);
   });
+
+  it("ignores broken web links and middle clicks on links", async () => {
+    const onOpenLink = vi.fn();
+    render(<FileViewer path="/p/README.md" load={file("[bad](http://) [site](https://example.com)")} onClose={() => {}} onOpenLink={onOpenLink} />);
+    const preview = await screen.findByRole("article");
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    expect(() => within(preview).getByText("bad").dispatchEvent(click)).not.toThrow();
+    expect(click.defaultPrevented).toBe(true);
+    const middle = new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 });
+    within(preview).getByText("site").dispatchEvent(middle);
+    expect(middle.defaultPrevented).toBe(true);
+    expect(onOpenLink).not.toHaveBeenCalled();
+  });
 });
