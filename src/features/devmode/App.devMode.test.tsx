@@ -265,6 +265,28 @@ describe("DEV mode (S10, S13)", () => {
     expect(working()).toBeNull();
   });
 
+  it("duplicates a DEV tab into a new DEV tab, and a plain tab into a plain one", async () => {
+    await renderApp();
+    const duplicate = (index: number) => {
+      fireEvent.contextMenu(within(tabBar()).getAllByRole("tab")[index], { clientX: 1, clientY: 1 });
+      fireEvent.click(screen.getByText("Duplicate tab"));
+    };
+    duplicate(0);
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(2);
+    expect(devOn()).toBe(false);
+
+    fireEvent.click(devButton());
+    await settle();
+    duplicate(1);
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
+    expect(tabs[2].getAttribute("aria-selected")).toBe("true");
+    expect(devOn()).toBe(true);
+    expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
+  });
+
   it("is toggled by its shortcut once one is set", async () => {
     await renderApp({ shortcuts: { toggleDevMode: "Ctrl+Shift+Y" } });
     expect(devButton().getAttribute("title")).toContain("Ctrl+Shift+Y");

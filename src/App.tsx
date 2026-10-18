@@ -380,7 +380,7 @@ function AppContent() {
   useEffect(() => () => forgetChatsExcept(new Set()), []);
 
   const activeTab = state.tabs.find((t) => t.key === state.activeKey) ?? null;
-  /** The tab the DEV column's + opened: it turns DEV mode on once its shell has started. */
+  /** The tab the DEV column's + or a DEV tab's duplicate opened: it turns DEV mode on once its shell has started. */
   const devOnStart = useRef<string | null>(null);
   useEffect(() => {
     const tab = state.tabs.find((t) => t.key === devOnStart.current);
@@ -1275,7 +1275,10 @@ function AppContent() {
             }}
             onDuplicate={(key) => {
               const tab = state.tabs.find((t) => t.key === key);
-              if (tab) dispatch({ type: "open", target: tab.target });
+              if (!tab) return;
+              // The copy of a DEV tab is a DEV tab too.
+              if (dev.state[key]) devOnStart.current = `tab-${state.nextSeq}`;
+              dispatch({ type: "open", target: tab.target });
             }}
             onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
             onCloseRight={(key) => dispatch({ type: "closeRight", key })}
