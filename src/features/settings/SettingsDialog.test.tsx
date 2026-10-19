@@ -408,6 +408,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("chooses the weight of the terminal font, regular by default, and saves it", () => {
+      const { onSave } = setup();
+      const weight = screen.getByLabelText("Terminal font weight") as HTMLSelectElement;
+      expect(weight.value).toBe("400");
+      expect([...weight.options].map((o) => o.textContent)).toEqual(["Light", "Regular", "Medium", "Semibold"]);
+      fireEvent.change(weight, { target: { value: "300" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fontWeight: 300 }));
+    });
+
     it("shows git status in file lists by default and saves the choice", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Files" }));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
@@ -46,6 +46,7 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      fontWeight: 400,
       uiFontSize: 13,
       chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
@@ -114,6 +115,7 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      fontWeight: 400,
       uiFontSize: 13,
       chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
@@ -282,6 +284,7 @@ describe("serializeSettings", () => {
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,
+      fontWeight: 500,
       uiFontSize: 15,
       chatFontSize: 17,
       devCommands: ["aider"],
@@ -400,5 +403,15 @@ describe("GPU acceleration on Linux", () => {
     expect(parseSettings(old, { linux: false }).gpuAcceleration).toBe(true);
     const chosen = serializeSettings({ ...DEFAULT_SETTINGS, gpuAcceleration: true });
     expect(parseSettings(chosen, { linux: true }).gpuAcceleration).toBe(true);
+  });
+});
+
+describe("terminal font weight", () => {
+  it("is 400 by default and only one of the offered weights", () => {
+    expect(DEFAULT_SETTINGS.fontWeight).toBe(400);
+    expect(parseSettings(JSON.stringify({ fontWeight: 600 })).fontWeight).toBe(600);
+    expect(parseSettings(JSON.stringify({ fontWeight: 450 })).fontWeight).toBe(400);
+    expect(parseSettings(JSON.stringify({ fontWeight: "bold" })).fontWeight).toBe(400);
+    expect(FONT_WEIGHTS).toEqual([300, 400, 500, 600]);
   });
 });

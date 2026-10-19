@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} 可调整字号。会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
     fontHelpNoShortcut:
       "会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
+    fontWeight: "终端字体粗细",
+    weightLight: "细",
+    weightRegular: "常规",
+    weightMedium: "中等",
+    weightSemibold: "半粗",
     uiFontSize: "界面文字大小",
     uiFontSizeHelp: "栏、列表和对话框中的文字大小(像素);终端和 AI 聊天各有自己的大小。",
     chatFontSize: "AI 聊天文字大小",

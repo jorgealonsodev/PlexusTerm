@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} でフォントサイズを変更できます。アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
     fontHelpNoShortcut:
       "アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
+    fontWeight: "ターミナルのフォントの太さ",
+    weightLight: "細字",
+    weightRegular: "標準",
+    weightMedium: "中字",
+    weightSemibold: "やや太字",
     uiFontSize: "インターフェースの文字サイズ",
     uiFontSizeHelp: "バー、リスト、ダイアログの文字サイズ (ピクセル)。ターミナルと AI チャットはそれぞれ独自のサイズを持ちます。",
     chatFontSize: "AI チャットの文字サイズ",

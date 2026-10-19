@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} cambian el tamaño de fuente. Los temas de prompt que dibujan iconos (Powerlevel10k, agnoster, Starship) necesitan una Nerd Font como fuente.",
     fontHelpNoShortcut:
       "Los temas de prompt que dibujan iconos (Powerlevel10k, agnoster, Starship) necesitan una Nerd Font como fuente.",
+    fontWeight: "Grosor de la fuente del terminal",
+    weightLight: "Fina",
+    weightRegular: "Normal",
+    weightMedium: "Media",
+    weightSemibold: "Seminegrita",
     uiFontSize: "Tamaño del texto de la interfaz",
     uiFontSizeHelp: "Tamaño del texto de las barras, listas y diálogos, en píxeles; los terminales y el chat de IA tienen el suyo.",
     chatFontSize: "Tamaño del texto del chat de IA",

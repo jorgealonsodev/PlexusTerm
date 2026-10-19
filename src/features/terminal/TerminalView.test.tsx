@@ -379,6 +379,21 @@ describe("TerminalView", () => {
       expect(term().options.fontSize).toBe(22);
     });
 
+    it("starts with the font weight of the settings, bold a step heavier, and follows its changes", () => {
+      const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, fontWeight: 300 } });
+      expect(term().options).toMatchObject({ fontWeight: 300, fontWeightBold: 600 });
+      rerender(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, fontWeight: 500 }}
+        />,
+      );
+      expect(term().options).toMatchObject({ fontWeight: 500, fontWeightBold: 800 });
+    });
+
     it("starts with the colour scheme and font of the settings and follows their changes", () => {
       const view = (settings: typeof DEFAULT_SETTINGS) => (
         <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />

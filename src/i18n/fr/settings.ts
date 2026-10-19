@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} modifient la taille de police. Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
     fontHelpNoShortcut:
       "Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
+    fontWeight: "Graisse de la police du terminal",
+    weightLight: "Légère",
+    weightRegular: "Normale",
+    weightMedium: "Moyenne",
+    weightSemibold: "Demi-gras",
     uiFontSize: "Taille du texte de l'interface",
     uiFontSizeHelp: "Taille du texte des barres, listes et boîtes de dialogue, en pixels ; les terminaux et le chat IA ont la leur.",
     chatFontSize: "Taille du texte du chat IA",

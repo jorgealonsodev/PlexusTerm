@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Terminal } from "@xterm/xterm";
+import { Terminal, type FontWeight } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -10,7 +10,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { softwareWebgl } from "./webglProbe";
 import { latencyFrame, latencyMark } from "./latencyLog";
 import "@xterm/xterm/css/xterm.css";
-import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
+import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
 import { commandHistory, type HistoryStore } from "../history/historyStore";
 import { patchJump } from "../sessions/jumpHosts";
@@ -341,6 +341,8 @@ export function TerminalView({
       cursorWidth: 2,
       fontFamily: cssFontFamily(settingsRef.current.fontFamily),
       fontSize: settingsRef.current.fontSize,
+      fontWeight: settingsRef.current.fontWeight as FontWeight,
+      fontWeightBold: boldWeight(settingsRef.current.fontWeight) as FontWeight,
       lineHeight: 1.15,
       scrollback: 10000,
       theme: themeById(settingsRef.current.theme).theme,
@@ -954,6 +956,15 @@ export function TerminalView({
     term.options.fontSize = fontSize;
     if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
   }, [fontSize]);
+
+  // The text weight applies live, bold a step heavier.
+  const fontWeight = settings.fontWeight;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || term.options.fontWeight === fontWeight) return;
+    term.options.fontWeight = fontWeight as FontWeight;
+    term.options.fontWeightBold = boldWeight(fontWeight) as FontWeight;
+  }, [fontWeight]);
 
   // Colour scheme and font changes apply live too; a new font changes the cell size.
   const theme = themeById(settings.theme).theme;

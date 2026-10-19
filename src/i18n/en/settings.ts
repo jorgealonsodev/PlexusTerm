@@ -32,6 +32,11 @@ export const settings = {
       "{shortcuts} change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
     fontHelpNoShortcut:
       "Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
+    fontWeight: "Terminal font weight",
+    weightLight: "Light",
+    weightRegular: "Regular",
+    weightMedium: "Medium",
+    weightSemibold: "Semibold",
     uiFontSize: "Interface text size",
     uiFontSizeHelp: "Size of the text in the bars, lists and dialogs, in pixels; the terminals and the AI chat have their own.",
     chatFontSize: "AI chat text size",

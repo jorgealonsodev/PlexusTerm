@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} ändern die Schriftgröße. Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
     fontHelpNoShortcut:
       "Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
+    fontWeight: "Schriftstärke des Terminals",
+    weightLight: "Leicht",
+    weightRegular: "Normal",
+    weightMedium: "Mittel",
+    weightSemibold: "Halbfett",
     uiFontSize: "Textgröße der Oberfläche",
     uiFontSizeHelp: "Größe des Texts in Leisten, Listen und Dialogen, in Pixeln; die Terminals und der KI-Chat haben ihre eigene.",
     chatFontSize: "Textgröße des KI-Chats",

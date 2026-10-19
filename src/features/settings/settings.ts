@@ -40,6 +40,8 @@ export interface TerminalSettings {
   theme: string;
   /** Font family: one font name, or a CSS font list. */
   fontFamily: string;
+  /** Weight of the terminal's text, one of FONT_WEIGHTS; bold text is BOLD_STEP heavier. */
+  fontWeight: number;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
   /**
@@ -121,6 +123,11 @@ export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_FAMILY_LENGTH = 200;
 export const DEFAULT_FONT_FAMILY = '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace';
 export const MAX_FONT_SIZE = 32;
+/** Terminal text weights offered: light, regular, medium and semibold (variable fonts draw them all). */
+export const FONT_WEIGHTS = [300, 400, 500, 600];
+/** Bold text is this much heavier than the chosen weight. */
+export const BOLD_STEP = 300;
+export const boldWeight = (weight: number) => Math.min(900, weight + BOLD_STEP);
 /** The interface and the AI chat are drawn for 13 px text; their sizes scale from it. */
 export const BASE_TEXT_SIZE = 13;
 export const MIN_UI_FONT_SIZE = 10;
@@ -141,6 +148,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   errorHighlight: true,
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
+  fontWeight: 400,
   remoteMonitor: true,
   textEditor: "",
   fileDetails: false,
@@ -319,6 +327,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     errorHighlight: bool(value.errorHighlight, d.errorHighlight),
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
+    fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),

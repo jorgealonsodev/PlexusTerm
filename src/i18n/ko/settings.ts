@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts}으로 글꼴 크기를 변경합니다. 아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
     fontHelpNoShortcut:
       "아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
+    fontWeight: "터미널 글꼴 두께",
+    weightLight: "가늘게",
+    weightRegular: "보통",
+    weightMedium: "중간",
+    weightSemibold: "약간 굵게",
     uiFontSize: "인터페이스 텍스트 크기",
     uiFontSizeHelp: "막대, 목록, 대화 상자의 텍스트 크기(픽셀). 터미널과 AI 채팅은 각자의 크기를 사용합니다.",
     chatFontSize: "AI 채팅 텍스트 크기",

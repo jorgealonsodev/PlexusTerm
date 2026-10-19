@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "{shortcuts} फ़ॉन्ट आकार बदलते हैं। आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
     fontHelpNoShortcut:
       "आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
+    fontWeight: "टर्मिनल फ़ॉन्ट की मोटाई",
+    weightLight: "पतला",
+    weightRegular: "सामान्य",
+    weightMedium: "मध्यम",
+    weightSemibold: "अर्ध-मोटा",
     uiFontSize: "इंटरफ़ेस टेक्स्ट का आकार",
     uiFontSizeHelp: "बार, सूचियों और डायलॉग में टेक्स्ट का आकार, पिक्सेल में; टर्मिनल और AI चैट का अपना आकार होता है।",
     chatFontSize: "AI चैट टेक्स्ट का आकार",

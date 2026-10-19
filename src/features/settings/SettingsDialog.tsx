@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FileText, Globe, Info, KeyRound, Keyboard, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
+import type { AppKey } from "../../i18n/catalogs";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
@@ -22,6 +23,7 @@ import {
   clampFontSize,
   clampChatFontSize,
   clampUiFontSize,
+  FONT_WEIGHTS,
   MIN_UI_FONT_SIZE,
   MAX_UI_FONT_SIZE,
   MIN_CHAT_FONT_SIZE,
@@ -274,6 +276,14 @@ function openLink(e: MouseEvent, url: string) {
 }
 
 /** Terminal settings shared by every tab (S15.6), in sections chosen from a side menu. */
+/** The names of the terminal font weights. */
+const WEIGHT_NAMES: Record<number, AppKey> = {
+  300: "settings.appearance.weightLight",
+  400: "settings.appearance.weightRegular",
+  500: "settings.appearance.weightMedium",
+  600: "settings.appearance.weightSemibold",
+};
+
 export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
@@ -285,6 +295,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   };
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
+  const [fontWeight, setFontWeight] = useState(settings.fontWeight);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
@@ -378,6 +389,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     onSave({
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
+      fontWeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       copyOnSelect,
       rightClickPastes,
@@ -539,6 +551,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 spellCheck={false}
                 onChange={(e) => setFontFamily(e.target.value)}
               />
+            </label>
+            <label className="field field--size">
+              {t("settings.appearance.fontWeight")}
+              <select value={fontWeight} onChange={(e) => setFontWeight(Number(e.target.value))}>
+                {FONT_WEIGHTS.map((weight) => (
+                  <option key={weight} value={weight}>
+                    {t(WEIGHT_NAMES[weight])}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field field--size">
               {t("settings.appearance.fontSize")}

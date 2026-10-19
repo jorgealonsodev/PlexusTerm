@@ -35,6 +35,11 @@ export const settings: Messages<typeof en> = {
       "تغيّر {shortcuts} حجم الخط. تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
     fontHelpNoShortcut:
       "تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
+    fontWeight: "سُمك خط الطرفية",
+    weightLight: "رفيع",
+    weightRegular: "عادي",
+    weightMedium: "متوسط",
+    weightSemibold: "شبه عريض",
     uiFontSize: "حجم نص الواجهة",
     uiFontSizeHelp: "حجم النص في الأشرطة والقوائم ومربعات الحوار بالبكسل؛ للطرفيات ولمحادثة الذكاء الاصطناعي حجمها الخاص.",
     chatFontSize: "حجم نص محادثة الذكاء الاصطناعي",
