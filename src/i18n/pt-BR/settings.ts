@@ -37,6 +37,9 @@ export const settings: Messages<typeof en> = {
       "Temas de prompt que desenham ícones (Powerlevel10k, agnoster, Starship) precisam de uma Nerd Font como fonte.",
     uiFontSize: "Tamanho do texto da interface",
     uiFontSizeHelp: "Tamanho do texto das barras, listas e caixas de diálogo, em pixels; os terminais e o chat de IA têm o próprio.",
+    chatFontSize: "Tamanho do texto do chat de IA",
+    chatFontSizeHelp: "Tamanho do texto do chat de IA, em pixels. Com o foco no chat, {shortcuts} o alteram.",
+    chatFontSizeHelpNoShortcut: "Tamanho do texto do chat de IA, em pixels.",
     hideSidebar: "Ocultar completamente a barra lateral quando recolhida",
     sidebarAtStartup: "Barra lateral ao abrir o PlexusTerm",
     sidebarLast: "Como deixei",
@@ -94,9 +97,6 @@ export const settings: Messages<typeof en> = {
       "O editor de texto abre arquivos do navegador SFTP: um programa ou um comando como {command}; deixe vazio para usar o padrão do sistema.",
   },
   ai: {
-    chatFontSize: "Tamanho do texto do chat de IA",
-    chatFontSizeHelp: "Tamanho do texto do chat de IA, em pixels. Com o foco no chat, {shortcuts} o alteram.",
-    chatFontSizeHelpNoShortcut: "Tamanho do texto do chat de IA, em pixels.",
     inlineSuggestions: "Sugestões em linha",
     inlineSuggestionsHelp:
       "Uma sugestão em cinza do restante do comando enquanto você digita. Seta para a direita ou End a aceita; Ctrl+Seta para a direita aceita uma palavra.",

@@ -37,6 +37,9 @@ export const settings: Messages<typeof en> = {
       "आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
     uiFontSize: "इंटरफ़ेस टेक्स्ट का आकार",
     uiFontSizeHelp: "बार, सूचियों और डायलॉग में टेक्स्ट का आकार, पिक्सेल में; टर्मिनल और AI चैट का अपना आकार होता है।",
+    chatFontSize: "AI चैट टेक्स्ट का आकार",
+    chatFontSizeHelp: "AI चैट में टेक्स्ट का आकार, पिक्सेल में। चैट में फ़ोकस होने पर {shortcuts} इसे बदलते हैं।",
+    chatFontSizeHelpNoShortcut: "AI चैट में टेक्स्ट का आकार, पिक्सेल में।",
     hideSidebar: "फ़ोल्ड करने पर साइडबार को पूरी तरह छिपाएँ",
     sidebarAtStartup: "PlexusTerm खुलने पर साइडबार",
     sidebarLast: "जैसा छोड़ा था",
@@ -94,9 +97,6 @@ export const settings: Messages<typeof en> = {
       "टेक्स्ट एडिटर SFTP ब्राउज़र से फ़ाइलें खोलता है: कोई प्रोग्राम, या {command} जैसी कमांड; सिस्टम डिफ़ॉल्ट उपयोग करने के लिए इसे खाली छोड़ें।",
   },
   ai: {
-    chatFontSize: "AI चैट टेक्स्ट का आकार",
-    chatFontSizeHelp: "AI चैट में टेक्स्ट का आकार, पिक्सेल में। चैट में फ़ोकस होने पर {shortcuts} इसे बदलते हैं।",
-    chatFontSizeHelpNoShortcut: "AI चैट में टेक्स्ट का आकार, पिक्सेल में।",
     inlineSuggestions: "इनलाइन सुझाव",
     inlineSuggestionsHelp:
       "टाइप करते समय कमांड के बाकी हिस्से का धूसर सुझाव। दायाँ तीर या End इसे स्वीकार करता है, Ctrl+दायाँ तीर एक शब्द स्वीकार करता है।",

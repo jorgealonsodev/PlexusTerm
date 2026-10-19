@@ -567,6 +567,21 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </label>
             <p className="muted">{t("settings.appearance.uiFontSizeHelp")}</p>
+            <label className="field field--size">
+              {t("settings.appearance.chatFontSize")}
+              <input
+                type="number"
+                min={MIN_CHAT_FONT_SIZE}
+                max={MAX_CHAT_FONT_SIZE}
+                value={chatFontSize}
+                onChange={(e) => setChatFontSize(e.target.value)}
+              />
+            </label>
+            <p className="muted">
+              {fontShortcuts
+                ? t("settings.appearance.chatFontSizeHelp", { shortcuts: fontShortcuts })
+                : t("settings.appearance.chatFontSizeHelpNoShortcut")}
+            </p>
             <label className="check">
               <input
                 type="checkbox"
@@ -752,21 +767,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("ai")}>
-            <label className="field field--size">
-              {t("settings.ai.chatFontSize")}
-              <input
-                type="number"
-                min={MIN_CHAT_FONT_SIZE}
-                max={MAX_CHAT_FONT_SIZE}
-                value={chatFontSize}
-                onChange={(e) => setChatFontSize(e.target.value)}
-              />
-            </label>
-            <p className="muted">
-              {fontShortcuts
-                ? t("settings.ai.chatFontSizeHelp", { shortcuts: fontShortcuts })
-                : t("settings.ai.chatFontSizeHelpNoShortcut")}
-            </p>
             <label className="check">
               <input
                 type="checkbox"

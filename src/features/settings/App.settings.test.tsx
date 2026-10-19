@@ -74,7 +74,6 @@ describe("App settings (S15.2, S15.6)", () => {
     await act(() => Promise.resolve());
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Interface text size"), { target: { value: "16" } });
-    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
     fireEvent.change(screen.getByLabelText("AI chat text size"), { target: { value: "18" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(String(16 / 13));

@@ -37,6 +37,9 @@ export const settings: Messages<typeof en> = {
       "아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
     uiFontSize: "인터페이스 텍스트 크기",
     uiFontSizeHelp: "막대, 목록, 대화 상자의 텍스트 크기(픽셀). 터미널과 AI 채팅은 각자의 크기를 사용합니다.",
+    chatFontSize: "AI 채팅 텍스트 크기",
+    chatFontSizeHelp: "AI 채팅의 텍스트 크기(픽셀). 채팅에 포커스가 있으면 {shortcuts}(으)로 바꿉니다.",
+    chatFontSizeHelpNoShortcut: "AI 채팅의 텍스트 크기(픽셀).",
     hideSidebar: "접을 때 사이드바를 완전히 숨기기",
     sidebarAtStartup: "PlexusTerm을 열 때 사이드바",
     sidebarLast: "마지막 상태 그대로",
@@ -94,9 +97,6 @@ export const settings: Messages<typeof en> = {
       "텍스트 편집기는 SFTP 브라우저에서 파일을 엽니다. 프로그램 또는 {command} 같은 명령을 지정하고, 비워 두면 시스템 기본값을 사용합니다.",
   },
   ai: {
-    chatFontSize: "AI 채팅 텍스트 크기",
-    chatFontSizeHelp: "AI 채팅의 텍스트 크기(픽셀). 채팅에 포커스가 있으면 {shortcuts}(으)로 바꿉니다.",
-    chatFontSizeHelpNoShortcut: "AI 채팅의 텍스트 크기(픽셀).",
     inlineSuggestions: "인라인 제안",
     inlineSuggestionsHelp:
       "입력하는 동안 명령의 나머지 부분을 회색으로 제안합니다. 오른쪽 화살표 또는 End로 수락하고, Ctrl+오른쪽 화살표로 한 단어씩 수락합니다.",
