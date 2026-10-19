@@ -83,6 +83,8 @@ export const settings: Messages<typeof en> = {
     details: "Afficher la taille et la date dans les listes de fichiers",
     gitStatus: "Afficher l’état git dans les listes de fichiers",
     gitStatusHelp: "Dans un dépôt git, l’Explorateur et le navigateur SFTP colorent chaque élément comme VS Code : modifié, ajouté, supprimé, renommé, non suivi, ignoré ou en conflit, avec sa lettre à droite ; un dossier prend la couleur du changement le plus important qu’il contient. L’état est relu quand le dossier est listé, quand l’invite revient et pendant que le terminal affiche (au plus toutes les 2 secondes). En SSH, git s’exécute sur le serveur par la même connexion. Ne s’applique qu’aux listes de fichiers du mode DEV.",
+    autoSave: "Enregistrer automatiquement les fichiers modifiés",
+    autoSaveHelp: "Activé, un fichier modifié dans la visionneuse est enregistré tout seul une seconde après la dernière frappe. Désactivé, enregistrez-le avec le bouton d’enregistrement ou Ctrl+S. Dans les deux cas, un fichier modifié par quelqu’un d’autre depuis son ouverture n’est jamais écrasé.",
     terminalFollows: "Changer le dossier du terminal quand vous ouvrez un dossier dans le navigateur de fichiers",
     terminalFollowsHelp: "Ouvrir un dossier dans le navigateur SFTP ou l’Explorateur exécute cd dans son terminal, seulement si « Suivre le dossier du terminal » est coché dans le panneau et que rien n’est saisi sur la ligne de commande.",
     chooseEditor: "Choisir un éditeur de texte",

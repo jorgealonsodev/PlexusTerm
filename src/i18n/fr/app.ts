@@ -127,6 +127,9 @@ export const app: Messages<typeof en> = {
     mode: "Affichage",
     code: "Code",
     preview: "Aperçu",
+    save: "Enregistrer",
+    saveHint: "Enregistrer (Ctrl+S)",
+    unsaved: "Modifications non enregistrées",
   },
   toolbarColor: {
     red: "Rouge",

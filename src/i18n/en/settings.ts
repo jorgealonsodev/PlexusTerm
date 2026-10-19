@@ -80,6 +80,8 @@ export const settings = {
     details: "Show size and date in file lists",
     gitStatus: "Show git status in file lists",
     gitStatusHelp: "Inside a git repository, the Explorer and the SFTP browser colour each entry like VS Code: modified, added, deleted, renamed, untracked, ignored or in conflict, with its letter at the right; a folder takes the colour of the most important change inside it. It is read again when the folder is listed, when the prompt comes back and while the terminal prints (at most every 2 seconds). SSH lists run git on the server over the same connection. It applies only to the file lists of DEV mode.",
+    autoSave: "Save edited files automatically",
+    autoSaveHelp: "When on, a file edited in the file viewer is saved by itself a second after you stop typing. When off, save it with the save button or Ctrl+S. Either way, a file changed by someone else since it was opened is never overwritten.",
     terminalFollows: "Change the terminal's folder when you open a folder in the file browser",
     terminalFollowsHelp: "Opening a folder in the SFTP browser or the Explorer runs cd in its terminal, only when the panel's Follow terminal folder is on and nothing is typed on the command line.",
     chooseEditor: "Choose a text editor",

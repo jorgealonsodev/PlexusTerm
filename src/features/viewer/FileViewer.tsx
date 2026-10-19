@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { X } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
-import { createCodeView, reloadText } from "./codeView";
+import { createCodeView, reloadText, type Editing } from "./codeView";
 import type { EditorView } from "@codemirror/view";
+import type { Text } from "@codemirror/state";
 import { isMarkdown, renderMarkdown } from "./markdown";
 
 /** A file's text as the backend reads it for the viewer. */
@@ -29,28 +30,49 @@ interface FileViewerProps {
   subscribeOutput?: (listener: (text: string) => void) => () => void;
   /** Changes each time the terminal's prompt comes back: the file is read again. */
   prompt?: number;
+  /**
+   * Writes `content` over the file while it still holds `expected` (the text the edits started
+   * from); rejects with the reason otherwise. Without it the file is read-only.
+   */
+  save?: (expected: string, content: string) => Promise<void>;
+  /** Saves by itself AUTO_SAVE_MS after typing stops. */
+  autoSave?: boolean;
 }
 
 /** The file is read again at most this often while its terminal prints. */
 export const REFRESH_MS = 1000;
+/** With auto-save on, the file is saved this long after the last edit. */
+export const AUTO_SAVE_MS = 1000;
 
 type Loaded = { state: "loading" } | { state: "error"; message: string } | { state: "ok"; file: ViewedText };
 
-/** The text of a file in a CodeMirror view; a new text replaces the old one in the same view. */
-function CodeView({ text, name }: { text: string; name: string }) {
+/**
+ * The text of a file in a CodeMirror view; a new text replaces the old one in the same view,
+ * unless `keep` says the view holds edits not saved yet.
+ */
+function CodeView({ text, name, editing, keep }: { text: string; name: string; editing?: Editing; keep: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const textRef = useRef(text);
   textRef.current = text;
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const editable = editing !== undefined;
   useEffect(() => {
-    view.current = createCodeView(host.current!, textRef.current, name);
+    const relay: Editing | undefined = editingRef.current && {
+      onEdit: (doc) => editingRef.current?.onEdit(doc),
+      onSave: () => editingRef.current?.onSave(),
+    };
+    view.current = createCodeView(host.current!, textRef.current, name, relay);
     return () => {
       view.current?.destroy();
       view.current = null;
     };
-  }, [name]);
+  }, [name, editable]);
+  const keepRef = useRef(keep);
+  keepRef.current = keep;
   useEffect(() => {
-    if (view.current) reloadText(view.current, text);
+    if (view.current && !keepRef.current) reloadText(view.current, text);
   }, [text]);
   return <div className="viewer__code" ref={host} />;
 }
@@ -89,8 +111,20 @@ function MarkdownPreview({ text, onOpenLink }: { text: string; onOpenLink: (url:
   );
 }
 
-/** The file viewer pane (S1-S5): a file's text, read-only, next to its terminal. */
-export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, subscribeOutput, prompt }: FileViewerProps) {
+/**
+ * The file viewer pane (S1-S5): a file's text next to its terminal, editable when it can be saved
+ * and was read whole.
+ */
+export function FileViewer({
+  path,
+  load,
+  onClose,
+  onOpenLink = openInBrowser,
+  subscribeOutput,
+  prompt,
+  save,
+  autoSave = false,
+}: FileViewerProps) {
   const t = useT();
   const name = fileName(path);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
@@ -100,9 +134,27 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
   const loadRef = useRef(load);
   loadRef.current = load;
 
+  /** The edited text while it differs from the file's; null when there is nothing to save. */
+  const draft = useRef<Text | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopAutoSave = () => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = null;
+  };
+  useEffect(() => stopAutoSave, []);
+
   useEffect(() => {
     let live = true;
     setLoaded({ state: "loading" });
+    draft.current = null;
+    setDirty(false);
+    setSaveError(null);
+    stopAutoSave();
     loadRef.current().then(
       (file) => live && setLoaded({ state: "ok", file }),
       (err) => live && setLoaded({ state: "error", message: describeAttachError(err) }),
@@ -117,6 +169,8 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
   refreshRef.current = () => {
     loadRef.current().then(
       (file) =>
+        // Unsaved edits are kept; saving says if the file changed meanwhile.
+        dirtyRef.current ||
         setLoaded((prev) =>
           prev.state === "ok" && prev.file.content === file.content && prev.file.truncated === file.truncated
             ? prev
@@ -144,12 +198,58 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
     };
   }, [subscribeOutput]);
 
+  const file = loaded.state === "ok" ? loaded.file : null;
+  const editable = save !== undefined && file !== null && !file.truncated;
+  const saveRef = useRef<() => void>(() => {});
+  saveRef.current = () => {
+    stopAutoSave();
+    const edited = draft.current;
+    if (!save || !file || !edited || saving) return;
+    const content = edited.toString();
+    setSaving(true);
+    save(file.content, content).then(
+      () => {
+        setSaving(false);
+        setSaveError(null);
+        // Typing during the save keeps the newer text to save.
+        if (draft.current === edited) {
+          draft.current = null;
+          setDirty(false);
+        }
+        setLoaded({ state: "ok", file: { ...file, content } });
+      },
+      (err) => {
+        setSaving(false);
+        setSaveError(describeAttachError(err));
+      },
+    );
+  };
+  const editing: Editing | undefined = editable
+    ? {
+        onEdit: (doc) => {
+          const base = file.content;
+          const same = doc.length === base.length && doc.toString() === base;
+          draft.current = same ? null : doc;
+          setDirty(!same);
+          stopAutoSave();
+          if (autoSave && !same) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
+        },
+        onSave: () => saveRef.current(),
+      }
+    : undefined;
+  const shown = dirty && draft.current ? draft.current.toString() : (file?.content ?? "");
+
   return (
     <section className="viewer" aria-label={name}>
       <header className="viewer__header">
         <h2 className="viewer__name" title={path}>
           {name}
         </h2>
+        {dirty && (
+          <span className="viewer__dirty" aria-label={t("app.viewer.unsaved")} title={t("app.viewer.unsaved")}>
+            ●
+          </span>
+        )}
         {markdown && (
           <div className="viewer__modes" role="radiogroup" aria-label={t("app.viewer.mode")}>
             {(["code", "preview"] as const).map((m) => (
@@ -166,6 +266,18 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
             ))}
           </div>
         )}
+        {save && (
+          <button
+            type="button"
+            className="viewer__save"
+            aria-label={t("app.viewer.save")}
+            title={t("app.viewer.saveHint")}
+            disabled={!editable || !dirty || saving}
+            onClick={() => saveRef.current()}
+          >
+            <Save size={14} aria-hidden="true" />
+          </button>
+        )}
         <button type="button" className="viewer__close" aria-label={t("app.viewer.close")} title={t("app.viewer.close")} onClick={onClose}>
           <X size={14} aria-hidden="true" />
         </button>
@@ -176,6 +288,11 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
           {loaded.message}
         </p>
       )}
+      {saveError && (
+        <p className="sidebar__note form-error" role="alert">
+          {saveError}
+        </p>
+      )}
       {loaded.state === "ok" && (
         <>
           {loaded.file.truncated && (
@@ -184,9 +301,9 @@ export function FileViewer({ path, load, onClose, onOpenLink = openInBrowser, su
             </p>
           )}
           {markdown && mode === "preview" ? (
-            <MarkdownPreview text={loaded.file.content} onOpenLink={onOpenLink} />
+            <MarkdownPreview text={shown} onOpenLink={onOpenLink} />
           ) : (
-            <CodeView text={loaded.file.content} name={name} />
+            <CodeView text={dirty ? shown : loaded.file.content} name={name} editing={editing} keep={dirty} />
           )}
         </>
       )}

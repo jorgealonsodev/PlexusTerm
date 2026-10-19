@@ -127,6 +127,9 @@ export const app: Messages<typeof en> = {
     mode: "Visualização",
     code: "Código",
     preview: "Prévia",
+    save: "Salvar",
+    saveHint: "Salvar (Ctrl+S)",
+    unsaved: "Alterações não salvas",
   },
   toolbarColor: {
     red: "Vermelho",

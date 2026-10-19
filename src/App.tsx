@@ -813,6 +813,11 @@ function AppContent() {
   /** The text of a viewer's file, from this computer or through its SFTP session. */
   const viewFile = (viewer: ViewerLink) =>
     viewer.origin.kind === "local" ? local.viewText(viewer.path) : sftp.viewText(viewer.origin.sessionId, viewer.path);
+  /** Saves a viewer's edited text over its file while the file still holds `expected`. */
+  const saveViewedFile = (viewer: ViewerLink, expected: string, content: string) =>
+    viewer.origin.kind === "local"
+      ? local.writeText(viewer.path, expected, content)
+      : sftp.writeText(viewer.origin.sessionId, viewer.path, expected, content);
   /** The project folder of a local DEV tab (where its `.plexusterm` settings go), or null. */
   const projectOf = (key: string) => {
     const tab = state.tabs.find((t) => t.key === key);
@@ -1434,6 +1439,8 @@ function AppContent() {
                             key={viewer.opened}
                             path={viewer.path}
                             load={() => viewFile(viewer)}
+                            save={(expected, content) => saveViewedFile(viewer, expected, content)}
+                            autoSave={terminalSettings.settings.viewerAutoSave}
                             // It follows the file while its terminal works (an AI tool editing it).
                             subscribeOutput={outputOf(viewer.terminalPaneId)}
                             prompt={paneMeta[viewer.terminalPaneId]?.prompts ?? 0}

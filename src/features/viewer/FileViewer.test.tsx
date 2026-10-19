@@ -167,3 +167,96 @@ describe("FileViewer follows the file while its terminal works", () => {
     expect(document.querySelector(".cm-content")?.textContent).toBe("second");
   });
 });
+
+describe("FileViewer editing (S1, S4, S5)", () => {
+  const type = (text: string) =>
+    act(() => {
+      const view = editorView();
+      view.dispatch({ changes: { from: view.state.doc.length, insert: text }, userEvent: "input.type" });
+    });
+  const saveButton = () => screen.getByRole("button", { name: "Save" });
+
+  it("edits the file and saves it with the header button, over the text that was opened", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/notes.txt" load={file("one")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("one"));
+    expect(editorView().state.readOnly).toBe(false);
+    expect(saveButton().hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByLabelText("Unsaved changes")).toBeNull();
+
+    type(" two");
+    expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
+    expect(saveButton().hasAttribute("disabled")).toBe(false);
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenCalledWith("one", "one two"));
+    await waitFor(() => expect(screen.queryByLabelText("Unsaved changes")).toBeNull());
+    expect(saveButton().hasAttribute("disabled")).toBe(true);
+
+    // The next save is checked against what was saved.
+    type("!");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith("one two", "one two!"));
+  });
+
+  it("saves with Ctrl+S", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    type("b");
+    fireEvent.keyDown(editorView().contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "ab"));
+  });
+
+  it("keeps the edits and says why when saving fails", async () => {
+    const save = vi.fn(async () => {
+      throw "cannot save /p/notes.txt: it changed on disk since it was opened";
+    });
+    render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    type("b");
+    fireEvent.click(saveButton());
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "cannot save /p/notes.txt: it changed on disk since it was opened",
+    );
+    expect(editorView().state.doc.toString()).toBe("ab");
+    expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
+  });
+
+  it("does not replace unsaved edits when the file is read again", async () => {
+    let content = "first";
+    const load = vi.fn(async () => ({ path: "/p/a.ts", content, truncated: false }));
+    const save = vi.fn(async () => {});
+    const { rerender } = render(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} save={save} prompt={0} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("first"));
+    type(" mine");
+    content = "changed on disk";
+    rerender(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} save={save} prompt={1} />);
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(editorView().state.doc.toString()).toBe("first mine");
+  });
+
+  it("saves by itself shortly after typing stops when auto-save is on", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} save={save} autoSave />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    type("b");
+    type("c");
+    expect(save).not.toHaveBeenCalled();
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "abc"), { timeout: 3000 });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a file shown only in part read-only, and has no save button without a way to save", async () => {
+    const { unmount } = render(
+      <FileViewer path="/p/big.log" load={file("start", true)} onClose={() => {}} save={vi.fn()} />,
+    );
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("start"));
+    expect(editorView().state.readOnly).toBe(true);
+    expect(saveButton().hasAttribute("disabled")).toBe(true);
+    unmount();
+    render(<FileViewer path="/p/notes.txt" load={file("x")} onClose={() => {}} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("x"));
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+});

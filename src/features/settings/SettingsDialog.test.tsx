@@ -418,6 +418,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gitFileStatus: false }));
     });
 
+    it("leaves auto-save of edited files off by default and saves the choice", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const auto = field("Save edited files automatically");
+      expect(auto.checked).toBe(false);
+      fireEvent.click(auto);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ viewerAutoSave: true }));
+    });
+
     it("chooses how the sidebar opens at startup (L17)", () => {
       const { onSave } = setup();
       const select = screen.getByLabelText("Sidebar when PlexusTerm opens") as HTMLSelectElement;

@@ -51,6 +51,8 @@ export const sftp = {
   createFile: (id: number, path: string) => invoke<void>("sftp_create_file", { id, path }),
   remove: (id: number, path: string, isDir: boolean) => invoke<void>("sftp_remove", { id, path, isDir }),
   rename: (id: number, from: string, to: string) => invoke<void>("sftp_rename", { id, from, to }),
+  /** Moves a file or folder into the folder `dir`; never replaces an entry. Resolves to its new path. */
+  move: (id: number, from: string, dir: string) => invoke<string>("sftp_move", { id, from, dir }),
   chmod: (id: number, path: string, mode: number) => invoke<void>("sftp_chmod", { id, path, mode }),
   /** Downloads `remote` to a private temporary copy, opens it and watches it; resolves to the copy's path. */
   edit: (id: number, remote: string, openWith: OpenWith) => invoke<string>("sftp_edit", { id, remote, with: openWith }),
@@ -65,6 +67,9 @@ export const sftp = {
   /** A remote text file for the file viewer (the first 4 MiB). */
   viewText: (id: number, path: string) =>
     invoke<{ path: string; content: string; truncated: boolean }>("sftp_view_text", { id, path }),
+  /** Saves the viewer's text over a remote file that still holds `expected`. */
+  writeText: (id: number, path: string, expected: string, content: string) =>
+    invoke<void>("sftp_write_text", { id, path, expected, content }),
 };
 
 /** Text for an `sftp_*` rejection: `{ kind: "sftp", message }` or any `SshError`. */

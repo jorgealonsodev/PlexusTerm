@@ -83,6 +83,8 @@ export const settings: Messages<typeof en> = {
     details: "Größe und Datum in Dateilisten anzeigen",
     gitStatus: "Git-Status in Dateilisten anzeigen",
     gitStatusHelp: "In einem Git-Repository färben der Explorer und der SFTP-Browser jeden Eintrag wie VS Code: geändert, hinzugefügt, gelöscht, umbenannt, nicht verfolgt, ignoriert oder im Konflikt, mit seinem Buchstaben rechts; ein Ordner übernimmt die Farbe der wichtigsten Änderung darin. Er wird neu gelesen, wenn der Ordner aufgelistet wird, wenn die Eingabeaufforderung zurückkehrt und während das Terminal ausgibt (höchstens alle 2 Sekunden). Bei SSH läuft git auf dem Server über dieselbe Verbindung. Gilt nur für die Dateilisten des DEV-Modus.",
+    autoSave: "Bearbeitete Dateien automatisch speichern",
+    autoSaveHelp: "Wenn aktiviert, wird eine im Dateibetrachter bearbeitete Datei eine Sekunde nach der letzten Eingabe von selbst gespeichert. Wenn deaktiviert, speichern Sie sie mit der Speichern-Schaltfläche oder Strg+S. In beiden Fällen wird eine Datei, die seit dem Öffnen von jemand anderem geändert wurde, nie überschrieben.",
     terminalFollows: "Den Ordner des Terminals wechseln, wenn Sie im Dateibrowser einen Ordner öffnen",
     terminalFollowsHelp: "Wenn Sie im SFTP-Browser oder im Explorer einen Ordner öffnen, wird in seinem Terminal cd ausgeführt, nur wenn „Terminal-Ordner folgen“ im Bereich aktiv und die Befehlszeile leer ist.",
     chooseEditor: "Texteditor auswählen",

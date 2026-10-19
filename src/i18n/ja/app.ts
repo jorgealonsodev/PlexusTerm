@@ -125,6 +125,9 @@ export const app: Messages<typeof en> = {
     mode: "表示",
     code: "コード",
     preview: "プレビュー",
+    save: "保存",
+    saveHint: "保存 (Ctrl+S)",
+    unsaved: "未保存の変更",
   },
   toolbarColor: {
     red: "赤",

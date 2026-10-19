@@ -12,6 +12,8 @@ export const local = {
   createFile: (path: string) => invoke<void>("local_create_file", { path }),
   /** Never replaces an existing `to`. */
   rename: (from: string, to: string) => invoke<void>("local_rename", { from, to }),
+  /** Moves a file or folder into the folder `dir`; never replaces an entry. Resolves to its new path. */
+  move: (from: string, dir: string) => invoke<string>("local_move", { from, dir }),
   /** A folder is removed with everything inside it. */
   remove: (path: string, isDir: boolean) => invoke<void>("local_remove", { path, isDir }),
   chmod: (path: string, mode: number) => invoke<void>("local_chmod", { path, mode }),
@@ -26,6 +28,9 @@ export const local = {
   repoInfo: (path: string) => invoke<{ root: string; branch: string; dirty: boolean } | null>("git_repo", { path }),
   /** A text file for the file viewer (the first 4 MiB). */
   viewText: (path: string) => invoke<{ path: string; content: string; truncated: boolean }>("local_view_text", { path }),
+  /** Saves the viewer's text over a file that still holds `expected` (the text the edits started from). */
+  writeText: (path: string, expected: string, content: string) =>
+    invoke<void>("local_write_text", { path, expected, content }),
   /** Writes a text file, replacing it. */
   saveText: (path: string, contents: string) => invoke<void>("save_text_file", { path, contents }),
 };

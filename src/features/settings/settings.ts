@@ -105,6 +105,8 @@ export interface TerminalSettings {
   gpuAcceleration: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
   gitFileStatus: boolean;
+  /** The file viewer saves an edited file by itself a moment after typing stops. */
+  viewerAutoSave: boolean;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
@@ -156,6 +158,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   attentionNotifications: true,
   gpuAcceleration: true,
   gitFileStatus: true,
+  viewerAutoSave: false,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
 };
@@ -327,6 +330,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
+    viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)

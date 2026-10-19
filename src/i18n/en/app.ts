@@ -124,6 +124,9 @@ export const app = {
     mode: "View",
     code: "Code",
     preview: "Preview",
+    save: "Save",
+    saveHint: "Save (Ctrl+S)",
+    unsaved: "Unsaved changes",
   },
   toolbarColor: {
     red: "Red",

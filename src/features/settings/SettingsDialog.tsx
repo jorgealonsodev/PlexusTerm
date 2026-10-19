@@ -313,6 +313,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [fileDetails, setFileDetails] = useState(settings.fileDetails);
   const [gitFileStatus, setGitFileStatus] = useState(settings.gitFileStatus);
+  const [viewerAutoSave, setViewerAutoSave] = useState(settings.viewerAutoSave);
   const [terminalFollowsBrowser, setTerminalFollowsBrowser] = useState(settings.terminalFollowsBrowser);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
@@ -376,6 +377,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       textEditor: cleanTextEditor(textEditor),
       fileDetails,
       gitFileStatus,
+      viewerAutoSave,
       terminalFollowsBrowser,
       inlineSuggestions,
       commandHistory: history,
@@ -710,6 +712,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.files.gitStatus")}
             </label>
             <p className="muted">{t("settings.files.gitStatusHelp")}</p>
+            <label className="check">
+              <input type="checkbox" checked={viewerAutoSave} onChange={(e) => setViewerAutoSave(e.target.checked)} />
+              {t("settings.files.autoSave")}
+            </label>
+            <p className="muted">{t("settings.files.autoSaveHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"

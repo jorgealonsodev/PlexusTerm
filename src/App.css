@@ -2494,6 +2494,14 @@ body.is-dragging-path {
   white-space: nowrap;
 }
 
+.viewer__dirty {
+  flex: none;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.viewer__save,
 .viewer__close {
   display: grid;
   flex: none;
@@ -2507,6 +2515,12 @@ body.is-dragging-path {
   cursor: pointer;
 }
 
+.viewer__save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.viewer__save:not(:disabled):hover,
 .viewer__close:hover {
   background: color-mix(in srgb, var(--text) 10%, transparent);
   color: var(--text);

@@ -124,6 +124,9 @@ export const app: Messages<typeof en> = {
     mode: "视图",
     code: "代码",
     preview: "预览",
+    save: "保存",
+    saveHint: "保存 (Ctrl+S)",
+    unsaved: "未保存的更改",
   },
   toolbarColor: {
     red: "红色",

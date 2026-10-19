@@ -1,4 +1,5 @@
-import { Annotation, Compartment, EditorState } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, Prec, Transaction, type Extension, type Text } from "@codemirror/state";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { drawSelection, EditorView, highlightActiveLineGutter, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
@@ -48,17 +49,58 @@ export function reloadText(view: EditorView, text: string) {
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: text },
     selection: { anchor: head },
-    annotations: reload.of(true),
+    // The file's own text: not an edit to undo.
+    annotations: [reload.of(true), Transaction.addToHistory.of(false)],
   });
   view.scrollDOM.scrollTop = scrollTop;
   view.scrollDOM.scrollLeft = scrollLeft;
 }
 
+/** What an editable view does with the text typed in it. */
+export interface Editing {
+  /** Called after each edit (not after a reload) with the new text. */
+  onEdit: (doc: Text) => void;
+  /** Ctrl+S (Cmd+S on macOS). */
+  onSave: () => void;
+}
+
+/** Typing, undo/redo and Ctrl+S; without `editing`, a viewer where only a reload changes the text. */
+function editingExtensions(editing?: Editing): Extension {
+  if (!editing) {
+    return [
+      EditorState.readOnly.of(true),
+      EditorState.changeFilter.of((tr) => tr.annotation(reload) === true),
+    ];
+  }
+  return [
+    history(),
+    Prec.highest(
+      keymap.of([
+        {
+          key: "Mod-s",
+          preventDefault: true,
+          run: () => {
+            editing.onSave();
+            return true;
+          },
+        },
+      ]),
+    ),
+    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged && update.transactions.some((tr) => !tr.annotation(reload))) {
+        editing.onEdit(update.state.doc);
+      }
+    }),
+  ];
+}
+
 /**
- * A read-only CodeMirror view of a file (S2): line numbers, long lines wrapped to the width (S5),
- * search with Ctrl+F, and the language its name says highlighted once loaded (S3).
+ * A CodeMirror view of a file (S2): line numbers, long lines wrapped to the width (S5), search
+ * with Ctrl+F, and the language its name says highlighted once loaded (S3). Read-only unless
+ * `editing` says what to do with the edits.
  */
-export function createCodeView(parent: HTMLElement, text: string, fileName: string): EditorView {
+export function createCodeView(parent: HTMLElement, text: string, fileName: string, editing?: Editing): EditorView {
   const languageSlot = new Compartment();
   const view = new EditorView({
     parent,
@@ -69,9 +111,7 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         drawSelection(),
-        EditorState.readOnly.of(true),
-        // A viewer: only a reload of the file changes the text, nothing typed.
-        EditorState.changeFilter.of((tr) => tr.annotation(reload) === true),
+        editingExtensions(editing),
         EditorView.lineWrapping,
         search({ top: true }),
         highlightSelectionMatches(),

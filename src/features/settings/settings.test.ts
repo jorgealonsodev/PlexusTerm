@@ -45,6 +45,7 @@ describe("parseSettings", () => {
       attentionNotifications: true,
       gpuAcceleration: true,
       gitFileStatus: true,
+      viewerAutoSave: false,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -110,6 +111,7 @@ describe("parseSettings", () => {
       attentionNotifications: true,
       gpuAcceleration: true,
       gitFileStatus: true,
+      viewerAutoSave: false,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -275,6 +277,7 @@ describe("serializeSettings", () => {
       attentionNotifications: false,
       gpuAcceleration: false,
       gitFileStatus: false,
+      viewerAutoSave: true,
       devCommands: ["aider"],
       tabColumnWidth: 300,
     };

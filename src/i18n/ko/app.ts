@@ -124,6 +124,9 @@ export const app: Messages<typeof en> = {
     mode: "보기",
     code: "코드",
     preview: "미리 보기",
+    save: "저장",
+    saveHint: "저장 (Ctrl+S)",
+    unsaved: "저장되지 않은 변경 사항",
   },
   toolbarColor: {
     red: "빨강",

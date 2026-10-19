@@ -129,6 +129,9 @@ export const app: Messages<typeof en> = {
     mode: "العرض",
     code: "الشيفرة",
     preview: "معاينة",
+    save: "حفظ",
+    saveHint: "حفظ (Ctrl+S)",
+    unsaved: "تغييرات غير محفوظة",
   },
   toolbarColor: {
     red: "أحمر",

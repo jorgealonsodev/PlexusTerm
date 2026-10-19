@@ -59,7 +59,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | Feature | What you get | Guide |
 | --- | --- | --- |
 | DEV mode for AI tools | Claude Code, Codex, OpenCode, Antigravity, pi and others turn a tab into a workspace: tabs in a column with each tool's icon and a working indicator, the Explorer at the project, the git branch, notifications when a tool needs you | [DEV mode](docs/user-guide.md#dev-mode) |
-| File viewer | Any local or remote file next to its terminal: line numbers, syntax highlighting, word wrap, search, Markdown rendered or as code; it follows the file while an AI tool edits it | [Viewing files](docs/user-guide.md#viewing-files) |
+| File viewer | Any local or remote file next to its terminal: line numbers, syntax highlighting, word wrap, search, Markdown rendered or as code; edit and save it (Ctrl+S or auto-save); it follows the file while an AI tool edits it | [Viewing files](docs/user-guide.md#viewing-files) |
 | VS Code-style Explorer | In DEV mode: a tree with VS Code's file icons, git status colours, the selection's project and branch, workspaces saved as `.code-workspace` files | [DEV mode file lists](docs/user-guide.md#dev-mode-file-lists) |
 | Colours | Colour the toolbar and each tab, with any colour or one picked from the screen; DEV projects remember theirs | [Tab and window colours](docs/user-guide.md#tab-and-window-colours) |
 | Local terminals | Tabs with your shell or the one you choose (PowerShell, cmd, WSL, Git Bash, zsh, fish...), up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |

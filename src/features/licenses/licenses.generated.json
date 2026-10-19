@@ -12,6 +12,16 @@
 },
 {
 "ecosystem": "npm",
+"name": "@codemirror/commands",
+"version": "6.11.1",
+"license": "MIT",
+"source": "https://www.npmjs.com/package/@codemirror/commands",
+"texts": [
+0
+]
+},
+{
+"ecosystem": "npm",
 "name": "@codemirror/lang-angular",
 "version": "0.1.4",
 "license": "MIT",

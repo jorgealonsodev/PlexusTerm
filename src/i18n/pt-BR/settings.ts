@@ -83,6 +83,8 @@ export const settings: Messages<typeof en> = {
     details: "Mostrar tamanho e data nas listas de arquivos",
     gitStatus: "Mostrar o status do git nas listas de arquivos",
     gitStatusHelp: "Dentro de um repositório git, o Explorador e o navegador SFTP colorem cada item como o VS Code: modificado, adicionado, excluído, renomeado, não rastreado, ignorado ou em conflito, com sua letra à direita; uma pasta assume a cor da alteração mais importante dentro dela. O status é lido de novo quando a pasta é listada, quando o prompt volta e enquanto o terminal imprime (no máximo a cada 2 segundos). No SSH, o git roda no servidor pela mesma conexão. Vale apenas para as listas de arquivos do modo DEV.",
+    autoSave: "Salvar automaticamente os arquivos editados",
+    autoSaveHelp: "Ativado, um arquivo editado no visualizador é salvo sozinho um segundo depois que você para de digitar. Desativado, salve com o botão de salvar ou Ctrl+S. Em ambos os casos, um arquivo alterado por outra pessoa desde que foi aberto nunca é sobrescrito.",
     terminalFollows: "Mudar a pasta do terminal ao abrir uma pasta no navegador de arquivos",
     terminalFollowsHelp: "Abrir uma pasta no navegador SFTP ou no Explorador executa cd no terminal dele, só quando \"Acompanhar a pasta do terminal\" está marcado no painel e nada está digitado na linha de comando.",
     chooseEditor: "Escolha um editor de texto",

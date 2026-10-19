@@ -125,6 +125,9 @@ export const app: Messages<typeof en> = {
     mode: "दृश्य",
     code: "कोड",
     preview: "पूर्वावलोकन",
+    save: "सहेजें",
+    saveHint: "सहेजें (Ctrl+S)",
+    unsaved: "बिना सहेजे बदलाव",
   },
   toolbarColor: {
     red: "लाल",
