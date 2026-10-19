@@ -40,6 +40,7 @@ interface FakeTerminal {
   options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
   keyHandler: (e: Partial<KeyboardEvent>) => boolean;
   paste: ReturnType<typeof vi.fn>;
+  modes: { bracketedPasteMode: boolean };
   clear: ReturnType<typeof vi.fn>;
   selectAll: ReturnType<typeof vi.fn>;
   written: string[];
@@ -81,6 +82,7 @@ vi.mock("@xterm/xterm", () => ({
     }
     keyHandler: (e: unknown) => boolean = () => true;
     paste = vi.fn();
+    modes = { bracketedPasteMode: false };
     clear = vi.fn();
     selectAll = vi.fn();
     line = "";
@@ -417,6 +419,33 @@ describe("TerminalView", () => {
       rightClick(container);
       await settle();
       expect(term().paste).toHaveBeenCalledWith("ls -la");
+    });
+
+    it("sends an empty paste when the clipboard holds an image, so an AI CLI attaches it", async () => {
+      clipboard.readText.mockResolvedValueOnce("");
+      const { container } = renderView();
+      rightClick(container);
+      await settle();
+      expect(term().paste).toHaveBeenCalledWith("");
+    });
+
+    it("sends an empty paste instead of an error when the clipboard has no text and the program asked for bracketed paste", async () => {
+      clipboard.readText.mockRejectedValueOnce("The clipboard contents were not available in the requested format");
+      const { container } = renderView();
+      term().modes.bracketedPasteMode = true;
+      rightClick(container);
+      await settle();
+      expect(term().paste).toHaveBeenCalledWith("");
+      expect(term().written.join("")).not.toContain("Could not read the clipboard.");
+    });
+
+    it("still reports an unreadable clipboard at a shell prompt", async () => {
+      clipboard.readText.mockRejectedValueOnce("The clipboard contents were not available in the requested format");
+      const { container } = renderView();
+      rightClick(container);
+      await settle();
+      expect(term().paste).not.toHaveBeenCalled();
+      expect(term().written.join("")).toContain("Could not read the clipboard.");
     });
 
     it("asks before pasting several lines and can stop asking", async () => {

@@ -2,6 +2,7 @@ mod ai;
 mod diag;
 mod git;
 mod history;
+mod launch;
 mod localfs;
 mod mosh;
 mod platform;
@@ -582,6 +583,11 @@ fn tunnel_statuses(tunnels: State<'_, TunnelManager>) -> Vec<StatusUpdate> {
 pub fn run() {
     let secrets: SharedSecrets = std::sync::Arc::new(KeyringStore::default());
     let tunnel_secrets = secrets.clone();
+    let launch = launch::LaunchWorkspace::from_args();
+    // A workspace file goes to an open PlexusTerm when there is one; this launch then ends.
+    if launch.forwarded() {
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -596,7 +602,9 @@ pub fn run() {
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
         .manage(ai::AiClient::default())
+        .manage(launch)
         .setup(move |app| {
+            launch::listen(app.handle().clone());
             let handle = app.handle().clone();
             app.manage(
                 TunnelManager::for_current_user(move |update| {
@@ -709,7 +717,8 @@ pub fn run() {
             localfs::local_move,
             project::project_colors_get,
             project::project_color_set,
-            screen_color::screen_color_pick
+            screen_color::screen_color_pick,
+            launch::launch_workspace_take
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

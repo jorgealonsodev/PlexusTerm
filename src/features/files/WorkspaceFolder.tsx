@@ -73,7 +73,7 @@ interface WorkspaceFolderProps {
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
   onRemove: () => void;
-  /** Collapse Folders: changes when every open folder should close. */
+  /** Collapse Folders: changes when every open folder, this root included, should close. */
   collapse: number;
   /** Entries dropped on one of its folders (S2). */
   onDirDrop?: (drop: DirDrop) => void;
@@ -87,6 +87,14 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
   const [error, setError] = useState<string | null>(null);
   const describeRef = useRef(describeError);
   describeRef.current = describeError;
+
+  // Collapse Folders closes the root itself too.
+  const collapsedAt = useRef(props.collapse);
+  useEffect(() => {
+    if (props.collapse === collapsedAt.current) return;
+    collapsedAt.current = props.collapse;
+    setOpen(false);
+  }, [props.collapse]);
 
   useEffect(() => {
     let live = true;

@@ -28,7 +28,7 @@ describe("pastePlan", () => {
     expect(pastePlan("one\ntwo", dontAsk)).toEqual({ kind: "direct", text: "one\ntwo" });
   });
 
-  it("does nothing for an empty clipboard", () => {
-    expect(pastePlan("", ask)).toEqual({ kind: "none" });
+  it("pastes an empty clipboard as an empty paste, so a program can read an image from the clipboard itself", () => {
+    expect(pastePlan("", ask)).toEqual({ kind: "direct", text: "" });
   });
 });

@@ -320,6 +320,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   const asRoots = showWorkspace && workspace.folders.length > 0;
   const [mainOpen, setMainOpen] = useState(true);
 
+  /** Collapse Folders: every open folder closes, and with several roots the roots too (as VS Code's). */
+  const collapseAll = () => {
+    setCollapse((n) => n + 1);
+    if (asRoots) setMainOpen(false);
+  };
+
   /** Adds a folder chosen in the system dialog to the workspace, once. */
   const addFolder = async () => {
     if (!workspace) return;
@@ -445,7 +451,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
         {devStyle && (
           <>
             <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
-            <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={() => setCollapse((n) => n + 1)} />
+            <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={collapseAll} />
           </>
         )}
       </div>

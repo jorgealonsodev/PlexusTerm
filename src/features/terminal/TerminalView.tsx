@@ -1003,7 +1003,12 @@ export function TerminalView({
   const pasteFromClipboard = () => {
     readText()
       .then((text) => pasteText(text ?? ""))
-      .catch(() => termRef.current?.write(red(t("terminal.view.clipboardError"))));
+      .catch(() => {
+        // An image alone has no text to read; a program in bracketed paste mode still gets the paste.
+        const term = termRef.current;
+        if (term?.modes.bracketedPasteMode) pasteText("");
+        else term?.write(red(t("terminal.view.clipboardError")));
+      });
   };
 
   const copySelection = () => {

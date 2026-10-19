@@ -36,6 +36,7 @@ import { dropAction, sameMachine } from "./features/drop/dropAction";
 import { dropTargetAt, setDropHandler, type PathDrag, type PathOrigin } from "./features/drop/pathDrag";
 import { local } from "./features/local/localClient";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { listen } from "@tauri-apps/api/event";
 import { BASE_TEXT_SIZE, stepChatFontSize, stepFontSize } from "./features/settings/settings";
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
@@ -115,6 +116,7 @@ import {
 import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
 import { basename } from "./features/local/localPath";
+import { parseWorkspaceFile } from "./features/files/workspaceFile";
 import "./App.css";
 
 
@@ -174,6 +176,13 @@ const SHELL_QUIET_MS = 400;
 const SHELL_FIRST_OUTPUT_MS = 1500;
 
 /** Terminals that can run AI command-line tools, so their bar has the DEV button (S10). */
+/** The folders a VS Code workspace file lists; none when it cannot be read. */
+const workspaceFoldersOf = (file: string) =>
+  local
+    .readText(file)
+    .then((text) => parseWorkspaceFile(text, file))
+    .catch(() => [] as string[]);
+
 const DEV_TARGETS: ReadonlySet<string> = new Set(["local", "ssh", "mosh"]);
 
 const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null, busy: false };
@@ -263,10 +272,18 @@ function AppContent() {
   const terminalSettings = useSettings();
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);
+  const openWorkspaceRef = useRef<(folders: string[]) => void>(() => {});
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
-    dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
+    // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal.
+    void invoke<string | null>("launch_workspace_take")
+      .catch(() => null)
+      .then((file) => (file ? workspaceFoldersOf(file) : []))
+      .then((folders) => {
+        if (folders.length > 0) openWorkspaceRef.current(folders);
+        else dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
+      });
   }, [terminalSettings.loaded, terminalSettings.settings]);
   const shells = useShells();
   // Once per launch, when Settings allow it: a newer release only shows a notice.
@@ -607,6 +624,30 @@ function AppContent() {
     () => open(localTargetOf({ localShell, localShellArgs, localCwd: localStart })),
     [open, localShell, localShellArgs, localStart],
   );
+
+  /** A workspace's folders open as a new DEV tab in the first one, with the others added. */
+  const openWorkspace = ([first, ...others]: string[]) => {
+    const key = `tab-${state.nextSeq}`;
+    devOnStart.current = key;
+    setWorkspaceFolders((prev) => ({ ...prev, [key]: others }));
+    open(localTargetOf({ localShell, localShellArgs, localCwd: first }));
+  };
+  openWorkspaceRef.current = openWorkspace;
+
+  // A workspace file given to a second launch of PlexusTerm (it then exits) opens here.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    listen<string>("open-workspace", ({ payload }) => {
+      void workspaceFoldersOf(payload).then((folders) => folders.length > 0 && openWorkspaceRef.current(folders));
+    })
+      .then((stop) => (disposed ? stop() : (unlisten = stop)))
+      .catch(() => {});
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   /**
    * The login of a saved SSH session, through its jump hosts (S14). Password hops connect
@@ -1304,12 +1345,7 @@ function AppContent() {
                         [activeTab.key]: (prev[activeTab.key] ?? []).filter((f) => f !== folder),
                       })),
                     // A workspace file opens a new DEV tab in its first folder, with the others added.
-                    onOpenFolders: ([first, ...others]) => {
-                      const key = `tab-${state.nextSeq}`;
-                      devOnStart.current = key;
-                      setWorkspaceFolders((prev) => ({ ...prev, [key]: others }));
-                      open(localTargetOf({ localShell, localShellArgs, localCwd: first }));
-                    },
+                    onOpenFolders: openWorkspace,
                   }}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}

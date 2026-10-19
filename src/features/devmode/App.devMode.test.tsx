@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import App from "../../App";
 import { DEFAULT_SETTINGS } from "../settings/settings";
@@ -332,6 +333,55 @@ describe("DEV mode (S10, S13)", () => {
     );
     vi.mocked(open).mockResolvedValueOnce("/home/me/app.code-workspace");
     fireEvent.click(await screen.findByRole("button", { name: "Open workspace" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(true);
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+  });
+
+  /** The backend with a workspace file to read, and the one PlexusTerm was launched with. */
+  const withWorkspaceFile = (launchedWith: string | null) => {
+    const backend = vi.mocked(invoke).getMockImplementation()!;
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
+      if (cmd === "launch_workspace_take") return launchedWith;
+      if (cmd === "local_read_text" && (args as { path: string }).path === "/home/me/app.code-workspace")
+        return { content: '{ "folders": [{ "path": "repo" }, { "path": "/tmp" }] }' };
+      return backend(cmd, args as Parameters<typeof backend>[1]);
+    });
+  };
+
+  it("starts in DEV mode with the workspace file PlexusTerm was opened with, instead of the usual terminal", async () => {
+    withBackend();
+    withWorkspaceFile("/home/me/app.code-workspace");
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(1);
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(true);
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+  });
+
+  it("starts with the usual terminal when the workspace file it was opened with lists no folders", async () => {
+    withBackend();
+    withWorkspaceFile("/home/me/empty.code-workspace");
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(1);
+    expect(stub.props.target.cwd).toBeUndefined();
+    expect(devOn()).toBe(false);
+  });
+
+  it("opens a workspace file given to a second launch as a new DEV tab of the running window", async () => {
+    await renderApp();
+    withWorkspaceFile(null);
+    const handler = vi.mocked(listen).mock.calls.find(([event]) => event === "open-workspace")?.[1];
+    expect(handler).toBeTruthy();
+    act(() => handler!({ event: "open-workspace", id: 1, payload: "/home/me/app.code-workspace" }));
     await settle();
     const tabs = within(tabBar()).getAllByRole("tab");
     expect(tabs).toHaveLength(2);

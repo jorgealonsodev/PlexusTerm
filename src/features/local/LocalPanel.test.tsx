@@ -449,6 +449,22 @@ describe("workspace folders in DEV mode", () => {
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }));
   });
 
+  it("collapses the workspace roots too when the workspace has several folders, as VS Code's Explorer", async () => {
+    listing();
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    const main = await screen.findByRole("group", { name: "me" });
+    const root = await screen.findByRole("group", { name: "api" });
+    expect(await within(root).findByText("server.ts")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Folders in Explorer" }));
+    expect(within(main).getByRole("button", { name: "me" }).getAttribute("aria-expanded")).toBe("false");
+    expect(within(root).getByRole("button", { name: "api" }).getAttribute("aria-expanded")).toBe("false");
+    expect(within(main).queryByText("notes.txt")).toBeNull();
+    expect(within(root).queryByText("server.ts")).toBeNull();
+    // A root opened again shows its first level.
+    fireEvent.click(within(root).getByRole("button", { name: "api" }));
+    expect(await within(root).findByText("server.ts")).toBeTruthy();
+  });
+
   it("does not add a folder when the dialog is cancelled or it is already there", async () => {
     const onAdd = vi.fn();
     render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd, onRemove: () => {}, onOpenFolders: () => {} } }));

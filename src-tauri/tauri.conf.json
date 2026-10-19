@@ -44,8 +44,20 @@
     "copyright": "\u00a9 2026 Jorge Alonso",
     "linux": {
       "deb": {
-        "section": "net"
+        "section": "net",
+        "desktopTemplate": "linux/plexusterm.desktop"
       }
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "code-workspace"
+        ],
+        "name": "VS Code workspace",
+        "description": "VS Code workspace",
+        "mimeType": "application/x-code-workspace",
+        "role": "Viewer"
+      }
+    ]
   }
 }
