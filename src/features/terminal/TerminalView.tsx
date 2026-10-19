@@ -222,6 +222,9 @@ interface TypedLogin {
   storage?: PasswordStorage;
 }
 
+/** The longest a new terminal waits for the fonts before starting its session. */
+export const FONT_WAIT_MS = 1500;
+
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
 export function TerminalView({
   target,
@@ -500,8 +503,18 @@ export function TerminalView({
     startRef.current = start;
     // Deferred one tick: StrictMode mounts, unmounts and remounts synchronously, and the
     // discarded mount must not open anything (a serial port allows a single opener).
+    // It also waits for the fonts (at most FONT_WAIT_MS): a font that loads later changes the
+    // cell size, and resizing a shell that is still starting can leave Windows PowerShell blank.
     const startTimer = setTimeout(() => {
-      if (!disposed) start();
+      const fontsReady = typeof document !== "undefined" ? document.fonts?.ready : undefined;
+      let waited: ReturnType<typeof setTimeout> | null = null;
+      const timeout = new Promise<void>((resolve) => (waited = setTimeout(resolve, FONT_WAIT_MS)));
+      void Promise.race([fontsReady ?? Promise.resolve(), timeout]).then(() => {
+        if (waited) clearTimeout(waited);
+        if (disposed) return;
+        if (host.offsetParent !== null) fit.fit();
+        start();
+      });
     }, 0);
 
     const write = (data: string) => {

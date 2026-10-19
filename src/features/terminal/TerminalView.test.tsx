@@ -201,7 +201,7 @@ vi.mock("@xterm/addon-search", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
-import { ACTIVITY_QUIET_MS, TerminalView } from "./TerminalView";
+import { ACTIVITY_QUIET_MS, FONT_WAIT_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
 import { PlatformContext } from "../platform/usePlatform";
@@ -239,6 +239,43 @@ describe("TerminalView", () => {
     unmount();
     await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(backend.start).not.toHaveBeenCalled();
+  });
+
+  it("starts the shell once the fonts have loaded, at its final size (no resize while it starts)", async () => {
+    let fontsLoaded: () => void = () => {};
+    const fonts = Object.assign(new EventTarget(), { ready: new Promise<void>((resolve) => (fontsLoaded = resolve)) });
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    const shown = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetParent")!;
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", { configurable: true, get: () => document.body });
+    try {
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      expect(backend.start).not.toHaveBeenCalled();
+      const fitsBefore = fits.count;
+      await act(async () => fontsLoaded());
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      expect(backend.start).toHaveBeenCalledTimes(1);
+      expect(fits.count).toBeGreaterThan(fitsBefore);
+    } finally {
+      delete (document as { fonts?: unknown }).fonts;
+      Object.defineProperty(HTMLElement.prototype, "offsetParent", shown);
+    }
+  });
+
+  it("starts the shell anyway when the fonts take too long", async () => {
+    vi.useFakeTimers();
+    const fonts = Object.assign(new EventTarget(), { ready: new Promise<void>(() => {}) });
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+    try {
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
+      await act(async () => void vi.advanceTimersByTime(100));
+      expect(backend.start).not.toHaveBeenCalled();
+      await act(async () => void vi.advanceTimersByTime(FONT_WAIT_MS));
+      expect(backend.start).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+      delete (document as { fonts?: unknown }).fonts;
+    }
   });
 
   describe("terminal comfort (S15)", () => {
