@@ -1,5 +1,6 @@
 //! Pieces shared by every kind of terminal session (local PTY, SSH, ...).
 
+pub mod coalesce;
 mod utf8;
 
 pub use utf8::Utf8Stream;

@@ -28,7 +28,7 @@ use storage::StorageError;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, Manager, State};
 use telnet::{TelnetError, TelnetManager, TelnetRequest};
-use terminal::TerminalSink;
+use terminal::{TerminalSink, coalesce};
 use tunnels::{StatusUpdate, TunnelDefinition, TunnelError, TunnelManager};
 
 /// Events streamed to the frontend for one terminal session.
@@ -39,14 +39,31 @@ enum TerminalEvent {
     Exit(Option<u32>),
 }
 
-struct ChannelSink(Channel<TerminalEvent>);
+/// Sends a session's events to the webview through a thread that gathers bursts of output
+/// (see [`terminal::coalesce`]).
+struct ChannelSink(std::sync::mpsc::Sender<coalesce::Event>);
+
+impl ChannelSink {
+    fn new(channel: Channel<TerminalEvent>) -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            coalesce::forward(rx, |event| {
+                let _ = channel.send(match event {
+                    coalesce::Event::Output(text) => TerminalEvent::Output(text),
+                    coalesce::Event::Exit(code) => TerminalEvent::Exit(code),
+                });
+            })
+        });
+        Self(tx)
+    }
+}
 
 impl TerminalSink for ChannelSink {
     fn data(&self, text: String) {
-        let _ = self.0.send(TerminalEvent::Output(text));
+        let _ = self.0.send(coalesce::Event::Output(text));
     }
     fn exit(&self, code: Option<u32>) {
-        let _ = self.0.send(TerminalEvent::Exit(code));
+        let _ = self.0.send(coalesce::Event::Exit(code));
     }
 }
 
@@ -56,7 +73,7 @@ fn pty_spawn(
     on_event: Channel<TerminalEvent>,
     ptys: State<'_, PtyManager>,
 ) -> Result<u32, PtyError> {
-    ptys.spawn(request, ChannelSink(on_event))
+    ptys.spawn(request, ChannelSink::new(on_event))
 }
 
 #[tauri::command]
@@ -193,7 +210,7 @@ fn serial_open(
     on_event: Channel<TerminalEvent>,
     serial: State<'_, SerialManager>,
 ) -> Result<u32, SerialError> {
-    serial.open(request, ChannelSink(on_event))
+    serial.open(request, ChannelSink::new(on_event))
 }
 
 #[tauri::command]
@@ -216,7 +233,7 @@ async fn telnet_connect(
     on_event: Channel<TerminalEvent>,
     telnet: State<'_, TelnetManager>,
 ) -> Result<u32, TelnetError> {
-    telnet.connect(request, ChannelSink(on_event)).await
+    telnet.connect(request, ChannelSink::new(on_event)).await
 }
 
 #[tauri::command]
@@ -254,7 +271,7 @@ async fn mosh_connect(
     ssh: State<'_, SshManager>,
     ptys: State<'_, PtyManager>,
 ) -> Result<u32, SshError> {
-    mosh.connect(&ssh, &ptys, request, storage, ChannelSink(on_event))
+    mosh.connect(&ssh, &ptys, request, storage, ChannelSink::new(on_event))
         .await
 }
 
@@ -266,7 +283,7 @@ async fn ssh_connect(
     on_event: Channel<TerminalEvent>,
     ssh: State<'_, SshManager>,
 ) -> Result<u32, SshError> {
-    ssh.connect_with(request, storage, ChannelSink(on_event))
+    ssh.connect_with(request, storage, ChannelSink::new(on_event))
         .await
 }
 
