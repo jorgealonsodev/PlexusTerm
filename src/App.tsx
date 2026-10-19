@@ -1555,7 +1555,11 @@ function AppContent() {
                               if (mark) dev.promptMark(tab.key, paneId);
                             }}
                             onCommand={(command, prompt) => dev.command(tab.key, paneId, command, prompt, settings.devCommands)}
-                            onActivity={(busy) => updatePane(paneId, { busy })}
+                            // Only a DEV tab running an AI tool shows it: anywhere else every burst
+                            // of output would draw the whole window again for nothing.
+                            onActivity={(busy) => {
+                              if (!busy || tabDev?.cli) updatePane(paneId, { busy });
+                            }}
                             onOutputQuiet={
                               tabDev?.pane === paneId && tabDev.prompt
                                 ? (row) => dev.quiet(tab.key, paneId, row)

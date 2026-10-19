@@ -92,9 +92,20 @@ interface Coloured {
  * screen can be rewritten (`clear`, progress bars), so their colours are checked again on every
  * write; rows in the scrollback can no longer change.
  */
+/** The next frame, or a timer where there are no frames (tests, hidden pages). */
+const nextFrame = (callback: () => void) => {
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(callback);
+  else setTimeout(callback, 16);
+};
+
 export function attachErrorHighlight(
   term: HighlightTerminal,
-  options: { enabled: () => boolean; color: () => string },
+  options: {
+    enabled: () => boolean;
+    color: () => string;
+    /** Runs a scan later; once per frame by default, as writes come many per frame. */
+    schedule?: (scan: () => void) => void;
+  },
 ): ErrorHighlight {
   let coloured: Coloured[] = [];
   /** The first row not read yet; a marker follows it when old rows leave the scrollback. */
@@ -176,7 +187,19 @@ export function attachErrorHighlight(
     next = null;
   };
 
-  const subscription = term.onWriteParsed(safeScan);
+  const schedule = options.schedule ?? nextFrame;
+  let pending = false;
+  const scanSoon = () => {
+    if (pending) return;
+    pending = true;
+    schedule(() => {
+      pending = false;
+      if (!disposed) safeScan();
+    });
+  };
+  let disposed = false;
+
+  const subscription = term.onWriteParsed(scanSoon);
   safeScan();
 
   return {
@@ -185,6 +208,7 @@ export function attachErrorHighlight(
       safeScan();
     },
     dispose() {
+      disposed = true;
       subscription.dispose();
       clear();
     },

@@ -140,9 +140,29 @@ describe("attachErrorHighlight", () => {
   const setup = (enabled = true, color = "#ef6b73") => {
     const term = new FakeTerminal();
     const state = { enabled, color };
-    const highlight = attachErrorHighlight(term, { enabled: () => state.enabled, color: () => state.color });
+    // Scans run at once here; the app runs them once per frame.
+    const highlight = attachErrorHighlight(term, {
+      enabled: () => state.enabled,
+      color: () => state.color,
+      schedule: (scan) => scan(),
+    });
     return { term, state, highlight };
   };
+
+  it("reads the new output once for many writes before the next frame", () => {
+    const term = new FakeTerminal();
+    const frames: (() => void)[] = [];
+    attachErrorHighlight(term, { enabled: () => true, color: () => "#f00", schedule: (scan) => frames.push(scan) });
+    const markersBefore = term.markers.length;
+    for (let i = 0; i < 10; i++) term.print(i === 5 ? "error: x" : `line ${i}`);
+    term.print("$ ");
+    expect(frames).toHaveLength(1);
+    expect(term.live()).toEqual([]);
+    frames.shift()!();
+    expect(term.live()).toEqual([[5, "#f00"]]);
+    // One marker for where the next scan starts, not one per write.
+    expect(term.markers.length - markersBefore).toBeLessThanOrEqual(2);
+  });
 
   it("colours the finished lines that look like errors, across the whole width", () => {
     const { term } = setup();
