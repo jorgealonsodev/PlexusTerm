@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const backend = vi.hoisted(() => ({
   start: vi.fn((_options?: unknown, _onEvent?: unknown) => new Promise<number>(() => {})),
@@ -150,7 +150,15 @@ vi.mock("@xterm/xterm", () => ({
     onTitleChange = () => ({ dispose() {} });
   },
 }));
-vi.mock("@xterm/addon-fit", () => ({ FitAddon: class { fit() {} } }));
+/** How many times a terminal was fitted to its pane. */
+const fits = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@xterm/addon-fit", () => ({
+  FitAddon: class {
+    fit() {
+      fits.count++;
+    }
+  },
+}));
 /** Every fake WebGL renderer created, newest last; `failNext` makes the next one fail to load. */
 const webgl = vi.hoisted(() => ({
   addons: [] as { disposed: boolean; loseContext: () => void }[],
@@ -505,6 +513,42 @@ describe("TerminalView", () => {
         const addon = lastWebgl();
         addon.loseContext();
         expect(addon.disposed).toBe(true);
+      });
+
+      describe("fits the pane again when the cell size may change", () => {
+        // jsdom lays nothing out: the pane counts as shown.
+        const shown = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetParent")!;
+        beforeEach(() => {
+          Object.defineProperty(HTMLElement.prototype, "offsetParent", { configurable: true, get: () => document.body });
+        });
+        afterEach(() => {
+          Object.defineProperty(HTMLElement.prototype, "offsetParent", shown);
+        });
+
+        it("after the renderer changes (WebGL measures cells its own way)", () => {
+          const { rerender } = render(view(false));
+          const before = fits.count;
+          rerender(view(true));
+          expect(fits.count).toBeGreaterThan(before);
+          const afterOn = fits.count;
+          lastWebgl().loseContext();
+          expect(fits.count).toBeGreaterThan(afterOn);
+        });
+
+        it("once the fonts have loaded", async () => {
+          const fonts = new EventTarget() as EventTarget & { ready: Promise<unknown> };
+          fonts.ready = Promise.resolve();
+          Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+          try {
+            render(view(false));
+            await act(async () => {});
+            const before = fits.count;
+            act(() => void fonts.dispatchEvent(new Event("loadingdone")));
+            expect(fits.count).toBeGreaterThan(before);
+          } finally {
+            delete (document as { fonts?: unknown }).fonts;
+          }
+        });
       });
 
       it("falls back without an error when WebGL cannot start", () => {

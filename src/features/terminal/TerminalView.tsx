@@ -745,6 +745,14 @@ export function TerminalView({
       if (host.offsetParent !== null) fit.fit();
     });
     observer.observe(host);
+    // A font that finishes loading after the first fit changes the cell size, not the pane's:
+    // without fitting again the last rows would sit under the bar below the terminal.
+    const refitForFonts = () => {
+      if (host.offsetParent !== null) fit.fit();
+    };
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    fonts?.addEventListener?.("loadingdone", refitForFonts);
+    void fonts?.ready?.then(refitForFonts);
 
     // Every native paste (e.g. middle click) goes through the same confirmation as ours.
     const onPaste = (e: ClipboardEvent) => {
@@ -779,6 +787,7 @@ export function TerminalView({
       unregisterAssistTarget?.();
       outputListeners.clear();
       observer.disconnect();
+      fonts?.removeEventListener?.("loadingdone", refitForFonts);
       subs.forEach((s) => s.dispose());
       if (errorsTimer) clearTimeout(errorsTimer);
       if (promptTimer) clearTimeout(promptTimer);
@@ -794,6 +803,11 @@ export function TerminalView({
     // The target of a tab never changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Fits the rows and columns to the pane again, while it is shown. */
+  const refit = () => {
+    if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
+  };
 
   // GPU acceleration: WebGL draws redraw-heavy programs (AI command-line tools, htop) smoothly. Without
   // WebGL2, or when the GPU drops the context (driver reset, sleep), xterm's own renderer takes over.
@@ -813,6 +827,7 @@ export function TerminalView({
           if (webglRef.current === loaded) webglRef.current = null;
           loaded.dispose();
           errorsRef.current?.refresh();
+          refit();
         });
         term.loadAddon(loaded);
         webglRef.current = loaded;
@@ -821,6 +836,8 @@ export function TerminalView({
         webglRef.current = null;
       }
     }
+    // Each renderer measures its cells its own way: the rows must fit the pane again.
+    refit();
     // The error colours are decorations, drawn by whichever renderer is in use.
     errorsRef.current?.refresh();
   }, [gpuAcceleration]);
