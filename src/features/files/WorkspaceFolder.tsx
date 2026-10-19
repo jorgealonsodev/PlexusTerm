@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type LiHTMLAttributes, type React
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
+import type { DirDrop } from "../drop/pathDrag";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { FileTree } from "./FileTree";
 import { GitBadge, gitNameClass } from "./GitBadge";
@@ -74,6 +75,8 @@ interface WorkspaceFolderProps {
   onRemove: () => void;
   /** Collapse Folders: changes when every open folder should close. */
   collapse: number;
+  /** Entries dropped on one of its folders (S2). */
+  onDirDrop?: (drop: DirDrop) => void;
 }
 
 /** A folder added to the DEV mode workspace: a root with its own tree and its own git status. */
@@ -129,6 +132,8 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           gitIndex={gitIndex}
           rowProps={props.rowProps}
           collapse={props.collapse}
+          dropDir={props.onDirDrop ? path : undefined}
+          onDirDrop={props.onDirDrop}
         />
       )}
     </WorkspaceRoot>

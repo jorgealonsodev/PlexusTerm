@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "フォルダーをクリックするとその場で展開し、ダブルクリックするとそこから一覧表示します。ファイルをダブルクリックするとダウンロードします。矢印キーで移動し、フォルダーを開閉します。右クリックでその他のオプション、中クリックでパスを端末に入力します。ここにファイルをドロップするとアップロードします。",
   },
   dialog: {
+    moveInto: '"{name}" を "{folder}" に移動しますか?',
+    move: '移動',
     replaceQuestion: "{dir} の {names} を置き換えますか？",
     replace: "置き換え",
     downloadTitle: "{name} をダウンロード",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "{name} と比較するファイル",
   },
   status: {
+    moving: '{name} を移動しています…',
     fileCount: { other: "{count} 個のファイル" },
     uploading: "{what} をアップロードしています…",
     uploaded: "{what} をアップロードしました。",

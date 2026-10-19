@@ -5,6 +5,7 @@ import { DialogProvider } from "../dialogs/DialogProvider";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { writeText } from "../terminal/clipboard";
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { deliverDrop } from "../drop/pathDrag";
 import { LocalPanel } from "./LocalPanel";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
@@ -22,6 +23,7 @@ vi.mock("./localClient", async (importOriginal) => {
       mkdir: vi.fn(),
       createFile: vi.fn(),
       rename: vi.fn(),
+      move: vi.fn(),
       remove: vi.fn(),
       chmod: vi.fn(),
       open: vi.fn(),
@@ -630,5 +632,72 @@ describe("LocalPanel repository of the selection", () => {
     expect(footer()?.textContent).toBe("appmain");
     await act(async () => answer({ root: "/home/me/app", branch: "main", dirty: true }));
     expect(footer()?.textContent).toBe("appmain*");
+  });
+});
+
+describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
+  beforeEach(() => {
+    mocked.list.mockImplementation(async (path) => {
+      if (path === "/home/me") return [entry("src", "dir"), entry("notes.txt", "file")];
+      if (path === "/home/me/src") return [entry("main.ts", "file", "/home/me/src")];
+      return [];
+    });
+    mocked.move.mockResolvedValue("/home/me/src/notes.txt");
+  });
+  const row = (name: string) => screen.getByText(name).closest("li")!;
+  const local = (path: string, isDir = false) => ({ origin: { kind: "local" as const }, paths: [{ path, isDir }] });
+
+  it("marks folders, files and the list as drop targets in DEV mode only", async () => {
+    const { unmount } = render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    expect(row("src").getAttribute("data-drop-dir")).toBe("/home/me/src");
+    // A file stands for its own folder, as in VS Code.
+    expect(row("notes.txt").getAttribute("data-drop-dir")).toBe("/home/me");
+    expect(screen.getByRole("tree").getAttribute("data-drop-dir")).toBe("/home/me");
+    unmount();
+    render(panel({ devStyle: false }));
+    await screen.findByText("src");
+    expect(document.querySelector("[data-drop-dir]")).toBeNull();
+  });
+
+  it("asks before moving, then moves the entry and lists the folder again", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    mocked.list.mockClear();
+    act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
+    await answer('Move "notes.txt" into "src"?', "Move");
+    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"));
+    await waitFor(() => expect(mocked.list).toHaveBeenCalledWith("/home/me"));
+  });
+
+  it("moves nothing when the question is cancelled", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
+    await answer('Move "notes.txt" into "src"?', "Cancel");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(mocked.move).not.toHaveBeenCalled();
+  });
+
+  it("says why a move failed", async () => {
+    mocked.move.mockRejectedValue("cannot move /home/me/notes.txt: /home/me/src/notes.txt already exists");
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
+    await answer('Move "notes.txt" into "src"?', "Move");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "cannot move /home/me/notes.txt: /home/me/src/notes.txt already exists",
+    );
+  });
+
+  it("ignores drops that would move nothing and drops from an SSH session", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    act(() => deliverDrop(local("/home/me/src", true), row("src")));
+    act(() => deliverDrop(local("/home/me/notes.txt"), row("notes.txt")));
+    act(() => deliverDrop({ origin: { kind: "sftp", sessionId: 1 }, paths: [{ path: "/srv/a", isDir: false }] }, row("src")));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocked.move).not.toHaveBeenCalled();
   });
 });

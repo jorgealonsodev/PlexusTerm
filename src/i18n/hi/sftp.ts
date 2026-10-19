@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "फ़ोल्डर को वहीं खोलने के लिए उस पर क्लिक करें; डबल-क्लिक करने पर सूची उसी से शुरू होती है। फ़ाइल डाउनलोड करने के लिए उस पर डबल-क्लिक करें। तीर कुंजियाँ चयन को हिलाती हैं और फ़ोल्डर खोलती या बंद करती हैं। अधिक विकल्पों के लिए राइट-क्लिक करें; मिडिल-क्लिक से उसका पथ टर्मिनल में लिखा जाता है। अपलोड करने के लिए फ़ाइलें यहाँ छोड़ें।",
   },
   dialog: {
+    moveInto: '"{name}" को "{folder}" में ले जाएँ?',
+    move: 'ले जाएँ',
     replaceQuestion: "{dir} में {names} को बदलें?",
     replace: "बदलें",
     downloadTitle: "{name} डाउनलोड करें",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "{name} की इससे तुलना करें",
   },
   status: {
+    moving: '{name} ले जाया जा रहा है…',
     fileCount: { one: "{count} फ़ाइल", other: "{count} फ़ाइलें" },
     uploading: "{what} अपलोड हो रहा है…",
     uploaded: "{what} अपलोड हो गया।",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type LiHT
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import type { SftpEntry } from "../sftp/sftpClient";
+import { DIR_DROP_EVENT, type DirDrop } from "../drop/pathDrag";
 import { formatDate, formatSize } from "../sftp/format";
 import { FileTypeIcon } from "./FileTypeIcon";
 import { GitBadge, gitNameClass } from "./GitBadge";
@@ -25,6 +26,12 @@ interface FileTreeProps {
   gitIndex: GitStatusIndex;
   /** Changes each time every open folder should close (the Explorer's Collapse Folders). */
   collapse?: number;
+  /**
+   * The listed folder: with it, entries dragged onto a folder row (a file row stands for its own
+   * folder, the list's empty space for this one) are handed to `onDirDrop` (S2).
+   */
+  dropDir?: string;
+  onDirDrop?: (drop: DirDrop) => void;
 }
 
 type Children = { state: "loading" } | { state: "error"; message: string } | { state: "ok"; entries: SftpEntry[] };
@@ -39,8 +46,32 @@ type Row =
  * open folders stay open while the tree shows the same folder (key it by that folder), and are
  * listed again when the list is.
  */
-export function FileTree({ entries, list, describeError, loads, selected, onSelect, onOpen, rowProps, details, gitIndex, collapse = 0 }: FileTreeProps) {
+export function FileTree({
+  entries,
+  list,
+  describeError,
+  loads,
+  selected,
+  onSelect,
+  onOpen,
+  rowProps,
+  details,
+  gitIndex,
+  collapse = 0,
+  dropDir,
+  onDirDrop,
+}: FileTreeProps) {
   const t = useT();
+  const treeRef = useRef<HTMLUListElement>(null);
+  const onDirDropRef = useRef(onDirDrop);
+  onDirDropRef.current = onDirDrop;
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+    const listener = (e: Event) => onDirDropRef.current?.((e as CustomEvent<DirDrop>).detail);
+    tree.addEventListener(DIR_DROP_EVENT, listener);
+    return () => tree.removeEventListener(DIR_DROP_EVENT, listener);
+  }, []);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const [children, setChildren] = useState<Record<string, Children>>({});
   const collapsedAt = useRef(collapse);
@@ -157,7 +188,7 @@ export function FileTree({ entries, list, describeError, loads, selected, onSele
     );
 
   return (
-    <ul className="sftp__list" role="tree">
+    <ul className="sftp__list" role="tree" ref={treeRef} data-drop-dir={dropDir}>
       {rows.map((row) => {
         if (row.kind === "note") {
           return (
@@ -170,7 +201,7 @@ export function FileTree({ entries, list, describeError, loads, selected, onSele
             </li>
           );
         }
-        const { entry, depth, rel } = row;
+        const { entry, depth, rel, parent } = row;
         const isDir = entry.kind === "dir";
         const open = isDir && expanded.has(entry.path);
         const decoration = decorationFor(gitIndex, rel, isDir);
@@ -188,6 +219,7 @@ export function FileTree({ entries, list, describeError, loads, selected, onSele
             aria-selected={entry.path === selected}
             tabIndex={0}
             title={entry.path}
+            data-drop-dir={dropDir === undefined ? undefined : isDir ? entry.path : (parent ?? dropDir)}
             {...rowProps(entry)}
             onClick={() => {
               onSelect(entry);

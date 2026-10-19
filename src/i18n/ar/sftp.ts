@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "انقر على مجلد لتوسيعه في مكانه، وانقر نقرًا مزدوجًا لعرض القائمة بدءًا منه. انقر نقرًا مزدوجًا على ملف لتنزيله. تحرّك مفاتيح الأسهم التحديد وتفتح المجلدات أو تغلقها. انقر بزر الماوس الأيمن على عنصر لمزيد من الخيارات؛ والنقر بالزر الأوسط يكتب مساره في الطرفية. أفلت الملفات هنا لرفعها.",
   },
   dialog: {
+    moveInto: 'نقل "{name}" إلى "{folder}"؟',
+    move: 'نقل',
     replaceQuestion: "هل تريد استبدال {names} في {dir}؟",
     replace: "استبدال",
     downloadTitle: "تنزيل {name}",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "مقارنة {name} مع",
   },
   status: {
+    moving: 'جارٍ نقل {name}…',
     fileCount: {
       zero: "لا توجد ملفات",
       one: "ملف واحد",

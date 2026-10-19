@@ -27,6 +27,8 @@ export const sftp = {
     hint: "Click a folder to expand it in place; double-click it to list it from there. Double-click a file to download it. The arrow keys move and open or close folders. Right-click an entry for more options; middle-click it to type its path in the terminal. Drop files here to upload them.",
   },
   dialog: {
+    moveInto: 'Move "{name}" into "{folder}"?',
+    move: 'Move',
     replaceQuestion: "Replace {names} in {dir}?",
     replace: "Replace",
     downloadTitle: "Download {name}",
@@ -41,6 +43,7 @@ export const sftp = {
     compareWithTitle: "Compare {name} with",
   },
   status: {
+    moving: 'Moving {name}…',
     fileCount: { one: "{count} file", other: "{count} files" },
     uploading: "Uploading {what}…",
     uploaded: "Uploaded {what}.",

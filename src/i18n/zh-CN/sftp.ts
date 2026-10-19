@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "单击文件夹可就地展开,双击则从该文件夹开始列出。双击文件将其下载。方向键可移动选择并展开或折叠文件夹。右键单击条目查看更多选项;中键单击会将其路径输入终端。将文件拖放到此处即可上传。",
   },
   dialog: {
+    moveInto: '将"{name}"移动到"{folder}"?',
+    move: '移动',
     replaceQuestion: "替换 {dir} 中的 {names}？",
     replace: "替换",
     downloadTitle: "下载 {name}",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "将 {name} 与以下文件比较",
   },
   status: {
+    moving: '正在移动 {name}…',
     fileCount: { other: "{count} 个文件" },
     uploading: "正在上传 {what}…",
     uploaded: "已上传 {what}。",

@@ -5,7 +5,8 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
-import { startPathDrag } from "../drop/pathDrag";
+import { startPathDrag, type DirDrop } from "../drop/pathDrag";
+import { movesInto } from "../drop/dirDrop";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { writeText } from "../terminal/clipboard";
 import { programsDir } from "../platform/programsDir";
@@ -235,6 +236,25 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
     }
   };
 
+  /** Entries of this session dragged onto a folder of the tree move there, once confirmed (S2, S3). */
+  const moveDropped = async ({ drag, dir }: DirDrop) => {
+    if (drag.origin.kind !== "sftp" || drag.origin.sessionId !== sessionId) return;
+    const moving = movesInto(drag, dir, parentPath);
+    if (moving.length === 0) return;
+    const name = moving.map((item) => basename(item.path)).join(", ");
+    const question = t("sftp.dialog.moveInto", { name, folder: basename(dir) });
+    if (!(await dialogs.confirm({ message: question, confirmLabel: t("sftp.dialog.move") }))) return;
+    const move = async () => {
+      try {
+        for (const item of moving) await sftp.move(sessionId, item.path, dir);
+      } finally {
+        // Whatever moved before a failure is shown where it went; the failure is said after.
+        if (current.current.path !== null) await navigate(current.current.path);
+      }
+    };
+    await act(t("sftp.status.moving", { name }), move);
+  };
+
   const pathToTerminal = (entry: SftpEntry) => {
     const text = terminalPath(entry.path);
     if (text === null) return setError(t("sftp.error.unsafePath"));
@@ -458,6 +478,8 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           gitIndex={gitIndex}
           rowProps={rowProps}
           collapse={collapse}
+          dropDir={path ?? undefined}
+          onDirDrop={(drop) => void moveDropped(drop)}
         />
       ) : (
         <FlatFileList

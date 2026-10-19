@@ -13,6 +13,16 @@ export interface PathDrag {
   paths: DraggedPath[];
 }
 
+/** A drag released on a folder of a file list (`data-drop-dir`): move it there (S2). */
+export interface DirDrop {
+  drag: PathDrag;
+  /** The folder the element stands for. */
+  dir: string;
+}
+
+/** The event a folder drop target receives, bubbling to its list. */
+export const DIR_DROP_EVENT = "plexusterm:dir-drop";
+
 /** Called with the drag and the element under the pointer when the button is released. */
 export type DropHandler = (drag: PathDrag, target: Element | null) => void;
 
@@ -29,15 +39,23 @@ export function setDropHandler(next: DropHandler): () => void {
   };
 }
 
-/** Hands a drop to the app's handler, as a released drag does. */
+/**
+ * Hands a drop to the app's handler, as a released drag does; a folder of a file list gets it
+ * itself, as a DIR_DROP_EVENT its list listens to.
+ */
 export function deliverDrop(drag: PathDrag, target: Element | null) {
+  const dir = target?.getAttribute("data-drop-dir");
+  if (target && dir) {
+    target.dispatchEvent(new CustomEvent<DirDrop>(DIR_DROP_EVENT, { bubbles: true, detail: { drag, dir } }));
+    return;
+  }
   handler?.(drag, target);
 }
 
-/** The element marked as a drop target (`data-drop-pane` or `data-drop-chat`) under a point. */
+/** The element marked as a drop target (`data-drop-pane`, `data-drop-chat` or `data-drop-dir`) under a point. */
 export function dropTargetAt(x: number, y: number): Element | null {
   const hit = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
-  return hit?.closest("[data-drop-pane], [data-drop-chat]") ?? null;
+  return hit?.closest("[data-drop-pane], [data-drop-chat], [data-drop-dir]") ?? null;
 }
 
 /**

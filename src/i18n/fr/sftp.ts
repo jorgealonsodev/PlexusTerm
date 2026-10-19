@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "Cliquez sur un dossier pour le déplier sur place ; un double-clic liste à partir de lui. Double-cliquez sur un fichier pour le télécharger. Les flèches déplacent la sélection et ouvrent ou ferment les dossiers. Clic droit sur un élément pour plus d’options ; un clic du milieu écrit son chemin dans le terminal. Déposez des fichiers ici pour les envoyer.",
   },
   dialog: {
+    moveInto: 'Déplacer "{name}" dans "{folder}" ?',
+    move: 'Déplacer',
     replaceQuestion: "Remplacer {names} dans {dir} ?",
     replace: "Remplacer",
     downloadTitle: "Télécharger {name}",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "Comparer {name} avec",
   },
   status: {
+    moving: 'Déplacement de {name}…',
     fileCount: { one: "{count} fichier", many: "{count} fichiers", other: "{count} fichiers" },
     uploading: "Envoi de {what}…",
     uploaded: "{what} envoyé.",

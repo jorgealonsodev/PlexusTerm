@@ -2116,6 +2116,10 @@ body.is-dragging-path {
   outline-offset: -2px;
 }
 
+.sftp-row.drop-target--over {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
 /* Files dropped on the AI chat (S6): one row each above the input, and under a sent question. */
 .chat__file {
   display: flex;

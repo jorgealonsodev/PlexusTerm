@@ -29,6 +29,8 @@ export const sftp: Messages<typeof en> = {
     hint: "폴더를 클릭하면 그 자리에서 펼쳐지고, 두 번 클릭하면 그 폴더부터 목록을 보여 줍니다. 파일을 두 번 클릭하면 다운로드됩니다. 화살표 키로 이동하고 폴더를 열거나 닫습니다. 항목을 마우스 오른쪽 버튼으로 클릭하면 더 많은 옵션이 표시되고, 가운데 버튼으로 클릭하면 경로가 터미널에 입력됩니다. 여기에 파일을 놓으면 업로드됩니다.",
   },
   dialog: {
+    moveInto: '"{name}"을(를) "{folder}"(으)로 이동할까요?',
+    move: '이동',
     replaceQuestion: "{dir}의 {names}을(를) 바꾸시겠습니까?",
     replace: "바꾸기",
     downloadTitle: "{name} 다운로드",
@@ -43,6 +45,7 @@ export const sftp: Messages<typeof en> = {
     compareWithTitle: "{name}와(과) 비교",
   },
   status: {
+    moving: '{name} 이동 중…',
     fileCount: { other: "파일 {count}개" },
     uploading: "{what} 업로드 중…",
     uploaded: "{what}을(를) 업로드했습니다.",

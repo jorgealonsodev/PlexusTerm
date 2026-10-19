@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DialogProvider } from "../dialogs/DialogProvider";
+import { deliverDrop } from "../drop/pathDrag";
 import { SftpPanel } from "./SftpPanel";
 import { sftp, type SftpEntry } from "./sftpClient";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -27,6 +28,7 @@ vi.mock("./sftpClient", async (importOriginal) => {
       createFile: vi.fn(),
       remove: vi.fn(),
       rename: vi.fn(),
+      move: vi.fn(),
       chmod: vi.fn(),
       edit: vi.fn(),
       editUpload: vi.fn(),
@@ -627,3 +629,32 @@ describe("SftpPanel DEV toolbar", () => {
   });
 });
 
+
+describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
+  const row = (name: string) => screen.getByText(name).closest("li")!;
+  const remote = (sessionId: number, path: string) => ({ origin: { kind: "sftp" as const, sessionId }, paths: [{ path, isDir: false }] });
+
+  it("asks before moving an entry of its session, then moves it and lists the folder again", async () => {
+    mocked.move.mockResolvedValue("/home/u/src/notes.txt");
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    expect(row("src").getAttribute("data-drop-dir")).toBe("/home/u/src");
+    mocked.list.mockClear();
+    act(() => deliverDrop(remote(1, "/home/u/notes.txt"), row("src")));
+    await answer('Move "notes.txt" into "src"?', "Move");
+    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/src"));
+    await waitFor(() => expect(mocked.list).toHaveBeenCalledWith(1, "/home/u"));
+  });
+
+  it("moves nothing when cancelled or when the entry comes from elsewhere", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("src");
+    act(() => deliverDrop(remote(1, "/home/u/notes.txt"), row("src")));
+    await answer('Move "notes.txt" into "src"?', "Cancel");
+    act(() => deliverDrop(remote(2, "/home/u/notes.txt"), row("src")));
+    act(() => deliverDrop({ origin: { kind: "local" }, paths: [{ path: "/home/u/notes.txt", isDir: false }] }, row("src")));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocked.move).not.toHaveBeenCalled();
+  });
+});
