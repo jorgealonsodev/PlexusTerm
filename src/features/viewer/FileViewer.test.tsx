@@ -247,6 +247,55 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the file's own line endings (CRLF), and undoing every edit leaves nothing to save", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/win.txt" load={file("a\r\nb\r\n")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("ab"));
+    act(() => {
+      const view = editorView();
+      view.dispatch({ changes: { from: 1, insert: "x" }, userEvent: "input.type" });
+    });
+    expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
+    act(() => {
+      const view = editorView();
+      view.dispatch({ changes: { from: 1, to: 2 }, userEvent: "delete" });
+    });
+    expect(screen.queryByLabelText("Unsaved changes")).toBeNull();
+    type("c");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\r\n", "a\r\nb\r\nc"));
+  });
+
+  it("leaves the text and the cursor of a CRLF file alone once it is saved", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/win.txt" load={file("a\r\nb")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("ab"));
+    act(() => {
+      editorView().dispatch({ changes: { from: 1, insert: "x" }, selection: { anchor: 2 }, userEvent: "input.type" });
+    });
+    const dispatch = vi.spyOn(editorView(), "dispatch");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb", "ax\r\nb"));
+    await waitFor(() => expect(screen.queryByLabelText("Unsaved changes")).toBeNull());
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(editorView().state.selection.main.head).toBe(2);
+  });
+
+  it("keeps a lone LF in a CRLF file and a lone CR in an LF file", async () => {
+    const save = vi.fn(async () => {});
+    const { unmount } = render(<FileViewer path="/p/mixed.txt" load={file("a\r\nb\nc")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-editor")).toBeTruthy());
+    type("!");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\nc", "a\r\nb\nc!"));
+    unmount();
+    render(<FileViewer path="/p/cr.txt" load={file("a\rb\n")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(document.querySelector(".cm-editor")).toBeTruthy());
+    type("!");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith("a\rb\n", "a\rb\n!"));
+  });
+
   it("keeps a file shown only in part read-only, and has no save button without a way to save", async () => {
     const { unmount } = render(
       <FileViewer path="/p/big.log" load={file("start", true)} onClose={() => {}} save={vi.fn()} />,

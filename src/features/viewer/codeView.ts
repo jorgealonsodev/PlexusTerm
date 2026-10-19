@@ -1,4 +1,4 @@
-import { Annotation, Compartment, EditorState, Prec, Transaction, type Extension, type Text } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, Prec, Transaction, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { drawSelection, EditorView, highlightActiveLineGutter, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
@@ -43,7 +43,7 @@ const reload = Annotation.define<boolean>();
 
 /** Shows the file's new text in place, at the same scroll position (the file changed on disk). */
 export function reloadText(view: EditorView, text: string) {
-  if (view.state.doc.toString() === text) return;
+  if (fileText(view.state) === text) return;
   const { scrollTop, scrollLeft } = view.scrollDOM;
   const head = Math.min(view.state.selection.main.head, text.length);
   view.dispatch({
@@ -56,10 +56,20 @@ export function reloadText(view: EditorView, text: string) {
   view.scrollDOM.scrollLeft = scrollLeft;
 }
 
+/**
+ * The file's text in an editor state, with its own line breaks: the view splits lines only on the
+ * separator the file uses (see `createCodeView`), so any other `\r` or `\n` is kept as it was.
+ */
+export const fileText = (state: EditorState) => state.sliceDoc();
+
+/** The length of `fileText(state)`, without building it. */
+export const fileTextLength = (state: EditorState) =>
+  state.doc.length + (state.doc.lines - 1) * (state.lineBreak.length - 1);
+
 /** What an editable view does with the text typed in it. */
 export interface Editing {
-  /** Called after each edit (not after a reload) with the new text. */
-  onEdit: (doc: Text) => void;
+  /** Called after each edit (not after a reload); `fileText(state)` is the text to save. */
+  onEdit: (state: EditorState) => void;
   /** Ctrl+S (Cmd+S on macOS). */
   onSave: () => void;
 }
@@ -89,7 +99,7 @@ function editingExtensions(editing?: Editing): Extension {
     keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && update.transactions.some((tr) => !tr.annotation(reload))) {
-        editing.onEdit(update.state.doc);
+        editing.onEdit(update.state);
       }
     }),
   ];
@@ -111,6 +121,8 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         drawSelection(),
+        // Lines split only on the file's own line break, so saving writes back the same ones.
+        EditorState.lineSeparator.of(text.includes("\r\n") ? "\r\n" : "\n"),
         editingExtensions(editing),
         EditorView.lineWrapping,
         search({ top: true }),

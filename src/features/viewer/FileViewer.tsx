@@ -3,9 +3,9 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Save, X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
-import { createCodeView, reloadText, type Editing } from "./codeView";
+import { createCodeView, fileText, fileTextLength, reloadText, type Editing } from "./codeView";
 import type { EditorView } from "@codemirror/view";
-import type { Text } from "@codemirror/state";
+import type { EditorState } from "@codemirror/state";
 import { isMarkdown, renderMarkdown } from "./markdown";
 
 /** A file's text as the backend reads it for the viewer. */
@@ -135,7 +135,7 @@ export function FileViewer({
   loadRef.current = load;
 
   /** The edited text while it differs from the file's; null when there is nothing to save. */
-  const draft = useRef<Text | null>(null);
+  const draft = useRef<EditorState | null>(null);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
   dirtyRef.current = dirty;
@@ -204,8 +204,13 @@ export function FileViewer({
   saveRef.current = () => {
     stopAutoSave();
     const edited = draft.current;
-    if (!save || !file || !edited || saving) return;
-    const content = edited.toString();
+    if (!save || !file || !edited) return;
+    if (saving) {
+      // The newer text is saved once the running save is done.
+      if (autoSave) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
+      return;
+    }
+    const content = fileText(edited);
     setSaving(true);
     save(file.content, content).then(
       () => {
@@ -226,10 +231,10 @@ export function FileViewer({
   };
   const editing: Editing | undefined = editable
     ? {
-        onEdit: (doc) => {
+        onEdit: (state) => {
           const base = file.content;
-          const same = doc.length === base.length && doc.toString() === base;
-          draft.current = same ? null : doc;
+          const same = fileTextLength(state) === base.length && fileText(state) === base;
+          draft.current = same ? null : state;
           setDirty(!same);
           stopAutoSave();
           if (autoSave && !same) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
@@ -237,7 +242,7 @@ export function FileViewer({
         onSave: () => saveRef.current(),
       }
     : undefined;
-  const shown = dirty && draft.current ? draft.current.toString() : (file?.content ?? "");
+  const shown = dirty && draft.current ? fileText(draft.current) : (file?.content ?? "");
 
   return (
     <section className="viewer" aria-label={name}>
