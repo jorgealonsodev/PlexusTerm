@@ -162,6 +162,26 @@ describe("formFromSession", () => {
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parseSessionForm(formFromSession(parsed.session), "id-9")).toEqual(parsed);
   });
+
+  it("leaves the name empty when it was made from the address, so it follows a new host", () => {
+    const saved = parseSessionForm(form({ name: "", username: "portainer-sys", host: "100.103.237.68" }), "id-1");
+    if (!saved.ok) throw new Error(saved.error);
+    expect(saved.session.name).toBe("portainer-sys@100.103.237.68");
+    const edit = formFromSession(saved.session);
+    expect(edit.name).toBe("");
+    const moved = parseSessionForm({ ...edit, host: "192.168.25.115" }, "id-1");
+    if (!moved.ok) throw new Error(moved.error);
+    expect(moved.session).toMatchObject({ name: "portainer-sys@192.168.25.115", host: "192.168.25.115" });
+  });
+
+  it("keeps a name the user chose, even one that looks like an address", () => {
+    const saved = parseSessionForm(form({ name: "root@backup", username: "deploy" }), "id-1");
+    if (!saved.ok) throw new Error(saved.error);
+    expect(formFromSession(saved.session).name).toBe("root@backup");
+    const telnet = parseSessionForm(form({ kind: "telnet", name: "", telnet: { host: "switch-1", port: "" } }), "t-1");
+    if (!telnet.ok) throw new Error(telnet.error);
+    expect(formFromSession(telnet.session).name).toBe("");
+  });
 });
 
 describe("parseSessionForm (jump hosts)", () => {

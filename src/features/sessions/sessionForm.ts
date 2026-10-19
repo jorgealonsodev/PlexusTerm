@@ -147,7 +147,17 @@ const emptySsh: QuickConnectForm = {
   passphrase: "",
 };
 
-export function formFromSession(session: LibrarySession): SessionForm {
+/**
+ * The edit form of a saved session. A name that was made from the address (left empty, such as
+ * `user@host`) stays empty, so it follows a changed host instead of keeping the old address.
+ */
+export function formFromSession(session: LibrarySession, library?: Pick<SessionLibrary, "sessions">): SessionForm {
+  const form = formWithName(session);
+  const automatic = parseSessionForm({ ...form, name: "" }, session.id, library);
+  return automatic.ok && automatic.session.name === session.name ? { ...form, name: "" } : form;
+}
+
+function formWithName(session: LibrarySession): SessionForm {
   const common = {
     name: session.name,
     folder: session.folder,
