@@ -329,6 +329,74 @@ pub async fn rename(sftp: &SftpSession, from: &str, to: &str) -> Result<(), Sftp
         .map_err(|err| failure("rename", from, err))
 }
 
+/// Moves `from` into the remote folder `dir`, keeping its name, and returns where it ended up.
+/// Never replaces an existing entry, and never moves a folder into itself or one of its subfolders.
+pub async fn move_into(sftp: &SftpSession, from: &str, dir: &str) -> Result<String, SftpError> {
+    let refuse = |why: String| SftpError::Sftp {
+        message: format!("cannot move {from}: {why}"),
+    };
+    let source = from.trim_end_matches('/');
+    let target = match dir.trim_end_matches('/') {
+        "" => "/",
+        trimmed => trimmed,
+    };
+    let Some((parent, name)) = source.rsplit_once('/').filter(|(_, name)| !name.is_empty()) else {
+        return Err(refuse("not a file name".into()));
+    };
+    if target == source || target.starts_with(&format!("{source}/")) {
+        return Err(refuse("a folder cannot be moved into itself".into()));
+    }
+    if (if parent.is_empty() { "/" } else { parent }) == target {
+        return Err(refuse(format!("it is already in {target}")));
+    }
+    let to = join(target, name);
+    // SFTP rename may replace an existing entry on some servers.
+    if sftp.symlink_metadata(&to).await.is_ok() {
+        return Err(refuse(format!("{to} already exists")));
+    }
+    sftp.rename(source, &to)
+        .await
+        .map_err(|err| failure("move", from, err))?;
+    Ok(to)
+}
+
+/// Replaces the text of the existing remote file `path` with `content`, but only while it still
+/// holds `expected` (the text that was opened), so changes made by someone else are never lost.
+pub async fn write_text(
+    sftp: &SftpSession,
+    path: &str,
+    expected: &str,
+    content: &str,
+) -> Result<(), SftpError> {
+    use russh_sftp::protocol::OpenFlags;
+    use tokio::io::AsyncWriteExt;
+
+    let (current, truncated) = read_prefix(sftp, path, crate::localfs::MAX_VIEW_BYTES)
+        .await
+        .map_err(|err| match err {
+            SftpError::Sftp { message } => SftpError::Sftp {
+                message: message.replacen("cannot read", "cannot save", 1),
+            },
+            other => other,
+        })?;
+    if truncated || current != expected.as_bytes() {
+        return Err(SftpError::Sftp {
+            message: format!("cannot save {path}: it changed on disk since it was opened"),
+        });
+    }
+    let mut file = sftp
+        .open_with_flags(path, OpenFlags::WRITE | OpenFlags::TRUNCATE)
+        .await
+        .map_err(|err| failure("save", path, err))?;
+    file.write_all(content.as_bytes())
+        .await
+        .map_err(|err| failure("save", path, err))?;
+    // Waits for every pending write to be acknowledged.
+    file.shutdown()
+        .await
+        .map_err(|err| failure("save", path, err))
+}
+
 /// Highest mode `chmod` accepts: permission bits plus setuid, setgid and sticky.
 pub const MAX_MODE: u32 = 0o7777;
 

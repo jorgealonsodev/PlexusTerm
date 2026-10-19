@@ -414,6 +414,29 @@ async fn sftp_rename(
     sftp::rename(&*ssh.sftp(id).await?, &from, &to).await
 }
 
+/// Moves a remote file or folder into another folder; returns its new path.
+#[tauri::command]
+async fn sftp_move(
+    id: u32,
+    from: String,
+    dir: String,
+    ssh: State<'_, SshManager>,
+) -> Result<String, SftpError> {
+    sftp::move_into(&*ssh.sftp(id).await?, &from, &dir).await
+}
+
+/// Saves the file viewer's text over a remote file that still holds `expected`.
+#[tauri::command]
+async fn sftp_write_text(
+    id: u32,
+    path: String,
+    expected: String,
+    content: String,
+    ssh: State<'_, SshManager>,
+) -> Result<(), SftpError> {
+    sftp::write_text(&*ssh.sftp(id).await?, &path, &expected, &content).await
+}
+
 const SESSIONS_FILE: &str = "sessions.json";
 const TUNNELS_FILE: &str = "tunnels.json";
 
@@ -603,6 +626,8 @@ pub fn run() {
             sftp_create_file,
             sftp_remove,
             sftp_rename,
+            sftp_move,
+            sftp_write_text,
             sessions_load,
             sessions_save,
             import_read_file,
@@ -658,6 +683,8 @@ pub fn run() {
             localfs::local_open,
             localfs::local_read_text,
             localfs::local_view_text,
+            localfs::local_write_text,
+            localfs::local_move,
             project::project_colors_get,
             project::project_color_set,
             screen_color::screen_color_pick

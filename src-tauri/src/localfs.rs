@@ -128,6 +128,64 @@ pub fn rename(from: &Path, to: &Path) -> Result<(), String> {
     fs::rename(from, to).map_err(|err| failure("rename", from, err))
 }
 
+/// Moves `from` into the folder `dir`, keeping its name, and returns where it ended up.
+/// Never replaces an existing entry, and never moves a folder into itself or one of its subfolders.
+pub fn move_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
+    let from = without_trailing_separators(from);
+    let dir = without_trailing_separators(dir);
+    let name = from
+        .file_name()
+        .ok_or_else(|| failure("move", &from, "not a file name"))?;
+    if dir.starts_with(&from) {
+        return Err(failure(
+            "move",
+            &from,
+            "a folder cannot be moved into itself",
+        ));
+    }
+    if from.parent() == Some(dir.as_path()) {
+        return Err(failure(
+            "move",
+            &from,
+            format!("it is already in {}", dir.display()),
+        ));
+    }
+    let to = dir.join(name);
+    if fs::symlink_metadata(&to).is_ok() {
+        return Err(failure(
+            "move",
+            &from,
+            format!("{} already exists", to.display()),
+        ));
+    }
+    fs::rename(&from, &to).map_err(|err| failure("move", &from, err))?;
+    Ok(to)
+}
+
+/// Replaces the text of the existing file `path` with `content`, but only while it still holds
+/// `expected` (the text that was opened), so changes made by someone else are never lost.
+/// Writes in place, so a symlink, the file's mode and its owner are kept.
+pub fn write_text(path: &Path, expected: &str, content: &str) -> Result<(), String> {
+    use std::io::Write;
+    let (current, truncated) = read_prefix(path, MAX_VIEW_BYTES)
+        .map_err(|err| err.replacen("cannot read", "cannot save", 1))?;
+    if truncated || current != expected.as_bytes() {
+        return Err(failure(
+            "save",
+            path,
+            "it changed on disk since it was opened",
+        ));
+    }
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .map_err(|err| failure("save", path, err))?;
+    file.write_all(content.as_bytes())
+        .and_then(|()| file.sync_all())
+        .map_err(|err| failure("save", path, err))
+}
+
 /// Removes a file, a symlink (never what it points to), or a folder with everything inside it.
 pub fn remove(path: &Path, is_dir: bool) -> Result<(), String> {
     // `link/` would resolve the symlink and delete what it points to.
@@ -323,6 +381,22 @@ pub async fn local_read_text(path: String) -> Result<TextFile, String> {
 #[tauri::command]
 pub async fn local_view_text(path: String) -> Result<TextFile, String> {
     view_text(&native(&path))
+}
+
+/// Saves the file viewer's text over a local file that still holds `expected`.
+#[tauri::command]
+pub async fn local_write_text(
+    path: String,
+    expected: String,
+    content: String,
+) -> Result<(), String> {
+    write_text(&native(&path), &expected, &content)
+}
+
+/// Moves a local file or folder into another folder; returns its new path.
+#[tauri::command]
+pub async fn local_move(from: String, dir: String) -> Result<String, String> {
+    move_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
 }
 
 /// Opens a local file in its default program, the text editor or a chosen program.
@@ -523,6 +597,120 @@ mod tests {
         let read = read_text(dir.path()).unwrap();
         assert_eq!(read.content, "src/\nREADME.md");
         assert!(!read.truncated);
+    }
+
+    #[test]
+    fn write_text_saves_over_the_text_that_was_opened() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("a.txt");
+        fs::write(&file, "old").unwrap();
+        write_text(&file, "old", "new text").unwrap();
+        assert_eq!(fs::read_to_string(&file).unwrap(), "new text");
+    }
+
+    #[test]
+    fn write_text_refuses_a_file_that_changed_since_it_was_opened() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("a.txt");
+        fs::write(&file, "changed by someone else").unwrap();
+        let err = write_text(&file, "old", "mine").unwrap_err();
+        assert!(err.contains("changed on disk"), "{err}");
+        assert_eq!(
+            fs::read_to_string(&file).unwrap(),
+            "changed by someone else"
+        );
+    }
+
+    #[test]
+    fn write_text_refuses_a_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("gone.txt");
+        let err = write_text(&file, "old", "mine").unwrap_err();
+        assert!(err.starts_with("cannot save"), "{err}");
+        assert!(!file.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_text_keeps_a_symlink_and_the_file_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("real.sh");
+        fs::write(&target, "echo 1").unwrap();
+        chmod(&target, 0o755).unwrap();
+        let link = dir.path().join("link.sh");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        write_text(&link, "echo 1", "echo 2").unwrap();
+        assert!(
+            fs::symlink_metadata(&link)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert_eq!(fs::read_to_string(&target).unwrap(), "echo 2");
+        let mode = fs::metadata(&target).unwrap().permissions().mode() & 0o7777;
+        assert_eq!(mode, 0o755);
+    }
+
+    #[test]
+    fn move_into_moves_a_file_and_a_folder_into_a_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("dest");
+        fs::create_dir(&dest).unwrap();
+        fs::write(dir.path().join("f.txt"), "x").unwrap();
+        fs::create_dir(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("sub").join("inner"), "y").unwrap();
+
+        let moved = move_into(&dir.path().join("f.txt"), &dest).unwrap();
+        assert_eq!(moved, dest.join("f.txt"));
+        assert_eq!(fs::read_to_string(dest.join("f.txt")).unwrap(), "x");
+        assert!(!dir.path().join("f.txt").exists());
+
+        move_into(&dir.path().join("sub"), &dest).unwrap();
+        assert_eq!(
+            fs::read_to_string(dest.join("sub").join("inner")).unwrap(),
+            "y"
+        );
+        assert!(!dir.path().join("sub").exists());
+    }
+
+    #[test]
+    fn move_into_never_replaces_an_entry_with_the_same_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("dest");
+        fs::create_dir(&dest).unwrap();
+        fs::write(dest.join("f.txt"), "kept").unwrap();
+        fs::write(dir.path().join("f.txt"), "moving").unwrap();
+        let err = move_into(&dir.path().join("f.txt"), &dest).unwrap_err();
+        assert!(err.contains("already exists"), "{err}");
+        assert_eq!(fs::read_to_string(dest.join("f.txt")).unwrap(), "kept");
+        assert_eq!(
+            fs::read_to_string(dir.path().join("f.txt")).unwrap(),
+            "moving"
+        );
+    }
+
+    #[test]
+    fn move_into_refuses_a_folder_into_itself_or_its_subfolders() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("a");
+        fs::create_dir_all(folder.join("b")).unwrap();
+        for target in [folder.clone(), folder.join("b")] {
+            let err = move_into(&folder, &target).unwrap_err();
+            assert!(err.contains("into itself"), "{err}");
+        }
+        // A sibling whose name starts the same is not inside it.
+        fs::create_dir(dir.path().join("ab")).unwrap();
+        move_into(&folder, &dir.path().join("ab")).unwrap();
+        assert!(dir.path().join("ab").join("a").join("b").is_dir());
+    }
+
+    #[test]
+    fn move_into_its_own_folder_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("f.txt"), "x").unwrap();
+        let err = move_into(&dir.path().join("f.txt"), dir.path()).unwrap_err();
+        assert!(err.contains("already in"), "{err}");
     }
 
     #[cfg(unix)]

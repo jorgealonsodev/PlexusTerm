@@ -244,6 +244,66 @@ async fn rename_moves_an_entry() {
 }
 
 #[tokio::test]
+async fn write_text_saves_over_the_text_that_was_opened() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("a.txt"), b"a much longer old text").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    write_text(&sftp, "/a.txt", "a much longer old text", "short")
+        .await
+        .unwrap();
+    assert_eq!(std::fs::read(root.path().join("a.txt")).unwrap(), b"short");
+}
+
+#[tokio::test]
+async fn write_text_refuses_a_file_that_changed_since_it_was_opened() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("a.txt"), b"theirs").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let err = write_text(&sftp, "/a.txt", "old", "mine")
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("changed on disk"), "{err}");
+    assert_eq!(std::fs::read(root.path().join("a.txt")).unwrap(), b"theirs");
+}
+
+#[tokio::test]
+async fn move_into_moves_an_entry_into_a_folder() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join("dest")).unwrap();
+    std::fs::write(root.path().join("f"), b"x").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let moved = move_into(&sftp, "/f", "/dest").await.unwrap();
+    assert_eq!(moved, "/dest/f");
+    assert_eq!(std::fs::read(root.path().join("dest/f")).unwrap(), b"x");
+    assert!(!root.path().join("f").exists());
+}
+
+#[tokio::test]
+async fn move_into_never_replaces_an_entry_with_the_same_name() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join("dest")).unwrap();
+    std::fs::write(root.path().join("dest/f"), b"kept").unwrap();
+    std::fs::write(root.path().join("f"), b"moving").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    let err = move_into(&sftp, "/f", "/dest").await.unwrap_err();
+    assert!(err.to_string().contains("already exists"), "{err}");
+    assert_eq!(std::fs::read(root.path().join("dest/f")).unwrap(), b"kept");
+    assert_eq!(std::fs::read(root.path().join("f")).unwrap(), b"moving");
+}
+
+#[tokio::test]
+async fn move_into_refuses_a_folder_into_itself_or_its_subfolders() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(root.path().join("a/b")).unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    for target in ["/a", "/a/b", "/a/b/"] {
+        let err = move_into(&sftp, "/a", target).await.unwrap_err();
+        assert!(err.to_string().contains("into itself"), "{target}: {err}");
+    }
+    assert!(root.path().join("a/b").is_dir());
+}
+
+#[tokio::test]
 async fn listing_a_missing_path_is_an_sftp_error() {
     let root = tempfile::tempdir().unwrap();
     let (sftp, _mgr, _dir) = session(root.path()).await;
