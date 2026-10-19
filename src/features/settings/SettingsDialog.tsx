@@ -540,7 +540,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setFontFamily(e.target.value)}
               />
             </label>
-            <label className="field field--port">
+            <label className="field field--size">
               {t("settings.appearance.fontSize")}
               <input
                 type="number"
@@ -556,7 +556,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ? t("settings.appearance.fontHelp", { shortcuts: fontShortcuts })
                 : t("settings.appearance.fontHelpNoShortcut")}
             </p>
-            <label className="field field--port">
+            <label className="field field--size">
               {t("settings.appearance.uiFontSize")}
               <input
                 type="number"
@@ -752,7 +752,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("ai")}>
-            <label className="field field--port">
+            <label className="field field--size">
               {t("settings.ai.chatFontSize")}
               <input
                 type="number"

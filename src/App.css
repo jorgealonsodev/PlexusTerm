@@ -471,6 +471,18 @@ textarea::placeholder {
   width: 80px;
 }
 
+/* A size in pixels: its name on one line, the number box at its right. */
+.field--size {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.field--size input {
+  flex: none;
+  width: 80px;
+}
+
 .field input,
 .field select {
   padding: 6px 8px;
