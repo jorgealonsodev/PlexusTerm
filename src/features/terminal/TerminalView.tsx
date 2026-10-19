@@ -38,7 +38,7 @@ import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
 import { usePlatform } from "../platform/usePlatform";
 import { FindBar, type FindDirection, type FindOptions } from "./FindBar";
-import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState } from "./lineTracker";
+import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, promptBefore, type LineState, promptOnlyOnScreen } from "./lineTracker";
 import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
@@ -746,8 +746,14 @@ export function TerminalView({
         track(`${text}\r`);
         return true;
       },
-      lineEmpty: () =>
-        !fullScreen() && line.text === "" && !line.uncertain && !cursorRow().textAfter && !atSecretPrompt(),
+      lineEmpty: () => {
+        if (fullScreen() || atSecretPrompt()) return false;
+        const row = cursorRow();
+        // After Ctrl+L, arrows or Tab the typed line is uncertain: the screen tells whether only
+        // the prompt is there.
+        const empty = line.uncertain ? promptOnlyOnScreen(row.toCursor) : line.text === "";
+        return empty && !row.textAfter;
+      },
     });
 
     /** Reports a request for attention; the sequence is always consumed (xterm has no use for it). */

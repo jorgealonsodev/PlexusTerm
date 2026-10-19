@@ -132,6 +132,12 @@ export const isSecretPrompt = (prompt: string) => SECRET_PROMPT.test(prompt);
  * by a space (`$`, `#`, `%`, `>`, `❯`, `›`, `»`), or after cmd.exe's `C:\\path>`: what a recalled (history) or completed command line
  * looks like on screen, where the typed-line tracker cannot follow it. Null without a command.
  */
+/**
+ * Whether a row, up to the cursor, is a prompt with nothing typed after it: it ends with a prompt
+ * sign (`$`, `#`, `%`, `>`, `❯`, `›`, `»`) or cmd.exe's `C:\path>`.
+ */
+export const promptOnlyOnScreen = (toCursor: string) => /(?:^[A-Za-z]:\\[^>]*>|[$#%>❯›»])$/u.test(toCursor.trimEnd());
+
 export function commandOnScreen(row: string): { prompt: string; command: string } | null {
   // cmd.exe's prompt, a drive path and `>` with no space after it, comes first.
   const match = /^([A-Za-z]:\\[^>]*>)(?! )(.*)$/u.exec(row) ?? /^(.*[$#%>❯›»] )(.*)$/u.exec(row);

@@ -1376,6 +1376,23 @@ describe("TerminalView", () => {
       expect(assist!.lineEmpty!()).toBe(false);
     });
 
+    it("reads an uncertain line from the screen: empty after Ctrl+L or arrows, not after a recalled command", async () => {
+      let assist: { lineEmpty?: () => boolean } | null = null;
+      await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
+      /** A key that changes nothing visible, the screen showing `screen` afterwards. */
+      const press = (data: string, screen: string) =>
+        act(() => {
+          term().line = screen;
+          term().type(data);
+        });
+      press("\x0c", "me@box:~$ "); // Ctrl+L: the screen is cleared, the line stays empty
+      expect(assist!.lineEmpty!()).toBe(true);
+      press("\x1b[D", "me@box:~$ "); // Left on an empty line
+      expect(assist!.lineEmpty!()).toBe(true);
+      press("\x1b[A", "me@box:~$ git status"); // Up recalls a command
+      expect(assist!.lineEmpty!()).toBe(false);
+    });
+
     it("refuses to run a command with line breaks or control characters", async () => {
       let assist: { run: (text: string) => boolean } | null = null;
       await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
