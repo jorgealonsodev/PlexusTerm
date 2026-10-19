@@ -191,6 +191,7 @@ impl PtyManager {
                 match reader.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
+                        crate::diag::mark("R", n);
                         let text = decoder.push(&buf[..n]);
                         if !text.is_empty() {
                             sink.data(text);
@@ -217,6 +218,7 @@ impl PtyManager {
 
     /// Queues `data` for the process; it is written in order, as the process reads it.
     pub fn write(&self, id: u32, data: &[u8]) -> Result<(), PtyError> {
+        crate::diag::mark("W", data.len());
         self.with_session(id, |s| {
             s.input
                 .send(data.to_vec())

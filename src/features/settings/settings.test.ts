@@ -288,7 +288,7 @@ describe("serializeSettings", () => {
       tabColumnWidth: 300,
     };
     const json = serializeSettings(settings);
-    expect(JSON.parse(json)).toEqual({ version: 1, ...settings });
+    expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
     expect(parseSettings(json)).toEqual(settings);
   });
 });
@@ -384,5 +384,21 @@ describe("interface and chat text sizes", () => {
     expect(stepChatFontSize(24, "increase")).toBe(24);
     expect(stepChatFontSize(10, "decrease")).toBe(10);
     expect(stepChatFontSize(20, "reset")).toBe(13);
+  });
+});
+
+describe("GPU acceleration on Linux", () => {
+  it("is off by default there, as WebGL in WebKitGTK delays every key by several frames", () => {
+    expect(parseSettings(null, { linux: true }).gpuAcceleration).toBe(false);
+    expect(parseSettings(null, { linux: false }).gpuAcceleration).toBe(true);
+    expect(parseSettings(null).gpuAcceleration).toBe(true);
+  });
+
+  it("is turned off once in settings saved before this change, and kept when turned on again", () => {
+    const old = JSON.stringify({ version: 1, gpuAcceleration: true, fontSize: 16 });
+    expect(parseSettings(old, { linux: true })).toMatchObject({ gpuAcceleration: false, fontSize: 16 });
+    expect(parseSettings(old, { linux: false }).gpuAcceleration).toBe(true);
+    const chosen = serializeSettings({ ...DEFAULT_SETTINGS, gpuAcceleration: true });
+    expect(parseSettings(chosen, { linux: true }).gpuAcceleration).toBe(true);
   });
 });

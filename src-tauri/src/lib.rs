@@ -1,4 +1,5 @@
 mod ai;
+mod diag;
 mod git;
 mod history;
 mod localfs;
@@ -49,7 +50,10 @@ impl ChannelSink {
         std::thread::spawn(move || {
             coalesce::forward(rx, |event| {
                 let _ = channel.send(match event {
-                    coalesce::Event::Output(text) => TerminalEvent::Output(text),
+                    coalesce::Event::Output(text) => {
+                        diag::mark("S", text.len());
+                        TerminalEvent::Output(text)
+                    }
                     coalesce::Event::Exit(code) => TerminalEvent::Exit(code),
                 });
             })
@@ -700,6 +704,7 @@ pub fn run() {
             localfs::local_open,
             localfs::local_read_text,
             localfs::local_view_text,
+            diag::diag_latency_log,
             localfs::local_write_text,
             localfs::local_move,
             project::project_colors_get,

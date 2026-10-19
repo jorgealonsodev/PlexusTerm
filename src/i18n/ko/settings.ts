@@ -72,7 +72,7 @@ export const settings: Messages<typeof en> = {
     attentionNotifications: "터미널이 확인을 요청하면 데스크톱 알림",
     attentionNotificationsHelp: "보고 있지 않은 터미널에서 프로그램이 벨을 울리거나 알림을 보내면(Claude Code와 Codex는 작업이 끝나거나 입력을 기다릴 때 보냅니다) 그 탭을 열 때까지 표시가 남습니다. PlexusTerm이 백그라운드에 있으면 데스크톱 알림으로도 메시지를 보여 줍니다. 끄면 탭 표시만 남습니다.",
     gpuAcceleration: "GPU 가속",
-    gpuAccelerationHelp: "터미널을 그래픽 카드의 WebGL로 그려 화면을 자주 다시 그리는 프로그램(AI 명령줄 도구, htop)도 부드럽게 표시합니다. WebGL을 쓸 수 없거나 그래픽 카드가 재설정되면 터미널이 자동으로 표준 렌더러로 전환됩니다. 그래픽 드라이버에서 글자가 이상하게 보이거나 깜박이면 끄세요.",
+    gpuAccelerationHelp: "터미널을 그래픽 카드의 WebGL로 그려 화면을 자주 다시 그리는 프로그램(AI 명령줄 도구, htop)도 부드럽게 표시합니다. WebGL을 쓸 수 없거나 그래픽 카드가 재설정되면 터미널이 자동으로 표준 렌더러로 전환됩니다. 그래픽 드라이버에서 글자가 이상하게 보이거나 깜박이면 끄세요. Linux에서는 기본적으로 꺼져 있습니다. WebKitGTK가 WebGL 터미널을 몇 프레임 늦게 표시해 입력이 느리게 느껴지기 때문입니다.",
     devCommands: "DEV 모드를 켜는 명령",
     devCommandsHelp: "탭의 명령줄이 이 프로그램 중 하나(명령의 첫 단어, 쉼표나 공백으로 구분)를 실행하면 DEV 모드가 되고, 셸 프롬프트가 돌아오면 해제됩니다. DEV 모드에서는 탭이 오른쪽 열에 표시되고, git 브랜치가 보이며, 프로그램을 시작한 프로젝트부터 VS Code처럼 파일을 나열하고, 그 탭의 데스크톱 알림을 보냅니다. 터미널 아래 막대 오른쪽 끝의 DEV 버튼으로 직접 켜거나 끌 수 있습니다.",
   },

@@ -8,6 +8,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { softwareWebgl } from "./webglProbe";
+import { latencyFrame, latencyMark } from "./latencyLog";
 import "@xterm/xterm/css/xterm.css";
 import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
@@ -355,6 +356,7 @@ export function TerminalView({
     // returning false lets the event bubble to the window listener without xterm handling it.
     // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.
     term.attachCustomKeyEventHandler((e) => {
+      if (e.type === "keydown") latencyMark("K");
       if (acceptRef.current(e)) return false;
       // The assistant shortcut (S3) is the window's, like the app shortcuts below.
       if (matchesShortcut(e, settingsRef.current.assistantShortcut)) return false;
@@ -462,6 +464,7 @@ export function TerminalView({
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           if (msg.event === "output") {
+            latencyMark("O", msg.data.length);
             term.write(msg.data);
             logRef.current?.write(msg.data);
             // The echo of a key in an idle pane is not a program at work.
@@ -696,6 +699,7 @@ export function TerminalView({
     });
     /** The normal input path: typing, pastes and macros all go through it (multi-execution included). */
     const typed = (data: string) => {
+      latencyMark("D", data.length);
       lastTyped = performance.now();
       write(data);
       callbacks.current.onInput?.(data);
@@ -791,6 +795,10 @@ export function TerminalView({
       term.parser.registerOscHandler(777, (data) => attention(parseOsc777(data))),
       term.parser.registerOscHandler(99, (data) => attention(readOsc99(data))),
       term.onWriteParsed(scheduleGhost),
+      term.onWriteParsed(() => {
+        latencyMark("P");
+        latencyFrame();
+      }),
       term.onCursorMove(scheduleGhost),
       term.onScroll(scheduleGhost),
       term.onResize(({ cols, rows }) => {

@@ -281,16 +281,25 @@ export type SidebarAtStartup = (typeof SIDEBAR_AT_STARTUP)[number];
 const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
   (SIDEBAR_AT_STARTUP as readonly unknown[]).includes(value) ? (value as SidebarAtStartup) : "last";
 
-export function parseSettings(json: string | null): TerminalSettings {
+/**
+ * Settings files before version 2 kept WebGL on by default; on Linux it is turned off once when
+ * they are read (WebKitGTK shows a WebGL terminal several frames late: measured 50-70 ms a key,
+ * against 11 ms with xterm's own renderer), and kept as the user sets it from then on.
+ */
+const SETTINGS_VERSION = 2;
+
+export function parseSettings(json: string | null, platform: { linux?: boolean } = {}): TerminalSettings {
+  const linux = platform.linux === true;
   let raw: unknown = null;
   try {
     raw = json === null ? null : JSON.parse(json);
   } catch {
     raw = null;
   }
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return { ...DEFAULT_SETTINGS };
+  const d = linux ? { ...DEFAULT_SETTINGS, gpuAcceleration: false } : DEFAULT_SETTINGS;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return { ...d };
   const value = raw as Record<string, unknown>;
-  const d = DEFAULT_SETTINGS;
+  const fromBefore = !(typeof value.version === "number" && value.version >= SETTINGS_VERSION);
   const aiProvider = isAiProvider(value.aiProvider) ? value.aiProvider : d.aiProvider;
   // The assistant and the overrides must not share a combination: the assistant keeps its own
   // unless an override makes it clash, and then the overrides are checked against the default.
@@ -345,7 +354,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     shortcuts,
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
-    gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
+    gpuAcceleration: linux && fromBefore ? false : bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
@@ -359,7 +368,7 @@ export function parseSettings(json: string | null): TerminalSettings {
 }
 
 export function serializeSettings(settings: TerminalSettings): string {
-  return JSON.stringify({ version: 1, ...settings }, null, 2);
+  return JSON.stringify({ version: SETTINGS_VERSION, ...settings }, null, 2);
 }
 
 export type FontStep = "increase" | "decrease" | "reset";
