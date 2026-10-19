@@ -324,6 +324,19 @@ pub fn status_of(folder: &Path) -> Vec<StatusEntry> {
     parse_status(&output)
 }
 
+/// A local file's text in the last commit (`HEAD`), for the viewer's changed lines; `None` when it
+/// is not in one (outside a repository, untracked, no commit yet), is not UTF-8, or is too large.
+/// Read with `cat-file`, which never runs the repository's filters or text conversions.
+pub fn head_text_of(file: &Path) -> Option<String> {
+    let folder = file.parent()?;
+    let name = file.file_name()?.to_str()?;
+    let blob = run_git(folder, &["cat-file", "blob", &format!("HEAD:./{name}")])?;
+    if blob.len() as u64 >= MAX_STATUS_BYTES {
+        return None;
+    }
+    String::from_utf8(blob).ok()
+}
+
 const STATUS_ARGS: [&str; 6] = [
     "status",
     "--porcelain=v1",
@@ -799,6 +812,22 @@ mod status_tests {
             .unwrap();
         assert!(!merge.status.success());
         assert_eq!(status_of(p), vec![entry("a.txt", BothModified)]);
+    }
+
+    #[test]
+    fn head_text_is_the_committed_text_of_a_tracked_file() {
+        let dir = repo();
+        let p = dir.path();
+        fs::write(p.join("src/lib.rs"), "changed\n").unwrap();
+        assert_eq!(head_text_of(&p.join("src/lib.rs")).as_deref(), Some("lib\n"));
+        assert_eq!(head_text_of(&p.join("a.txt")).as_deref(), Some("a\n"));
+        // Not committed: untracked, outside a repository, or no file at all.
+        fs::write(p.join("src/new.rs"), "new\n").unwrap();
+        assert_eq!(head_text_of(&p.join("src/new.rs")), None);
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("f.txt"), "f").unwrap();
+        assert_eq!(head_text_of(&outside.path().join("f.txt")), None);
+        assert_eq!(head_text_of(Path::new("/definitely/not/here.txt")), None);
     }
 
     #[test]

@@ -26,6 +26,8 @@ export const local = {
   readText: (path: string) => invoke<{ content: string }>("local_read_text", { path }).then((file) => file.content),
   /** The git repository of a file or folder: its folder, branch and whether it has changes; null outside one. */
   repoInfo: (path: string) => invoke<{ root: string; branch: string; dirty: boolean } | null>("git_repo", { path }),
+  /** A file's text in its repository's last commit, for the viewer's changed lines; null when it has none. */
+  committedText: (path: string) => invoke<string | null>("git_head_text", { path }),
   /** A text file for the file viewer (the first 4 MiB). */
   viewText: (path: string) => invoke<{ path: string; content: string; truncated: boolean }>("local_view_text", { path }),
   /** Saves the viewer's text over a file that still holds `expected` (the text the edits started from). */

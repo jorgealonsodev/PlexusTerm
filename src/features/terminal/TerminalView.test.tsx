@@ -381,6 +381,21 @@ describe("TerminalView", () => {
       expect(term().options.fontSize).toBe(22);
     });
 
+    it("starts with the line height of the settings and follows its changes", () => {
+      const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, lineHeight: 1 } });
+      expect(term().options).toMatchObject({ lineHeight: 1 });
+      rerender(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, lineHeight: 1.25 }}
+        />,
+      );
+      expect(term().options).toMatchObject({ lineHeight: 1.25 });
+    });
+
     it("starts with the font weight of the settings, bold a step heavier, and follows its changes", () => {
       const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, fontWeight: 300 } });
       expect(term().options).toMatchObject({ fontWeight: 300, fontWeightBold: 600 });

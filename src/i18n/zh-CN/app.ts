@@ -126,6 +126,8 @@ export const app: Messages<typeof en> = {
     preview: "预览",
     save: "保存",
     saveHint: "保存 (Ctrl+S)",
+    changedLines: "显示已更改的行",
+    changedLinesHint: "像 VS Code 一样标记自上次提交 (git) 以来更改的行",
     unsaved: "未保存的更改",
     discardQuestion: '不保存就关闭"{name}"?你的更改将会丢失。',
     discard: '放弃',

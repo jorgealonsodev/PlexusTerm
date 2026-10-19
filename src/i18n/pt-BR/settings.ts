@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "Temas de prompt que desenham ícones (Powerlevel10k, agnoster, Starship) precisam de uma Nerd Font como fonte.",
     fontWeight: "Espessura da fonte do terminal",
+    lineHeight: "Altura da linha do terminal",
+    lineHeightHelp: "Altura de cada linha como múltiplo do tamanho da fonte. Com 1.0 os caracteres de bloco e de moldura (logotipos e bordas das ferramentas de IA de linha de comando) ficam sem espaços quando a aceleração por GPU está desativada.",
     weightLight: "Fina",
     weightRegular: "Normal",
     weightMedium: "Média",

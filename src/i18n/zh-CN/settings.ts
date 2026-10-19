@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
     fontWeight: "终端字体粗细",
+    lineHeight: "终端行高",
+    lineHeightHelp: "行高为字体大小的倍数。关闭 GPU 加速时，设为 1.0 可让块字符和框线字符（如 AI 命令行工具的徽标和边框）无缝连接。",
     weightLight: "细",
     weightRegular: "常规",
     weightMedium: "中等",

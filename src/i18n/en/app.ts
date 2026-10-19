@@ -126,6 +126,8 @@ export const app = {
     preview: "Preview",
     save: "Save",
     saveHint: "Save (Ctrl+S)",
+    changedLines: "Show changed lines",
+    changedLinesHint: "Mark the lines changed since the last commit (git), as VS Code does",
     unsaved: "Unsaved changes",
     discardQuestion: 'Close "{name}" without saving? Your changes will be lost.',
     discard: 'Discard',

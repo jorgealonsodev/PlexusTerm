@@ -1520,6 +1520,10 @@ function AppContent() {
                             save={(expected, content) => saveViewedFile(viewer, expected, content)}
                             autoSave={terminalSettings.settings.viewerAutoSave}
                             onDirtyChange={(dirty) => markUnsaved(tab.key, paneId, dirty)}
+                            // Changed lines against the last commit, for local files (git on this machine).
+                            loadCommitted={viewer.origin.kind === "local" ? () => local.committedText(viewer.path) : undefined}
+                            showChanges={terminalSettings.settings.viewerChangedLines}
+                            onShowChangesChange={(show) => updateSettingsWith(() => ({ viewerChangedLines: show }))}
                             // It follows the file while its terminal works (an AI tool editing it).
                             subscribeOutput={outputOf(viewer.terminalPaneId)}
                             prompt={paneMeta[viewer.terminalPaneId]?.prompts ?? 0}

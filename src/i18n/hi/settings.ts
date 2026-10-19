@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "आइकन बनाने वाली प्रॉम्प्ट थीम (Powerlevel10k, agnoster, Starship) के लिए फ़ॉन्ट फ़ैमिली के रूप में Nerd Font आवश्यक है।",
     fontWeight: "टर्मिनल फ़ॉन्ट की मोटाई",
+    lineHeight: "टर्मिनल पंक्ति ऊँचाई",
+    lineHeightHelp: "फ़ॉन्ट आकार के गुणज के रूप में पंक्ति की ऊँचाई। GPU त्वरण बंद होने पर 1.0 ब्लॉक और बॉक्स वर्णों (AI कमांड-लाइन टूल के लोगो और किनारे) को बिना अंतराल के जोड़ता है।",
     weightLight: "पतला",
     weightRegular: "सामान्य",
     weightMedium: "मध्यम",

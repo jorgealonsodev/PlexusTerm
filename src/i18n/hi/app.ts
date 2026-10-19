@@ -127,6 +127,8 @@ export const app: Messages<typeof en> = {
     preview: "पूर्वावलोकन",
     save: "सहेजें",
     saveHint: "सहेजें (Ctrl+S)",
+    changedLines: "बदली गई पंक्तियाँ दिखाएँ",
+    changedLinesHint: "पिछले कमिट (git) के बाद बदली गई पंक्तियों को VS Code की तरह चिह्नित करें",
     unsaved: "बिना सहेजे बदलाव",
     discardQuestion: '"{name}" को बिना सहेजे बंद करें? आपके बदलाव खो जाएँगे।',
     discard: 'छोड़ें',

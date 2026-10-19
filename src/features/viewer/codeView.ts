@@ -1,10 +1,20 @@
-import { Annotation, Compartment, EditorState, Prec, Transaction, type Extension } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, Prec, RangeSet, StateEffect, StateField, Transaction, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { drawSelection, EditorView, highlightActiveLineGutter, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
+import {
+  drawSelection,
+  EditorView,
+  gutter,
+  GutterMarker,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
 import { HighlightStyle, LanguageDescription, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
+import { changedLines, type LineChange } from "./changedLines";
 
 /**
  * Syntax colours from the window's colour scheme (`--syntax-*`, set from its ANSI palette by
@@ -38,7 +48,90 @@ const theme = EditorView.theme({
   },
   ".cm-searchMatch": { backgroundColor: "color-mix(in srgb, var(--warning) 35%, transparent)" },
   ".cm-panels": { backgroundColor: "var(--surface)", color: "var(--text)" },
+  // VS Code's gutter colours for added, modified and deleted lines.
+  ".cm-changes .cm-gutterElement": { width: "3px", padding: "0", position: "relative" },
+  ".cm-change": { position: "absolute", inset: "0" },
+  ".cm-change--added": { backgroundColor: "var(--git-added, #81b88b)" },
+  ".cm-change--modified": { backgroundColor: "#1b81a8" },
+  ".cm-change--deleted, .cm-change--deletedBelow": {
+    insetInline: "0 -3px",
+    height: "0",
+    borderTop: "4px solid transparent",
+    borderBottom: "4px solid transparent",
+    borderLeft: "4px solid var(--git-deleted, #c74e39)",
+  },
+  ".cm-change--deleted": { top: "-4px", bottom: "auto" },
+  ".cm-change--deletedBelow": { top: "auto", bottom: "-4px" },
 });
+
+/** A bar in the changes gutter, coloured as VS Code colours added, modified and deleted lines. */
+class ChangeMarker extends GutterMarker {
+  constructor(readonly kind: LineChange["kind"]) {
+    super();
+  }
+  eq(other: ChangeMarker) {
+    return other.kind === this.kind;
+  }
+  toDOM() {
+    const bar = document.createElement("div");
+    bar.className = `cm-change cm-change--${this.kind}`;
+    return bar;
+  }
+}
+
+const MARKERS = {
+  added: new ChangeMarker("added"),
+  modified: new ChangeMarker("modified"),
+  deleted: new ChangeMarker("deleted"),
+  deletedBelow: new ChangeMarker("deletedBelow"),
+};
+
+/** The file's text in its last commit, or null to mark no changed lines. */
+const setCommitted = StateEffect.define<string | null>();
+
+interface Changes {
+  committed: string | null;
+  marks: RangeSet<GutterMarker>;
+}
+
+function changeMarks(committed: string | null, state: EditorState): RangeSet<GutterMarker> {
+  if (committed === null) return RangeSet.empty;
+  const ranges = changedLines(committed, fileText(state))
+    .filter((change) => change.line <= state.doc.lines)
+    .map((change) => MARKERS[change.kind].range(state.doc.line(change.line).from));
+  return RangeSet.of(ranges, true);
+}
+
+/** The lines that differ from the last commit, marked again after every change of the text. */
+const changes = StateField.define<Changes>({
+  create: () => ({ committed: null, marks: RangeSet.empty }),
+  update(value, tr) {
+    let committed = value.committed;
+    for (const effect of tr.effects) if (effect.is(setCommitted)) committed = effect.value;
+    if (committed === value.committed && !tr.docChanged) return value;
+    return { committed, marks: changeMarks(committed, tr.state) };
+  },
+});
+
+const changesGutter: Extension = [
+  changes,
+  gutter({ class: "cm-changes", markers: (view) => view.state.field(changes).marks }),
+];
+
+/** Marks the lines that differ from `committed` (the file's text in its last commit); null marks none. */
+export function showChanges(view: EditorView, committed: string | null) {
+  if (view.state.field(changes).committed !== committed) view.dispatch({ effects: setCommitted.of(committed) });
+}
+
+/** The changed lines the view marks, for tests. */
+export function markedChanges(state: EditorState): LineChange[] {
+  const found: LineChange[] = [];
+  const cursor = state.field(changes).marks.iter();
+  for (; cursor.value; cursor.next()) {
+    found.push({ line: state.doc.lineAt(cursor.from).number, kind: (cursor.value as ChangeMarker).kind });
+  }
+  return found;
+}
 
 /** Marks the transaction that puts the file's new text in the view. */
 const reload = Annotation.define<boolean>();
@@ -120,6 +213,7 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
       doc: text,
       extensions: [
         lineNumbers(),
+        changesGutter,
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         drawSelection(),

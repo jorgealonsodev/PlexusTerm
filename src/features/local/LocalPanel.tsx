@@ -344,8 +344,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       filters: workspaceFilters(),
     }).catch(() => null);
     if (!file) return;
+    // Over an existing workspace file only its folders change, as in VS Code.
+    const existing = await local.readText(file).catch(() => null);
     await local
-      .saveText(file, workspaceFileText([path, ...workspace.folders.filter((f) => f !== path)]))
+      .saveText(file, workspaceFileText([path, ...workspace.folders.filter((f) => f !== path)], file, existing))
       .then(() => setStatus(t("sftp.panel.workspace.saved", { file: basename(file) })))
       .catch((err) => setError(describeLocalError(err)));
   };

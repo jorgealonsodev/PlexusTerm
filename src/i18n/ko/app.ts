@@ -126,6 +126,8 @@ export const app: Messages<typeof en> = {
     preview: "미리 보기",
     save: "저장",
     saveHint: "저장 (Ctrl+S)",
+    changedLines: "변경된 줄 표시",
+    changedLinesHint: "마지막 커밋(git) 이후 변경된 줄을 VS Code처럼 표시합니다",
     unsaved: "저장되지 않은 변경 사항",
     discardQuestion: '"{name}"을(를) 저장하지 않고 닫을까요? 변경 사항이 사라집니다.',
     discard: '버리기',

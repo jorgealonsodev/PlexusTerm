@@ -130,6 +130,16 @@ async fn git_repo(path: String) -> Option<git::RepoInfo> {
         .flatten()
 }
 
+/// A local file's text in its repository's last commit, for the viewer's changed lines; null when
+/// it is not in one.
+#[tauri::command]
+async fn git_head_text(path: String) -> Option<String> {
+    tauri::async_runtime::spawn_blocking(move || git::head_text_of(std::path::Path::new(&path)))
+        .await
+        .ok()
+        .flatten()
+}
+
 #[tauri::command]
 async fn git_status(path: String) -> Vec<git::StatusEntry> {
     tauri::async_runtime::spawn_blocking(move || git::status_of(std::path::Path::new(&path)))
@@ -641,6 +651,7 @@ pub fn run() {
             git_branch,
             ssh_git_status,
             git_status,
+            git_head_text,
             git_repo,
             secret_available,
             secret_exists,

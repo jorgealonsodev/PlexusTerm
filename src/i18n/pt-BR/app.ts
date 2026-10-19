@@ -129,6 +129,8 @@ export const app: Messages<typeof en> = {
     preview: "Prévia",
     save: "Salvar",
     saveHint: "Salvar (Ctrl+S)",
+    changedLines: "Mostrar linhas alteradas",
+    changedLinesHint: "Marca as linhas alteradas desde o último commit (git), como o VS Code",
     unsaved: "Alterações não salvas",
     discardQuestion: 'Fechar "{name}" sem salvar? Suas alterações serão perdidas.',
     discard: 'Descartar',

@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
     fontWeight: "Schriftstärke des Terminals",
+    lineHeight: "Zeilenhöhe des Terminals",
+    lineHeightHelp: "Zeilenhöhe als Vielfaches der Schriftgröße. Mit 1.0 schließen Block- und Rahmenzeichen (Logos und Rahmen von KI-Kommandozeilenwerkzeugen) ohne Lücken an, wenn die GPU-Beschleunigung aus ist.",
     weightLight: "Leicht",
     weightRegular: "Normal",
     weightMedium: "Mittel",

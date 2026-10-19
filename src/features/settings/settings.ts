@@ -42,6 +42,11 @@ export interface TerminalSettings {
   fontFamily: string;
   /** Weight of the terminal's text, one of FONT_WEIGHTS; bold text is BOLD_STEP heavier. */
   fontWeight: number;
+  /**
+   * Height of a terminal row, as a multiple of the font size (one of LINE_HEIGHTS). Without GPU
+   * acceleration block and box characters come from the font, so only 1 joins them without gaps.
+   */
+  lineHeight: number;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
   /**
@@ -109,6 +114,8 @@ export interface TerminalSettings {
   gitFileStatus: boolean;
   /** The file viewer saves an edited file by itself a moment after typing stops. */
   viewerAutoSave: boolean;
+  /** The file viewer marks the lines changed since the file's last commit, like VS Code (its own button). */
+  viewerChangedLines: boolean;
   /** Text size of the interface (bars, lists, dialogs) in pixels, 10..20; the terminal has its own. */
   uiFontSize: number;
   /** Text size of the AI chat in pixels, 10..24. */
@@ -128,6 +135,8 @@ export const FONT_WEIGHTS = [300, 400, 500, 600];
 /** Bold text is this much heavier than the chosen weight. */
 export const BOLD_STEP = 300;
 export const boldWeight = (weight: number) => Math.min(900, weight + BOLD_STEP);
+/** Terminal line heights offered. */
+export const LINE_HEIGHTS = [1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3];
 /** The interface and the AI chat are drawn for 13 px text; their sizes scale from it. */
 export const BASE_TEXT_SIZE = 13;
 export const MIN_UI_FONT_SIZE = 10;
@@ -149,6 +158,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontWeight: 400,
+  lineHeight: 1.15,
   remoteMonitor: true,
   textEditor: "",
   fileDetails: false,
@@ -177,6 +187,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
+  viewerChangedLines: true,
   uiFontSize: 13,
   chatFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
@@ -328,6 +339,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,
+    lineHeight: LINE_HEIGHTS.includes(value.lineHeight as number) ? (value.lineHeight as number) : d.lineHeight,
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
@@ -366,6 +378,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     gpuAcceleration: linux && fromBefore ? false : bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
+    viewerChangedLines: bool(value.viewerChangedLines, d.viewerChangedLines),
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
     chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
     devCommands: cleanDevCommands(value.devCommands),

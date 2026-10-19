@@ -37,6 +37,7 @@
     "@xterm/xterm": "^6.0.0",
     "dompurify": "3.4.16",
     "hack-font": "3.3.0",
+    "jsonc-parser": "3.3.1",
     "lucide-react": "1.49.0",
     "marked": "18.0.14",
     "react": "^19.1.0",

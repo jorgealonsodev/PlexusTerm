@@ -24,6 +24,7 @@ import {
   clampChatFontSize,
   clampUiFontSize,
   FONT_WEIGHTS,
+  LINE_HEIGHTS,
   MIN_UI_FONT_SIZE,
   MAX_UI_FONT_SIZE,
   MIN_CHAT_FONT_SIZE,
@@ -296,6 +297,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
   const [fontWeight, setFontWeight] = useState(settings.fontWeight);
+  const [lineHeight, setLineHeight] = useState(settings.lineHeight);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
@@ -390,6 +392,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
       fontWeight,
+      lineHeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       copyOnSelect,
       rightClickPastes,
@@ -402,6 +405,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fileDetails,
       gitFileStatus,
       viewerAutoSave,
+      // Set with the viewer's own button, not here.
+      viewerChangedLines: settings.viewerChangedLines,
       terminalFollowsBrowser,
       inlineSuggestions,
       commandHistory: history,
@@ -558,6 +563,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {FONT_WEIGHTS.map((weight) => (
                   <option key={weight} value={weight}>
                     {t(WEIGHT_NAMES[weight])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field field--size" title={t("settings.appearance.lineHeightHelp")}>
+              {t("settings.appearance.lineHeight")}
+              <select value={lineHeight} onChange={(e) => setLineHeight(Number(e.target.value))}>
+                {LINE_HEIGHTS.map((height) => (
+                  <option key={height} value={height}>
+                    {height === 1 ? "1.0" : height}
                   </option>
                 ))}
               </select>

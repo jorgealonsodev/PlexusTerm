@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
     fontWeight: "سُمك خط الطرفية",
+    lineHeight: "ارتفاع سطر الطرفية",
+    lineHeightHelp: "ارتفاع الصف كمضاعف لحجم الخط. عند إيقاف تسريع GPU يجعل 1.0 أحرف الكتل والإطارات (مثل شعارات أدوات الذكاء الاصطناعي في سطر الأوامر وحدودها) متصلة دون فجوات.",
     weightLight: "رفيع",
     weightRegular: "عادي",
     weightMedium: "متوسط",

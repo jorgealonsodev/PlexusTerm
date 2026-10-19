@@ -33,6 +33,8 @@ export const settings = {
     fontHelpNoShortcut:
       "Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
     fontWeight: "Terminal font weight",
+    lineHeight: "Terminal line height",
+    lineHeightHelp: "Row height as a multiple of the font size. 1.0 joins block and box characters (like the logos and borders of AI command-line tools) without gaps when GPU acceleration is off.",
     weightLight: "Light",
     weightRegular: "Regular",
     weightMedium: "Medium",

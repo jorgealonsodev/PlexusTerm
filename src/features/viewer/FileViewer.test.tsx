@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { language } from "@codemirror/language";
 import { FileViewer } from "./FileViewer";
+import { markedChanges } from "./codeView";
 
 afterEach(cleanup);
 
@@ -323,5 +324,101 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     render(<FileViewer path="/p/notes.txt" load={file("x")} onClose={() => {}} />);
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("x"));
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+});
+
+describe("FileViewer changed lines against the last commit", () => {
+  const committed = async () => "one\ntwo\nthree\nfour";
+  const marks = () => markedChanges(editorView().state);
+
+  it("marks added, modified and deleted lines in the gutter, as VS Code does", async () => {
+    render(
+      <FileViewer
+        path="/p/notes.txt"
+        load={file("one\nTWO\nthree\nnew")}
+        loadCommitted={committed}
+        showChanges
+        onShowChangesChange={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(marks()).toEqual([
+        { line: 2, kind: "modified" },
+        { line: 4, kind: "modified" },
+      ]),
+    );
+    expect(document.querySelectorAll(".cm-changes .cm-change--modified")).toHaveLength(2);
+  });
+
+  it("turns the marks on and off with its button next to Save", async () => {
+    const onShowChangesChange = vi.fn();
+    const loadCommitted = vi.fn(committed);
+    const { rerender } = render(
+      <FileViewer
+        path="/p/notes.txt"
+        load={file("one\ntwo\nthree")}
+        loadCommitted={loadCommitted}
+        showChanges={false}
+        onShowChangesChange={onShowChangesChange}
+        save={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    const button = await screen.findByRole("button", { name: "Show changed lines" });
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    // Next to Save, in the header.
+    expect(button.nextElementSibling).toBe(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("onetwothree"));
+    expect(marks()).toEqual([]);
+    expect(loadCommitted).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    expect(onShowChangesChange).toHaveBeenCalledWith(true);
+    rerender(
+      <FileViewer
+        path="/p/notes.txt"
+        load={file("one\ntwo\nthree")}
+        loadCommitted={loadCommitted}
+        showChanges
+        onShowChangesChange={onShowChangesChange}
+        save={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    await waitFor(() => expect(marks()).toEqual([{ line: 3, kind: "deletedBelow" }]));
+    expect(screen.getByRole("button", { name: "Show changed lines" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("marks nothing for a file outside git, and has no button without a commit to compare with", async () => {
+    const { unmount } = render(
+      <FileViewer path="/p/notes.txt" load={file("a")} loadCommitted={async () => null} showChanges onShowChangesChange={() => {}} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(marks()).toEqual([]);
+    unmount();
+    render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    expect(screen.queryByRole("button", { name: "Show changed lines" })).toBeNull();
+  });
+
+  it("marks the lines again as the text is edited", async () => {
+    render(
+      <FileViewer
+        path="/p/notes.txt"
+        load={file("one\ntwo\nthree\nfour")}
+        loadCommitted={committed}
+        showChanges
+        onShowChangesChange={() => {}}
+        save={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("onetwothreefour"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(marks()).toEqual([]);
+    const view = editorView();
+    act(() => view.dispatch({ changes: { from: 0, insert: "zero\n" } }));
+    expect(marks()).toEqual([{ line: 1, kind: "added" }]);
   });
 });

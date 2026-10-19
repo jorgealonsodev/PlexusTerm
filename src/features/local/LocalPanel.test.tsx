@@ -533,6 +533,8 @@ describe("workspace folders in DEV mode", () => {
   it("saves the workspace (its folder first) to a VS Code workspace file", async () => {
     vi.mocked(save).mockResolvedValue("/home/me/me.code-workspace");
     mocked.saveText.mockResolvedValue(undefined);
+    // A new file: there is nothing to read yet.
+    mocked.readText.mockRejectedValueOnce("cannot read /home/me/me.code-workspace: not found");
     render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
     await screen.findByText("notes.txt");
     fireEvent.click(screen.getByRole("button", { name: "Save workspace" }));
@@ -542,7 +544,21 @@ describe("workspace folders in DEV mode", () => {
     );
     const [path, contents] = mocked.saveText.mock.calls[0];
     expect(path).toBe("/home/me/me.code-workspace");
-    expect(JSON.parse(contents)).toEqual({ folders: [{ path: "/home/me" }, { path: "/work/api" }] });
+    expect(JSON.parse(contents)).toEqual({ folders: [{ path: "." }, { path: "../../work/api" }], settings: {} });
+  });
+
+  it("saves over an existing workspace file keeping what it has besides the folders", async () => {
+    vi.mocked(save).mockResolvedValue("/home/me/me.code-workspace");
+    mocked.saveText.mockResolvedValue(undefined);
+    mocked.readText.mockResolvedValueOnce('{\n\t"folders": [{ "path": "." }],\n\t"settings": { "a": 1 } // mine\n}');
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Save workspace" }));
+    await waitFor(() => expect(mocked.saveText).toHaveBeenCalled());
+    expect(mocked.readText).toHaveBeenCalledWith("/home/me/me.code-workspace");
+    const contents = mocked.saveText.mock.calls[0][1] as string;
+    expect(contents).toContain('"settings": { "a": 1 } // mine');
+    expect(contents).toContain('"path": "../../work/api"');
   });
 
   it("opens the folders of a workspace file, and says so when it lists none", async () => {

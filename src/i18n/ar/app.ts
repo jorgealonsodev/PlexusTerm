@@ -131,6 +131,8 @@ export const app: Messages<typeof en> = {
     preview: "معاينة",
     save: "حفظ",
     saveHint: "حفظ (Ctrl+S)",
+    changedLines: "إظهار الأسطر المعدّلة",
+    changedLinesHint: "يميّز الأسطر التي تغيّرت منذ آخر إيداع (git)، كما يفعل VS Code",
     unsaved: "تغييرات غير محفوظة",
     discardQuestion: 'إغلاق "{name}" دون حفظ؟ ستفقد تغييراتك.',
     discard: 'تجاهل',

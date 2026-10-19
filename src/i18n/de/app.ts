@@ -128,6 +128,8 @@ export const app: Messages<typeof en> = {
     preview: "Vorschau",
     save: "Speichern",
     saveHint: "Speichern (Strg+S)",
+    changedLines: "Geänderte Zeilen anzeigen",
+    changedLinesHint: "Markiert die seit dem letzten Commit (git) geänderten Zeilen, wie VS Code",
     unsaved: "Nicht gespeicherte Änderungen",
     discardQuestion: '"{name}" schließen, ohne zu speichern? Ihre Änderungen gehen verloren.',
     discard: 'Verwerfen',

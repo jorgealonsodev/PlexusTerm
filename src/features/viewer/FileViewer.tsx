@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Save, X } from "lucide-react";
+import { Diff, Save, X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
-import { createCodeView, fileText, fileTextLength, reloadText, type Editing } from "./codeView";
+import { createCodeView, fileText, fileTextLength, reloadText, showChanges, type Editing } from "./codeView";
 import type { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { isMarkdown, renderMarkdown } from "./markdown";
@@ -39,6 +39,14 @@ interface FileViewerProps {
   autoSave?: boolean;
   /** Told when the viewer starts or stops holding unsaved edits (and that it holds none once closed). */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * Reads the file's text in its last commit (null when it has none). Given, a button next to Save
+   * marks the lines that differ from it, as VS Code does.
+   */
+  loadCommitted?: () => Promise<string | null>;
+  /** The changed lines are marked (the button is pressed). */
+  showChanges?: boolean;
+  onShowChangesChange?: (show: boolean) => void;
 }
 
 /** The file is read again at most this often while its terminal prints. */
@@ -52,7 +60,20 @@ type Loaded = { state: "loading" } | { state: "error"; message: string } | { sta
  * The text of a file in a CodeMirror view; a new text replaces the old one in the same view,
  * unless `keep` says the view holds edits not saved yet.
  */
-function CodeView({ text, name, editing, keep }: { text: string; name: string; editing?: Editing; keep: boolean }) {
+function CodeView({
+  text,
+  name,
+  editing,
+  keep,
+  committed,
+}: {
+  text: string;
+  name: string;
+  editing?: Editing;
+  keep: boolean;
+  /** The file's text in its last commit, to mark the lines that differ; null marks none. */
+  committed: string | null;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const textRef = useRef(text);
@@ -60,12 +81,15 @@ function CodeView({ text, name, editing, keep }: { text: string; name: string; e
   const editingRef = useRef(editing);
   editingRef.current = editing;
   const editable = editing !== undefined;
+  const committedRef = useRef(committed);
+  committedRef.current = committed;
   useEffect(() => {
     const relay: Editing | undefined = editingRef.current && {
       onEdit: (doc) => editingRef.current?.onEdit(doc),
       onSave: () => editingRef.current?.onSave(),
     };
     view.current = createCodeView(host.current!, textRef.current, name, relay);
+    showChanges(view.current, committedRef.current);
     return () => {
       view.current?.destroy();
       view.current = null;
@@ -76,6 +100,9 @@ function CodeView({ text, name, editing, keep }: { text: string; name: string; e
   useEffect(() => {
     if (view.current && !keepRef.current) reloadText(view.current, text);
   }, [text]);
+  useEffect(() => {
+    if (view.current) showChanges(view.current, committed);
+  }, [committed]);
   return <div className="viewer__code" ref={host} />;
 }
 
@@ -127,6 +154,9 @@ export function FileViewer({
   save,
   autoSave = false,
   onDirtyChange,
+  loadCommitted,
+  showChanges: changesShown = false,
+  onShowChangesChange,
 }: FileViewerProps) {
   const t = useT();
   const name = fileName(path);
@@ -175,6 +205,24 @@ export function FileViewer({
     };
   }, [path]);
 
+  /** The file's text in its last commit while the changed lines are shown; null otherwise. */
+  const [committed, setCommitted] = useState<string | null>(null);
+  const loadCommittedRef = useRef(loadCommitted);
+  loadCommittedRef.current = loadCommitted;
+  const committedSeq = useRef(0);
+  const readCommitted = useCallback(() => {
+    const seq = ++committedSeq.current;
+    const read = changesShown ? loadCommittedRef.current : undefined;
+    if (!read) return setCommitted(null);
+    read().then(
+      (text) => seq === committedSeq.current && setCommitted(text),
+      () => seq === committedSeq.current && setCommitted(null),
+    );
+  }, [changesShown]);
+  useEffect(() => {
+    readCommitted();
+  }, [path, readCommitted]);
+
   /** Reads the file again; its new text replaces the shown one, a failed read keeps it. */
   const refreshRef = useRef<() => void>(() => {});
   refreshRef.current = () => {
@@ -192,7 +240,11 @@ export function FileViewer({
   };
   const firstPrompt = useRef(prompt);
   useEffect(() => {
-    if (prompt !== firstPrompt.current) refreshRef.current();
+    if (prompt === firstPrompt.current) return;
+    refreshRef.current();
+    // A command may have committed the file.
+    readCommitted();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompt]);
   useEffect(() => {
     if (!subscribeOutput) return;
@@ -284,6 +336,18 @@ export function FileViewer({
             ))}
           </div>
         )}
+        {loadCommitted && (
+          <button
+            type="button"
+            className={`viewer__changes${changesShown ? " viewer__changes--on" : ""}`}
+            aria-label={t("app.viewer.changedLines")}
+            aria-pressed={changesShown}
+            title={t("app.viewer.changedLinesHint")}
+            onClick={() => onShowChangesChange?.(!changesShown)}
+          >
+            <Diff size={14} aria-hidden="true" />
+          </button>
+        )}
         {save && (
           <button
             type="button"
@@ -321,7 +385,13 @@ export function FileViewer({
           {markdown && mode === "preview" ? (
             <MarkdownPreview text={shown} onOpenLink={onOpenLink} />
           ) : (
-            <CodeView text={dirty ? shown : loaded.file.content} name={name} editing={editing} keep={dirty} />
+            <CodeView
+              text={dirty ? shown : loaded.file.content}
+              name={name}
+              editing={editing}
+              keep={dirty}
+              committed={changesShown ? committed : null}
+            />
           )}
         </>
       )}

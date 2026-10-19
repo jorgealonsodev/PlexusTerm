@@ -343,7 +343,7 @@ export function TerminalView({
       fontSize: settingsRef.current.fontSize,
       fontWeight: settingsRef.current.fontWeight as FontWeight,
       fontWeightBold: boldWeight(settingsRef.current.fontWeight) as FontWeight,
-      lineHeight: 1.15,
+      lineHeight: settingsRef.current.lineHeight,
       scrollback: 10000,
       theme: themeById(settingsRef.current.theme).theme,
       // Decorations, which colour the error lines, are still a proposed API in xterm.
@@ -965,6 +965,15 @@ export function TerminalView({
     term.options.fontWeight = fontWeight as FontWeight;
     term.options.fontWeightBold = boldWeight(fontWeight) as FontWeight;
   }, [fontWeight]);
+
+  // The line height applies live; taller or shorter rows change how many fit in the pane.
+  const lineHeight = settings.lineHeight;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term || term.options.lineHeight === lineHeight) return;
+    term.options.lineHeight = lineHeight;
+    if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
+  }, [lineHeight]);
 
   // Colour scheme and font changes apply live too; a new font changes the cell size.
   const theme = themeById(settings.theme).theme;

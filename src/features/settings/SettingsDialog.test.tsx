@@ -408,6 +408,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("chooses the terminal line height, 1.15 by default, and saves it", () => {
+      const { onSave } = setup();
+      const height = screen.getByLabelText("Terminal line height") as HTMLSelectElement;
+      expect(height.value).toBe("1.15");
+      expect([...height.options].map((o) => o.textContent)).toEqual(["1.0", "1.05", "1.1", "1.15", "1.2", "1.25", "1.3"]);
+      fireEvent.change(height, { target: { value: "1" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ lineHeight: 1 }));
+    });
+
     it("chooses the weight of the terminal font, regular by default, and saves it", () => {
       const { onSave } = setup();
       const weight = screen.getByLabelText("Terminal font weight") as HTMLSelectElement;

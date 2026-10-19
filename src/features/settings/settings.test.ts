@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
@@ -46,7 +46,9 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      viewerChangedLines: true,
       fontWeight: 400,
+      lineHeight: 1.15,
       uiFontSize: 13,
       chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
@@ -115,7 +117,9 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      viewerChangedLines: true,
       fontWeight: 400,
+      lineHeight: 1.15,
       uiFontSize: 13,
       chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
@@ -284,7 +288,9 @@ describe("serializeSettings", () => {
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,
+      viewerChangedLines: false,
       fontWeight: 500,
+      lineHeight: 1,
       uiFontSize: 15,
       chatFontSize: 17,
       devCommands: ["aider"],
@@ -413,5 +419,16 @@ describe("terminal font weight", () => {
     expect(parseSettings(JSON.stringify({ fontWeight: 450 })).fontWeight).toBe(400);
     expect(parseSettings(JSON.stringify({ fontWeight: "bold" })).fontWeight).toBe(400);
     expect(FONT_WEIGHTS).toEqual([300, 400, 500, 600]);
+  });
+});
+
+describe("terminal line height", () => {
+  it("is 1.15 by default and only one of the offered heights", () => {
+    expect(DEFAULT_SETTINGS.lineHeight).toBe(1.15);
+    expect(parseSettings(JSON.stringify({ lineHeight: 1 })).lineHeight).toBe(1);
+    expect(parseSettings(JSON.stringify({ lineHeight: 1.3 })).lineHeight).toBe(1.3);
+    expect(parseSettings(JSON.stringify({ lineHeight: 1.12 })).lineHeight).toBe(1.15);
+    expect(parseSettings(JSON.stringify({ lineHeight: "tall" })).lineHeight).toBe(1.15);
+    expect(LINE_HEIGHTS).toEqual([1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3]);
   });
 });

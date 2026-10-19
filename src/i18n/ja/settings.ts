@@ -36,6 +36,8 @@ export const settings: Messages<typeof en> = {
     fontHelpNoShortcut:
       "アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
     fontWeight: "ターミナルのフォントの太さ",
+    lineHeight: "ターミナルの行の高さ",
+    lineHeightHelp: "フォントサイズに対する行の高さの倍率。GPU アクセラレーションがオフのとき、1.0 にするとブロック文字や罫線（AI コマンドラインツールのロゴや枠）が隙間なくつながります。",
     weightLight: "細字",
     weightRegular: "標準",
     weightMedium: "中字",

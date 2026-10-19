@@ -304,9 +304,17 @@ textarea::placeholder {
   cursor: row-resize;
 }
 
-.pane-divider:hover,
-.pane-divider:active {
-  background: color-mix(in srgb, var(--accent) 40%, transparent);
+/* A thin line in the middle of the wider handle, which stays easy to grab. */
+.pane-divider--row:hover,
+.pane-divider--row:active {
+  background: linear-gradient(to right, transparent 2px, var(--accent) 2px 4px, transparent 4px);
+  opacity: 0.6;
+}
+
+.pane-divider--column:hover,
+.pane-divider--column:active {
+  background: linear-gradient(to bottom, transparent 2px, var(--accent) 2px 4px, transparent 4px);
+  opacity: 0.6;
 }
 
 /* Bottom-right and translucent: prompts and output start at the top of a pane. */
@@ -759,7 +767,8 @@ body.is-resizing {
 
 .sidebar__resizer:hover,
 .sidebar__resizer:active {
-  background: var(--accent);
+  /* A thin line in the middle of the wider handle. */
+  background: linear-gradient(to right, transparent 2px, var(--accent) 2px 4px, transparent 4px);
   opacity: 0.6;
 }
 
@@ -2383,7 +2392,8 @@ body.is-dragging-path {
 
 .tabbar__resizer:hover,
 .tabbar__resizer:active {
-  background: var(--accent);
+  /* A thin line in the middle of the wider handle. */
+  background: linear-gradient(to right, transparent 2px, var(--accent) 2px 4px, transparent 4px);
   opacity: 0.6;
 }
 
@@ -2524,6 +2534,7 @@ body.is-dragging-path {
   line-height: 1;
 }
 
+.viewer__changes,
 .viewer__save,
 .viewer__close {
   display: grid;
@@ -2543,10 +2554,16 @@ body.is-dragging-path {
   cursor: default;
 }
 
+.viewer__changes:hover,
 .viewer__save:not(:disabled):hover,
 .viewer__close:hover {
   background: color-mix(in srgb, var(--text) 10%, transparent);
   color: var(--text);
+}
+
+/* Pressed: the changed lines are marked. */
+.viewer__changes--on {
+  color: var(--accent);
 }
 
 .viewer__code {
