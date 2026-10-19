@@ -149,6 +149,22 @@ describe("FileViewer follows the file while its terminal works", () => {
     }
   });
 
+  it("never reads the file again for the echo of what is typed", async () => {
+    vi.useFakeTimers();
+    try {
+      const listeners = new Set<(text: string, echo?: boolean) => void>();
+      const subscribeOutput = (l: (text: string, echo?: boolean) => void) => (listeners.add(l), () => void listeners.delete(l));
+      const load = vi.fn(async () => ({ path: "/p/a.ts", content: "v1", truncated: false }));
+      render(<FileViewer path="/p/a.ts" load={load} onClose={() => {}} subscribeOutput={subscribeOutput} prompt={0} />);
+      await act(() => vi.advanceTimersByTimeAsync(10));
+      for (let i = 0; i < 10; i++) act(() => listeners.forEach((l) => l("k", true)));
+      await act(() => vi.advanceTimersByTimeAsync(1100));
+      expect(load).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("reads it again when the terminal's prompt comes back, and keeps the text when a read fails", async () => {
     let content = "first";
     let fail = false;

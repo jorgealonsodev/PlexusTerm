@@ -6,8 +6,11 @@ import { parseEscapes, type Macro } from "./macros";
 export interface MacroIo {
   /** Writes as if typed, through the pane's normal input path (multi-execution included). */
   send(text: string): void;
-  /** Calls `listener` with every chunk of output the pane receives; returns the unsubscribe function. */
-  subscribe(listener: (text: string) => void): () => void;
+  /**
+   * Calls `listener` with every chunk of output the pane receives, `echo` when it is only the echo
+   * of a key typed in an idle pane; returns the unsubscribe function.
+   */
+  subscribe(listener: (text: string, echo?: boolean) => void): () => void;
 }
 
 /** A terminal pane macros can play into. */

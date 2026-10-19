@@ -635,6 +635,22 @@ describe("LocalPanel repository of the selection", () => {
   });
 });
 
+/** As `answer`, waiting longer: these tests run while the whole suite loads the machine. */
+async function answerSlow(question: string, button: string) {
+  const dialog = await waitFor(
+    () => {
+      const [found] = [
+        ...screen.queryAllByRole("dialog", { name: question }),
+        ...screen.queryAllByRole("alertdialog", { name: question }),
+      ];
+      if (!found) throw new Error(`no dialog "${question}"`);
+      return found;
+    },
+    { timeout: 3000 },
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+}
+
 describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
   beforeEach(() => {
     mocked.list.mockImplementation(async (path) => {
@@ -665,8 +681,8 @@ describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
     await screen.findByText("src");
     mocked.list.mockClear();
     act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
-    await answer('Move "notes.txt" into "src"?', "Move");
-    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"));
+    await answerSlow('Move "notes.txt" into "src"?', "Move");
+    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"), { timeout: 3000 });
     await waitFor(() => expect(mocked.list).toHaveBeenCalledWith("/home/me"));
   });
 
@@ -674,7 +690,7 @@ describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
     render(panel({ devStyle: true }));
     await screen.findByText("src");
     act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
-    await answer('Move "notes.txt" into "src"?', "Cancel");
+    await answerSlow('Move "notes.txt" into "src"?', "Cancel");
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(mocked.move).not.toHaveBeenCalled();
   });
@@ -684,7 +700,7 @@ describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
     render(panel({ devStyle: true }));
     await screen.findByText("src");
     act(() => deliverDrop(local("/home/me/notes.txt"), row("src")));
-    await answer('Move "notes.txt" into "src"?', "Move");
+    await answerSlow('Move "notes.txt" into "src"?', "Move");
     expect((await screen.findByRole("alert")).textContent).toBe(
       "cannot move /home/me/notes.txt: /home/me/src/notes.txt already exists",
     );

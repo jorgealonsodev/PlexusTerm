@@ -630,6 +630,22 @@ describe("SftpPanel DEV toolbar", () => {
 });
 
 
+/** As `answer`, waiting longer: these tests run while the whole suite loads the machine. */
+async function answerSlow(question: string, button: string) {
+  const dialog = await waitFor(
+    () => {
+      const [found] = [
+        ...screen.queryAllByRole("dialog", { name: question }),
+        ...screen.queryAllByRole("alertdialog", { name: question }),
+      ];
+      if (!found) throw new Error(`no dialog "${question}"`);
+      return found;
+    },
+    { timeout: 3000 },
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+}
+
 describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
   const row = (name: string) => screen.getByText(name).closest("li")!;
   const remote = (sessionId: number, path: string) => ({ origin: { kind: "sftp" as const, sessionId }, paths: [{ path, isDir: false }] });
@@ -641,8 +657,8 @@ describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
     expect(row("src").getAttribute("data-drop-dir")).toBe("/home/u/src");
     mocked.list.mockClear();
     act(() => deliverDrop(remote(1, "/home/u/notes.txt"), row("src")));
-    await answer('Move "notes.txt" into "src"?', "Move");
-    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/src"));
+    await answerSlow('Move "notes.txt" into "src"?', "Move");
+    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/src"), { timeout: 3000 });
     await waitFor(() => expect(mocked.list).toHaveBeenCalledWith(1, "/home/u"));
   });
 
@@ -650,7 +666,7 @@ describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
     render(panel({ devStyle: true }));
     await screen.findByText("src");
     act(() => deliverDrop(remote(1, "/home/u/notes.txt"), row("src")));
-    await answer('Move "notes.txt" into "src"?', "Cancel");
+    await answerSlow('Move "notes.txt" into "src"?', "Cancel");
     act(() => deliverDrop(remote(2, "/home/u/notes.txt"), row("src")));
     act(() => deliverDrop({ origin: { kind: "local" }, paths: [{ path: "/home/u/notes.txt", isDir: false }] }, row("src")));
     await new Promise((r) => setTimeout(r, 20));

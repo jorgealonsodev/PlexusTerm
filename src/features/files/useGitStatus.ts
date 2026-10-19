@@ -17,10 +17,19 @@ export interface GitStatusOptions {
    * Listens to the output of the terminal tied to the list (AI CLIs edit files while printing);
    * returns the function that stops listening.
    */
-  subscribeOutput?: (listener: (text: string) => void) => () => void;
+  subscribeOutput?: (listener: (text: string, echo?: boolean) => void) => () => void;
 }
 
 const NONE: GitStatusEntry[] = [];
+
+const sameEntries = (a: GitStatusEntry[], b: GitStatusEntry[]) =>
+  a.length === b.length && a.every((entry, i) => entry.path === b[i].path && entry.status === b[i].status);
+
+/** The new result, or the previous one when nothing changed (the list is not drawn again). */
+const keepSame =
+  (root: string, entries: GitStatusEntry[]) =>
+  (previous: { root: string; entries: GitStatusEntry[] } | null) =>
+    previous && previous.root === root && sameEntries(previous.entries, entries) ? previous : { root, entries };
 
 /**
  * The git status of the files under `root`, read with `read` when the folder changes, when the
@@ -57,8 +66,8 @@ export function useGitStatus(
       readRef
         .current(root)
         .then(
-          (entries) => live && setResult({ root, entries: Array.isArray(entries) ? entries : NONE }),
-          () => live && setResult({ root, entries: NONE }),
+          (entries) => live && setResult(keepSame(root, Array.isArray(entries) ? entries : NONE)),
+          () => live && setResult(keepSame(root, NONE)),
         )
         .finally(() => {
           busy = false;
@@ -100,7 +109,10 @@ export function useGitStatus(
   // The terminal is printing.
   useEffect(() => {
     if (!active || !subscribeOutput) return;
-    return subscribeOutput(() => request.current());
+    // The echo of a key is not the work of a program: nothing can have changed on disk.
+    return subscribeOutput((_text, echo) => {
+      if (!echo) request.current();
+    });
   }, [active, subscribeOutput]);
 
   return active && result?.root === root ? result.entries : NONE;

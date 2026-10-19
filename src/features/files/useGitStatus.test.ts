@@ -7,9 +7,9 @@ import type { GitStatusEntry } from "./gitStatus";
 const flush = () => act(async () => {});
 
 function setup(initial: Partial<GitStatusOptions> & { root?: string | null } = {}) {
-  const listeners = new Set<(text: string) => void>();
+  const listeners = new Set<(text: string, echo?: boolean) => void>();
   const read = vi.fn(async (path: string): Promise<GitStatusEntry[]> => [{ path: `${path}.txt`, status: "modified" }]);
-  const subscribeOutput = vi.fn((listener: (text: string) => void) => {
+  const subscribeOutput = vi.fn((listener: (text: string, echo?: boolean) => void) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
   });
@@ -17,7 +17,7 @@ function setup(initial: Partial<GitStatusOptions> & { root?: string | null } = {
   const hook = renderHook(({ root, options }) => useGitStatus(read, root, options), {
     initialProps: { root: initial.root === undefined ? "/repo" : initial.root, options: base },
   });
-  const output = (text = "x") => act(() => listeners.forEach((l) => l(text)));
+  const output = (text = "x", echo = false) => act(() => listeners.forEach((l) => l(text, echo)));
   return { read, hook, output, base, listeners };
 }
 
@@ -51,6 +51,27 @@ describe("useGitStatus", () => {
     // Idle: nothing more, ever.
     await act(async () => vi.advanceTimersByTime(60_000));
     expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("never reads for the echo of what is typed", async () => {
+    const { read, output } = setup();
+    await flush();
+    for (let i = 0; i < 30; i++) {
+      output("k", true);
+      await act(async () => vi.advanceTimersByTime(100));
+    }
+    await act(async () => vi.advanceTimersByTime(GIT_STATUS_MIN_INTERVAL_MS));
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the same result when the status did not change (the list is not drawn again)", async () => {
+    const { hook, output } = setup();
+    await flush();
+    const first = hook.result.current;
+    output();
+    await act(async () => vi.advanceTimersByTime(GIT_STATUS_MIN_INTERVAL_MS));
+    await flush();
+    expect(hook.result.current).toBe(first);
   });
 
   it("reads again when the prompt comes back or the list is loaded again", async () => {

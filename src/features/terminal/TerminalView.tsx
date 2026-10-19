@@ -393,7 +393,7 @@ export function TerminalView({
     /** Set when the session ended but its pane stays open (serial device gone, mosh-client failed). */
     let ended = false;
     /** Macros waiting for output (S16.3). */
-    const outputListeners = new Set<(text: string) => void>();
+    const outputListeners = new Set<(text: string, echo?: boolean) => void>();
     /** A command was sent with Enter and its prompt has not been seen yet. */
     let awaitingPrompt = false;
     let promptTimer: ReturnType<typeof setTimeout> | null = null;
@@ -463,7 +463,9 @@ export function TerminalView({
           if (msg.event === "output") {
             term.write(msg.data);
             logRef.current?.write(msg.data);
-            outputListeners.forEach((listener) => listener(msg.data));
+            // The echo of a key in an idle pane is not a program at work.
+            const echo = !activityTimer && performance.now() - lastTyped < ECHO_MS;
+            outputListeners.forEach((listener) => listener(msg.data, echo));
             active();
             if (awaitingPrompt) {
               if (promptTimer) clearTimeout(promptTimer);

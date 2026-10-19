@@ -27,7 +27,7 @@ interface FileViewerProps {
    * Listens to the output of the viewer's terminal: while it prints (an AI tool editing files) the
    * file is read again, at most once every REFRESH_MS. Returns the function that stops listening.
    */
-  subscribeOutput?: (listener: (text: string) => void) => () => void;
+  subscribeOutput?: (listener: (text: string, echo?: boolean) => void) => () => void;
   /** Changes each time the terminal's prompt comes back: the file is read again. */
   prompt?: number;
   /**
@@ -197,7 +197,9 @@ export function FileViewer({
   useEffect(() => {
     if (!subscribeOutput) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const stop = subscribeOutput(() => {
+    const stop = subscribeOutput((_text, echo) => {
+      // The echo of a key changes no file.
+      if (echo) return;
       timer ??= setTimeout(() => {
         timer = null;
         refreshRef.current();
