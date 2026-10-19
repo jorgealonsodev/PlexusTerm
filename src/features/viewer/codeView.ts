@@ -31,6 +31,8 @@ const theme = EditorView.theme({
   ".cm-gutters": { backgroundColor: "var(--bg)", color: "var(--muted)", border: "none" },
   ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--text)" },
   "&.cm-focused": { outline: "none" },
+  // The caret in the text colour: CodeMirror's default black is lost on dark schemes.
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--text)", borderLeftWidth: "2px" },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
     backgroundColor: "color-mix(in srgb, var(--accent) 30%, transparent) !important",
   },
