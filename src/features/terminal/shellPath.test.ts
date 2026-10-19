@@ -6,7 +6,7 @@ describe("shellFlavor", () => {
     expect(shellFlavor("windows", "local", null)).toBe("powershell");
     expect(shellFlavor("windows", "local", "pwsh")).toBe("powershell");
     expect(shellFlavor("windows", "local", "CMD")).toBe("cmd");
-    expect(shellFlavor("windows", "local", "bash")).toBe("posix");
+    expect(shellFlavor("windows", "local", "bash")).toBe("gitbash");
     expect(shellFlavor("windows", "ssh", null)).toBe("posix");
     expect(shellFlavor("linux", "local", null)).toBe("posix");
     expect(shellFlavor("linux", "local", "pwsh")).toBe("powershell");
@@ -51,5 +51,20 @@ describe("cdCommand", () => {
     expect(cdCommand("/a\rb", "posix")).toBeNull();
     // PowerShell reads [ ] * ? in a path as wildcards unless it is literal.
     expect(cdCommand("C:\\logs [old]", "powershell")).toBe("cd -LiteralPath 'C:\\logs [old]'");
+  });
+});
+
+describe("Git Bash on Windows (gitbash)", () => {
+  it("is the flavor of a local bash on Windows only", () => {
+    expect(shellFlavor("windows", "local", "bash")).toBe("gitbash");
+    expect(shellFlavor("linux", "local", "bash")).toBe("posix");
+    expect(shellFlavor("windows", "ssh", "bash")).toBe("posix");
+  });
+
+  it("changes to the POSIX form of a Windows path", () => {
+    expect(quotePath("C:\\Users\\me\\My Docs", "gitbash")).toBe("'/c/Users/me/My Docs'");
+    expect(cdCommand("D:\\work", "gitbash")).toBe("cd /d/work");
+    expect(cdCommand("C:\\", "gitbash")).toBe("cd /c/");
+    expect(cdCommand("\\\\server\\share\\x", "gitbash")).toBe("cd //server/share/x");
   });
 });

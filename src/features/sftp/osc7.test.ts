@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOsc7 } from "./osc7";
+import { parseOsc7, parseOsc9Cwd } from "./osc7";
 
 describe("parseOsc7", () => {
   it("extracts the path from file://host/path", () => {
@@ -28,5 +28,20 @@ describe("parseOsc7", () => {
   it("keeps a Windows drive path without the leading slash", () => {
     expect(parseOsc7("file:///C:/Users/me/My%20Docs")).toBe("C:/Users/me/My Docs");
     expect(parseOsc7("file://pc/d:/")).toBe("d:/");
+  });
+});
+
+describe("parseOsc9Cwd (ConEmu and Windows Terminal: OSC 9;9)", () => {
+  it("reads the Windows path, with or without quotes", () => {
+    expect(parseOsc9Cwd('9;"C:\\Users\\me"')).toBe("C:\\Users\\me");
+    expect(parseOsc9Cwd("9;D:\\work dir")).toBe("D:\\work dir");
+    expect(parseOsc9Cwd('9;"\\\\server\\share"')).toBe("\\\\server\\share");
+  });
+
+  it("ignores other OSC 9 payloads and empty paths", () => {
+    expect(parseOsc9Cwd("4;1;40")).toBeNull();
+    expect(parseOsc9Cwd("Build finished")).toBeNull();
+    expect(parseOsc9Cwd('9;""')).toBeNull();
+    expect(parseOsc9Cwd("9;")).toBeNull();
   });
 });

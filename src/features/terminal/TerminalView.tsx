@@ -25,7 +25,7 @@ import {
 import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
-import { parseOsc7 } from "../sftp/osc7";
+import { parseOsc7, parseOsc9Cwd } from "../sftp/osc7";
 import type { MacroTarget } from "../macros/player";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
@@ -703,11 +703,23 @@ export function TerminalView({
       return true;
     };
     const readOsc99 = createOsc99Reader();
+    /** The shell reported its folder (OSC 7 or 9;9); shells do it with every prompt. */
+    const reportCwd = (path: string) => {
+      cwd = path;
+      callbacks.current.onCwd?.(path);
+      promptCame(true);
+    };
 
     const subs = [
       term.onData(typed),
       term.onBell(() => attention({ title: null, body: null })),
-      term.parser.registerOscHandler(9, (data) => attention(parseOsc9(data))),
+      term.parser.registerOscHandler(9, (data) => {
+        // 9;9 is the folder Windows shells report with every prompt (ConEmu, Windows Terminal).
+        const folder = parseOsc9Cwd(data);
+        if (folder === null) return attention(parseOsc9(data));
+        reportCwd(folder);
+        return true;
+      }),
       term.parser.registerOscHandler(777, (data) => attention(parseOsc777(data))),
       term.parser.registerOscHandler(99, (data) => attention(readOsc99(data))),
       term.onWriteParsed(refreshGhost),
@@ -726,12 +738,8 @@ export function TerminalView({
       term.onTitleChange((title) => callbacks.current.onTitle(title)),
       term.parser.registerOscHandler(7, (data) => {
         const path = parseOsc7(data);
-        if (path) {
-          cwd = path;
-          callbacks.current.onCwd?.(path);
-        }
-        // Shells report their folder with every prompt.
-        promptCame(true);
+        if (path) reportCwd(path);
+        else promptCame(true);
         return true;
       }),
       // Shell integration marks: A = prompt start, D = command finished.
