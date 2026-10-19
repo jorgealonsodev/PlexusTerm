@@ -7,6 +7,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { softwareWebgl } from "./webglProbe";
 import "@xterm/xterm/css/xterm.css";
 import { cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
@@ -895,7 +896,8 @@ export function TerminalView({
     if (!gpuAcceleration) {
       webglRef.current?.dispose();
       webglRef.current = null;
-    } else if (!webglRef.current) {
+    } else if (!webglRef.current && !softwareWebgl()) {
+      // WebGL drawn by the processor (llvmpipe) is slower than xterm's own renderer.
       let addon: WebglAddon | null = null;
       try {
         addon = new WebglAddon();

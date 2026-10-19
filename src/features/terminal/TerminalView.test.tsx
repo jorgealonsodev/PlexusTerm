@@ -208,6 +208,7 @@ vi.mock("@xterm/addon-search", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
+import { forgetWebglProbe } from "./webglProbe";
 import { ACTIVITY_QUIET_MS, FONT_WAIT_MS, TITLE_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
@@ -617,6 +618,23 @@ describe("TerminalView", () => {
             delete (document as { fonts?: unknown }).fonts;
           }
         });
+      });
+
+      it("keeps xterm's own renderer when WebGL is drawn in software (llvmpipe)", () => {
+        forgetWebglProbe();
+        const gl = {
+          getExtension: (name: string) => (name === "WEBGL_debug_renderer_info" ? { UNMASKED_RENDERER_WEBGL: 1 } : null),
+          getParameter: () => "llvmpipe (LLVM 15.0.7, 256 bits)",
+        };
+        const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(gl as never);
+        try {
+          const before = webgl.addons.length;
+          render(view(true));
+          expect(webgl.addons.length).toBe(before);
+        } finally {
+          getContext.mockRestore();
+          forgetWebglProbe();
+        }
       });
 
       it("falls back without an error when WebGL cannot start", () => {
