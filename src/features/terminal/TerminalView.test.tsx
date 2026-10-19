@@ -320,6 +320,11 @@ describe("TerminalView", () => {
       fireEvent.contextMenu(host, { clientX: 5, clientY: 6, ...mods });
     };
 
+    it("draws a thin bar cursor, not a block", () => {
+      renderView();
+      expect(term().options).toMatchObject({ cursorStyle: "bar", cursorWidth: 2 });
+    });
+
     it("colours error lines again when the setting or the scheme changes, and stops on close", () => {
       const view = (settings: typeof DEFAULT_SETTINGS) => (
         <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />

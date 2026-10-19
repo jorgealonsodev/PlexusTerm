@@ -334,6 +334,9 @@ export function TerminalView({
 
     const term = new Terminal({
       cursorBlink: true,
+      // A thin bar, as in editors: the block covered a whole cell.
+      cursorStyle: "bar",
+      cursorWidth: 2,
       fontFamily: cssFontFamily(settingsRef.current.fontFamily),
       fontSize: settingsRef.current.fontSize,
       lineHeight: 1.15,
