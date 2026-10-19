@@ -61,6 +61,12 @@ describe("tabsReducer", () => {
     expect(state.activeKey).toBeNull();
   });
 
+  it("keeps the same state when a tab is renamed to the title it already has (no re-render)", () => {
+    const one = tabsReducer(initialTabs, { type: "open", target: { type: "local" } });
+    const renamed = tabsReducer(one, { type: "rename", key: one.tabs[0].key, title: "vim" });
+    expect(tabsReducer(renamed, { type: "rename", key: one.tabs[0].key, title: "vim" })).toBe(renamed);
+  });
+
   it("renames a tab", () => {
     const one = open(initialTabs);
     const state = tabsReducer(one, { type: "rename", key: one.tabs[0].key, title: "vim" });

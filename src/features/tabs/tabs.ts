@@ -183,11 +183,15 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         const { color: _old, ...rest } = tab;
         return action.color ? { ...rest, color: action.color } : rest;
       });
-    case "rename":
+    case "rename": {
+      // Programs set the same title again and again (prompts, AI tools): nothing to re-render.
+      const tab = state.tabs.find((t) => t.key === action.key);
+      if (!tab || (tab.title === action.title && tab.renamed)) return state;
       return {
         ...state,
         tabs: state.tabs.map((t) => (t.key === action.key ? { ...t, title: action.title, renamed: true } : t)),
       };
+    }
     case "split": {
       const pane = `pane-${state.nextPaneSeq}`;
       const next = updateTab(state, action.key, (tab) => {

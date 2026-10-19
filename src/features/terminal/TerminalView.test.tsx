@@ -147,7 +147,14 @@ vi.mock("@xterm/xterm", () => ({
     resize(cols: number, rows: number) {
       this.resizeHandlers.forEach((handler) => handler({ cols, rows }));
     }
-    onTitleChange = () => ({ dispose() {} });
+    titleHandlers: ((title: string) => void)[] = [];
+    onTitleChange = (handler: (title: string) => void) => {
+      this.titleHandlers.push(handler);
+      return { dispose() {} };
+    };
+    setTitle(title: string) {
+      this.titleHandlers.forEach((handler) => handler(title));
+    }
   },
 }));
 /** How many times a terminal was fitted to its pane. */
@@ -201,7 +208,7 @@ vi.mock("@xterm/addon-search", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
-import { ACTIVITY_QUIET_MS, FONT_WAIT_MS, TerminalView } from "./TerminalView";
+import { ACTIVITY_QUIET_MS, FONT_WAIT_MS, TITLE_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
 import { PlatformContext } from "../platform/usePlatform";
@@ -275,6 +282,25 @@ describe("TerminalView", () => {
     } finally {
       vi.useRealTimers();
       delete (document as { fonts?: unknown }).fonts;
+    }
+  });
+
+  it("passes title changes on at most every TITLE_MS, ending with the latest title", async () => {
+    vi.useFakeTimers();
+    try {
+      const onTitle = vi.fn();
+      render(<TerminalView target={{ type: "local" }} active onTitle={onTitle} onExit={() => {}} />);
+      const term = terms[terms.length - 1] as unknown as { setTitle: (t: string) => void };
+      for (let i = 0; i < 20; i++) term.setTitle(`working ${i}`);
+      expect(onTitle).toHaveBeenCalledTimes(1);
+      expect(onTitle).toHaveBeenLastCalledWith("working 0");
+      await act(async () => void vi.advanceTimersByTime(TITLE_MS));
+      expect(onTitle).toHaveBeenCalledTimes(2);
+      expect(onTitle).toHaveBeenLastCalledWith("working 19");
+      await act(async () => void vi.advanceTimersByTime(TITLE_MS * 3));
+      expect(onTitle).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
     }
   });
 
@@ -1115,12 +1141,28 @@ describe("TerminalView", () => {
           JSON.stringify({ version: 1, hosts: { local: commands.map((command, i) => ({ command, count: 1, last: i + 1 })) } }),
         save: async () => {},
       });
-    /** Types `data` at a prompt, the shell echoing it on the cursor line. */
-    const typeAt = (prompt: string, data: string) =>
+    /** The ghost is drawn at the next frame: frames run when the test says so. */
+    let frames: FrameRequestCallback[] = [];
+    beforeEach(() => {
+      frames = [];
+      vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+      vi.stubGlobal("cancelAnimationFrame", () => {});
+    });
+    afterEach(() => vi.unstubAllGlobals());
+    const nextFrame = () =>
+      act(() => {
+        const due = frames;
+        frames = [];
+        due.forEach((callback) => callback(0));
+      });
+    /** Types `data` at a prompt, the shell echoing it on the cursor line, and lets a frame go by. */
+    const typeAt = (prompt: string, data: string) => {
       act(() => {
         term().line = prompt + data;
         term().type(data);
       });
+      nextFrame();
+    };
     const key = (k: string, mods: { ctrlKey?: boolean } = {}) => {
       let passed = true;
       act(() => {
@@ -1149,6 +1191,23 @@ describe("TerminalView", () => {
       expect(history.recent("local", 1)).toEqual(["git status"]);
     });
 
+    it("draws the ghost once per frame, and never accepts the previous one before it is drawn", async () => {
+      const { container } = await renderView({ history: historyWith("git status") });
+      typeAt("$ ", "git st");
+      expect(ghost(container)).toBe("atus");
+      // The next key and its echo arrive before the frame: → still has nothing to accept.
+      act(() => {
+        term().line = "$ git sta";
+        term().type("a");
+      });
+      backend.write.mockClear();
+      expect(key("ArrowRight")).toBe(true);
+      expect(backend.write).not.toHaveBeenCalled();
+      expect(frames).toHaveLength(1);
+      nextFrame();
+      expect(ghost(container)).toBe("tus");
+    });
+
     it("accepts the whole suggestion with End and one word with Ctrl+Right", async () => {
       const { container } = await renderView({ history: historyWith("docker compose up -d") });
       typeAt("$ ", "dock");
@@ -1167,6 +1226,7 @@ describe("TerminalView", () => {
       expect(key("Tab")).toBe(true);
       expect(key("a")).toBe(true);
       act(() => term().type("\t"));
+      nextFrame();
       expect(ghost(container)).toBeNull();
       // Right Arrow without a suggestion reaches the shell.
       expect(key("ArrowRight")).toBe(true);
@@ -1363,6 +1423,8 @@ describe("TerminalView", () => {
           cwd: null,
           history: ["ls -la", "kubectl apply -f x.yaml"],
         });
+        // The answer arrives, then the next frame (faked with the timers here) draws it.
+        await act(() => vi.advanceTimersByTimeAsync(16));
         expect(ghost(container)).toBe(" -o wide");
       });
 

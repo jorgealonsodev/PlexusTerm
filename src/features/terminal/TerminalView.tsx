@@ -222,6 +222,17 @@ interface TypedLogin {
   storage?: PasswordStorage;
 }
 
+/** The next frame, or a timer where there are no frames (tests, hidden pages). */
+const requestFrame = (callback: () => void): number =>
+  typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame(callback)
+    : (setTimeout(callback, 16) as unknown as number);
+const cancelFrame = (id: number) =>
+  typeof cancelAnimationFrame === "function" ? cancelAnimationFrame(id) : clearTimeout(id);
+
+/** Title changes reach the tab at most this often. */
+export const TITLE_MS = 250;
+
 /** The longest a new terminal waits for the fonts before starting its session. */
 export const FONT_WAIT_MS = 1500;
 
@@ -586,6 +597,21 @@ export function TerminalView({
       setGhost((previous) => (sameGhost(previous, next) ? previous : next));
     };
     refreshGhostRef.current = refreshGhost;
+    /**
+     * The ghost is drawn once per frame: a key, its echo and the cursor move arrive within a few
+     * milliseconds, and each refresh measures the screen (a layout) and may re-render the pane.
+     */
+    let ghostFrame: number | null = null;
+    let ghostPending = false;
+    const scheduleGhost = () => {
+      if (ghostPending) return;
+      ghostPending = true;
+      ghostFrame = requestFrame(() => {
+        ghostPending = false;
+        ghostFrame = null;
+        refreshGhost();
+      });
+    };
 
     const askAi = () => {
       const ask = callbacks.current.aiSuggest;
@@ -603,7 +629,7 @@ export function TerminalView({
           .then((full) => {
             if (seq !== aiSeq || !full || !full.startsWith(asked) || full.length <= asked.length) return;
             suggestion = { line: asked, rest: full.slice(asked.length) };
-            refreshGhost();
+            scheduleGhost();
           })
           .catch(() => {});
       }, AI_SUGGEST_DELAY_MS);
@@ -620,7 +646,9 @@ export function TerminalView({
         if (full) suggestion = { line: line.text, rest: full.slice(line.text.length) };
         else askAi();
       }
-      refreshGhost();
+      // What → would accept changes now, not at the next frame.
+      ghostRestRef.current = null;
+      scheduleGhost();
     };
 
     /** The prompt and command of the cursor's row, as they look on screen. */
@@ -716,6 +744,25 @@ export function TerminalView({
       return true;
     };
     const readOsc99 = createOsc99Reader();
+    // AI tools animate their title many times a second; the tab bar needs a few of them.
+    let titleTimer: ReturnType<typeof setTimeout> | null = null;
+    let pendingTitle: string | null = null;
+    const titleChanged = (title: string) => {
+      if (titleTimer) {
+        pendingTitle = title;
+        return;
+      }
+      callbacks.current.onTitle(title);
+      const flush = () => {
+        titleTimer = null;
+        if (pendingTitle === null) return;
+        const latest = pendingTitle;
+        pendingTitle = null;
+        callbacks.current.onTitle(latest);
+        titleTimer = setTimeout(flush, TITLE_MS);
+      };
+      titleTimer = setTimeout(flush, TITLE_MS);
+    };
     /** The shell reported its folder (OSC 7 or 9;9); shells do it with every prompt. */
     const reportCwd = (path: string) => {
       cwd = path;
@@ -735,9 +782,9 @@ export function TerminalView({
       }),
       term.parser.registerOscHandler(777, (data) => attention(parseOsc777(data))),
       term.parser.registerOscHandler(99, (data) => attention(readOsc99(data))),
-      term.onWriteParsed(refreshGhost),
-      term.onCursorMove(refreshGhost),
-      term.onScroll(refreshGhost),
+      term.onWriteParsed(scheduleGhost),
+      term.onCursorMove(scheduleGhost),
+      term.onScroll(scheduleGhost),
       term.onResize(({ cols, rows }) => {
         if (sessionId !== null) void backend.resize(sessionId, cols, rows);
         // Rows reflow to the new width: colour them again once the size settles (a window drag
@@ -748,7 +795,7 @@ export function TerminalView({
           errors.refresh();
         }, ERROR_REFRESH_DELAY_MS);
       }),
-      term.onTitleChange((title) => callbacks.current.onTitle(title)),
+      term.onTitleChange(titleChanged),
       term.parser.registerOscHandler(7, (data) => {
         const path = parseOsc7(data);
         if (path) reportCwd(path);
@@ -808,6 +855,8 @@ export function TerminalView({
       unregisterAssistTarget?.();
       outputListeners.clear();
       observer.disconnect();
+      if (titleTimer) clearTimeout(titleTimer);
+      if (ghostPending && ghostFrame !== null) cancelFrame(ghostFrame);
       fonts?.removeEventListener?.("loadingdone", refitForFonts);
       subs.forEach((s) => s.dispose());
       if (errorsTimer) clearTimeout(errorsTimer);
