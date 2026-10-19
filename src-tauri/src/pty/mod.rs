@@ -99,7 +99,9 @@ fn cwd_of(req: &SpawnRequest) -> Option<PathBuf> {
 
 struct Session {
     master: Box<dyn MasterPty + Send>,
-    writer: Box<dyn Write + Send>,
+    /// Input for the session's writer thread: a write may block until the process reads (a large
+    /// paste), so it never runs on the caller's thread nor under the sessions lock.
+    input: std::sync::mpsc::Sender<Vec<u8>>,
     killer: Box<dyn ChildKiller + Send + Sync>,
     /// The child's process id, to read its working folder; None when the system does not give it.
     pid: Option<u32>,
@@ -133,8 +135,21 @@ impl PtyManager {
         drop(pair.slave);
 
         let mut reader = pair.master.try_clone_reader().map_err(io_err)?;
-        let writer = pair.master.take_writer().map_err(io_err)?;
+        let mut writer = pair.master.take_writer().map_err(io_err)?;
         let killer = child.clone_killer();
+        let (input, queued) = std::sync::mpsc::channel::<Vec<u8>>();
+        // Ends when the session is closed (its sender dropped) or the process stops taking input.
+        std::thread::spawn(move || {
+            for data in queued {
+                if writer
+                    .write_all(&data)
+                    .and_then(|()| writer.flush())
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
         let pid = child.process_id();
 
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
@@ -142,7 +157,7 @@ impl PtyManager {
             id,
             Session {
                 master: pair.master,
-                writer,
+                input,
                 killer,
                 pid,
             },
@@ -179,10 +194,12 @@ impl PtyManager {
         f(session)
     }
 
+    /// Queues `data` for the process; it is written in order, as the process reads it.
     pub fn write(&self, id: u32, data: &[u8]) -> Result<(), PtyError> {
         self.with_session(id, |s| {
-            s.writer.write_all(data).map_err(io_err)?;
-            s.writer.flush().map_err(io_err)
+            s.input
+                .send(data.to_vec())
+                .map_err(|_| io_err("the session no longer takes input"))
         })
     }
 
@@ -400,6 +417,45 @@ mod tests {
         mgr.write(id, b"ping\n").unwrap();
         let (out, _) = wait_for(&rx, "ping");
         assert!(out.contains("ping"), "output was {out:?}");
+        mgr.close(id).unwrap();
+    }
+
+    #[test]
+    fn a_large_paste_never_blocks_while_the_process_does_not_read() {
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        // `sleep` never reads: in raw mode (as shells edit lines) the input buffer fills and blocks.
+        let id = mgr
+            .spawn(
+                req("/bin/sh", &["-c", "stty raw -echo; echo ready; sleep 5"]),
+                s,
+            )
+            .unwrap();
+        wait_for(&rx, "ready");
+        let started = std::time::Instant::now();
+        mgr.write(id, &vec![b'x'; 1 << 20]).unwrap();
+        // The session stays usable meanwhile.
+        mgr.resize(id, 90, 30).unwrap();
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "write blocked for {:?}",
+            started.elapsed()
+        );
+        mgr.close(id).unwrap();
+    }
+
+    #[test]
+    fn writes_reach_the_process_in_order() {
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        let id = mgr.spawn(req("/bin/cat", &[]), s).unwrap();
+        for n in 0..200 {
+            mgr.write(id, format!("{n},").as_bytes()).unwrap();
+        }
+        mgr.write(id, b"end\n").unwrap();
+        let (out, _) = wait_for(&rx, "end");
+        let sent: String = (0..200).map(|n| format!("{n},")).collect();
+        assert!(out.contains(&format!("{sent}end")), "output was {out:?}");
         mgr.close(id).unwrap();
     }
 
