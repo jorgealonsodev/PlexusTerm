@@ -11,10 +11,10 @@ pub struct Integration {
 }
 
 /// PowerShell: wraps whatever `prompt` the profile left (oh-my-posh, starship...) so it starts
-/// with the folder report. No double quotes, so it survives the Windows command line as is.
+/// with the folder report. That prompt runs first, while `$?` still holds the last command's. No double quotes, so it survives the Windows command line as is.
 pub const POWERSHELL_PROMPT: &str = "$global:__plexusPrompt=$function:prompt;\
-function global:prompt{$l=$executionContext.SessionState.Path.CurrentLocation;\
-$o=& $global:__plexusPrompt;\
+function global:prompt{$o=& $global:__plexusPrompt;\
+$l=$executionContext.SessionState.Path.CurrentLocation;\
 if($l.Provider.Name -eq 'FileSystem'){((([char]27),']9;9;',([char]34),$l.ProviderPath,([char]34),([char]27),'\\') -join '')+($o -join '')}else{$o}}";
 
 /// Git Bash: the Windows form of `$PWD` (`/c/Users` is `C:\Users`, without starting a program
@@ -48,7 +48,11 @@ pub struct Inherited<'a> {
 /// What to add to start `program` (with the user's `args`) so it reports its folder.
 pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Integration {
     if is_git_bash(program) {
-        let command = match inherited.prompt_command.filter(|c| !c.trim().is_empty()) {
+        // `foo;` followed by `; report` would be `;;`, which bash refuses.
+        let theirs = inherited
+            .prompt_command
+            .map(|c| c.trim_end().trim_end_matches(';').trim_end());
+        let command = match theirs.filter(|c| !c.is_empty()) {
             Some(theirs) => format!("{theirs}; {GIT_BASH_REPORT}"),
             None => GIT_BASH_REPORT.to_string(),
         };
@@ -107,6 +111,13 @@ mod tests {
             Integration::default()
         );
         assert!(!POWERSHELL_PROMPT.contains('"'));
+        // The user's prompt runs first, while `$?` still tells how the last command went
+        // (Starship and oh-my-posh show it).
+        let body = POWERSHELL_PROMPT
+            .split("function global:prompt{")
+            .nth(1)
+            .unwrap();
+        assert!(body.starts_with("$o=& $global:__plexusPrompt;"), "{body}");
         assert!(POWERSHELL_PROMPT.contains("]9;9;"));
     }
 
@@ -176,6 +187,16 @@ mod tests {
                 format!("history -a; {GIT_BASH_REPORT}")
             )]
         );
+        // A command already ending in `;` would make `;;`, which bash refuses.
+        let ending = integration(
+            "C:\\Program Files\\Git\\bin\\bash.exe",
+            &[],
+            Inherited {
+                prompt_command: Some("history -a; "),
+                ..Default::default()
+            },
+        );
+        assert_eq!(ending.env, theirs.env);
     }
 
     /// The command really prints the Windows folder (run with this system's bash).
