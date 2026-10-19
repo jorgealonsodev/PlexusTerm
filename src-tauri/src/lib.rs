@@ -591,6 +591,7 @@ fn tunnel_statuses(tunnels: State<'_, TunnelManager>) -> Vec<StatusUpdate> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    platform::tune_webkit();
     let secrets: SharedSecrets = std::sync::Arc::new(KeyringStore::default());
     let tunnel_secrets = secrets.clone();
     let launch = launch::LaunchWorkspace::from_args();

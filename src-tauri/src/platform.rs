@@ -35,6 +35,37 @@ fn env(name: &str) -> Option<OsString> {
     std::env::var_os(name)
 }
 
+/// WebKitGTK's variables for how a page's frames reach the window.
+const WEBKIT_DMABUF_VARS: [&str; 3] = [
+    "WEBKIT_DISABLE_DMABUF_RENDERER",
+    "WEBKIT_FORCE_DMABUF_RENDERER",
+    "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
+];
+
+/// The WebKitGTK variables to set on Linux. With NVIDIA's own driver, frames handed over as GPU
+/// buffers (GBM) reach the window several frames late, so the terminal lags behind typing; through
+/// shared memory they do not. Other drivers keep WebKitGTK's own, faster choice, and so does a
+/// user who set any of these variables.
+pub fn webkit_env_in(nvidia_driver: bool, env: EnvLookup) -> Vec<(&'static str, &'static str)> {
+    if !nvidia_driver || WEBKIT_DMABUF_VARS.iter().any(|name| env(name).is_some()) {
+        return Vec::new();
+    }
+    vec![
+        ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
+        ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
+    ]
+}
+
+/// Sets [`webkit_env_in`]'s variables for this machine. Called first thing, before any thread
+/// starts and before WebKitGTK reads them.
+pub fn tune_webkit() {
+    #[cfg(target_os = "linux")]
+    for (name, value) in webkit_env_in(Path::new("/proc/driver/nvidia").exists(), &env) {
+        // SAFETY: no other thread exists yet to read or write the environment.
+        unsafe { std::env::set_var(name, value) };
+    }
+}
+
 /// The user's home directory: `$HOME` on Unix, `%USERPROFILE%` on Windows.
 pub fn home_dir_in(os: Os, env: EnvLookup) -> Option<PathBuf> {
     let var = match os {
@@ -346,6 +377,28 @@ pub fn serial_ports() -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn webkit_frames_go_through_shared_memory_only_with_nvidias_driver() {
+        let none = vars(&[]);
+        assert_eq!(
+            webkit_env_in(true, &none),
+            vec![
+                ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
+                ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
+            ]
+        );
+        // Intel, AMD and the open drivers keep WebKitGTK's own choice.
+        assert_eq!(webkit_env_in(false, &none), vec![]);
+        // A choice the user made is kept.
+        for name in [
+            "WEBKIT_DISABLE_DMABUF_RENDERER",
+            "WEBKIT_FORCE_DMABUF_RENDERER",
+            "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
+        ] {
+            assert_eq!(webkit_env_in(true, &vars(&[(name, "0")])), vec![], "{name}");
+        }
+    }
 
     fn vars(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
         let pairs: Vec<(String, String)> = pairs
