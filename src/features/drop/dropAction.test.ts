@@ -47,3 +47,11 @@ describe("sameMachine", () => {
     expect(sameMachine({ kind: "sftp", sessionId: 3 }, "mosh", 3)).toBe(false);
   });
 });
+
+describe("dropAction in Git Bash", () => {
+  it("changes to a dropped Windows folder", () => {
+    expect(
+      dropAction([{ path: "C:\\Users\\me\\proj", isDir: true }], { flavor: "gitbash", lineEmpty: true, sameMachine: true }),
+    ).toEqual({ kind: "run", command: "cd /c/Users/me/proj" });
+  });
+});

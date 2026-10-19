@@ -143,3 +143,21 @@ describe("commandOnScreen", () => {
     expect(commandOnScreen("")).toBeNull();
   });
 });
+
+describe("feedInput ignores the terminal's own replies", () => {
+  it("keeps the line certain through focus reports and cursor position reports (ConPTY asks for both)", () => {
+    const typed = feedInput(EMPTY_LINE, "\x1b[O\x1b[I\x1b[24;1R");
+    expect(typed.state).toEqual(EMPTY_LINE);
+    const command = feedInput(EMPTY_LINE, "ls\x1b[O\x1b[I -la\x1b[1;5R\r");
+    expect(command.commits).toEqual(["ls -la"]);
+  });
+
+  it("keeps the line certain through device attribute and mode replies", () => {
+    expect(feedInput(EMPTY_LINE, "\x1b[?1;2c\x1b[>0;276;0c\x1b[?2004;1$y").state).toEqual(EMPTY_LINE);
+  });
+
+  it("still treats keys as making the line uncertain (arrows, Shift+Tab)", () => {
+    expect(feedInput(EMPTY_LINE, "\x1b[A").state.uncertain).toBe(true);
+    expect(feedInput(EMPTY_LINE, "\x1b[Z").state.uncertain).toBe(true);
+  });
+});

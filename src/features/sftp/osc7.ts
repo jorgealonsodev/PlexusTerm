@@ -14,3 +14,15 @@ export function parseOsc7(data: string): string | null {
     return null;
   }
 }
+
+/**
+ * Parses the payload of an OSC 9;9 sequence (`ESC ] 9 ; 9 ; "C:\path" ESC \`), how Windows shells
+ * report their working directory to ConEmu and Windows Terminal. The quotes are optional.
+ * Returns the path, or null for every other OSC 9 payload (notifications, progress).
+ */
+export function parseOsc9Cwd(data: string): string | null {
+  if (!data.startsWith("9;")) return null;
+  let path = data.slice(2);
+  if (path.length >= 2 && path.startsWith('"') && path.endsWith('"')) path = path.slice(1, -1);
+  return path === "" ? null : path;
+}

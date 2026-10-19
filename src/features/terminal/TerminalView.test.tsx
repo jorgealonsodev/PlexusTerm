@@ -621,6 +621,19 @@ describe("TerminalView", () => {
         expect(onAttention).not.toHaveBeenCalled();
       });
 
+      it("reads the folder Windows shells report through OSC 9;9, and asks for no attention", () => {
+        const onCwd = vi.fn();
+        const onAttention = vi.fn();
+        const onPrompt = vi.fn();
+        renderView({ onCwd, onAttention, onPrompt });
+        term().osc(9, '9;"C:\\Users\\me\\project"');
+        expect(onCwd).toHaveBeenLastCalledWith("C:\\Users\\me\\project");
+        term().osc(9, "9;D:\\work");
+        expect(onCwd).toHaveBeenLastCalledWith("D:\\work");
+        expect(onAttention).not.toHaveBeenCalled();
+        expect(onPrompt).toHaveBeenCalled();
+      });
+
       it("still keeps the folder reported through OSC 7", () => {
         const onCwd = vi.fn();
         renderView({ onCwd });

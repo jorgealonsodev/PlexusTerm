@@ -172,18 +172,7 @@ The **Explorer** tab of the sidebar browses the local disk while the active tab 
 - The toolbar's icons (hover one for its name) are **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete**, which act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
 - Right-click an entry for **Open**, **View** (files: see [Viewing files](#viewing-files)), **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy. On folders, **Open in terminal** (right after **Open**) opens a new local terminal tab, with the same shell as the active one, that starts in that folder.
 
-With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`, PowerShell with the prompt below) are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows only OSC 7 is followed; add this to your PowerShell profile (`notepad $PROFILE`):
-
-```powershell
-function prompt {
-  $loc = $executionContext.SessionState.Path.CurrentLocation
-  if ($loc.Provider.Name -eq "FileSystem") {
-    $url = "file:///" + ($loc.ProviderPath -replace "%", "%25" -replace "\\", "/")
-    [Console]::Write("$([char]27)]7;$url$([char]7)")
-  }
-  "PS $loc$('>' * ($nestedPromptLevel + 1)) "
-}
-```
+With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`), or with OSC 9;9 as the Windows shells below, are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows PlexusTerm makes PowerShell, cmd and Git Bash report their folder by themselves at every prompt (OSC 9;9, as Windows Terminal reads it): PowerShell's prompt, including one set by oh-my-posh or Starship in your profile, is wrapped when it starts without arguments of yours; cmd gets the report in front of its `PROMPT`; Git Bash gets it through `PROMPT_COMMAND` (a `PROMPT_COMMAND` set in your `.bashrc` replaces it). WSL is not followed.
 
 ### DEV mode file lists
 
@@ -336,7 +325,7 @@ Shell prompt themes (Starship, Powerlevel10k, Pure, Oh My Zsh themes such as `ro
 
 - **Show size and date in file lists** (Settings → Files, off by default): the SFTP browser and the Explorer show each entry's size and modification date next to its name.
 - **Show git status in file lists** (Settings → Files, on by default): DEV mode's file lists colour entries by their git status (see [Git status in file lists](#git-status-in-file-lists)). Off, nothing is read and no entry is coloured.
-- **Change the terminal's folder when you open a folder in the file browser** (Settings → Files, on by default): opening a folder in the SFTP browser or the Explorer (path bar, double-click, **↑**, **⌂**) runs `cd` to it in the terminal of the same machine, only when that panel's **Follow terminal folder** is on (turning it off unlinks the panel and the terminal both ways), nothing is typed on its command line and no full-screen program runs. Folders the browser opens by following the terminal never send `cd`.
+- **Change the terminal's folder when you open a folder in the file browser** (Settings → Files, on by default): opening a folder in the SFTP browser or the Explorer (path bar, double-click, **↑**, **⌂**) runs `cd` to it in the terminal of the same machine (Git Bash gets the path in its `/c/...` form), only when that panel's **Follow terminal folder** is on (turning it off unlinks the panel and the terminal both ways), nothing is typed on its command line and no full-screen program runs. Folders the browser opens by following the terminal never send `cd`.
 
 Pasted text is sent like typed text, so multi-exec forwards it too, and shells that support bracketed paste receive it as a paste.
 

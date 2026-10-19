@@ -25,6 +25,13 @@ function escapeLength(data: string, i: number): number {
   return 2; // Alt+key
 }
 
+/**
+ * Replies the terminal sends by itself, which reach the shell through the same input as typing:
+ * focus in/out (mode 1004), cursor position reports and device attribute and mode reports.
+ * ConPTY asks for some of them on Windows; they change nothing on the command line.
+ */
+const TERMINAL_REPLY = /^\x1b\[(?:I|O|\d+;\d+R|[?>][\d;]*c|\??[\d;]*\$y)$/;
+
 /** Applies typed data to the line; returns the lines committed with Enter, in order. */
 export function feedInput(state: LineState, data: string): { state: LineState; commits: string[] } {
   let { text, uncertain } = state;
@@ -48,7 +55,7 @@ export function feedInput(state: LineState, data: string): { state: LineState; c
       // Bracketed paste markers wrap pasted text, which is typed as is.
       if (sequence === "\x1b[200~") inPaste = true;
       else if (sequence === "\x1b[201~") inPaste = false;
-      else uncertain = true;
+      else if (!TERMINAL_REPLY.test(sequence)) uncertain = true;
       i += length - 1;
     } else if (ch === "\x7f" || ch === "\b") {
       text = [...text].slice(0, -1).join("");

@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 use crate::platform;
+
+mod shell_integration;
 use crate::terminal::{TerminalSink, Utf8Stream};
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -119,13 +121,32 @@ impl PtyManager {
             .openpty(size(req.cols, req.rows))
             .map_err(io_err)?;
 
-        let mut cmd = CommandBuilder::new(program_of(&req));
-        cmd.args(&req.args);
+        let program = program_of(&req);
+        let mut cmd = CommandBuilder::new(&program);
+        // Windows has no way to read PowerShell's folder: the shells report it with each prompt.
+        let integration = if cfg!(windows) {
+            let prompt = std::env::var("PROMPT").ok();
+            let prompt_command = std::env::var("PROMPT_COMMAND").ok();
+            shell_integration::integration(
+                &program,
+                &req.args,
+                shell_integration::Inherited {
+                    prompt: prompt.as_deref(),
+                    prompt_command: prompt_command.as_deref(),
+                },
+            )
+        } else {
+            shell_integration::Integration::default()
+        };
+        cmd.args(integration.args.as_deref().unwrap_or(&req.args));
         if let Some(dir) = cwd_of(&req) {
             cmd.cwd(dir);
         }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+        for (name, value) in &integration.env {
+            cmd.env(name, value);
+        }
         for (name, value) in &req.env.0 {
             cmd.env(name, value);
         }

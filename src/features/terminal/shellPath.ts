@@ -3,18 +3,20 @@ import type { SessionTarget } from "../sessions/types";
 import { shellQuote } from "../sftp/remotePath";
 
 /** How a pane's shell reads a quoted path. */
-export type ShellFlavor = "posix" | "powershell" | "cmd";
+export type ShellFlavor = "posix" | "powershell" | "cmd" | "gitbash";
 
 /**
  * The quoting rules of a pane's shell: PowerShell and cmd for local tabs running them (a Windows
- * local tab with an unknown shell runs PowerShell, the default there), POSIX for everything else
- * (bash, zsh, fish, WSL, Git Bash, remote sessions).
+ * local tab with an unknown shell runs PowerShell, the default there), Git Bash for bash on Windows
+ * (POSIX, with Windows paths in its `/c/...` form), POSIX for everything else (bash, zsh, fish,
+ * WSL, remote sessions).
  */
 export function shellFlavor(platform: Platform, target: SessionTarget["type"], shell: string | null): ShellFlavor {
   if (target !== "local") return "posix";
   const name = shell?.toLowerCase() ?? (platform === "windows" ? "powershell" : null);
   if (name === "cmd") return "cmd";
   if (name === "pwsh" || name === "powershell") return "powershell";
+  if (name === "bash" && platform === "windows") return "gitbash";
   return "posix";
 }
 
@@ -26,6 +28,13 @@ const POWERSHELL_QUOTES = /['\u2018-\u201B]/g;
 const POWERSHELL_WILDCARDS = /[[\]*?]/;
 const PLAIN_CMD = /^[A-Za-z0-9_\-./\\:+@,=~]+$/;
 
+/** How Git Bash names a Windows path: `C:\\Users` is `/c/Users`, `\\\\server\\share` is `//server/share`. */
+export function gitBashPath(path: string): string {
+  const drive = /^([A-Za-z]):[\\/]?(.*)$/.exec(path);
+  if (drive) return `/${drive[1].toLowerCase()}/${drive[2].replace(/\\/g, "/")}`;
+  return path.replace(/\\/g, "/");
+}
+
 /**
  * `path` as one word for the shell, or null when it holds control characters: the line editor
  * acts on them (Ctrl-U, newline) even inside quotes, so such a path cannot be typed safely.
@@ -36,6 +45,8 @@ export function quotePath(path: string, flavor: ShellFlavor): string | null {
   switch (flavor) {
     case "posix":
       return shellQuote(path);
+    case "gitbash":
+      return shellQuote(gitBashPath(path));
     case "powershell":
       return PLAIN_POWERSHELL.test(path) ? path : `'${path.replace(POWERSHELL_QUOTES, "$&$&")}'`;
     case "cmd":
