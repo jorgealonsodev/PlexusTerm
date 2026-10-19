@@ -75,7 +75,7 @@ describe("SettingsDialog", () => {
   it("keeps the edits of every section when saving", () => {
     const onSave = vi.fn();
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "18" } });
+    fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "18" } });
     fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
     fireEvent.click(screen.getByLabelText("Copy on select"));
     fireEvent.click(screen.getByRole("tab", { name: "SSH" }));
@@ -104,7 +104,7 @@ describe("SettingsDialog", () => {
 
   it("shows the current settings", () => {
     setup();
-    expect((screen.getByLabelText("Font size") as HTMLInputElement).value).toBe("14");
+    expect((screen.getByLabelText("Terminal font size") as HTMLInputElement).value).toBe("14");
     expect((screen.getByLabelText("Copy on select") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Right click pastes") as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText("Confirm multi-line paste") as HTMLInputElement).checked).toBe(true);
@@ -170,7 +170,7 @@ describe("SettingsDialog", () => {
 
   it("saves the edited settings, clamping the font size", () => {
     const { onSave } = setup();
-    fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "40" } });
     fireEvent.click(screen.getByLabelText("Copy on select"));
     fireEvent.click(screen.getByLabelText("Right click pastes"));
     fireEvent.click(screen.getByLabelText("Confirm multi-line paste"));
@@ -218,7 +218,7 @@ describe("SettingsDialog", () => {
 
   it("keeps the font size when the field is not a number", () => {
     const { onSave } = setup();
-    fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
   });
@@ -226,7 +226,7 @@ describe("SettingsDialog", () => {
   it("cancels without saving, also on Escape", () => {
     const { onSave, onCancel } = setup();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.keyDown(screen.getByLabelText("Font size"), { key: "Escape" });
+    fireEvent.keyDown(screen.getByLabelText("Terminal font size"), { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(onSave).not.toHaveBeenCalled();
   });

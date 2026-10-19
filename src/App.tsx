@@ -36,7 +36,7 @@ import { dropAction, sameMachine } from "./features/drop/dropAction";
 import { dropTargetAt, setDropHandler, type PathDrag, type PathOrigin } from "./features/drop/pathDrag";
 import { local } from "./features/local/localClient";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { stepFontSize } from "./features/settings/settings";
+import { BASE_TEXT_SIZE, stepChatFontSize, stepFontSize } from "./features/settings/settings";
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
@@ -284,6 +284,13 @@ function AppContent() {
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
+  // The interface and the AI chat scale their text apart from the terminal (App.css: --ui-scale).
+  const { uiFontSize, chatFontSize } = terminalSettings.settings;
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--ui-scale", String(uiFontSize / BASE_TEXT_SIZE));
+    root.setProperty("--chat-scale", String(chatFontSize / BASE_TEXT_SIZE));
+  }, [uiFontSize, chatFontSize]);
   // The interface language (S3): the chosen one, or the system's, English when unsupported.
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
@@ -1076,6 +1083,10 @@ function AppContent() {
           if (activeTab) toggleDev(activeTab.key, terminalPaneOf(activeTab));
           return;
         case "fontSize":
+          // In the AI chat the keys size its text; anywhere else, the terminals'.
+          if (document.activeElement?.closest(".chat")) {
+            return updateSettingsWith((s) => ({ chatFontSize: stepChatFontSize(s.chatFontSize, shortcut.step) }));
+          }
           return updateSettingsWith((s) => ({ fontSize: stepFontSize(s.fontSize, shortcut.step) }));
         case "recordMacro":
           return macroKeys.current.toggleRecording();

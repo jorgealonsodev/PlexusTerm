@@ -107,6 +107,10 @@ export interface TerminalSettings {
   gitFileStatus: boolean;
   /** The file viewer saves an edited file by itself a moment after typing stops. */
   viewerAutoSave: boolean;
+  /** Text size of the interface (bars, lists, dialogs) in pixels, 10..20; the terminal has its own. */
+  uiFontSize: number;
+  /** Text size of the AI chat in pixels, 10..24. */
+  chatFontSize: number;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
@@ -117,6 +121,12 @@ export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_FAMILY_LENGTH = 200;
 export const DEFAULT_FONT_FAMILY = '"JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace';
 export const MAX_FONT_SIZE = 32;
+/** The interface and the AI chat are drawn for 13 px text; their sizes scale from it. */
+export const BASE_TEXT_SIZE = 13;
+export const MIN_UI_FONT_SIZE = 10;
+export const MAX_UI_FONT_SIZE = 20;
+export const MIN_CHAT_FONT_SIZE = 10;
+export const MAX_CHAT_FONT_SIZE = 24;
 export const MAX_TEXT_EDITOR_LENGTH = 1024;
 export const MAX_AI_HISTORY_CONTEXT = 20;
 export const MAX_AI_MODEL_LENGTH = 200;
@@ -159,11 +169,18 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
+  uiFontSize: 13,
+  chatFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
+export const clampUiFontSize = (size: number) => Math.min(MAX_UI_FONT_SIZE, Math.max(MIN_UI_FONT_SIZE, Math.round(size)));
+export const clampChatFontSize = (size: number) =>
+  Math.min(MAX_CHAT_FONT_SIZE, Math.max(MIN_CHAT_FONT_SIZE, Math.round(size)));
+const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? clamp(value) : fallback;
 
 const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback);
 
@@ -331,6 +348,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
+    uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
+    chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)
@@ -349,4 +368,10 @@ export type FontStep = "increase" | "decrease" | "reset";
 export function stepFontSize(size: number, step: FontStep): number {
   if (step === "reset") return DEFAULT_SETTINGS.fontSize;
   return clampFontSize(size + (step === "increase" ? 1 : -1));
+}
+
+/** The same keys while the AI chat has the focus change its text only. */
+export function stepChatFontSize(size: number, step: FontStep): number {
+  if (step === "reset") return DEFAULT_SETTINGS.chatFontSize;
+  return clampChatFontSize(size + (step === "increase" ? 1 : -1));
 }

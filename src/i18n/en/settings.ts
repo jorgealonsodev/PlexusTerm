@@ -27,11 +27,13 @@ export const settings = {
     fontsInstalled: "Installed on this computer",
     fontCustom: "Custom (typed below)",
     fontFamily: "Font family",
-    fontSize: "Font size",
+    fontSize: "Terminal font size",
     fontHelp:
       "{shortcuts} change the font size. Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
     fontHelpNoShortcut:
       "Prompt themes that draw icons (Powerlevel10k, agnoster, Starship) need a Nerd Font as the font family.",
+    uiFontSize: "Interface text size",
+    uiFontSizeHelp: "Size of the text in the bars, lists and dialogs, in pixels; the terminals and the AI chat have their own.",
     hideSidebar: "Hide the sidebar completely when folded",
     sidebarAtStartup: "Sidebar when PlexusTerm opens",
     sidebarLast: "As I left it",
@@ -90,6 +92,9 @@ export const settings = {
       "The text editor opens files from the SFTP browser: a program, or a command such as {command}; leave it empty to use the system default.",
   },
   ai: {
+    chatFontSize: "AI chat text size",
+    chatFontSizeHelp: "Size of the text in the AI chat, in pixels. With the focus in the chat, {shortcuts} change it.",
+    chatFontSizeHelpNoShortcut: "Size of the text in the AI chat, in pixels.",
     inlineSuggestions: "Inline suggestions",
     inlineSuggestionsHelp:
       "A grey suggestion of the rest of the command while you type. Right Arrow or End accepts it, Ctrl+Right accepts one word.",

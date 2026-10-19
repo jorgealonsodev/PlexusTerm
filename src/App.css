@@ -22,7 +22,7 @@
   /* Overridden at runtime from the colour scheme (features/settings/uiTheme.ts). */
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale, 1));
   color: var(--text);
   background: var(--bg);
 }
@@ -215,7 +215,7 @@ textarea::placeholder {
   background: none;
   border: none;
   color: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale, 1));
   line-height: 1;
   cursor: pointer;
   border-radius: 4px;
@@ -318,7 +318,7 @@ textarea::placeholder {
   opacity: 0.75;
   padding: 1px 6px;
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -410,7 +410,7 @@ textarea::placeholder {
 
 .dialog h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale, 1));
 }
 
 .dialog p {
@@ -558,7 +558,7 @@ textarea::placeholder {
 
 .btn--small {
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .sidebar__search {
@@ -619,7 +619,7 @@ textarea::placeholder {
   z-index: 1000;
   width: max-content;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   font-weight: 400;
   line-height: 1.4;
   white-space: normal;
@@ -710,7 +710,7 @@ textarea::placeholder {
 
 .tree-row__actions button {
   padding: 0 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   color: var(--muted);
   background: none;
   border: none;
@@ -785,7 +785,7 @@ body.is-resizing {
   min-width: 0;
   padding: 6px 1px 5px;
   font: inherit;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-scale, 1));
   font-weight: 600;
   letter-spacing: -0.2px;
   white-space: nowrap;
@@ -867,7 +867,7 @@ body.is-resizing {
   flex: 1;
   min-width: 0;
   font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .sftp__follow {
@@ -910,7 +910,7 @@ body.is-resizing {
   align-items: center;
   justify-content: center;
   width: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 /* File-type icons keep their own colour (dark or light scheme), not the git status colour; icons
@@ -931,7 +931,7 @@ body.is-resizing {
   place-items: center;
   width: 16px;
   font-family: "PlexusTerm Seti";
-  font-size: 20px;
+  font-size: calc(20px * var(--ui-scale, 1));
   line-height: 1;
   -webkit-font-smoothing: antialiased;
 }
@@ -995,7 +995,7 @@ body.is-resizing {
 .sftp-row__git {
   flex-shrink: 0;
   min-width: 12px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   font-weight: 600;
   text-align: center;
 }
@@ -1023,7 +1023,7 @@ body.is-resizing {
 .sftp-row__date {
   flex-shrink: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   text-align: end;
 }
 
@@ -1062,7 +1062,7 @@ body.is-resizing {
 .tunnel__detail {
   padding: 0 6px 0 20px;
   overflow-wrap: anywhere;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
   line-height: 1.4;
 }
@@ -1187,13 +1187,13 @@ body.is-resizing {
 /* Terminal comfort (S15) */
 .toolbar__settings {
   margin-inline-start: auto;
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale, 1));
   line-height: 1;
 }
 
 .tab__log {
   color: var(--danger);
-  font-size: 9px;
+  font-size: calc(9px * var(--ui-scale, 1));
 }
 
 /* A program in the tab rang the bell or sent a notification while nobody was looking. */
@@ -1277,7 +1277,7 @@ body.is-resizing {
 
 .find-bar__status {
   color: var(--danger);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   white-space: nowrap;
 }
 
@@ -1286,7 +1286,7 @@ body.is-resizing {
   align-items: center;
   gap: 3px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   white-space: nowrap;
 }
 
@@ -1296,7 +1296,7 @@ body.is-resizing {
   background: none;
   border: none;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-scale, 1));
   line-height: 1;
   cursor: pointer;
 }
@@ -1358,7 +1358,7 @@ body.is-resizing {
   padding: 8px;
   overflow: auto;
   font-family: "JetBrains Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   white-space: pre;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1419,7 +1419,7 @@ body.is-resizing {
 
 .macro__hotkey {
   padding: 0 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -1527,7 +1527,7 @@ body.is-resizing {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale, 1));
   line-height: 1.4;
   white-space: pre;
   overflow: hidden;
@@ -1699,7 +1699,7 @@ body.is-resizing {
 
 .shortcuts__group h3 {
   margin: 8px 0 2px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale, 1));
 }
 
 .shortcuts__row {
@@ -1769,6 +1769,9 @@ body.is-resizing {
 
 /* The AI chat pane below a terminal (S9). */
 .chat {
+  /* The AI chat has its own text size: every size inside it scales with --chat-scale. */
+  --ui-scale: var(--chat-scale, 1);
+  font-size: calc(13px * var(--ui-scale));
   position: absolute;
   inset: 0;
   display: flex;
@@ -1804,7 +1807,7 @@ body.is-resizing {
   max-width: 100%;
   padding: 2px 6px;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   color: var(--muted);
   background: none;
   border: 1px solid transparent;
@@ -1857,7 +1860,7 @@ body.is-resizing {
   align-items: baseline;
   gap: 8px;
   padding: 5px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   cursor: pointer;
 }
 
@@ -1886,13 +1889,13 @@ body.is-resizing {
 
 .model-picker__provider {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
 }
 
 .model-picker__message {
   margin: 4px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .chat__close,
@@ -2056,7 +2059,7 @@ body.is-resizing {
   bottom: 4px;
   z-index: 2;
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
   background: color-mix(in srgb, var(--surface) 85%, transparent);
   border-radius: 4px;
@@ -2104,7 +2107,7 @@ textarea {
   border-radius: 4px;
   background: var(--surface, var(--bg));
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   pointer-events: none;
   white-space: nowrap;
 }
@@ -2129,7 +2132,7 @@ body.is-dragging-path {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .chat__chip.chat__file {
@@ -2154,7 +2157,7 @@ body.is-dragging-path {
 
 .chat__attach-error {
   margin: 0 10px 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 /* The AI conversations list (S9), under the chat header. */
@@ -2181,7 +2184,7 @@ body.is-dragging-path {
 
 .chat__history-empty {
   margin: 6px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .chat__history-item {
@@ -2204,7 +2207,7 @@ body.is-dragging-path {
   gap: 8px;
   padding: 5px 6px;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   text-align: start;
   color: var(--text);
   background: none;
@@ -2222,7 +2225,7 @@ body.is-dragging-path {
 
 .chat__history-date {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   color: var(--muted);
 }
 
@@ -2242,7 +2245,7 @@ body.is-dragging-path {
   border-top: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   white-space: nowrap;
 }
 
@@ -2262,7 +2265,7 @@ body.is-dragging-path {
   min-width: 0;
   max-width: 40%;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
 }
 
 .pane-footer__branch svg {
@@ -2293,7 +2296,7 @@ body.is-dragging-path {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-scale, 1));
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -2378,7 +2381,7 @@ body.is-dragging-path {
 
 .tab--row {
   max-width: none;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-scale, 1));
   gap: 6px;
   padding: 4px 4px 4px 10px;
   border-inline-end: none;
@@ -2398,7 +2401,7 @@ body.is-dragging-path {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2432,7 +2435,7 @@ body.is-dragging-path {
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--text);
-  font-size: 8px;
+  font-size: calc(8px * var(--ui-scale, 1));
   font-weight: 700;
   line-height: 1;
 }
@@ -2496,7 +2499,7 @@ body.is-dragging-path {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2505,7 +2508,7 @@ body.is-dragging-path {
 .viewer__dirty {
   flex: none;
   color: var(--accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   line-height: 1;
 }
 
@@ -2556,7 +2559,7 @@ body.is-dragging-path {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   cursor: pointer;
 }
 
@@ -2639,7 +2642,7 @@ body.is-dragging-path {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale, 1));
   pointer-events: auto;
 }
 
@@ -2707,7 +2710,7 @@ body.is-dragging-path {
   overflow: auto;
   border-radius: 4px;
   background: var(--bg);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1));
   white-space: pre-wrap;
 }
 

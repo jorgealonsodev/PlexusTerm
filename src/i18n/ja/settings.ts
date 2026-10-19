@@ -30,11 +30,13 @@ export const settings: Messages<typeof en> = {
     fontsInstalled: "このコンピューターにインストール済み",
     fontCustom: "カスタム（下に入力）",
     fontFamily: "フォントファミリー",
-    fontSize: "フォントサイズ",
+    fontSize: "ターミナルのフォントサイズ",
     fontHelp:
       "{shortcuts} でフォントサイズを変更できます。アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
     fontHelpNoShortcut:
       "アイコンを描画するプロンプトテーマ (Powerlevel10k、agnoster、Starship) には、フォントに Nerd Font を指定する必要があります。",
+    uiFontSize: "インターフェースの文字サイズ",
+    uiFontSizeHelp: "バー、リスト、ダイアログの文字サイズ (ピクセル)。ターミナルと AI チャットはそれぞれ独自のサイズを持ちます。",
     hideSidebar: "折りたたみ時にサイドバーを完全に隠す",
     sidebarAtStartup: "PlexusTerm 起動時のサイドバー",
     sidebarLast: "前回のまま",
@@ -92,6 +94,9 @@ export const settings: Messages<typeof en> = {
       "SFTP ブラウザーのファイルを開くテキストエディターです。プログラム、または {command} のようなコマンドを指定します。空欄にするとシステムの既定を使用します。",
   },
   ai: {
+    chatFontSize: "AI チャットの文字サイズ",
+    chatFontSizeHelp: "AI チャットの文字サイズ (ピクセル)。チャットにフォーカスがあるときは {shortcuts} で変更できます。",
+    chatFontSizeHelpNoShortcut: "AI チャットの文字サイズ (ピクセル)。",
     inlineSuggestions: "インライン候補",
     inlineSuggestionsHelp:
       "入力中に、コマンドの残りの部分をグレーで候補表示します。右矢印キーまたは End で確定し、Ctrl+右矢印キーで 1 単語ずつ確定します。",

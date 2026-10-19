@@ -30,11 +30,13 @@ export const settings: Messages<typeof en> = {
     fontsInstalled: "مثبتة على هذا الكمبيوتر",
     fontCustom: "مخصص (مكتوب أدناه)",
     fontFamily: "عائلة الخط",
-    fontSize: "حجم الخط",
+    fontSize: "حجم خط الطرفية",
     fontHelp:
       "تغيّر {shortcuts} حجم الخط. تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
     fontHelpNoShortcut:
       "تحتاج سمات موجّه الأوامر التي ترسم أيقونات (Powerlevel10k وagnoster وStarship) إلى خط Nerd Font كعائلة للخط.",
+    uiFontSize: "حجم نص الواجهة",
+    uiFontSizeHelp: "حجم النص في الأشرطة والقوائم ومربعات الحوار بالبكسل؛ للطرفيات ولمحادثة الذكاء الاصطناعي حجمها الخاص.",
     hideSidebar: "إخفاء الشريط الجانبي تمامًا عند طيّه",
     sidebarAtStartup: "الشريط الجانبي عند فتح PlexusTerm",
     sidebarLast: "كما تركته",
@@ -92,6 +94,9 @@ export const settings: Messages<typeof en> = {
       "يفتح محرر النصوص الملفات من متصفح SFTP: برنامج، أو أمر مثل {command}؛ اتركه فارغًا لاستخدام افتراضي النظام.",
   },
   ai: {
+    chatFontSize: "حجم نص محادثة الذكاء الاصطناعي",
+    chatFontSizeHelp: "حجم النص في محادثة الذكاء الاصطناعي بالبكسل. عندما يكون التركيز في المحادثة، تغيّره {shortcuts}.",
+    chatFontSizeHelpNoShortcut: "حجم النص في محادثة الذكاء الاصطناعي بالبكسل.",
     inlineSuggestions: "الاقتراحات المضمّنة",
     inlineSuggestionsHelp:
       "اقتراح رمادي لبقية الأمر أثناء الكتابة. يقبله السهم الأيمن أو End، ويقبل Ctrl+السهم الأيمن كلمة واحدة.",

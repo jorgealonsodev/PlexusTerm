@@ -30,11 +30,13 @@ export const settings: Messages<typeof en> = {
     fontsInstalled: "Auf diesem Computer installiert",
     fontCustom: "Eigene (unten eingegeben)",
     fontFamily: "Schriftart",
-    fontSize: "Schriftgröße",
+    fontSize: "Schriftgröße des Terminals",
     fontHelp:
       "{shortcuts} ändern die Schriftgröße. Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
     fontHelpNoShortcut:
       "Prompt-Themes mit Symbolen (Powerlevel10k, agnoster, Starship) benötigen eine Nerd Font als Schriftart.",
+    uiFontSize: "Textgröße der Oberfläche",
+    uiFontSizeHelp: "Größe des Texts in Leisten, Listen und Dialogen, in Pixeln; die Terminals und der KI-Chat haben ihre eigene.",
     hideSidebar: "Seitenleiste beim Einklappen vollständig ausblenden",
     sidebarAtStartup: "Seitenleiste beim Start von PlexusTerm",
     sidebarLast: "Wie ich sie verlassen habe",
@@ -92,6 +94,9 @@ export const settings: Messages<typeof en> = {
       "Der Texteditor öffnet Dateien aus dem SFTP-Browser: ein Programm oder ein Befehl wie {command}; leer lassen, um den Systemstandard zu verwenden.",
   },
   ai: {
+    chatFontSize: "Textgröße des KI-Chats",
+    chatFontSizeHelp: "Größe des Texts im KI-Chat, in Pixeln. Mit dem Fokus im Chat ändern {shortcuts} sie.",
+    chatFontSizeHelpNoShortcut: "Größe des Texts im KI-Chat, in Pixeln.",
     inlineSuggestions: "Inline-Vorschläge",
     inlineSuggestionsHelp:
       "Ein grauer Vorschlag für den Rest des Befehls während der Eingabe. Pfeil rechts oder End übernimmt ihn, Ctrl+Pfeil rechts übernimmt ein Wort.",

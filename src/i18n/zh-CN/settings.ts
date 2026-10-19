@@ -30,11 +30,13 @@ export const settings: Messages<typeof en> = {
     fontsInstalled: "此电脑上已安装",
     fontCustom: "自定义（在下方输入）",
     fontFamily: "字体族",
-    fontSize: "字号",
+    fontSize: "终端字体大小",
     fontHelp:
       "{shortcuts} 可调整字号。会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
     fontHelpNoShortcut:
       "会绘制图标的提示符主题（Powerlevel10k、agnoster、Starship）需要将字体设为 Nerd Font。",
+    uiFontSize: "界面文字大小",
+    uiFontSizeHelp: "栏、列表和对话框中的文字大小(像素);终端和 AI 聊天各有自己的大小。",
     hideSidebar: "折叠时完全隐藏侧边栏",
     sidebarAtStartup: "PlexusTerm 启动时的侧边栏",
     sidebarLast: "保持上次状态",
@@ -91,6 +93,9 @@ export const settings: Messages<typeof en> = {
     textEditorHelp: "用于打开 SFTP 浏览器中文件的文本编辑器：可以是程序，也可以是 {command} 这样的命令；留空则使用系统默认。",
   },
   ai: {
+    chatFontSize: "AI 聊天文字大小",
+    chatFontSizeHelp: "AI 聊天中的文字大小(像素)。焦点在聊天中时,{shortcuts} 可以更改它。",
+    chatFontSizeHelpNoShortcut: "AI 聊天中的文字大小(像素)。",
     inlineSuggestions: "内联建议",
     inlineSuggestionsHelp: "输入时以灰色显示命令其余部分的建议。按右方向键或 End 接受，按 Ctrl+右方向键接受一个单词。",
     commandHistory: "命令历史",

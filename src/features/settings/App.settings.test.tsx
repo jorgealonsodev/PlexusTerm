@@ -44,11 +44,51 @@ describe("App settings (S15.2, S15.6)", () => {
     expect(saved().map((s) => s.fontSize)).toEqual([15, 16, 15, 14]);
   });
 
+  it("changes only the AI chat text with Ctrl+= / Ctrl+- / Ctrl+0 while the chat has the focus", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    const chat = document.createElement("section");
+    chat.className = "chat";
+    const input = document.createElement("textarea");
+    chat.appendChild(input);
+    document.body.appendChild(chat);
+    try {
+      input.focus();
+      const ctrl = (key: string) => act(() => void fireEvent.keyDown(input, { key, ctrlKey: true }));
+      ctrl("=");
+      ctrl("=");
+      expect(document.documentElement.style.getPropertyValue("--chat-scale")).toBe(String(15 / 13));
+      expect(screen.getByTestId("terminal").textContent).toBe("font 14");
+      ctrl("0");
+      expect(document.documentElement.style.getPropertyValue("--chat-scale")).toBe("1");
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(saved().map((s) => s.chatFontSize)).toEqual([14, 15, 13]);
+      expect(saved().every((s) => s.fontSize === 14)).toBe(true);
+    } finally {
+      chat.remove();
+    }
+  });
+
+  it("sets the interface and the chat text sizes from Settings, apart from the terminal's", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText("Interface text size"), { target: { value: "16" } });
+    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+    fireEvent.change(screen.getByLabelText("AI chat text size"), { target: { value: "18" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(String(16 / 13));
+    expect(document.documentElement.style.getPropertyValue("--chat-scale")).toBe(String(18 / 13));
+    expect(screen.getByTestId("terminal").textContent).toBe("font 14");
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(saved().slice(-1)[0]).toMatchObject({ uiFontSize: 16, chatFontSize: 18, fontSize: 14 });
+  });
+
   it("edits the settings from the toolbar gear", async () => {
     render(<App />);
     await act(() => Promise.resolve());
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "20" } });
     fireEvent.click(screen.getByLabelText("Right click pastes"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByTestId("terminal").textContent).toBe("font 20");

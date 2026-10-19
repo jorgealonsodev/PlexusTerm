@@ -20,6 +20,12 @@ import {
   cleanLocalShell,
   clampAiHistoryContext,
   clampFontSize,
+  clampChatFontSize,
+  clampUiFontSize,
+  MIN_UI_FONT_SIZE,
+  MAX_UI_FONT_SIZE,
+  MIN_CHAT_FONT_SIZE,
+  MAX_CHAT_FONT_SIZE,
   cleanAiBaseUrl,
   cleanAiModel,
   cleanFontFamily,
@@ -278,6 +284,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     onLanguageNow?.(next);
   };
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
+  const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
+  const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
@@ -364,9 +372,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const size = Number.parseFloat(fontSize);
+    const uiSize = Number.parseFloat(uiFontSize);
+    const chatSize = Number.parseFloat(chatFontSize);
     const context = Number.parseFloat(aiHistoryContext);
     onSave({
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
+      uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
+      chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       copyOnSelect,
       rightClickPastes,
       confirmMultilinePaste,
@@ -544,6 +556,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ? t("settings.appearance.fontHelp", { shortcuts: fontShortcuts })
                 : t("settings.appearance.fontHelpNoShortcut")}
             </p>
+            <label className="field field--port">
+              {t("settings.appearance.uiFontSize")}
+              <input
+                type="number"
+                min={MIN_UI_FONT_SIZE}
+                max={MAX_UI_FONT_SIZE}
+                value={uiFontSize}
+                onChange={(e) => setUiFontSize(e.target.value)}
+              />
+            </label>
+            <p className="muted">{t("settings.appearance.uiFontSizeHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
@@ -729,6 +752,21 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("ai")}>
+            <label className="field field--port">
+              {t("settings.ai.chatFontSize")}
+              <input
+                type="number"
+                min={MIN_CHAT_FONT_SIZE}
+                max={MAX_CHAT_FONT_SIZE}
+                value={chatFontSize}
+                onChange={(e) => setChatFontSize(e.target.value)}
+              />
+            </label>
+            <p className="muted">
+              {fontShortcuts
+                ? t("settings.ai.chatFontSizeHelp", { shortcuts: fontShortcuts })
+                : t("settings.ai.chatFontSizeHelpNoShortcut")}
+            </p>
             <label className="check">
               <input
                 type="checkbox"

@@ -30,11 +30,13 @@ export const settings: Messages<typeof en> = {
     fontsInstalled: "Installées sur cet ordinateur",
     fontCustom: "Personnalisée (saisie ci-dessous)",
     fontFamily: "Famille de police",
-    fontSize: "Taille de police",
+    fontSize: "Taille de police du terminal",
     fontHelp:
       "{shortcuts} modifient la taille de police. Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
     fontHelpNoShortcut:
       "Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
+    uiFontSize: "Taille du texte de l'interface",
+    uiFontSizeHelp: "Taille du texte des barres, listes et boîtes de dialogue, en pixels ; les terminaux et le chat IA ont la leur.",
     hideSidebar: "Masquer complètement la barre latérale une fois repliée",
     sidebarAtStartup: "Barre latérale à l’ouverture de PlexusTerm",
     sidebarLast: "Comme je l’ai laissée",
@@ -92,6 +94,9 @@ export const settings: Messages<typeof en> = {
       "L'éditeur de texte ouvre les fichiers du navigateur SFTP : un programme, ou une commande comme {command} ; laissez vide pour utiliser la valeur par défaut du système.",
   },
   ai: {
+    chatFontSize: "Taille du texte du chat IA",
+    chatFontSizeHelp: "Taille du texte du chat IA, en pixels. Avec le focus dans le chat, {shortcuts} la modifient.",
+    chatFontSizeHelpNoShortcut: "Taille du texte du chat IA, en pixels.",
     inlineSuggestions: "Suggestions en ligne",
     inlineSuggestionsHelp:
       "Une suggestion grisée de la suite de la commande pendant la saisie. Flèche droite ou End l'accepte, Ctrl+Flèche droite accepte un mot.",

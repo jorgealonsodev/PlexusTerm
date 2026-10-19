@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, parseSettings, serializeSettings, stepFontSize } from "./settings";
+import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
@@ -46,6 +46,8 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      uiFontSize: 13,
+      chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -112,6 +114,8 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      uiFontSize: 13,
+      chatFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -278,6 +282,8 @@ describe("serializeSettings", () => {
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,
+      uiFontSize: 15,
+      chatFontSize: 17,
       devCommands: ["aider"],
       tabColumnWidth: 300,
     };
@@ -362,5 +368,21 @@ describe("DEV tab column width (S13)", () => {
     expect(parseSettings(JSON.stringify({ tabColumnWidth: 10 })).tabColumnWidth).toBe(140);
     expect(parseSettings(JSON.stringify({ tabColumnWidth: 9999 })).tabColumnWidth).toBe(480);
     expect(parseSettings(JSON.stringify({ tabColumnWidth: "wide" })).tabColumnWidth).toBeNull();
+  });
+});
+
+describe("interface and chat text sizes", () => {
+  it("default to 13 px and stay within their ranges", () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({ uiFontSize: 13, chatFontSize: 13 });
+    expect(parseSettings(JSON.stringify({ uiFontSize: 99, chatFontSize: 1 }))).toMatchObject({ uiFontSize: 20, chatFontSize: 10 });
+    expect(parseSettings(JSON.stringify({ uiFontSize: "big", chatFontSize: 15.6 }))).toMatchObject({ uiFontSize: 13, chatFontSize: 16 });
+  });
+
+  it("steps the chat text with Ctrl+= / Ctrl+- / Ctrl+0 within 10..24", () => {
+    expect(stepChatFontSize(13, "increase")).toBe(14);
+    expect(stepChatFontSize(13, "decrease")).toBe(12);
+    expect(stepChatFontSize(24, "increase")).toBe(24);
+    expect(stepChatFontSize(10, "decrease")).toBe(10);
+    expect(stepChatFontSize(20, "reset")).toBe(13);
   });
 });
