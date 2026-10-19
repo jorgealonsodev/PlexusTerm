@@ -247,6 +247,10 @@ textarea::placeholder {
   position: absolute;
   inset: 0;
   padding: 6px;
+  /* xterm's FitAddon reads this element's height and width as the room for the rows and
+     columns: with border-box they would count the padding, and the last row would overlap
+     the bar under the terminal. */
+  box-sizing: content-box;
   background: var(--bg);
 }
 
