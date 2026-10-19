@@ -128,6 +128,8 @@ export const app: Messages<typeof en> = {
     save: "सहेजें",
     saveHint: "सहेजें (Ctrl+S)",
     unsaved: "बिना सहेजे बदलाव",
+    discardQuestion: '"{name}" को बिना सहेजे बंद करें? आपके बदलाव खो जाएँगे।',
+    discard: 'छोड़ें',
   },
   toolbarColor: {
     red: "लाल",

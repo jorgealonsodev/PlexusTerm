@@ -61,7 +61,7 @@ import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
-import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type ViewerLink } from "./features/tabs/tabs";
+import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type TabsAction, type ViewerLink } from "./features/tabs/tabs";
 import { FileViewer } from "./features/viewer/FileViewer";
 import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
@@ -288,6 +288,37 @@ function AppContent() {
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
   const t = useT();
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  /** Viewers holding unsaved edits, as `tabKey\npaneId`. */
+  const unsavedViewers = useRef(new Set<string>());
+  const markUnsaved = (tabKey: string, paneId: string, dirty: boolean) => {
+    const id = `${tabKey}\n${paneId}`;
+    if (dirty) unsavedViewers.current.add(id);
+    else unsavedViewers.current.delete(id);
+  };
+  /**
+   * Dispatches a tab action, asking first when it would close a viewer holding unsaved edits or
+   * show another file in it (its tab, its terminal or the viewer itself closing).
+   */
+  const dispatchKeepingEdits = async (action: TabsAction) => {
+    const before = stateRef.current;
+    const after = tabsReducer(before, action);
+    const lost = before.tabs.flatMap((tab) =>
+      Object.entries(tab.viewers ?? {})
+        .filter(([paneId, viewer]) => {
+          if (!unsavedViewers.current.has(`${tab.key}\n${paneId}`)) return false;
+          const kept = after.tabs.find((next) => next.key === tab.key)?.viewers?.[paneId];
+          return kept?.opened !== viewer.opened;
+        })
+        .map(([, viewer]) => basename(viewer.path)),
+    );
+    if (lost.length > 0) {
+      const question = t("app.viewer.discardQuestion", { name: lost.join(", ") });
+      if (!(await dialogs.confirm({ message: question, confirmLabel: t("app.viewer.discard"), danger: true }))) return;
+    }
+    dispatch(action);
+  };
   const sessions = useSessionLibrary();
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
@@ -869,7 +900,7 @@ function AppContent() {
     const terminal = terminalPaneOf(activeTab);
     const hasViewer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal);
     if (!hasViewer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.viewer.full"));
-    dispatch({ type: "openViewer", key: activeTab.key, path, origin });
+    void dispatchKeepingEdits({ type: "openViewer", key: activeTab.key, path, origin });
   };
   /**
    * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the
@@ -1074,8 +1105,8 @@ function AppContent() {
       }
       if (!activeTab) return;
       const key = activeTab.key;
-      if (shortcut.type === "closeTab") dispatch({ type: "close", key });
-      else if (shortcut.type === "closePane") dispatch({ type: "closePane", key, paneId: activeTab.focusedPane });
+      if (shortcut.type === "closeTab") void dispatchKeepingEdits({ type: "close", key });
+      else if (shortcut.type === "closePane") void dispatchKeepingEdits({ type: "closePane", key, paneId: activeTab.focusedPane });
       else if (shortcut.type === "split") dispatch({ type: "split", key, direction: shortcut.direction });
       else dispatch({ type: "focusDirection", key, direction: shortcut.direction });
     };
@@ -1400,7 +1431,7 @@ function AppContent() {
             columnWidth={settings.tabColumnWidth}
             onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}
-            onClose={(key) => dispatch({ type: "close", key })}
+            onClose={(key) => void dispatchKeepingEdits({ type: "close", key })}
             onNew={() => {
               // From the DEV column the new terminal stays in DEV mode, as the column does.
               if (activeDev) devOnStart.current = `tab-${state.nextSeq}`;
@@ -1412,9 +1443,9 @@ function AppContent() {
               dispatch({ type: "duplicate", key });
             }}
             onColor={colorTab}
-            onCloseOthers={(key) => dispatch({ type: "closeOthers", key })}
-            onCloseRight={(key) => dispatch({ type: "closeRight", key })}
-            onCloseAll={() => dispatch({ type: "closeAll" })}
+            onCloseOthers={(key) => void dispatchKeepingEdits({ type: "closeOthers", key })}
+            onCloseRight={(key) => void dispatchKeepingEdits({ type: "closeRight", key })}
+            onCloseAll={() => void dispatchKeepingEdits({ type: "closeAll" })}
             onCopyHost={(host) =>
               void writeText(host).catch(() => setNotice(t("app.notice.copyFailed")))
             }
@@ -1441,10 +1472,11 @@ function AppContent() {
                             load={() => viewFile(viewer)}
                             save={(expected, content) => saveViewedFile(viewer, expected, content)}
                             autoSave={terminalSettings.settings.viewerAutoSave}
+                            onDirtyChange={(dirty) => markUnsaved(tab.key, paneId, dirty)}
                             // It follows the file while its terminal works (an AI tool editing it).
                             subscribeOutput={outputOf(viewer.terminalPaneId)}
                             prompt={paneMeta[viewer.terminalPaneId]?.prompts ?? 0}
-                            onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                            onClose={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
                           />
                         );
                       }
@@ -1463,7 +1495,7 @@ function AppContent() {
                                 onRun={(command) => runFromChat(tab, link, command)}
                                 onSelectModel={(aiProvider, aiModel) => terminalSettings.update({ aiProvider, aiModel })}
                                 onOpenSettings={() => setModal({ kind: "settings", section: "ai" })}
-                                onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                                onClose={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
                                 registerDropTarget={(target) => chatDrops.register(paneId, target)}
                               />
                             </div>
@@ -1482,7 +1514,7 @@ function AppContent() {
                               if (paneId === tab.focusedPane) dispatch({ type: "rename", key: tab.key, title });
                               dev.title(tab.key, paneId, title, settings.devCommands);
                             }}
-                            onExit={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                            onExit={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
                             onCwd={(cwd) => updatePane(paneId, { cwd })}
                             onSession={(sessionId) => {
                               updatePane(paneId, { sessionId });
@@ -1543,7 +1575,7 @@ function AppContent() {
                           {paneIds(tab.layout).length > 1 && (
                             <PaneCloseButton
                               shortcut={shortcutLabel("closePane", settings.shortcuts)}
-                              onClose={() => dispatch({ type: "closePane", key: tab.key, paneId })}
+                              onClose={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
                             />
                           )}
                           {multiExec && (

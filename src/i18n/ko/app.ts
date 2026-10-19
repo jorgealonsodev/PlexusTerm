@@ -127,6 +127,8 @@ export const app: Messages<typeof en> = {
     save: "저장",
     saveHint: "저장 (Ctrl+S)",
     unsaved: "저장되지 않은 변경 사항",
+    discardQuestion: '"{name}"을(를) 저장하지 않고 닫을까요? 변경 사항이 사라집니다.',
+    discard: '버리기',
   },
   toolbarColor: {
     red: "빨강",

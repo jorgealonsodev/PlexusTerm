@@ -127,6 +127,8 @@ export const app = {
     save: "Save",
     saveHint: "Save (Ctrl+S)",
     unsaved: "Unsaved changes",
+    discardQuestion: 'Close "{name}" without saving? Your changes will be lost.',
+    discard: 'Discard',
   },
   toolbarColor: {
     red: "Red",

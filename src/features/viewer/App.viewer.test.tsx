@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useEffect } from "react";
+import { EditorView } from "@codemirror/view";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import App from "../../App";
@@ -148,5 +149,64 @@ describe("File viewer in a tab", () => {
     edits.n = 1;
     act(() => terminals[0].print("Editing a.txt…"));
     await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt v1"), { timeout: 3000 });
+  });
+});
+
+describe("Closing a viewer with unsaved edits", () => {
+  const viewerText = () => document.querySelector(".viewer .cm-content")?.textContent;
+  const edit = () =>
+    act(() => {
+      const dom = document.querySelector<HTMLElement>(".viewer .cm-editor")!;
+      const view = EditorView.findFromDOM(dom)!;
+      view.dispatch({ changes: { from: 0, insert: "edited " }, userEvent: "input.type" });
+    });
+  const view = async (name: string) => {
+    fireEvent.contextMenu(screen.getAllByText(name).find((el) => el.closest("li"))!);
+    fireEvent.click(screen.getByRole("menuitem", { name: "View" }));
+  };
+  const question = 'Close "a.txt" without saving? Your changes will be lost.';
+  const dialog = () => screen.queryByRole("alertdialog", { name: question });
+
+  it("asks before the × closes it; Cancel keeps the edits, Discard closes it", async () => {
+    render(<App />);
+    await screen.findByText("a.txt");
+    await view("a.txt");
+    await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt"));
+    edit();
+    fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog", { name: question })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect(viewerText()).toBe("edited local /home/me/a.txt");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog", { name: question })).getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(document.querySelector(".viewer")).toBeNull());
+  });
+
+  it("asks before another file replaces it and before its tab closes", async () => {
+    render(<App />);
+    await screen.findByText("a.txt");
+    await view("a.txt");
+    await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt"));
+    edit();
+    await view("a.txt");
+    fireEvent.click(within(await screen.findByRole("alertdialog", { name: question })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect(viewerText()).toBe("edited local /home/me/a.txt");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^Close Local shell/ })[0]);
+    fireEvent.click(within(await screen.findByRole("alertdialog", { name: question })).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect(viewerText()).toBe("edited local /home/me/a.txt");
+  });
+
+  it("closes without asking when nothing is unsaved", async () => {
+    render(<App />);
+    await screen.findByText("a.txt");
+    await view("a.txt");
+    await waitFor(() => expect(viewerText()).toBe("local /home/me/a.txt"));
+    fireEvent.click(screen.getByRole("button", { name: "Close viewer" }));
+    await waitFor(() => expect(document.querySelector(".viewer")).toBeNull());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 });

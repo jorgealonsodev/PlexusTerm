@@ -129,6 +129,8 @@ export const app: Messages<typeof en> = {
     save: "Speichern",
     saveHint: "Speichern (Strg+S)",
     unsaved: "Nicht gespeicherte Änderungen",
+    discardQuestion: '"{name}" schließen, ohne zu speichern? Ihre Änderungen gehen verloren.',
+    discard: 'Verwerfen',
   },
   toolbarColor: {
     red: "Rot",

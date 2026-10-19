@@ -128,6 +128,8 @@ export const app: Messages<typeof en> = {
     save: "保存",
     saveHint: "保存 (Ctrl+S)",
     unsaved: "未保存の変更",
+    discardQuestion: '"{name}" を保存せずに閉じますか? 変更は失われます。',
+    discard: '破棄',
   },
   toolbarColor: {
     red: "赤",

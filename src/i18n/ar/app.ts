@@ -132,6 +132,8 @@ export const app: Messages<typeof en> = {
     save: "حفظ",
     saveHint: "حفظ (Ctrl+S)",
     unsaved: "تغييرات غير محفوظة",
+    discardQuestion: 'إغلاق "{name}" دون حفظ؟ ستفقد تغييراتك.',
+    discard: 'تجاهل',
   },
   toolbarColor: {
     red: "أحمر",

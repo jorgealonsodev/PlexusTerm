@@ -127,6 +127,8 @@ export const app: Messages<typeof en> = {
     save: "保存",
     saveHint: "保存 (Ctrl+S)",
     unsaved: "未保存的更改",
+    discardQuestion: '不保存就关闭"{name}"?你的更改将会丢失。',
+    discard: '放弃',
   },
   toolbarColor: {
     red: "红色",

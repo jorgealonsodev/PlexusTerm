@@ -130,6 +130,8 @@ export const app: Messages<typeof en> = {
     save: "Enregistrer",
     saveHint: "Enregistrer (Ctrl+S)",
     unsaved: "Modifications non enregistrées",
+    discardQuestion: 'Fermer "{name}" sans enregistrer ? Vos modifications seront perdues.',
+    discard: 'Abandonner',
   },
   toolbarColor: {
     red: "Rouge",

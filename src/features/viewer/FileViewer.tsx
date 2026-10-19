@@ -37,6 +37,8 @@ interface FileViewerProps {
   save?: (expected: string, content: string) => Promise<void>;
   /** Saves by itself AUTO_SAVE_MS after typing stops. */
   autoSave?: boolean;
+  /** Told when the viewer starts or stops holding unsaved edits (and that it holds none once closed). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** The file is read again at most this often while its terminal prints. */
@@ -124,6 +126,7 @@ export function FileViewer({
   prompt,
   save,
   autoSave = false,
+  onDirtyChange,
 }: FileViewerProps) {
   const t = useT();
   const name = fileName(path);
@@ -147,6 +150,14 @@ export function FileViewer({
     autoSaveTimer.current = null;
   };
   useEffect(() => stopAutoSave, []);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+  useEffect(() => {
+    onDirtyChangeRef.current?.(dirty);
+    return () => {
+      if (dirty) onDirtyChangeRef.current?.(false);
+    };
+  }, [dirty]);
 
   useEffect(() => {
     let live = true;

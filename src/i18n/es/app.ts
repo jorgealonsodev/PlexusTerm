@@ -130,6 +130,8 @@ export const app: Messages<typeof en> = {
     save: "Guardar",
     saveHint: "Guardar (Ctrl+S)",
     unsaved: "Cambios sin guardar",
+    discardQuestion: '¿Cerrar "{name}" sin guardar? Se perderán los cambios.',
+    discard: 'Descartar',
   },
   toolbarColor: {
     red: "Rojo",
