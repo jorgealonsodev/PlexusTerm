@@ -668,8 +668,10 @@ export function TerminalView({
         // vim, less, top...: nothing typed there is a command line.
         line = EMPTY_LINE;
       } else {
-        // The prompt before the typed text, read before the line changes.
-        const prompt = promptBefore(cursorRow().toCursor, line.text);
+        // The prompt before the typed text, read before the line changes; only Enter needs it, and
+        // reading the screen on every key costs two row reads.
+        const enter = data.includes("\r") || data.includes("\n");
+        const prompt = enter ? promptBefore(cursorRow().toCursor, line.text) : "";
         // A line recalled from history or completed with Tab is only known from the screen.
         const recalled = line.uncertain && data.includes("\r") ? onScreenCommand() : null;
         const result = feedInput(line, data);
