@@ -93,7 +93,8 @@ describe("SharedView (P3)", () => {
     expect(term.size).toEqual({ cols: 120, rows: 40 });
     await emit({ event: "output", data: "hello" });
     expect(term.written).toEqual(["hello"]);
-    expect(screen.getByText("Remote, untrusted content")).toBeTruthy();
+    const untrusted = screen.getByText("Terminal of another computer");
+    expect(untrusted.closest("[title]")?.getAttribute("title")).toContain("cannot use your clipboard");
   });
 
   it("types only with Can type, while live and not paused", async () => {

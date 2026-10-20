@@ -224,7 +224,7 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
   return (
     <div className="terminal-pane shared-pane" hidden={!active}>
       <div className="shared-pane__bar" role="status" aria-live="polite">
-        <span className="shared-pane__untrusted">
+        <span className="shared-pane__untrusted" title={t("share.view.untrustedHelp")}>
           <ShieldAlert size={14} aria-hidden="true" />
           {t("share.view.untrusted")}
         </span>
