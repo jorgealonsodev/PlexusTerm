@@ -26,6 +26,7 @@ export const sessions: Messages<typeof en> = {
     moshOrphanTooltip: "mosh (a sessão SSH dele não existe mais)",
   },
   menu: {
+    copySshCommand: "Copiar comando SSH",
     edit: "Editar…",
     duplicate: "Duplicar",
     connectAll: "Conectar todas ({count})",

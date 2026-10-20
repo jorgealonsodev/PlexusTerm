@@ -24,6 +24,7 @@ export const sessions = {
     moshOrphanTooltip: "mosh (its SSH session no longer exists)",
   },
   menu: {
+    copySshCommand: "Copy SSH command",
     edit: "Edit…",
     duplicate: "Duplicate",
     connectAll: "Connect all ({count})",

@@ -26,6 +26,7 @@ export const sessions: Messages<typeof en> = {
     moshOrphanTooltip: "mosh(SSH 세션이 더 이상 존재하지 않음)",
   },
   menu: {
+    copySshCommand: "SSH 명령 복사",
     edit: "편집…",
     duplicate: "복제",
     connectAll: "모두 연결({count})",

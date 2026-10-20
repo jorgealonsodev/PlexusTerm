@@ -424,3 +424,12 @@ export function toTarget(saved: DirectSession, password?: string): DirectTarget 
       : saved.auth;
   return { type: "ssh", host: saved.host, port: saved.port, username: saved.username, auth };
 }
+
+/** A word for a POSIX shell: as is when it is plain, else single-quoted. */
+const shellWord = (word: string) => (/^[\w@%+=:,./~-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`);
+
+/** The `ssh` command that opens a saved SSH session: its port, its own key if it has one, user@host. */
+export function sshCommandOf(session: SavedSession): string {
+  const key = session.auth.method === "key" ? ` -i ${shellWord(session.auth.path)}` : "";
+  return `ssh -p ${session.port}${key} ${shellWord(`${session.username}@${session.host}`)}`;
+}

@@ -8,6 +8,8 @@ import { SessionsPanel } from "./SessionsPanel";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const clipboard = vi.hoisted(() => ({ writeText: vi.fn(async () => {}) }));
+vi.mock("../terminal/clipboard", () => clipboard);
 
 const web: SavedSession = {
   id: "1",
@@ -105,10 +107,35 @@ describe("SessionsPanel", () => {
     expect(container.querySelector(".tree-row--folder svg.tree-row__icon")?.getAttribute("data-kind")).toBe("folder");
   });
 
+  it("copies an SSH session as the ssh command that connects to it, with its own key", () => {
+    renderPanel();
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy SSH command" }));
+    expect(clipboard.writeText).toHaveBeenLastCalledWith("ssh -p 22 u@10.0.0.1");
+    cleanup();
+    const keyed: SavedSession = { ...web, id: "2", name: "keyed", port: 2222, auth: { method: "key", path: "~/.ssh/id_work" } };
+    renderPanel({ library: libraryReducer(emptyLibrary, { type: "saveSession", session: keyed }) });
+    fireEvent.contextMenu(screen.getByText("keyed"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy SSH command" }));
+    expect(clipboard.writeText).toHaveBeenLastCalledWith("ssh -p 2222 -i ~/.ssh/id_work u@10.0.0.1");
+    cleanup();
+    const spaced: SavedSession = { ...keyed, id: "3", name: "spaced", auth: { method: "key", path: "/home/me/my keys/id" } };
+    renderPanel({ library: libraryReducer(emptyLibrary, { type: "saveSession", session: spaced }) });
+    fireEvent.contextMenu(screen.getByText("spaced"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy SSH command" }));
+    expect(clipboard.writeText).toHaveBeenLastCalledWith("ssh -p 2222 -i '/home/me/my keys/id' u@10.0.0.1");
+  });
+
   it("opens a session menu on right click: connect, edit, duplicate, delete", () => {
     const props = renderPanel();
     fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect", "Edit…", "Duplicate", "Delete"]);
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "Connect",
+      "Copy SSH command",
+      "Edit…",
+      "Duplicate",
+      "Delete",
+    ]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Duplicate" }));
     expect(props.onDuplicate).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
     fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
@@ -144,10 +171,10 @@ describe("SessionsPanel", () => {
     expect(props.onDeleteFolder).toHaveBeenCalledWith("Prod");
   });
 
-  it("offers only Connect in the session menu while the library cannot be edited", () => {
+  it("offers only Connect and copying in the session menu while the library cannot be edited", () => {
     renderPanel({ status: { state: "error", message: "broken" } });
     fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect"]);
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect", "Copy SSH command"]);
   });
 
   it("collapses a folder when its row is clicked", () => {

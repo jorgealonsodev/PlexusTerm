@@ -7,6 +7,8 @@ import {
   isLocalSession,
   isMoshSession,
   isSerialSession,
+  isSshSession,
+  sshCommandOf,
   isTelnetSession,
   type LibrarySession,
   type SessionLibrary,
@@ -19,6 +21,7 @@ import { parseSshConfig } from "./sshConfigImport";
 import type { LibraryStatus } from "./useSessionLibrary";
 import { t, useT } from "../../i18n/i18n";
 import { HelpTip } from "../sidebar/HelpTip";
+import { writeText } from "../terminal/clipboard";
 
 interface SessionsPanelProps {
   library: SessionLibrary;
@@ -103,9 +106,13 @@ export function SessionsPanel(props: SessionsPanelProps) {
     if (m.kind === "session") {
       const { session } = m;
       const connect = { label: t("common.connect"), onSelect: () => props.onOpen(session) };
-      if (!editable) return [connect];
+      const copy = isSshSession(session)
+        ? [{ label: t("sessions.menu.copySshCommand"), onSelect: () => void writeText(sshCommandOf(session)).catch(() => {}) }]
+        : [];
+      if (!editable) return [connect, ...copy];
       return [
         connect,
+        ...copy,
         { label: t("sessions.menu.edit"), onSelect: () => props.onEdit(session) },
         { label: t("sessions.menu.duplicate"), onSelect: () => props.onDuplicate(session) },
         { separator: true },

@@ -27,6 +27,7 @@ export const sessions: Messages<typeof en> = {
     moshOrphanTooltip: "mosh (SSH セッションは存在しません)",
   },
   menu: {
+    copySshCommand: "SSH コマンドをコピー",
     edit: "編集…",
     duplicate: "複製",
     connectAll: "すべて接続 ({count})",

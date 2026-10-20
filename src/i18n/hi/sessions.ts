@@ -26,6 +26,7 @@ export const sessions: Messages<typeof en> = {
     moshOrphanTooltip: "mosh (इसका SSH सेशन अब मौजूद नहीं है)",
   },
   menu: {
+    copySshCommand: "SSH कमांड कॉपी करें",
     edit: "संपादित करें…",
     duplicate: "प्रतिलिपि बनाएँ",
     connectAll: "सभी कनेक्ट करें ({count})",
