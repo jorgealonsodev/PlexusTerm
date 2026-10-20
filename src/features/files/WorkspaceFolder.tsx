@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type LiHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLAttributes, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useT } from "../../i18n/i18n";
-import { ContextMenu } from "../menu/ContextMenu";
 import type { DirDrop } from "../drop/pathDrag";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { FileTree } from "./FileTree";
@@ -16,8 +14,8 @@ interface WorkspaceRootProps {
   onToggle: () => void;
   /** Coloured by what changed inside; null for nothing. */
   decoration: Decoration | null;
-  /** Given, the title's right-click menu removes the folder from the workspace. */
-  onRemove?: () => void;
+  /** The title's handlers, as a folder row's: its right-click menu and its drag onto a terminal. */
+  titleProps?: HTMLAttributes<HTMLDivElement>;
   children: ReactNode;
 }
 
@@ -25,19 +23,10 @@ interface WorkspaceRootProps {
  * A root of a DEV mode workspace with several folders, as in VS Code: a row with a chevron and the
  * folder's name that folds its tree, and a dot coloured by its git changes.
  */
-export function WorkspaceRoot({ name, path, open, onToggle, decoration, onRemove, children }: WorkspaceRootProps) {
-  const t = useT();
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+export function WorkspaceRoot({ name, path, open, onToggle, decoration, titleProps, children }: WorkspaceRootProps) {
   return (
     <section className="workspace-root" role="group" aria-label={name}>
-      <div
-        className="workspace-root__title"
-        title={path}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          if (onRemove) setMenu({ x: e.clientX, y: e.clientY });
-        }}
-      >
+      <div className="workspace-root__title" title={path} {...titleProps}>
         <button type="button" className="workspace-root__toggle" aria-expanded={open} onClick={onToggle}>
           {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
           <span className={`workspace-root__name${gitNameClass(decoration)}`}>{name}</span>
@@ -45,14 +34,6 @@ export function WorkspaceRoot({ name, path, open, onToggle, decoration, onRemove
         {decoration && <GitBadge decoration={decoration} />}
       </div>
       {open && children}
-      {menu && onRemove && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          items={[{ label: t("sftp.panel.workspace.remove"), onSelect: onRemove }]}
-          onClose={() => setMenu(null)}
-        />
-      )}
     </section>
   );
 }
@@ -72,7 +53,8 @@ interface WorkspaceFolderProps {
   onOpen: (entry: SftpEntry) => void;
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
-  onRemove: () => void;
+  /** The root title's handlers (menu with Remove folder from workspace, drag). */
+  titleProps: HTMLAttributes<HTMLDivElement>;
   /** Collapse Folders: changes when every open folder, this root included, should close. */
   collapse: number;
   /** Entries dropped on one of its folders (S2). */
@@ -121,7 +103,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
       open={open}
       onToggle={() => setOpen((v) => !v)}
       decoration={rootDecoration(gitEntries)}
-      onRemove={props.onRemove}
+      titleProps={props.titleProps}
     >
       {error ? (
         <p className="sidebar__note form-error" role="alert">

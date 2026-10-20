@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLAttributes } from "react";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
 import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
@@ -76,7 +76,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   const selected = selectedEntry?.path ?? null;
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry } | null>(null);
+  /** The open right-click menu; `onRemove` for the root of a folder added to the workspace. */
+  const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry; onRemove?: () => void } | null>(null);
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
   /** Where the recent folders' menu opens (under its button), or null while closed. */
   const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null);
@@ -243,7 +244,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     if (current.current.path !== null) await navigate(current.current.path);
   };
 
-  const menuItems = (entry: SftpEntry): ContextMenuItem[] => {
+  const menuItems = (entry: SftpEntry, onRemove?: () => void): ContextMenuItem[] => {
     const isFile = entry.kind !== "dir";
     const fileItems: ContextMenuItem[] = isFile
       ? [
@@ -270,6 +271,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       ...(platform === "windows"
         ? []
         : [{ label: t("sftp.menu.permissions"), onSelect: () => setDialog({ kind: "permissions" as const, entry }) }]),
+      ...(onRemove ? [{ separator: true as const }, { label: t("sftp.panel.workspace.remove"), onSelect: onRemove }] : []),
     ];
   };
 
@@ -389,6 +391,43 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     },
   });
 
+  /**
+   * A workspace root's title, as a folder row: the same menu (plus Remove folder from workspace
+   * for an added folder), drag onto a terminal and middle click.
+   */
+  const rootProps = (folder: string, onRemove?: () => void): HTMLAttributes<HTMLDivElement> => {
+    const asEntry = (): SftpEntry => ({
+      name: basename(folder),
+      path: folder,
+      kind: "dir",
+      size: 0,
+      modified: null,
+      permissions: null,
+      uid: null,
+      gid: null,
+      user: null,
+      group: null,
+    });
+    return {
+      onContextMenu: (e) => {
+        e.preventDefault();
+        const { clientX: x, clientY: y } = e;
+        // Its details for Properties and Permissions, when the folder can be read.
+        void Promise.resolve()
+          .then(() => local.stat(folder))
+          .catch(() => null)
+          .then((found) => setMenu({ x, y, entry: found ?? asEntry(), onRemove }));
+      },
+      onPointerDown: (e) => startPathDrag(e, { origin: { kind: "local" }, paths: [{ path: folder, isDir: true }] }, basename(folder)),
+      onMouseDown: (e) => e.button === 1 && e.preventDefault(),
+      onAuxClick: (e) => {
+        if (e.button !== 1) return;
+        e.preventDefault();
+        pathToTerminal(asEntry());
+      },
+    };
+  };
+
   const busy = path === null;
   const mainTree = (
     <FileTree
@@ -495,6 +534,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               open={mainOpen}
               onToggle={() => setMainOpen((v) => !v)}
               decoration={rootDecoration(gitEntries)}
+              titleProps={rootProps(path)}
             >
               {mainTree}
             </WorkspaceRoot>
@@ -526,12 +566,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               onOpen={(entry) => void openEntry(entry)}
               details={details}
               rowProps={rowProps}
-              onRemove={() => workspace.onRemove(folder)}
+              titleProps={rootProps(folder, () => workspace.onRemove(folder))}
               collapse={collapse}
               onDirDrop={(drop) => void moveDropped(drop)}
             />
           ))}
-        {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
+        {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry, menu.onRemove)} onClose={() => setMenu(null)} />}
         {recentMenu && recent && (
           <ContextMenu
             x={recentMenu.x}

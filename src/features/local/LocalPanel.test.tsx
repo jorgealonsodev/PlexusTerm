@@ -5,7 +5,7 @@ import { DialogProvider } from "../dialogs/DialogProvider";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { writeText } from "../terminal/clipboard";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { deliverDrop } from "../drop/pathDrag";
+import { deliverDrop, setDropHandler } from "../drop/pathDrag";
 import { LocalPanel } from "./LocalPanel";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
@@ -510,11 +510,50 @@ describe("workspace folders in DEV mode", () => {
     expect(title.getAttribute("aria-expanded")).toBe("false");
     // Removed from its right-click menu (the main folder has no such item).
     fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
+    await screen.findByRole("menuitem", { name: "Properties" });
     expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.contextMenu(title, { clientX: 1, clientY: 1 });
-    fireEvent.click(screen.getByRole("menuitem", { name: "Remove folder from workspace" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove folder from workspace" }));
     expect(onRemove).toHaveBeenCalledWith("/work/api");
+  });
+
+  it("gives each root title the menu and the drag of a folder row", async () => {
+    listing();
+    const onRemove = vi.fn();
+    const onPathToTerminal = vi.fn();
+    render(
+      panel({
+        devStyle: true,
+        onPathToTerminal,
+        workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove, onOpenFolders: () => {} },
+      }),
+    );
+    const main = await screen.findByRole("group", { name: "me" });
+    const root = await screen.findByRole("group", { name: "api" });
+    const title = (group: HTMLElement) => group.querySelector<HTMLElement>(".workspace-root__title")!;
+    // The folder's own menu; only an added folder can be removed from the workspace.
+    fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
+    expect(await screen.findByRole("menuitem", { name: "Copy file path" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Rename…" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.contextMenu(within(root).getByRole("button", { name: "api" }), { clientX: 1, clientY: 1 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy file path to terminal" }));
+    expect(onPathToTerminal).toHaveBeenCalledWith("/work/api");
+    fireEvent.contextMenu(within(root).getByRole("button", { name: "api" }), { clientX: 1, clientY: 1 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove folder from workspace" }));
+    expect(onRemove).toHaveBeenCalledWith("/work/api");
+    // Dragged like a folder row: the drop gets the root as a folder.
+    const drops: unknown[] = [];
+    const stop = setDropHandler((drag) => drops.push(drag));
+    document.elementFromPoint = () => null;
+    fireEvent.pointerDown(title(root), { clientX: 10, clientY: 10, button: 0 });
+    fireEvent.pointerMove(window, { clientX: 400, clientY: 300 });
+    expect(document.querySelector(".path-drag")?.textContent).toBe("api");
+    fireEvent.pointerUp(window, { clientX: 400, clientY: 300 });
+    stop();
+    expect(drops).toEqual([{ origin: { kind: "local" }, paths: [{ path: "/work/api", isDir: true }] }]);
   });
 
   it("keeps the plain tree, without root titles, while no folder is added", async () => {
