@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "Gib einen Tab über dein eigenes plexusterm-relay frei: andere öffnen seinen Link im Browser.",
+    installRelay: "So installierst du das Relay",
     relayUrl: "Relay-URL",
     relayUrlHelp: "Die öffentliche Adresse des Relays, z. B. wss://relay.example.com.",
     viewerOrigin: "Viewer-Ursprung",

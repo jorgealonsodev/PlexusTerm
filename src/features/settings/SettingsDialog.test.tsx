@@ -845,3 +845,14 @@ describe("Open-source licenses in About", () => {
   });
 });
 
+
+describe("SettingsDialog > Sharing", () => {
+  it("links to the relay's project to install it", () => {
+    onTestFinished(() => {
+      opener.openUrl.mockClear();
+    });
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} initialSection="sharing" />);
+    fireEvent.click(screen.getByRole("link", { name: "How to install the relay" }));
+    expect(opener.openUrl).toHaveBeenCalledWith("https://github.com/jorgealonsodev/plexusterm-relay");
+  });
+});

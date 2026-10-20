@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "通过你自己的 plexusterm-relay 共享标签页：其他人在浏览器中打开它的链接。",
+    installRelay: "如何安装中继",
     relayUrl: "中继 URL",
     relayUrlHelp: "中继的公开地址，例如 wss://relay.example.com。",
     viewerOrigin: "查看器来源",

@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "자체 plexusterm-relay를 통해 탭을 공유합니다. 다른 사람은 브라우저에서 링크를 엽니다.",
+    installRelay: "릴레이 설치 방법",
     relayUrl: "릴레이 URL",
     relayUrlHelp: "릴레이의 공개 주소(예: wss://relay.example.com).",
     viewerOrigin: "뷰어 출처",

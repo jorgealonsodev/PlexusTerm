@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "Compartilhe uma aba pelo seu próprio plexusterm-relay: outras pessoas abrem o link no navegador.",
+    installRelay: "Como instalar o relay",
     relayUrl: "URL do relay",
     relayUrlHelp: "O endereço público do relay, por exemplo wss://relay.example.com.",
     viewerOrigin: "Origem do visualizador",

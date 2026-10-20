@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "अपने plexusterm-relay के ज़रिए टैब साझा करें: दूसरे लोग उसका लिंक ब्राउज़र में खोलते हैं।",
+    installRelay: "रिले कैसे इंस्टॉल करें",
     relayUrl: "रिले URL",
     relayUrlHelp: "रिले का सार्वजनिक पता, जैसे wss://relay.example.com।",
     viewerOrigin: "व्यूअर ओरिजिन",

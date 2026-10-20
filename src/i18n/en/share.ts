@@ -160,6 +160,7 @@ export const share = {
   },
   settings: {
     intro: "Share a tab through your own plexusterm-relay: others open its link in a browser.",
+    installRelay: "How to install the relay",
     relayUrl: "Relay URL",
     relayUrlHelp: "The relay's public address, e.g. wss://relay.example.com.",
     viewerOrigin: "Viewer origin",

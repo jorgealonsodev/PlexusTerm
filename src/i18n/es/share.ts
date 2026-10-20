@@ -163,6 +163,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "Comparte una pestaña a través de tu propio plexusterm-relay: otras personas abren su enlace en un navegador.",
+    installRelay: "Cómo instalar el relay",
     relayUrl: "URL del relay",
     relayUrlHelp: "La dirección pública del relay, p. ej. wss://relay.example.com.",
     viewerOrigin: "Origen del visor",

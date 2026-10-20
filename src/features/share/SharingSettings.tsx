@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useT } from "../../i18n/i18n";
 import { MAX_SHARE_URL_LENGTH } from "../settings/settings";
 import { deleteRelayToken, relayTokenSaved, saveRelayToken } from "./shareApi";
@@ -19,6 +20,9 @@ interface SharingSettingsProps {
   linux: boolean;
   onAuditLog: () => void;
 }
+
+/** The relay and its viewer page, with how to deploy them. */
+export const RELAY_REPO_URL = "https://github.com/jorgealonsodev/plexusterm-relay";
 
 type TokenStatus = "checking" | "saved" | "none" | "unavailable";
 
@@ -93,7 +97,18 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
   const t = useT();
   return (
     <>
-      <p className="muted">{t("share.settings.intro")}</p>
+      <p className="muted">
+        {t("share.settings.intro")}{" "}
+        <a
+          href={RELAY_REPO_URL}
+          onClick={(e) => {
+            e.preventDefault();
+            void openUrl(RELAY_REPO_URL).catch(() => {});
+          }}
+        >
+          {t("share.settings.installRelay")}
+        </a>
+      </p>
       <label className="field">
         {t("share.settings.relayUrl")}
         <input

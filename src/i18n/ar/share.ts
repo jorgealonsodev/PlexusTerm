@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "شارك تبويبًا عبر plexusterm-relay الخاص بك: يفتح الآخرون رابطه في متصفح.",
+    installRelay: "كيفية تثبيت المرحّل",
     relayUrl: "عنوان المرحّل",
     relayUrlHelp: "العنوان العام للمرحّل، مثل wss://relay.example.com.",
     viewerOrigin: "مصدر العارض",

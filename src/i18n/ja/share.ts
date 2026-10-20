@@ -167,6 +167,7 @@ export const share: Messages<typeof en> = {
   },
   settings: {
     intro: "自分の plexusterm-relay を通じてタブを共有します。他の人はリンクをブラウザーで開きます。",
+    installRelay: "リレーのインストール方法",
     relayUrl: "リレー URL",
     relayUrlHelp: "リレーの公開アドレス。例: wss://relay.example.com。",
     viewerOrigin: "ビューアーのオリジン",
