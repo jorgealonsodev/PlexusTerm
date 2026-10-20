@@ -588,7 +588,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ))}
               </select>
             </label>
-            <label className="field field--size" title={t("settings.appearance.lineHeightHelp")}>
+            <label className="field field--size">
               {t("settings.appearance.lineHeight")}
               <select value={lineHeight} onChange={(e) => setLineHeight(Number(e.target.value))}>
                 {LINE_HEIGHTS.map((height) => (
@@ -598,6 +598,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ))}
               </select>
             </label>
+            <p className="muted">{t("settings.appearance.lineHeightHelp")}</p>
             <label className="field field--size">
               {t("settings.appearance.fontSize")}
               <input

@@ -289,7 +289,7 @@ The gear button at the right of the toolbar opens **Settings**, shared by every 
 
 - **Terminal font size** (8-32, default 14). Ctrl+= / Ctrl+- / Ctrl+0 (changeable in Settings → Shortcuts) change it too; every terminal follows at once.
 - **Terminal font weight**: Light, Regular (the default), Medium or Semibold; bold text is drawn a step heavier. The fonts shipped with PlexusTerm are variable and draw every weight; other fonts use the nearest weight they have.
-- **Terminal line height**: the height of each row as a multiple of the font size, from 1.0 to 1.3 (1.15 by default). Without GPU acceleration, block and box characters (the logos and borders AI command-line tools draw) come from the font and only touch at 1.0; taller rows leave thin gaps between them.
+- **Terminal line height**: the height of each row as a multiple of the font size, from 1.0 to 1.3 (1.0 by default). Keep 1.0: with GPU acceleration, taller rows no longer fall on whole pixels and the text can look blurred; without it, block and box characters (the logos and borders AI command-line tools draw) come from the font and only touch at 1.0, so taller rows leave thin gaps between them. A height chosen before is kept.
 - **Interface text size** (10-20, default 13): the text of the bars, lists and dialogs, apart from the terminals, the AI chat and the file viewer's text.
 - **AI chat text size** (10-24, default 13): the text of the [AI chat](#ai-chat); with the focus in the chat, Ctrl+= / Ctrl+- / Ctrl+0 change it.
 - **File viewer text size** (10-24, default 13): the text of a file in the [file viewer](#viewing-files), code and Markdown; the viewer's bar follows the interface size.

@@ -49,7 +49,7 @@ describe("parseSettings", () => {
       viewerPosition: "left" as const,
       viewerChangedLines: true,
       fontWeight: 400,
-      lineHeight: 1.15,
+      lineHeight: 1,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -156,7 +156,7 @@ describe("parseSettings", () => {
       viewerPosition: "left" as const,
       viewerChangedLines: true,
       fontWeight: 400,
-      lineHeight: 1.15,
+      lineHeight: 1,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -481,12 +481,14 @@ describe("terminal font weight", () => {
 });
 
 describe("terminal line height", () => {
-  it("is 1.15 by default and only one of the offered heights", () => {
-    expect(DEFAULT_SETTINGS.lineHeight).toBe(1.15);
+  it("is 1 by default and only one of the offered heights", () => {
+    expect(DEFAULT_SETTINGS.lineHeight).toBe(1);
     expect(parseSettings(JSON.stringify({ lineHeight: 1 })).lineHeight).toBe(1);
     expect(parseSettings(JSON.stringify({ lineHeight: 1.3 })).lineHeight).toBe(1.3);
-    expect(parseSettings(JSON.stringify({ lineHeight: 1.12 })).lineHeight).toBe(1.15);
-    expect(parseSettings(JSON.stringify({ lineHeight: "tall" })).lineHeight).toBe(1.15);
+    expect(parseSettings(JSON.stringify({ lineHeight: 1.12 })).lineHeight).toBe(1);
+    // A height saved earlier is kept.
+    expect(parseSettings(JSON.stringify({ lineHeight: 1.15 })).lineHeight).toBe(1.15);
+    expect(parseSettings(JSON.stringify({ lineHeight: "tall" })).lineHeight).toBe(1);
     expect(LINE_HEIGHTS).toEqual([1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3]);
   });
 });

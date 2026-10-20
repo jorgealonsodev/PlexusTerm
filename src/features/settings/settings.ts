@@ -44,8 +44,9 @@ export interface TerminalSettings {
   /** Weight of the terminal's text, one of FONT_WEIGHTS; bold text is BOLD_STEP heavier. */
   fontWeight: number;
   /**
-   * Height of a terminal row, as a multiple of the font size (one of LINE_HEIGHTS). Without GPU
-   * acceleration block and box characters come from the font, so only 1 joins them without gaps.
+   * Height of a terminal row, as a multiple of the font size (one of LINE_HEIGHTS). Taller rows sit on
+   * fractions of a pixel, which blurs the text with GPU acceleration; without it block and box
+   * characters come from the font, so only 1 joins them without gaps.
    */
   lineHeight: number;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
@@ -175,7 +176,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontWeight: 400,
-  lineHeight: 1.15,
+  lineHeight: 1,
   remoteMonitor: true,
   textEditor: "",
   fileDetails: false,

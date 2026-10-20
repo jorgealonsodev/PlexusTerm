@@ -37,7 +37,7 @@ export const settings: Messages<typeof en> = {
       "Les thèmes d'invite qui dessinent des icônes (Powerlevel10k, agnoster, Starship) nécessitent une Nerd Font comme police.",
     fontWeight: "Graisse de la police du terminal",
     lineHeight: "Interligne du terminal",
-    lineHeightHelp: "Hauteur des lignes en multiple de la taille de police. 1.0 joint les caractères de bloc et de cadre (logos et bordures des outils d’IA en ligne de commande) sans espaces quand l’accélération GPU est désactivée.",
+    lineHeightHelp: "Hauteur de chaque ligne en multiple de la taille de police. Gardez 1.0 : au-delà, le texte peut paraître flou avec l’accélération GPU, car les lignes ne tombent plus sur des pixels entiers, et sans elle les caractères de blocs et de cadres (logos et bordures des outils d’IA en ligne de commande) laissent des espaces entre les lignes.",
     weightLight: "Légère",
     weightRegular: "Normale",
     weightMedium: "Moyenne",

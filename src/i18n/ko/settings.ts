@@ -37,7 +37,7 @@ export const settings: Messages<typeof en> = {
       "아이콘을 그리는 프롬프트 테마(Powerlevel10k, agnoster, Starship)를 사용하려면 글꼴로 Nerd Font가 필요합니다.",
     fontWeight: "터미널 글꼴 두께",
     lineHeight: "터미널 줄 높이",
-    lineHeightHelp: "글꼴 크기에 대한 줄 높이 배수입니다. GPU 가속이 꺼져 있을 때 1.0이면 블록 문자와 상자 문자(AI 명령줄 도구의 로고와 테두리)가 틈 없이 이어집니다.",
+    lineHeightHelp: "글꼴 크기의 배수로 나타낸 행 높이입니다. 1.0을 권장합니다. 그보다 크면 행이 정수 픽셀에 맞지 않아 GPU 가속 시 글자가 흐릿해 보일 수 있고, 가속을 끄면 블록·상자 문자(AI 명령줄 도구의 로고와 테두리)의 행 사이에 틈이 생깁니다.",
     weightLight: "가늘게",
     weightRegular: "보통",
     weightMedium: "중간",
