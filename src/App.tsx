@@ -25,7 +25,7 @@ import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
 import { writeText } from "./features/terminal/clipboard";
 import { PaneGrid } from "./features/panes/PaneGrid";
-import { MAX_PANES, paneIds } from "./features/panes/paneLayout";
+import { MAX_PANES, neighbour, paneIds } from "./features/panes/paneLayout";
 import { shortcutFor, shortcutLabel, type ShortcutActionId } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel } from "./features/local/LocalPanel";
@@ -1657,13 +1657,17 @@ function AppContent() {
                           {(() => {
                             // One bar under the terminal: its git branch (DEV mode only), then (SSH) the remote
                             // monitor, and the DEV button at its right end for terminals that can run AI CLIs.
-                            const branch = tabDev ? paneMeta[paneId]?.branch : null;
-                            const monitor = tab.target.type === "ssh" && settings.remoteMonitor;
+                            // A terminal with another one below it keeps only the DEV option, without the bar:
+                            // the bar of the one below shows its own branch and monitor.
+                            const below = neighbour(tab.layout, paneId, "down");
+                            const bare = below !== null && isTerminalPane(tab, below);
+                            const branch = tabDev && !bare ? paneMeta[paneId]?.branch : null;
+                            const monitor = tab.target.type === "ssh" && settings.remoteMonitor && !bare;
                             const devButton = DEV_TARGETS.has(tab.target.type);
                             if (!branch && !monitor && !devButton) return null;
                             const devShortcut = shortcutLabel("toggleDevMode", settings.shortcuts);
                             return (
-                              <div className="pane-footer">
+                              <div className={`pane-footer${bare ? " pane-footer--bare" : ""}`}>
                                 {branch && (
                                   <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
                                     <GitBranch size={13} aria-hidden="true" />

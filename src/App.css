@@ -2288,6 +2288,12 @@ body.is-dragging-path {
   white-space: nowrap;
 }
 
+/* Under a terminal with another one below it: only the DEV option, without the bar. */
+.pane-footer--bare {
+  border-top: none;
+  background: none;
+}
+
 .pane-footer .remote-monitor {
   flex: 1;
   min-width: 0;

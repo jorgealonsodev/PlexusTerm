@@ -131,6 +131,31 @@ describe("DEV mode (S10, S13)", () => {
     expect(document.querySelector("[role=tree]")).toBeNull();
   });
 
+  it("shows only the DEV option, without the bar, under a terminal with another one below it", async () => {
+    await renderApp();
+    const footers = () =>
+      [...document.querySelectorAll<HTMLElement>(".tab-panes:not([hidden]) .pane[data-pane-id]")].map((pane) => {
+        const footer = pane.querySelector(".pane-footer");
+        return footer && { bare: footer.classList.contains("pane-footer--bare"), dev: footer.querySelector(".pane-footer__dev") !== null };
+      });
+    fireEvent.click(screen.getByRole("button", { name: "Split right" }));
+    await settle();
+    expect(footers()).toEqual([
+      { bare: false, dev: true },
+      { bare: false, dev: true },
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Split down" }));
+    await settle();
+    // The focused (right) pane was split: its top half has a terminal below it.
+    expect(footers()).toEqual([
+      { bare: false, dev: true },
+      { bare: true, dev: true },
+      { bare: false, dev: true },
+    ]);
+    const css = readFileSync(`${process.cwd()}/src/App.css`, "utf8") as string;
+    expect(css).toMatch(/\.pane-footer--bare\s*\{[^}]*border-top:\s*none[^}]*background:\s*none/);
+  });
+
   it("turns on for each listed CLI and not for other commands", async () => {
     await renderApp();
     for (const command of ["claude-foo", "echo claude", "ls -la"]) {
