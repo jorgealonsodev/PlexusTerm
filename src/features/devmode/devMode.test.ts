@@ -163,6 +163,13 @@ describe("devReducer (S10)", () => {
     expect(devReducer(back, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 4 })).toEqual({});
   });
 
+  it("keeps the panes a hand-made DEV mode hides, and none otherwise", () => {
+    const on = devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-2", id: 3, hidden: ["pane-1", "pane-3"] });
+    expect(on["tab-1"]).toMatchObject({ pane: "pane-2", hidden: ["pane-1", "pane-3"] });
+    expect(devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 3 })["tab-1"].hidden).toEqual([]);
+    expect(run({}, "claude")["tab-1"].hidden).toEqual([]);
+  });
+
   it("turns an automatic DEV mode off by hand", () => {
     expect(devReducer(run({}, "claude"), { type: "toggle", tab: "tab-1", pane: "pane-1", id: 4 })).toEqual({});
   });

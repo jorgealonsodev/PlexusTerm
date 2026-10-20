@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { paneIds, paneRects, splitBoxes, type PaneLayout, type Rect, type SplitBox } from "./paneLayout";
+import { closePane, paneIds, paneRects, splitBoxes, type PaneLayout, type Rect, type SplitBox } from "./paneLayout";
 
 interface PaneGridProps {
   layout: PaneLayout;
@@ -8,6 +8,11 @@ interface PaneGridProps {
   onFocusPane: (id: string) => void;
   /** Raw ratio from a divider drag; the tabs reducer clamps it. */
   onResize: (splitId: string, ratio: number) => void;
+  /**
+   * Panes kept mounted (their sessions alive) but out of sight; the others fill the grid as if
+   * these were closed. Ignored when it would hide every pane.
+   */
+  hidden?: readonly string[];
 }
 
 /** The grid's size in CSS pixels; null until measured (then positions fall back to percentages). */
@@ -53,7 +58,7 @@ const dividerPlacement = ({ direction, ratio, rect }: SplitBox, size: Size): CSS
  * changes the tree shape, and with nested containers React would remount the other panes, which
  * would kill their terminal sessions; flat keyed siblings are only moved.
  */
-export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResize }: PaneGridProps) {
+export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResize, hidden = [] }: PaneGridProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const drag = useRef<SplitBox | null>(null);
   const [size, setSize] = useState<Size>(null);
@@ -70,8 +75,10 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
     measure();
     return () => observer.disconnect();
   }, []);
-  const rects = paneRects(layout);
-  const multiple = layout.kind === "split";
+  // The layout on screen: the hidden panes closed, their siblings taking their place.
+  const shown = hidden.reduce<PaneLayout | null>((l, id) => l && closePane(l, id), layout) ?? layout;
+  const rects = paneRects(shown);
+  const multiple = shown.kind === "split";
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const box = drag.current;
@@ -96,7 +103,9 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
         <div
           key={id}
           className={`pane${multiple ? " pane--split" : ""}${multiple && id === focusedPane ? " pane--focused" : ""}`}
-          style={placement(rects[id], size)}
+          // Every pane of the tab stays mounted, in the same order, so none restarts.
+          hidden={!rects[id]}
+          style={rects[id] ? placement(rects[id], size) : undefined}
           data-pane-id={id}
           onMouseDown={() => onFocusPane(id)}
           onFocus={() => onFocusPane(id)}
@@ -104,7 +113,7 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
           {renderPane(id)}
         </div>
       ))}
-      {splitBoxes(layout).map((box) => (
+      {splitBoxes(shown).map((box) => (
         <div
           key={box.id}
           role="separator"

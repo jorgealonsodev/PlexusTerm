@@ -429,7 +429,19 @@ function AppContent() {
     return { folder, root: folder };
   };
   const dev = useDevMode(locateProject);
-  const { forget: forgetDev, toggle: toggleDev } = dev;
+  const { forget: forgetDev, toggle: devToggle } = dev;
+  /**
+   * Turns a tab's DEV mode on or off by hand from one of its terminals. On, the tab shows only that
+   * terminal (and its viewer and chat): its other panes are hidden until DEV mode is turned off.
+   */
+  const toggleDev = useCallback(
+    (tab: Tab, pane: string) => {
+      const linkOf = (id: string) => tab.chats[id] ?? tab.viewers?.[id];
+      const others = paneIds(tab.layout).filter((id) => (linkOf(id)?.terminalPaneId ?? id) !== pane);
+      devToggle(tab.key, pane, others);
+    },
+    [devToggle],
+  );
 
   // Forget what closed panes reported.
   useEffect(() => {
@@ -462,8 +474,8 @@ function AppContent() {
     const pane = terminalPaneOf(tab);
     if ((paneMeta[pane]?.sessionId ?? null) === null) return;
     devOnStart.current = null;
-    if (!dev.state[tab.key]) toggleDev(tab.key, pane);
-  }, [state.tabs, paneMeta, dev.state, toggleDev]);
+    if (!dev.state[tab.key]) devToggle(tab.key, pane);
+  }, [state.tabs, paneMeta, dev.state, devToggle]);
   // SFTP and the followed folder belong to the focused pane of the active tab (S11.5); an AI
   // chat pane stands for its terminal (S9).
   const activePane = activeTab ? terminalPaneOf(activeTab) : null;
@@ -1125,7 +1137,7 @@ function AppContent() {
         case "toggleMultiExec":
           return setMultiExec((on) => !on);
         case "toggleDevMode":
-          if (activeTab) toggleDev(activeTab.key, terminalPaneOf(activeTab));
+          if (activeTab) toggleDev(activeTab, terminalPaneOf(activeTab));
           return;
         case "fontSize":
           // In the AI chat the keys size its text; anywhere else, the terminals'.
@@ -1512,6 +1524,7 @@ function AppContent() {
                     focusedPane={tab.focusedPane}
                     onFocusPane={(paneId) => dispatch({ type: "focusPane", key: tab.key, paneId })}
                     onResize={(splitId, ratio) => dispatch({ type: "resizeSplit", key: tab.key, splitId, ratio })}
+                    hidden={tabDev?.hidden}
                     renderPane={(paneId) => {
                       const viewer = tab.viewers?.[paneId];
                       if (viewer) {
@@ -1690,7 +1703,7 @@ function AppContent() {
                                     }
                                     // Keep the keyboard focus in the terminal.
                                     onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => dev.toggle(tab.key, paneId)}
+                                    onClick={() => toggleDev(tab, paneId)}
                                   >
                                     <Code size={12} aria-hidden="true" />
                                     <span className="pane-footer__dev-label">DEV</span>

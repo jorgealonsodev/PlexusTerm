@@ -49,7 +49,7 @@ export function useDevMode(locate: LocateProject) {
       },
       promptMark: (tab: string, pane: string) => apply({ type: "promptMark", tab, pane }),
       quiet: (tab: string, pane: string, row: string) => apply({ type: "quiet", tab, pane, row }),
-      toggle: (tab: string, pane: string) => apply({ type: "toggle", tab, pane, id: id() }),
+      toggle: (tab: string, pane: string, hidden?: readonly string[]) => apply({ type: "toggle", tab, pane, id: id(), hidden }),
       forget: (panes: ReadonlyMap<string, readonly string[]>) => apply({ type: "forget", panes }),
     };
   }, [apply]);

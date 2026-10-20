@@ -156,6 +156,23 @@ describe("DEV mode (S10, S13)", () => {
     expect(css).toMatch(/\.pane-footer--bare\s*\{[^}]*border-top:\s*none[^}]*background:\s*none/);
   });
 
+  it("turned on in one pane of a split tab, shows only that terminal until it is turned off", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Split right" }));
+    await settle();
+    const panes = () => [...document.querySelectorAll<HTMLElement>(".tab-panes:not([hidden]) .pane[data-pane-id]")];
+    const [left, right] = panes();
+    const shown = () => panes().filter((p) => !p.hidden);
+    fireEvent.mouseDown(right);
+    fireEvent.click(within(right).getByRole("button", { name: /DEV mode/ }));
+    await settle();
+    expect(shown()).toEqual([right]);
+    expect(left.isConnected).toBe(true);
+    fireEvent.click(within(right).getByRole("button", { name: /DEV mode/ }));
+    await settle();
+    expect(shown()).toEqual([left, right]);
+  });
+
   it("turns on for each listed CLI and not for other commands", async () => {
     await renderApp();
     for (const command of ["claude-foo", "echo claude", "ls -la"]) {

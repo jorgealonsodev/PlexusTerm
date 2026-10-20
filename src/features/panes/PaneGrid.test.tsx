@@ -43,6 +43,31 @@ describe("PaneGrid", () => {
     expect(focused[0].textContent).toBe("terminal p2");
   });
 
+  it("hides panes without unmounting them: the others fill the grid, and they come back as they were", () => {
+    const layout = splitPane(splitPane(leaf("h1"), "h1", "row", "h2"), "h2", "column", "h3");
+    const { container, rerender } = render(grid(layout, "h2", { hidden: ["h1", "h3"] }));
+    const pane = (id: string) => container.querySelector<HTMLElement>(`.pane[data-pane-id="${id}"]`)!;
+    const before = { h1: pane("h1"), h2: pane("h2"), h3: pane("h3") };
+    expect(pane("h1").hidden).toBe(true);
+    expect(pane("h3").hidden).toBe(true);
+    expect(pane("h2").hidden).toBe(false);
+    expect(pane("h2").style.width).toBe("100%");
+    expect(pane("h2").style.height).toBe("100%");
+    expect(pane("h2").classList.contains("pane--split")).toBe(false);
+    expect(container.querySelectorAll(".pane-divider")).toHaveLength(0);
+    rerender(grid(layout, "h2"));
+    expect(pane("h1").hidden).toBe(false);
+    expect(container.querySelectorAll(".pane-divider")).toHaveLength(2);
+    expect({ h1: pane("h1"), h2: pane("h2"), h3: pane("h3") }).toEqual(before);
+    expect(unmounts.h1 ?? 0).toBe(0);
+    expect(unmounts.h3 ?? 0).toBe(0);
+  });
+
+  it("shows every pane when all of them would be hidden", () => {
+    const { container } = render(grid(splitPane(leaf("q1"), "q1", "row", "q2"), "q1", { hidden: ["q1", "q2"] }));
+    expect(container.querySelectorAll(".pane[hidden]")).toHaveLength(0);
+  });
+
   it("focuses a pane on click", () => {
     const onFocusPane = vi.fn();
     render(grid(splitPane(leaf("p1"), "p1", "row", "p2"), "p2", { onFocusPane }));

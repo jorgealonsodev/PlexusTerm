@@ -95,6 +95,11 @@ export interface DevTab {
   folder: string | null;
   /** The project root (the git repository holding `folder`, else `folder`), once known. */
   root: string | null;
+  /**
+   * The panes kept out of sight while it is on: turned on by hand in one pane of a split tab, the
+   * tab shows only that terminal (with its viewer and chat); turned off, the split comes back.
+   */
+  hidden: readonly string[];
 }
 
 /** DEV mode by tab key; a tab not listed is not in DEV mode. */
@@ -107,7 +112,8 @@ export type DevAction =
   | { type: "promptMark"; tab: string; pane: string }
   /** A pane's output went quiet with `row` before the cursor. */
   | { type: "quiet"; tab: string; pane: string; row: string }
-  | { type: "toggle"; tab: string; pane: string; id: number }
+  /** `hidden`: the panes to keep out of sight while it is on (the tab's other terminals). */
+  | { type: "toggle"; tab: string; pane: string; id: number; hidden?: readonly string[] }
   | { type: "anchor"; tab: string; id: number; folder: string; root: string }
   /** The open tabs and their panes. */
   | { type: "forget"; panes: ReadonlyMap<string, readonly string[]> };
@@ -138,7 +144,7 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       if (dev && (!dev.manual || dev.cli !== null)) return state;
       const started = { cli, pane: action.pane, prompt: action.prompt };
       if (dev) return { ...state, [action.tab]: { ...dev, ...started } };
-      return { ...state, [action.tab]: { id: action.id, manual: false, folder: null, root: null, ...started } };
+      return { ...state, [action.tab]: { id: action.id, manual: false, folder: null, root: null, hidden: [], ...started } };
     }
     case "title": {
       const dev = state[action.tab];
@@ -157,7 +163,7 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       if (dev) return { ...state, [action.tab]: { ...dev, cli, pane: action.pane } };
       return {
         ...state,
-        [action.tab]: { id: action.id, manual: false, cli, pane: action.pane, prompt: null, folder: null, root: null },
+        [action.tab]: { id: action.id, manual: false, cli, pane: action.pane, prompt: null, folder: null, root: null, hidden: [] },
       };
     }
     case "promptMark":
@@ -172,7 +178,16 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       if (state[action.tab]) return without(state, action.tab);
       return {
         ...state,
-        [action.tab]: { id: action.id, manual: true, cli: null, pane: action.pane, prompt: null, folder: null, root: null },
+        [action.tab]: {
+          id: action.id,
+          manual: true,
+          cli: null,
+          pane: action.pane,
+          prompt: null,
+          folder: null,
+          root: null,
+          hidden: action.hidden ?? [],
+        },
       };
     case "anchor": {
       const dev = state[action.tab];
