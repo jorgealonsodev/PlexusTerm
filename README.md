@@ -58,13 +58,14 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 
 | Feature | What you get | Guide |
 | --- | --- | --- |
-| DEV mode for AI tools | Claude Code, Codex, OpenCode, Antigravity, pi and others turn a tab into a workspace: tabs in a column with each tool's icon and a working indicator, the Explorer at the project, the git branch, notifications when a tool needs you; turned on in one terminal of a split tab, it focuses on that terminal and lists the others in the column; the column folds to its icons like the sidebar, the Explorer reopens any recent DEV folder, and the bar under each terminal names its folder | [DEV mode](docs/user-guide.md#dev-mode) |
+| DEV mode for AI tools | Claude Code, Codex, OpenCode, Antigravity, pi and others turn a tab into a workspace: tabs in a column with each tool's icon and a working indicator, the Explorer at the project, the git branch, notifications when a tool needs you; turned on in one terminal of a split tab, it focuses on that terminal and lists the others in the column; the column folds to its icons like the sidebar, the Explorer reopens any recent DEV folder, and the bar under each terminal names its folder and branch | [DEV mode](docs/user-guide.md#dev-mode) |
 | File viewer | Any local or remote file next to its terminal (left, right or below), with its own text size: line numbers, syntax highlighting, word wrap, search, Markdown rendered or as code, lines changed since the last commit; edit and save it (Ctrl+S or auto-save); a status bar to reopen or save it in another encoding, convert LF/CRLF and pick the language; it follows the file while an AI tool edits it | [Viewing files](docs/user-guide.md#viewing-files) |
 | VS Code-style Explorer | In DEV mode: a tree with VS Code's file icons, git status colours, the selection's project and branch, workspaces saved as `.code-workspace` files | [DEV mode file lists](docs/user-guide.md#dev-mode-file-lists) |
 | Colours | Colour the toolbar and each tab, with any colour or one picked from the screen; DEV projects remember theirs | [Tab and window colours](docs/user-guide.md#tab-and-window-colours) |
+| Terminal sharing | Share a tab through your own [plexusterm-relay](https://github.com/jorgealonsodev/plexusterm-relay): View only and Can type links with QR codes, end-to-end encrypted per viewer, join approval (or allow everyone), viewer list with Disconnect, an audit log; the computer stays awake while sharing. The link opens in a browser, phones included, or in another PlexusTerm as an untrusted pane | [Sharing a tab](docs/user-guide.md#sharing-a-tab) |
 | Local terminals | Tabs with your shell or the one you choose (PowerShell, cmd, WSL, Git Bash, zsh, fish...), up to 4 split panes per tab | [Split panes](docs/user-guide.md#split-panes-and-multi-execution) |
 | SSH | Password, key or agent login, `known_hosts` checks, up to 3 jump hosts | [SSH sessions](docs/user-guide.md#ssh-sessions) |
-| Saved sessions | Folders, search, passwords in the system keyring, import from `.ini` session files and `~/.ssh/config` | [Saved sessions](docs/user-guide.md#saved-sessions) |
+| Saved sessions | Folders, search, passwords in the system keyring, import from `.ini` session files and `~/.ssh/config`, copy a session as its `ssh` command | [Saved sessions](docs/user-guide.md#saved-sessions) |
 | SFTP | File browser for the active SSH tab: drag-and-drop upload, open, edit and re-upload, permissions, follows the shell's folder | [SFTP browser](docs/user-guide.md#sftp-browser) |
 | File explorer | Local files next to each local terminal, following its folder; drop files and folders on a terminal (`cd` or the path) or on the AI chat (as context) | [File explorer](docs/user-guide.md#file-explorer) |
 | Tunnels | Local (-L), remote (-R) and SOCKS5 (-D) forwards | [SSH tunnels](docs/user-guide.md#ssh-tunnels) |
@@ -109,7 +110,8 @@ sha256sum --ignore-missing -c checksums.txt
 | --- | --- |
 | Sessions, tunnels, settings, macros | `~/.config/dev.plexusterm.app/` on Linux (mode `0600`, never contains passwords or keys) |
 | Command history (for suggestions) | `history.json` in the same folder; **Clear history** in Settings → AI empties it |
-| Saved passwords and AI API keys | Only in the system keyring (GNOME Keyring, KWallet); passwords only if you tick the box |
+| Saved passwords, AI API keys and the relay token | Only in the system keyring (GNOME Keyring, KWallet); passwords only if you tick the box |
+| Share audit log | `share-audit.log` in the config folder, kept 30 days; what viewers type only if you enable it |
 | Host keys | `~/.ssh/known_hosts`, shared with OpenSSH |
 | AI conversations | In memory only; forgotten when the terminal closes or PlexusTerm quits |
 
