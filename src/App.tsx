@@ -97,7 +97,7 @@ import markUrl from "./assets/plexusterm-mark.svg";
 import markLightUrl from "./assets/plexusterm-mark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
 import { useCompactToolbar } from "./features/toolbar/compact";
-import { DropdownMenu } from "./features/menu/DropdownMenu";
+import { DropdownMenu, type DropdownItem } from "./features/menu/DropdownMenu";
 import { WakeOnLanDialog } from "./features/tools/WakeOnLanDialog";
 import { KeyGenDialog } from "./features/tools/keygen/KeyGenDialog";
 import { NetworkScannerDialog } from "./features/tools/scan/NetworkScannerDialog";
@@ -125,6 +125,9 @@ import {
   Settings as SettingsIcon,
   SquareTerminal,
   Usb,
+  Cable,
+  Link,
+  Smartphone,
 } from "lucide-react";
 import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
@@ -247,9 +250,9 @@ function MoreMenu({ onTelnet, onMosh, onShared }: { onTelnet: () => void; onMosh
   // Mosh has no Windows client (S18.2).
   const t = useT();
   const offerMosh = usePlatform() !== "windows";
-  const items = [{ label: "Telnet…", onSelect: onTelnet }];
-  if (offerMosh) items.push({ label: "Mosh…", onSelect: onMosh });
-  items.push({ label: t("share.view.open"), onSelect: onShared });
+  const items: DropdownItem[] = [{ label: "Telnet…", icon: <Cable size={15} />, onSelect: onTelnet }];
+  if (offerMosh) items.push({ label: "Mosh…", icon: <Smartphone size={15} />, onSelect: onMosh });
+  items.push({ label: t("share.view.open"), icon: <Link size={15} />, onSelect: onShared });
   return (
     <DropdownMenu
       title={t("app.toolbar.more")}
