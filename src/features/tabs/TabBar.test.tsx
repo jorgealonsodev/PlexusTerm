@@ -139,6 +139,44 @@ describe("TabBar", () => {
   });
 
   describe("DEV tab column (S13)", () => {
+    it("lists a tab's hidden terminals under its row, and shows the one clicked", () => {
+      const onShowPane = vi.fn();
+      const onActivate = vi.fn();
+      render(
+        <TabBar
+          tabs={[tab("t1", "one"), tab("t2", "two")]}
+          activeKey="t1"
+          column
+          hiddenPanes={new Map([["t1", [{ id: "t1-p2", label: "api" }, { id: "t1-p3", label: "web" }]]])}
+          onShowPane={onShowPane}
+          onActivate={onActivate}
+          onClose={() => {}}
+          onNew={() => {}}
+        />,
+      );
+      const list = screen.getByRole("list", { name: "Other terminals of one" });
+      expect(within(list).getAllByRole("button").map((b) => b.textContent)).toEqual(["api", "web"]);
+      fireEvent.click(within(list).getByRole("button", { name: "web" }));
+      expect(onShowPane).toHaveBeenCalledWith("t1", "t1-p3");
+      expect(onActivate).toHaveBeenCalledWith("t1");
+      expect(screen.queryByRole("list", { name: "Other terminals of two" })).toBeNull();
+    });
+
+    it("lists no hidden terminals outside the column", () => {
+      render(
+        <TabBar
+          tabs={[tab("t1", "one")]}
+          activeKey="t1"
+          hiddenPanes={new Map([["t1", [{ id: "t1-p2", label: "api" }]]])}
+          onShowPane={() => {}}
+          onActivate={() => {}}
+          onClose={() => {}}
+          onNew={() => {}}
+        />,
+      );
+      expect(screen.queryByRole("list")).toBeNull();
+    });
+
     const details = new Map([
       ["t1", { cli: "claude", folder: "plexusterm" }],
       ["t2", { cli: "codex", folder: "api" }],

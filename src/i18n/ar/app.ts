@@ -81,6 +81,8 @@ export const app: Messages<typeof en> = {
     newSsh: "جلسة SSH جديدة",
   },
   tabs: {
+    otherTerminals: "الطرفيات الأخرى في {title}",
+    terminalN: "الطرفية {n}",
     copyHost: "نسخ عنوان المضيف ({host})",
     duplicate: "تكرار علامة التبويب",
     colour: "لون علامة التبويب…",

@@ -429,17 +429,19 @@ function AppContent() {
     return { folder, root: folder };
   };
   const dev = useDevMode(locateProject);
-  const { forget: forgetDev, toggle: devToggle } = dev;
+  const { forget: forgetDev, toggle: devToggle, show: devShow } = dev;
+  /** A tab's panes other than `pane` and its own viewer and chat: what DEV mode on `pane` hides. */
+  const othersOf = (tab: Tab, pane: string) => {
+    const linkOf = (id: string) => tab.chats[id] ?? tab.viewers?.[id];
+    return paneIds(tab.layout).filter((id) => (linkOf(id)?.terminalPaneId ?? id) !== pane);
+  };
   /**
    * Turns a tab's DEV mode on or off by hand from one of its terminals. On, the tab shows only that
    * terminal (and its viewer and chat): its other panes are hidden until DEV mode is turned off.
    */
   const toggleDev = useCallback(
-    (tab: Tab, pane: string) => {
-      const linkOf = (id: string) => tab.chats[id] ?? tab.viewers?.[id];
-      const others = paneIds(tab.layout).filter((id) => (linkOf(id)?.terminalPaneId ?? id) !== pane);
-      devToggle(tab.key, pane, others);
-    },
+    (tab: Tab, pane: string) => devToggle(tab.key, pane, othersOf(tab, pane)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [devToggle],
   );
 
@@ -517,6 +519,25 @@ function AppContent() {
       .map(([key]) => key),
   );
   /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
+  /** The terminals each DEV tab keeps out of sight, for the column: named after their folder. */
+  const hiddenPanes = new Map(
+    state.tabs.flatMap((tab) => {
+      const hidden = dev.state[tab.key]?.hidden ?? [];
+      const terminals = paneIds(tab.layout).filter((id) => hidden.includes(id) && isTerminalPane(tab, id));
+      if (terminals.length === 0 || terminals.length === paneIds(tab.layout).length) return [];
+      return [
+        [
+          tab.key,
+          terminals.map((id) => {
+            const cwd = paneMeta[id]?.cwd;
+            // Numbered by its place among the tab's terminals, so it keeps its number when shown.
+            const n = paneIds(tab.layout).filter((p) => isTerminalPane(tab, p)).indexOf(id) + 1;
+            return { id, label: cwd ? basename(cwd) || cwd : t("app.tabs.terminalN", { n }) };
+          }),
+        ] as const,
+      ];
+    }),
+  );
   const tabDetails = new Map(
     state.tabs.map((t) => {
       const tabDev = dev.state[t.key];
@@ -1491,6 +1512,13 @@ function AppContent() {
             busy={busyTabs}
             column={activeDev !== undefined}
             details={tabDetails}
+            hiddenPanes={hiddenPanes}
+            onShowPane={(key, pane) => {
+              const tab = state.tabs.find((t) => t.key === key);
+              if (!tab) return;
+              devShow(key, pane, othersOf(tab, pane));
+              dispatch({ type: "focusPane", key, paneId: pane });
+            }}
             columnWidth={settings.tabColumnWidth}
             onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}

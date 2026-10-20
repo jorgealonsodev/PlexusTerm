@@ -75,6 +75,8 @@ export const app = {
     newSsh: "New SSH session",
   },
   tabs: {
+    otherTerminals: "Other terminals of {title}",
+    terminalN: "Terminal {n}",
     copyHost: "Copy host address ({host})",
     duplicate: "Duplicate tab",
     colour: "Tab colour…",

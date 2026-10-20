@@ -76,6 +76,8 @@ export const app: Messages<typeof en> = {
     newSsh: "새 SSH 세션",
   },
   tabs: {
+    otherTerminals: "{title}의 다른 터미널",
+    terminalN: "터미널 {n}",
     copyHost: "호스트 주소 복사({host})",
     duplicate: "탭 복제",
     colour: "탭 색…",

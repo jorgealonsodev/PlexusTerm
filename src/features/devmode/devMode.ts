@@ -112,6 +112,8 @@ export type DevAction =
   | { type: "promptMark"; tab: string; pane: string }
   /** A pane's output went quiet with `row` before the cursor. */
   | { type: "quiet"; tab: string; pane: string; row: string }
+  /** Shows another terminal of a DEV tab, keeping `hidden` (the others) out of sight. */
+  | { type: "show"; tab: string; pane: string; hidden: readonly string[] }
   /** `hidden`: the panes to keep out of sight while it is on (the tab's other terminals). */
   | { type: "toggle"; tab: string; pane: string; id: number; hidden?: readonly string[] }
   | { type: "anchor"; tab: string; id: number; folder: string; root: string }
@@ -173,6 +175,10 @@ export function devReducer(state: DevState, action: DevAction): DevState {
       const prompt = dev?.prompt ? promptShape(dev.prompt) : "";
       if (!prompt || promptShape(action.row) !== prompt) return state;
       return promptBack(state, action.tab, action.pane);
+    }
+    case "show": {
+      const dev = state[action.tab];
+      return dev ? { ...state, [action.tab]: { ...dev, pane: action.pane, hidden: action.hidden } } : state;
     }
     case "toggle":
       if (state[action.tab]) return without(state, action.tab);

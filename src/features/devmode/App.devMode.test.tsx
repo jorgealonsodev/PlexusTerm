@@ -173,6 +173,26 @@ describe("DEV mode (S10, S13)", () => {
     expect(shown()).toEqual([left, right]);
   });
 
+  it("lists the hidden terminals in the column and shows the one clicked", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Split right" }));
+    await settle();
+    const panes = () => [...document.querySelectorAll<HTMLElement>(".tab-panes:not([hidden]) .pane[data-pane-id]")];
+    const [left, right] = panes();
+    const shown = () => panes().filter((p) => !p.hidden);
+    fireEvent.mouseDown(right);
+    fireEvent.click(within(right).getByRole("button", { name: /DEV mode/ }));
+    await settle();
+    const others = () => within(tabBar()).getByRole("list", { name: /^Other terminals of / });
+    const names = () => within(others()).getAllByRole("button").map((b) => b.textContent);
+    expect(names()).toEqual(["Terminal 1"]);
+    fireEvent.click(within(others()).getByRole("button", { name: "Terminal 1" }));
+    await settle();
+    expect(shown()).toEqual([left]);
+    expect(names()).toEqual(["Terminal 2"]);
+    expect(right.isConnected).toBe(true);
+  });
+
   it("turns on for each listed CLI and not for other commands", async () => {
     await renderApp();
     for (const command of ["claude-foo", "echo claude", "ls -la"]) {

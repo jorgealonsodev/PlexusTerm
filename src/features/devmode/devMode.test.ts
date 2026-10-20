@@ -170,6 +170,13 @@ describe("devReducer (S10)", () => {
     expect(run({}, "claude")["tab-1"].hidden).toEqual([]);
   });
 
+  it("shows another of its terminals, hiding the one shown", () => {
+    const on = devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-2", id: 3, hidden: ["pane-1", "pane-3"] });
+    const shown = devReducer(on, { type: "show", tab: "tab-1", pane: "pane-1", hidden: ["pane-2", "pane-3"] });
+    expect(shown["tab-1"]).toMatchObject({ pane: "pane-1", hidden: ["pane-2", "pane-3"], manual: true });
+    expect(devReducer({}, { type: "show", tab: "tab-1", pane: "pane-1", hidden: [] })).toEqual({});
+  });
+
   it("turns an automatic DEV mode off by hand", () => {
     expect(devReducer(run({}, "claude"), { type: "toggle", tab: "tab-1", pane: "pane-1", id: 4 })).toEqual({});
   });

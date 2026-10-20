@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
 import { ColorMenu } from "../toolbar/ColorMenu";
@@ -23,6 +23,10 @@ interface TabBarProps {
   column?: boolean;
   /** What the column shows of each tab: the CLI it runs (null for none) and its project folder's name. */
   details?: ReadonlyMap<string, { cli: string | null; folder: string | null }>;
+  /** In the column: the terminals a DEV tab keeps out of sight, listed under its row by tab key. */
+  hiddenPanes?: ReadonlyMap<string, readonly { id: string; label: string }[]>;
+  /** A hidden terminal of the column was clicked: the tab shows it instead. */
+  onShowPane?: (key: string, pane: string) => void;
   /** The column's width dragged by the user; null keeps the default width. */
   columnWidth?: number | null;
   /** The column's edge was dragged to a width, or double-clicked (null: back to the default). */
@@ -144,8 +148,8 @@ export function TabBar(props: TabBarProps) {
         style={column && shownWidth !== null ? { width: shownWidth } : undefined}
       >
         {tabs.map((tab) => (
+          <Fragment key={tab.key}>
           <div
-            key={tab.key}
             role="tab"
             aria-selected={tab.key === activeKey}
             className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}${column ? " tab--row" : ""}${tab.color ? " tab--coloured" : ""}`}
@@ -199,6 +203,26 @@ export function TabBar(props: TabBarProps) {
               ×
             </button>
           </div>
+          {column && (props.hiddenPanes?.get(tab.key)?.length ?? 0) > 0 && (
+            <ul className="tab__panes" aria-label={t("app.tabs.otherTerminals", { title: tabTitle(tab) })}>
+              {props.hiddenPanes!.get(tab.key)!.map((pane) => (
+                <li key={pane.id}>
+                  <button
+                    type="button"
+                    className="tab__pane"
+                    title={pane.label}
+                    onClick={() => {
+                      onActivate(tab.key);
+                      props.onShowPane?.(tab.key, pane.id);
+                    }}
+                  >
+                    {pane.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          </Fragment>
         ))}
         <button className="tabbar__new" aria-label={t("app.tabs.newLocal")} onClick={onNew}>
           +
