@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const invoke = vi.hoisted(() => vi.fn(async (_cmd: string, _args?: unknown): Promise<unknown> => null));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
-import { branchSourceOf, useGitBranch, type BranchSource } from "./gitBranch";
+import { BRANCH_WATCH_MS, branchSourceOf, useGitBranch, type BranchSource } from "./gitBranch";
 
 afterEach(() => invoke.mockReset());
 
@@ -97,5 +97,50 @@ describe("useGitBranch", () => {
     await settle();
     await act(async () => finish("stale"));
     expect(result.current).toBeNull();
+  });
+
+  it("follows a running CLI's folder and branch while watching: a worktree or a switched branch shows at once", async () => {
+    vi.useFakeTimers();
+    try {
+      const branches: Record<string, string> = { "/repo": "main", "/repo-wt": "feature" };
+      let program = "/repo";
+      invoke.mockImplementation(async (cmd: string, args?: unknown) => {
+        if (cmd === "pty_program_cwd") return program;
+        if (cmd === "git_branch") return branches[(args as { path: string }).path] ?? null;
+        return null;
+      });
+      const { result, rerender } = renderHook(({ watch }) => useGitBranch(local, "/repo", 0, true, watch), {
+        initialProps: { watch: false },
+      });
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(result.current).toBe("main");
+      // Not watching: nothing is read again.
+      program = "/repo-wt";
+      await act(() => vi.advanceTimersByTimeAsync(BRANCH_WATCH_MS.local * 3));
+      expect(result.current).toBe("main");
+      rerender({ watch: true });
+      await act(() => vi.advanceTimersByTimeAsync(BRANCH_WATCH_MS.local));
+      expect(result.current).toBe("feature");
+      branches["/repo-wt"] = "other";
+      await act(() => vi.advanceTimersByTimeAsync(BRANCH_WATCH_MS.local));
+      expect(result.current).toBe("other");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("watches an SSH terminal less often, through its session", async () => {
+    vi.useFakeTimers();
+    try {
+      invoke.mockImplementation(async (cmd: string) => (cmd === "ssh_shell_cwd" ? "/srv/wt" : cmd === "ssh_git_branch" ? "hotfix" : null));
+      const { result } = renderHook(() => useGitBranch(ssh, "/srv/app", 0, true, true));
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      await act(() => vi.advanceTimersByTimeAsync(BRANCH_WATCH_MS.ssh));
+      expect(result.current).toBe("hotfix");
+      expect(invoke).toHaveBeenCalledWith("ssh_git_branch", { id: 8, path: "/srv/wt" });
+      expect(BRANCH_WATCH_MS.ssh).toBeGreaterThan(BRANCH_WATCH_MS.local);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

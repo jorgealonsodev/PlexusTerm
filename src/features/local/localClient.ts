@@ -20,6 +20,8 @@ export const local = {
   open: (path: string, openWith: OpenWith) => invoke<void>("local_open", { path, with: openWith }),
   /** Working folder of a local terminal's shell (pty id), or null when the system cannot tell. */
   shellCwd: (ptyId: number) => invoke<string | null>("pty_cwd", { id: ptyId }),
+  /** The folder of the program in the terminal's foreground (its shell when none runs). */
+  programCwd: (ptyId: number) => invoke<string | null>("pty_program_cwd", { id: ptyId }),
   /** Git status of the files under a folder (paths relative to it); empty outside a repository. */
   gitStatus: (path: string) => invoke<GitStatusEntry[]>("git_status", { path }),
   /** A text file's content (the first part of a long file). */

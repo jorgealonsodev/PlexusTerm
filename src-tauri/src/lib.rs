@@ -171,6 +171,12 @@ async fn pty_cwd(id: u32, ptys: State<'_, PtyManager>) -> Result<Option<String>,
     ptys.cwd(id)
 }
 
+/// The working folder of the program in a local terminal's foreground, else of its shell.
+#[tauri::command]
+async fn pty_program_cwd(id: u32, ptys: State<'_, PtyManager>) -> Result<Option<String>, PtyError> {
+    ptys.program_cwd(id)
+}
+
 #[tauri::command]
 fn pty_close(id: u32, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
     ptys.close(id)
@@ -654,6 +660,7 @@ pub fn run() {
             pty_resize,
             pty_close,
             pty_cwd,
+            pty_program_cwd,
             serial_list_ports,
             platform,
             shells,

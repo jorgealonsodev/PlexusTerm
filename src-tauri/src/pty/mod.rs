@@ -237,6 +237,23 @@ impl PtyManager {
         Ok(pid.and_then(process_cwd))
     }
 
+    /// The working folder of the program in the terminal's foreground (a CLI that moved to a git
+    /// worktree), else of its shell: the foreground process group's leader on Linux and macOS;
+    /// on Windows, which cannot tell, the shell's (None).
+    pub fn program_cwd(&self, id: u32) -> Result<Option<String>, PtyError> {
+        #[cfg(unix)]
+        {
+            let leader = self.with_session(id, |s| Ok(s.master.process_group_leader()))?;
+            if let Some(dir) = leader
+                .and_then(|pid| u32::try_from(pid).ok())
+                .and_then(process_cwd)
+            {
+                return Ok(Some(dir));
+            }
+        }
+        self.cwd(id)
+    }
+
     pub fn close(&self, id: u32) -> Result<(), PtyError> {
         let mut session = self
             .sessions
@@ -419,6 +436,48 @@ mod tests {
         );
         mgr.close(id).unwrap();
         assert!(matches!(mgr.cwd(id), Err(PtyError::UnknownSession(_))));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn program_cwd_follows_the_program_in_the_foreground() {
+        let dir = tempfile::tempdir().unwrap();
+        let inner = dir.path().join("inner");
+        std::fs::create_dir(&inner).unwrap();
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        // An interactive shell gives each command line a process group of its own.
+        let mut request = req("/bin/sh", &["-i"]);
+        request.cwd = Some(dir.path().to_string_lossy().into_owned());
+        let id = mgr.spawn(request, s).unwrap();
+        let start = std::fs::canonicalize(dir.path()).unwrap();
+        let moved = std::fs::canonicalize(&inner).unwrap();
+        mgr.write(id, b"echo ready-$((40+2))\n").unwrap();
+        wait_for(&rx, "ready-42");
+        // At the prompt, the shell itself.
+        assert_eq!(
+            mgr.program_cwd(id).unwrap(),
+            Some(start.to_string_lossy().into_owned())
+        );
+        mgr.write(id, b"(cd inner && echo in-$((40+2)) && sleep 5)\n")
+            .unwrap();
+        wait_for(&rx, "in-42");
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut seen = None;
+        while Instant::now() < deadline {
+            seen = mgr.program_cwd(id).unwrap();
+            if seen.as_deref() == Some(&*moved.to_string_lossy()) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(seen, Some(moved.to_string_lossy().into_owned()));
+        // The shell's own folder has not changed.
+        assert_eq!(
+            mgr.cwd(id).unwrap(),
+            Some(start.to_string_lossy().into_owned())
+        );
+        mgr.close(id).unwrap();
     }
 
     #[test]

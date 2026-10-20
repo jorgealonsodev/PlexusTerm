@@ -396,7 +396,7 @@ In [DEV mode](#dev-mode), when a terminal's current folder is inside a git repos
 - **SSH terminals** run one read-only command on the server over the same connection (`git -C <folder> symbolic-ref --short -q HEAD`, or `git rev-parse --short HEAD` when detached). A server without git shows no branch.
 - Mosh, Telnet and serial terminals show no branch: PlexusTerm has no separate channel to ask through.
 
-The folder is the one the shell reports with OSC 7; for shells that do not, PlexusTerm asks for the shell's folder (Linux servers for SSH). The branch is read again when the folder changes and when the prompt comes back after a command, so `git checkout` or `git switch` shows up as soon as it finishes; it is never polled. Outside DEV mode no branch is shown and nothing is read.
+The folder is the one the shell reports with OSC 7; for shells that do not, PlexusTerm asks for the shell's folder (Linux servers for SSH). The branch is read again when the folder changes and when the prompt comes back after a command, so `git checkout` or `git switch` shows up as soon as it finishes. While an AI tool runs in the terminal its prompt does not come back, so the branch is also read every 1.5 seconds (every 5 seconds over SSH, where each read runs commands on the server), in the folder of the tool itself: a branch it switches or a git worktree it moves to shows at once. On Windows, where the tool's folder cannot be read, the shell's is used. Outside DEV mode no branch is shown and nothing is read.
 
 ## Command suggestions and AI
 

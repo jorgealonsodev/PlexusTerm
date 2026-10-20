@@ -1780,6 +1780,8 @@ function AppContent() {
                             prompt={paneMeta[paneId]?.prompts ?? 0}
                             // Only DEV mode reads and shows the branch (S10, L5).
                             enabled={tabDev !== undefined}
+                            // A CLI runs in it: its prompt does not come back, so it is watched.
+                            watch={tabDev?.cli != null && tabDev.pane === paneId}
                             onBranch={(branch) => updatePane(paneId, { branch })}
                           />
                           {paneIds(tab.layout).length > 1 && paneMeta[paneId]?.attention && (
