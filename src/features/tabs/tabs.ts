@@ -1,5 +1,6 @@
 import type { PathOrigin } from "../drop/pathDrag";
 import { targetTitle, type SessionTarget } from "../sessions/types";
+import type { ViewerPosition } from "../settings/settings";
 import {
   closePane,
   leaf,
@@ -101,7 +102,8 @@ export type TabsAction =
   /** The AI chat key (S9): see `chatAction`. */
   | { type: "openChat"; key: string; selection: string }
   /** Shows a file in the viewer of the focused terminal, opening one at its left if it has none. */
-  | { type: "openViewer"; key: string; path: string; origin: PathOrigin }
+  /** `position` places a new viewer next to its terminal; "left" when omitted. */
+  | { type: "openViewer"; key: string; path: string; origin: PathOrigin; position?: ViewerPosition }
   | { type: "closePane"; key: string; paneId: string }
   | { type: "focusPane"; key: string; paneId: string }
   | { type: "focusDirection"; key: string; direction: FocusDirection }
@@ -227,7 +229,14 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         return updateTab(state, tab.key, (t) => ({ ...t, focusedPane: existing, viewers: { ...viewers, [existing]: link } }));
       }
       const pane = `pane-${state.nextPaneSeq}`;
-      const layout = splitPane(tab.layout, terminalPaneId, "row", pane, "before");
+      const position = action.position ?? "left";
+      const layout = splitPane(
+        tab.layout,
+        terminalPaneId,
+        position === "below" ? "column" : "row",
+        pane,
+        position === "left" ? "before" : "after",
+      );
       if (layout === tab.layout) return state;
       return {
         ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, viewers: { ...viewers, [pane]: link } })),

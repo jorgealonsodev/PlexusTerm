@@ -243,6 +243,15 @@ describe("file viewer panes", () => {
     expect(terminalPaneOf(tab(state))).toBe("pane-1");
   });
 
+  it("opens a file at the right of the terminal or below it as asked", () => {
+    const at = (position: "right" | "below") =>
+      tab(tabsReducer(open(initialTabs), { type: "openViewer", key: "tab-1", path: "/p/a.ts", origin: local, position }));
+    expect(at("right").layout).toMatchObject({ kind: "split", direction: "row", a: { id: "pane-1" }, b: { id: "pane-2" } });
+    expect(at("below").layout).toMatchObject({ kind: "split", direction: "column", a: { id: "pane-1" }, b: { id: "pane-2" } });
+    expect(at("below").focusedPane).toBe("pane-2");
+    expect(at("below").viewers!["pane-2"].terminalPaneId).toBe("pane-1");
+  });
+
   it("shows another file of the same terminal in its viewer instead of opening a second one", () => {
     let state = view(open(initialTabs), "/p/a.ts");
     state = view(state, "/p/b.md");

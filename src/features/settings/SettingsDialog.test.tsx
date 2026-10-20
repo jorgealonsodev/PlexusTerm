@@ -448,6 +448,16 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ viewerAutoSave: true }));
     });
 
+    it("opens the file viewer at the left by default and saves another side", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const side = screen.getByRole("combobox", { name: "Open the file viewer" }) as HTMLSelectElement;
+      expect(side.value).toBe("left");
+      fireEvent.change(side, { target: { value: "below" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ viewerPosition: "below" }));
+    });
+
     it("chooses how the sidebar opens at startup (L17)", () => {
       const { onSave } = setup();
       const select = screen.getByLabelText("Sidebar when PlexusTerm opens") as HTMLSelectElement;

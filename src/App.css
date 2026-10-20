@@ -2566,6 +2566,13 @@ body.is-dragging-path {
   color: var(--accent);
 }
 
+/* The file's text has its own size (Settings → Appearance); the viewer's bar follows the interface. */
+.viewer__code,
+.viewer__markdown {
+  --ui-scale: var(--viewer-scale, 1);
+  font-size: calc(13px * var(--ui-scale));
+}
+
 .viewer__code {
   flex: 1 1 auto;
   min-height: 0;

@@ -301,13 +301,14 @@ function AppContent() {
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
-  // The interface and the AI chat scale their text apart from the terminal (App.css: --ui-scale).
-  const { uiFontSize, chatFontSize } = terminalSettings.settings;
+  // The interface, the AI chat and the file viewer scale their text apart from the terminal (App.css: --ui-scale).
+  const { uiFontSize, chatFontSize, viewerFontSize } = terminalSettings.settings;
   useLayoutEffect(() => {
     const root = document.documentElement.style;
     root.setProperty("--ui-scale", String(uiFontSize / BASE_TEXT_SIZE));
     root.setProperty("--chat-scale", String(chatFontSize / BASE_TEXT_SIZE));
-  }, [uiFontSize, chatFontSize]);
+    root.setProperty("--viewer-scale", String(viewerFontSize / BASE_TEXT_SIZE));
+  }, [uiFontSize, chatFontSize, viewerFontSize]);
   // The interface language (S3): the chosen one, or the system's, English when unsupported.
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
@@ -942,13 +943,14 @@ function AppContent() {
         .catch(() => {});
     }
   }, [state.tabs, dev.state]);
-  /** Shows a file of the file lists in the viewer of the active tab's terminal, at its left. */
+  /** Shows a file of the file lists in the viewer of the active tab's terminal, on the side Settings choose. */
   const viewInTab = (origin: PathOrigin, path: string) => {
     if (!activeTab) return;
     const terminal = terminalPaneOf(activeTab);
     const hasViewer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal);
     if (!hasViewer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.viewer.full"));
-    void dispatchKeepingEdits({ type: "openViewer", key: activeTab.key, path, origin });
+    const position = terminalSettings.settings.viewerPosition;
+    void dispatchKeepingEdits({ type: "openViewer", key: activeTab.key, path, origin, position });
   };
   /**
    * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the

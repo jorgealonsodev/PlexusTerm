@@ -114,12 +114,16 @@ export interface TerminalSettings {
   gitFileStatus: boolean;
   /** The file viewer saves an edited file by itself a moment after typing stops. */
   viewerAutoSave: boolean;
+  /** Where a file viewer opens next to its terminal. */
+  viewerPosition: ViewerPosition;
   /** The file viewer marks the lines changed since the file's last commit, like VS Code (its own button). */
   viewerChangedLines: boolean;
   /** Text size of the interface (bars, lists, dialogs) in pixels, 10..20; the terminal has its own. */
   uiFontSize: number;
   /** Text size of the AI chat in pixels, 10..24. */
   chatFontSize: number;
+  /** Text size of the file viewer's code and Markdown in pixels, 10..24. */
+  viewerFontSize: number;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
@@ -143,6 +147,8 @@ export const MIN_UI_FONT_SIZE = 10;
 export const MAX_UI_FONT_SIZE = 20;
 export const MIN_CHAT_FONT_SIZE = 10;
 export const MAX_CHAT_FONT_SIZE = 24;
+export const MIN_VIEWER_FONT_SIZE = 10;
+export const MAX_VIEWER_FONT_SIZE = 24;
 export const MAX_TEXT_EDITOR_LENGTH = 1024;
 export const MAX_AI_HISTORY_CONTEXT = 20;
 export const MAX_AI_MODEL_LENGTH = 200;
@@ -187,9 +193,11 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
+  viewerPosition: "left",
   viewerChangedLines: true,
   uiFontSize: 13,
   chatFontSize: 13,
+  viewerFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
 };
@@ -198,6 +206,8 @@ export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(
 export const clampUiFontSize = (size: number) => Math.min(MAX_UI_FONT_SIZE, Math.max(MIN_UI_FONT_SIZE, Math.round(size)));
 export const clampChatFontSize = (size: number) =>
   Math.min(MAX_CHAT_FONT_SIZE, Math.max(MIN_CHAT_FONT_SIZE, Math.round(size)));
+export const clampViewerFontSize = (size: number) =>
+  Math.min(MAX_VIEWER_FONT_SIZE, Math.max(MIN_VIEWER_FONT_SIZE, Math.round(size)));
 const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? clamp(value) : fallback;
 
@@ -295,6 +305,9 @@ export const clampTabColumnWidth = (width: number) =>
  * Reads settings.json. A missing or unreadable file gives the defaults; every invalid value
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
  */
+export const VIEWER_POSITIONS = ["left", "right", "below"] as const;
+export type ViewerPosition = (typeof VIEWER_POSITIONS)[number];
+
 export const SIDEBAR_AT_STARTUP = ["last", "expanded", "collapsed"] as const;
 export type SidebarAtStartup = (typeof SIDEBAR_AT_STARTUP)[number];
 const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
@@ -378,9 +391,13 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     gpuAcceleration: linux && fromBefore ? false : bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
+    viewerPosition: (VIEWER_POSITIONS as readonly unknown[]).includes(value.viewerPosition)
+      ? (value.viewerPosition as ViewerPosition)
+      : d.viewerPosition,
     viewerChangedLines: bool(value.viewerChangedLines, d.viewerChangedLines),
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
     chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
+    viewerFontSize: size(value.viewerFontSize, clampViewerFontSize, d.viewerFontSize),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)

@@ -22,6 +22,7 @@ import {
   clampAiHistoryContext,
   clampFontSize,
   clampChatFontSize,
+  clampViewerFontSize,
   clampUiFontSize,
   FONT_WEIGHTS,
   LINE_HEIGHTS,
@@ -29,6 +30,8 @@ import {
   MAX_UI_FONT_SIZE,
   MIN_CHAT_FONT_SIZE,
   MAX_CHAT_FONT_SIZE,
+  MIN_VIEWER_FONT_SIZE,
+  MAX_VIEWER_FONT_SIZE,
   cleanAiBaseUrl,
   cleanAiModel,
   cleanFontFamily,
@@ -46,7 +49,7 @@ import {
   MAX_TEXT_EDITOR_LENGTH,
   MIN_FONT_SIZE,
   type AiProvider,
-  type TerminalSettings, type SidebarAtStartup } from "./settings";
+  type TerminalSettings, type SidebarAtStartup, type ViewerPosition } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutLabel } from "../panes/shortcuts";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
@@ -299,6 +302,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [fontWeight, setFontWeight] = useState(settings.fontWeight);
   const [lineHeight, setLineHeight] = useState(settings.lineHeight);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
+  const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
@@ -335,6 +339,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [fileDetails, setFileDetails] = useState(settings.fileDetails);
   const [gitFileStatus, setGitFileStatus] = useState(settings.gitFileStatus);
   const [viewerAutoSave, setViewerAutoSave] = useState(settings.viewerAutoSave);
+  const [viewerPosition, setViewerPosition] = useState(settings.viewerPosition);
   const [terminalFollowsBrowser, setTerminalFollowsBrowser] = useState(settings.terminalFollowsBrowser);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
@@ -387,6 +392,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const size = Number.parseFloat(fontSize);
     const uiSize = Number.parseFloat(uiFontSize);
     const chatSize = Number.parseFloat(chatFontSize);
+    const viewerSize = Number.parseFloat(viewerFontSize);
     const context = Number.parseFloat(aiHistoryContext);
     onSave({
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
@@ -394,6 +400,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fontWeight,
       lineHeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
+      viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
       copyOnSelect,
       rightClickPastes,
       confirmMultilinePaste,
@@ -405,6 +412,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fileDetails,
       gitFileStatus,
       viewerAutoSave,
+      viewerPosition,
       // Set with the viewer's own button, not here.
       viewerChangedLines: settings.viewerChangedLines,
       terminalFollowsBrowser,
@@ -619,6 +627,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ? t("settings.appearance.chatFontSizeHelp", { shortcuts: fontShortcuts })
                 : t("settings.appearance.chatFontSizeHelpNoShortcut")}
             </p>
+            <label className="field field--size">
+              {t("settings.appearance.viewerFontSize")}
+              <input
+                type="number"
+                min={MIN_VIEWER_FONT_SIZE}
+                max={MAX_VIEWER_FONT_SIZE}
+                value={viewerFontSize}
+                onChange={(e) => setViewerFontSize(e.target.value)}
+              />
+            </label>
+            <p className="muted">{t("settings.appearance.viewerFontSizeHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
@@ -792,6 +811,14 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.files.autoSave")}
             </label>
             <p className="muted">{t("settings.files.autoSaveHelp")}</p>
+            <label className="field">
+              {t("settings.files.viewerPosition")}
+              <select value={viewerPosition} onChange={(e) => setViewerPosition(e.target.value as ViewerPosition)}>
+                <option value="left">{t("settings.files.viewerLeft")}</option>
+                <option value="right">{t("settings.files.viewerRight")}</option>
+                <option value="below">{t("settings.files.viewerBelow")}</option>
+              </select>
+            </label>
             <label className="check">
               <input
                 type="checkbox"

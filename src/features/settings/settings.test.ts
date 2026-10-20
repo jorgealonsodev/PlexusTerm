@@ -46,11 +46,13 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      viewerPosition: "left" as const,
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1.15,
       uiFontSize: 13,
       chatFontSize: 13,
+      viewerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -65,6 +67,14 @@ describe("parseSettings", () => {
     expect(at("expanded", true)).toBe(false);
     expect(at("collapsed", false)).toBe(true);
     expect(parseSettings(JSON.stringify({ sidebarAtStartup: "sideways" })).sidebarAtStartup).toBe("last");
+  });
+
+  it("reads where the file viewer opens, the left when unknown", () => {
+    const of = (viewerPosition: unknown) => parseSettings(JSON.stringify({ viewerPosition })).viewerPosition;
+    expect(of("right")).toBe("right");
+    expect(of("below")).toBe("below");
+    expect(of("above")).toBe("left");
+    expect(parseSettings(null).viewerPosition).toBe("left");
   });
 
   it("returns the defaults for a file that is not a JSON object", () => {
@@ -117,11 +127,13 @@ describe("parseSettings", () => {
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
+      viewerPosition: "left" as const,
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1.15,
       uiFontSize: 13,
       chatFontSize: 13,
+      viewerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
     });
@@ -288,11 +300,13 @@ describe("serializeSettings", () => {
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,
+      viewerPosition: "left" as const,
       viewerChangedLines: false,
       fontWeight: 500,
       lineHeight: 1,
       uiFontSize: 15,
       chatFontSize: 17,
+      viewerFontSize: 13,
       devCommands: ["aider"],
       tabColumnWidth: 300,
     };
@@ -381,6 +395,14 @@ describe("DEV tab column width (S13)", () => {
 });
 
 describe("interface and chat text sizes", () => {
+  it("give the file viewer its own text size, 13 px by default, between 10 and 24", () => {
+    expect(DEFAULT_SETTINGS.viewerFontSize).toBe(13);
+    expect(parseSettings(JSON.stringify({ viewerFontSize: 99 })).viewerFontSize).toBe(24);
+    expect(parseSettings(JSON.stringify({ viewerFontSize: 1 })).viewerFontSize).toBe(10);
+    expect(parseSettings(JSON.stringify({ viewerFontSize: 16.4 })).viewerFontSize).toBe(16);
+    expect(parseSettings(JSON.stringify({ viewerFontSize: "big" })).viewerFontSize).toBe(13);
+  });
+
   it("default to 13 px and stay within their ranges", () => {
     expect(DEFAULT_SETTINGS).toMatchObject({ uiFontSize: 13, chatFontSize: 13 });
     expect(parseSettings(JSON.stringify({ uiFontSize: 99, chatFontSize: 1 }))).toMatchObject({ uiFontSize: 20, chatFontSize: 10 });
