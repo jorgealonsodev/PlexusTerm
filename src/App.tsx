@@ -25,7 +25,7 @@ import { DialogProvider, useDialogs } from "./features/dialogs/DialogProvider";
 import { EditUploads } from "./features/sftp/EditUploads";
 import { writeText } from "./features/terminal/clipboard";
 import { PaneGrid } from "./features/panes/PaneGrid";
-import { MAX_PANES, neighbour, paneIds } from "./features/panes/paneLayout";
+import { MAX_PANES, neighbour, paneIds, shownLayout } from "./features/panes/paneLayout";
 import { shortcutFor, shortcutLabel, type ShortcutActionId } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel } from "./features/local/LocalPanel";
@@ -1721,7 +1721,8 @@ function AppContent() {
                             // monitor, and the DEV button at its right end for terminals that can run AI CLIs.
                             // A terminal with another one below it keeps only the DEV option, without the bar:
                             // the bar of the one below shows its own branch and monitor.
-                            const below = neighbour(tab.layout, paneId, "down");
+                            // Below it on screen: the panes DEV mode hides do not count.
+                            const below = neighbour(shownLayout(tab.layout, tabDev?.hidden ?? []), paneId, "down");
                             const bare = below !== null && isTerminalPane(tab, below);
                             const branch = tabDev && !bare ? paneMeta[paneId]?.branch : null;
                             const monitor = tab.target.type === "ssh" && settings.remoteMonitor && !bare;

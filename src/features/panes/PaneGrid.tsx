@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { closePane, paneIds, paneRects, splitBoxes, type PaneLayout, type Rect, type SplitBox } from "./paneLayout";
+import { paneIds, paneRects, shownLayout, splitBoxes, type PaneLayout, type Rect, type SplitBox } from "./paneLayout";
 
 interface PaneGridProps {
   layout: PaneLayout;
@@ -76,7 +76,7 @@ export function PaneGrid({ layout, focusedPane, renderPane, onFocusPane, onResiz
     return () => observer.disconnect();
   }, []);
   // The layout on screen: the hidden panes closed, their siblings taking their place.
-  const shown = hidden.reduce<PaneLayout | null>((l, id) => l && closePane(l, id), layout) ?? layout;
+  const shown = shownLayout(layout, hidden);
   const rects = paneRects(shown);
   const multiple = shown.kind === "split";
 

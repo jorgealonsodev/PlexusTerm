@@ -196,6 +196,18 @@ describe("DEV mode (S10, S13)", () => {
     expect(right.isConnected).toBe(true);
   });
 
+  it("keeps the whole bar under the terminal on screen when DEV mode hides the one below it", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "Split down" }));
+    await settle();
+    const [top] = [...document.querySelectorAll<HTMLElement>(".tab-panes:not([hidden]) .pane[data-pane-id]")];
+    expect(top.querySelector(".pane-footer")!.classList.contains("pane-footer--bare")).toBe(true);
+    fireEvent.mouseDown(top);
+    fireEvent.click(within(top).getByRole("button", { name: /DEV mode/ }));
+    await settle();
+    expect(top.querySelector(".pane-footer")!.classList.contains("pane-footer--bare")).toBe(false);
+  });
+
   it("turns on for each listed CLI and not for other commands", async () => {
     await renderApp();
     for (const command of ["claude-foo", "echo claude", "ls -la"]) {

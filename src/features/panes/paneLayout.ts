@@ -71,6 +71,11 @@ export function closePane(layout: PaneLayout, paneId: string): PaneLayout | null
   return mapNode(layout, paneId, () => null);
 }
 
+/** The layout on screen with `hidden` panes out of sight: as if closed; the whole layout if all would be. */
+export function shownLayout(layout: PaneLayout, hidden: readonly string[]): PaneLayout {
+  return hidden.reduce<PaneLayout | null>((l, id) => l && closePane(l, id), layout) ?? layout;
+}
+
 /** Sets the ratio of one split, clamped to MIN_RATIO-MAX_RATIO. */
 export function setRatio(layout: PaneLayout, splitId: string, ratio: number): PaneLayout {
   const clamped = clampRatio(ratio);
