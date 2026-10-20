@@ -2597,6 +2597,96 @@ body.is-dragging-path {
   overflow: hidden;
 }
 
+/* The bar under the file's text, the same as the terminal's (.pane-footer): encoding, line endings
+   and language at its right, as clickable text like VS Code's status bar. */
+.viewer__status {
+  justify-content: flex-end;
+}
+
+.viewer__status-item {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.viewer__status-item:not(:disabled):hover,
+.viewer__status-item:focus-visible {
+  outline: none;
+  color: var(--text);
+}
+
+.viewer__status-item:focus-visible {
+  text-decoration: underline;
+}
+
+.viewer__status-item:disabled {
+  cursor: default;
+}
+
+/* The list a status bar item opens, above it. */
+.status-picker {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(280px, calc(100vw - 8px));
+  max-height: min(360px, 60vh);
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+.status-picker__filter {
+  flex: none;
+  padding: 5px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.status-picker__filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.status-picker__list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.status-picker__option {
+  flex: none;
+  padding: 5px 10px;
+  font: inherit;
+  text-align: start;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.status-picker__option:hover,
+.status-picker__option:focus-visible {
+  outline: none;
+  background: var(--surface-2);
+}
+
+.status-picker__option--on {
+  color: var(--accent);
+}
+
 /* Code / Preview switch of a Markdown file. */
 .viewer__modes {
   display: flex;

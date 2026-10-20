@@ -3,10 +3,25 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Diff, Save, X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
-import { createCodeView, fileText, fileTextLength, reloadText, showChanges, type Editing } from "./codeView";
+import {
+  createCodeView,
+  fileText,
+  fileTextLength,
+  languageNames,
+  languageOf,
+  lineBreakOf,
+  reloadText,
+  setLanguage,
+  setLineBreak,
+  showChanges,
+  type Editing,
+  type LineBreak,
+} from "./codeView";
 import type { EditorView } from "@codemirror/view";
 import type { EditorState } from "@codemirror/state";
 import { isMarkdown, renderMarkdown } from "./markdown";
+import { ENCODINGS, encodingName, regionKey } from "./encodings";
+import { StatusPicker, type PickerOption } from "./StatusPicker";
 
 /** A file's text as the backend reads it for the viewer. */
 export interface ViewedText {
@@ -14,12 +29,17 @@ export interface ViewedText {
   content: string;
   /** Only the first 4 MiB were read. */
   truncated: boolean;
+  /** The encoding the text was read with (an id of ENCODINGS); UTF-8 when not said. */
+  encoding?: string;
 }
 
 interface FileViewerProps {
   path: string;
-  /** Reads the file; called again when `path` changes. */
-  load: () => Promise<ViewedText>;
+  /**
+   * Reads the file, with `encoding` when one was chosen (otherwise the backend finds it); called
+   * again when `path` changes.
+   */
+  load: (encoding?: string) => Promise<ViewedText>;
   onClose: () => void;
   /** Opens a web link of a Markdown preview; the system browser by default. */
   onOpenLink?: (url: string) => void;
@@ -32,9 +52,10 @@ interface FileViewerProps {
   prompt?: number;
   /**
    * Writes `content` over the file while it still holds `expected` (the text the edits started
-   * from); rejects with the reason otherwise. Without it the file is read-only.
+   * from) in `encoding`; `expected` is the file read with `readAs` (another one after "Save with
+   * encoding"). Rejects with the reason otherwise. Without it the file is read-only.
    */
-  save?: (expected: string, content: string) => Promise<void>;
+  save?: (expected: string, content: string, encoding: string, readAs: string) => Promise<void>;
   /** Saves by itself AUTO_SAVE_MS after typing stops. */
   autoSave?: boolean;
   /** Told when the viewer starts or stops holding unsaved edits (and that it holds none once closed). */
@@ -66,6 +87,8 @@ function CodeView({
   editing,
   keep,
   committed,
+  lineBreak,
+  language,
 }: {
   text: string;
   name: string;
@@ -73,6 +96,10 @@ function CodeView({
   keep: boolean;
   /** The file's text in its last commit, to mark the lines that differ; null marks none. */
   committed: string | null;
+  /** What the lines are joined with; changing it is an edit. */
+  lineBreak: LineBreak;
+  /** The language highlighted, a name of `languageNames()`; null for plain text. */
+  language: string | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -83,12 +110,17 @@ function CodeView({
   const editable = editing !== undefined;
   const committedRef = useRef(committed);
   committedRef.current = committed;
+  const lineBreakRef = useRef(lineBreak);
+  lineBreakRef.current = lineBreak;
+  /** The language the view highlights: the file name's when it is made. */
+  const shownLanguage = useRef<string | null>(null);
   useEffect(() => {
     const relay: Editing | undefined = editingRef.current && {
       onEdit: (doc) => editingRef.current?.onEdit(doc),
       onSave: () => editingRef.current?.onSave(),
     };
-    view.current = createCodeView(host.current!, textRef.current, name, relay);
+    view.current = createCodeView(host.current!, textRef.current, name, relay, lineBreakRef.current);
+    shownLanguage.current = languageOf(name);
     showChanges(view.current, committedRef.current);
     return () => {
       view.current?.destroy();
@@ -103,6 +135,17 @@ function CodeView({
   useEffect(() => {
     if (view.current) showChanges(view.current, committed);
   }, [committed]);
+  useEffect(() => {
+    const v = view.current;
+    if (!v || v.state.lineBreak === lineBreak) return;
+    setLineBreak(v, lineBreak);
+    editingRef.current?.onEdit(v.state);
+  }, [lineBreak]);
+  useEffect(() => {
+    if (!view.current || language === shownLanguage.current) return;
+    setLanguage(view.current, language);
+    shownLanguage.current = language;
+  }, [language, name, editable]);
   return <div className="viewer__code" ref={host} />;
 }
 
@@ -166,6 +209,14 @@ export function FileViewer({
   const [mode, setMode] = useState<"preview" | "code">("preview");
   const loadRef = useRef(load);
   loadRef.current = load;
+  /** The encoding chosen to read the file with; the backend finds it until one is. */
+  const readAs = useRef<string | undefined>(undefined);
+  /** The line break chosen in the status bar; the file's own one until then. */
+  const [lineBreak, setLineBreakChoice] = useState<LineBreak | null>(null);
+  /** The language chosen in the status bar (null: plain text); the file name's until then. */
+  const [language, setLanguageChoice] = useState<string | null | undefined>(undefined);
+  /** The open status bar list, and the button it opens from. */
+  const [picker, setPicker] = useState<{ kind: "encoding" | "reopen" | "saveAs" | "lineBreak" | "language"; anchor: HTMLElement } | null>(null);
 
   /** The edited text while it differs from the file's; null when there is nothing to save. */
   const draft = useRef<EditorState | null>(null);
@@ -189,21 +240,29 @@ export function FileViewer({
     };
   }, [dirty]);
 
-  useEffect(() => {
-    let live = true;
+  /** Reads the file from scratch: shown edits and a chosen line break are dropped. */
+  const readSeq = useRef(0);
+  const read = useCallback(() => {
+    const seq = ++readSeq.current;
     setLoaded({ state: "loading" });
     draft.current = null;
     setDirty(false);
     setSaveError(null);
+    setLineBreakChoice(null);
     stopAutoSave();
-    loadRef.current().then(
-      (file) => live && setLoaded({ state: "ok", file }),
-      (err) => live && setLoaded({ state: "error", message: describeAttachError(err) }),
+    loadRef.current(readAs.current).then(
+      (file) => seq === readSeq.current && setLoaded({ state: "ok", file }),
+      (err) => seq === readSeq.current && setLoaded({ state: "error", message: describeAttachError(err) }),
     );
+  }, []);
+  useEffect(() => {
+    readAs.current = undefined;
+    setLanguageChoice(undefined);
+    read();
     return () => {
-      live = false;
+      readSeq.current++;
     };
-  }, [path]);
+  }, [path, read]);
 
   /** The file's text in its last commit while the changed lines are shown; null otherwise. */
   const [committed, setCommitted] = useState<string | null>(null);
@@ -226,7 +285,7 @@ export function FileViewer({
   /** Reads the file again; its new text replaces the shown one, a failed read keeps it. */
   const refreshRef = useRef<() => void>(() => {});
   refreshRef.current = () => {
-    loadRef.current().then(
+    loadRef.current(readAs.current).then(
       (file) =>
         // Unsaved edits are kept; saving says if the file changed meanwhile.
         dirtyRef.current ||
@@ -265,19 +324,22 @@ export function FileViewer({
 
   const file = loaded.state === "ok" ? loaded.file : null;
   const editable = save !== undefined && file !== null && !file.truncated;
-  const saveRef = useRef<() => void>(() => {});
-  saveRef.current = () => {
+  const encoding = file?.encoding ?? "utf-8";
+  /** Saves the edits; with `as`, the text (edited or not) in that encoding, which it keeps. */
+  const saveRef = useRef<(as?: string) => void>(() => {});
+  saveRef.current = (as?: string) => {
     stopAutoSave();
     const edited = draft.current;
-    if (!save || !file || !edited) return;
+    if (!save || !file || !(edited || as) || !editable) return;
     if (saving) {
       // The newer text is saved once the running save is done.
       if (autoSave) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
       return;
     }
-    const content = fileText(edited);
+    const content = edited ? fileText(edited) : file.content;
+    const target = as ?? encoding;
     setSaving(true);
-    save(file.content, content).then(
+    save(file.content, content, target, encoding).then(
       () => {
         setSaving(false);
         setSaveError(null);
@@ -286,7 +348,9 @@ export function FileViewer({
           draft.current = null;
           setDirty(false);
         }
-        setLoaded({ state: "ok", file: { ...file, content } });
+        // Later reads decode it as it was written.
+        if (as) readAs.current = as;
+        setLoaded({ state: "ok", file: { ...file, content, encoding: target } });
       },
       (err) => {
         setSaving(false);
@@ -308,6 +372,61 @@ export function FileViewer({
       }
     : undefined;
   const shown = dirty && draft.current ? fileText(draft.current) : (file?.content ?? "");
+  const fileLineBreak = lineBreak ?? lineBreakOf(file?.content ?? "");
+  const shownLanguage = language === undefined ? languageOf(name) : language;
+  const plainText = t("app.viewer.plainText");
+  const openPicker = (kind: NonNullable<typeof picker>["kind"]) => (e: MouseEvent<HTMLButtonElement>) => {
+    const anchor = e.currentTarget;
+    setPicker((open) => (open?.anchor === anchor && open.kind === kind ? null : { kind, anchor }));
+  };
+  const encodingOptions: PickerOption[] = ENCODINGS.map((e) => ({
+    id: e.id,
+    label: `${encodingName(e.id, t)} — ${t(regionKey(e.region))}`,
+  }));
+  const pickers = picker && {
+    encoding: {
+      label: t("app.viewer.selectAction"),
+      options: [
+        // Reading it again would drop the edits.
+        ...(dirty ? [] : [{ id: "reopen", label: t("app.viewer.reopenWithEncoding") }]),
+        ...(editable ? [{ id: "saveAs", label: t("app.viewer.saveWithEncoding") }] : []),
+      ],
+      onChoose: (id: string) => setPicker({ kind: id as "reopen" | "saveAs", anchor: picker.anchor }),
+    },
+    reopen: {
+      label: t("app.viewer.selectEncoding"),
+      options: encodingOptions,
+      selected: encoding,
+      filter: true,
+      onChoose: (id: string) => {
+        readAs.current = id;
+        read();
+      },
+    },
+    saveAs: {
+      label: t("app.viewer.selectEncoding"),
+      options: encodingOptions,
+      selected: encoding,
+      filter: true,
+      onChoose: (id: string) => saveRef.current(id),
+    },
+    lineBreak: {
+      label: t("app.viewer.selectLineBreak"),
+      options: [
+        { id: "\n", label: "LF" },
+        { id: "\r\n", label: "CRLF" },
+      ],
+      selected: fileLineBreak,
+      onChoose: (id: string) => setLineBreakChoice(id as LineBreak),
+    },
+    language: {
+      label: t("app.viewer.selectLanguage"),
+      options: [{ id: "", label: plainText }, ...languageNames().map((n) => ({ id: n, label: n }))],
+      selected: shownLanguage ?? "",
+      filter: true,
+      onChoose: (id: string) => setLanguageChoice(id === "" ? null : id),
+    },
+  }[picker.kind];
 
   return (
     <section className="viewer" aria-label={name}>
@@ -391,7 +510,41 @@ export function FileViewer({
               editing={editing}
               keep={dirty}
               committed={changesShown ? committed : null}
+              lineBreak={fileLineBreak}
+              language={shownLanguage}
             />
+          )}
+          <div className="pane-footer viewer__status" role="toolbar" aria-label={t("app.viewer.status")}>
+            <button
+              type="button"
+              className="viewer__status-item"
+              title={t("app.viewer.selectEncoding")}
+              disabled={dirty && !editable}
+              onClick={openPicker("encoding")}
+            >
+              {encodingName(encoding, t)}
+            </button>
+            <button
+              type="button"
+              className="viewer__status-item"
+              title={t("app.viewer.selectLineBreak")}
+              // Converting is an edit, and a file shown only in part is not edited.
+              disabled={!editable}
+              onClick={openPicker("lineBreak")}
+            >
+              {fileLineBreak === "\r\n" ? "CRLF" : "LF"}
+            </button>
+            <button
+              type="button"
+              className="viewer__status-item"
+              title={t("app.viewer.selectLanguage")}
+              onClick={openPicker("language")}
+            >
+              {shownLanguage ?? plainText}
+            </button>
+          </div>
+          {picker && pickers && (
+            <StatusPicker key={picker.kind} anchor={picker.anchor} onClose={() => setPicker(null)} {...pickers} />
           )}
         </>
       )}

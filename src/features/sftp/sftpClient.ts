@@ -64,12 +64,15 @@ export const sftp = {
   discardCopies: (id: number) => invoke<void>("sftp_discard_copies", { id }),
   /** Git status of the files under a remote folder (one read-only git command); empty outside a repository. */
   gitStatus: (id: number, path: string) => invoke<GitStatusEntry[]>("ssh_git_status", { id, path }),
-  /** A remote text file for the file viewer (the first 4 MiB). */
-  viewText: (id: number, path: string) =>
-    invoke<{ path: string; content: string; truncated: boolean }>("sftp_view_text", { id, path }),
-  /** Saves the viewer's text over a remote file that still holds `expected`. */
-  writeText: (id: number, path: string, expected: string, content: string) =>
-    invoke<void>("sftp_write_text", { id, path, expected, content }),
+  /** A remote text file for the file viewer (the first 4 MiB), read with `encoding` or the one it shows. */
+  viewText: (id: number, path: string, encoding?: string) =>
+    invoke<{ path: string; content: string; truncated: boolean; encoding: string }>("sftp_view_text", { id, path, encoding }),
+  /**
+   * Saves the viewer's text in `encoding` over a remote file that still holds `expected`, read with
+   * `expectedEncoding` (the same as `encoding` when omitted).
+   */
+  writeText: (id: number, path: string, expected: string, content: string, encoding?: string, expectedEncoding?: string) =>
+    invoke<void>("sftp_write_text", { id, path, expected, content, encoding, expectedEncoding }),
 };
 
 /** Text for an `sftp_*` rejection: `{ kind: "sftp", message }` or any `SshError`. */

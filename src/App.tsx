@@ -891,13 +891,15 @@ function AppContent() {
     return subscribe;
   };
   /** The text of a viewer's file, from this computer or through its SFTP session. */
-  const viewFile = (viewer: ViewerLink) =>
-    viewer.origin.kind === "local" ? local.viewText(viewer.path) : sftp.viewText(viewer.origin.sessionId, viewer.path);
-  /** Saves a viewer's edited text over its file while the file still holds `expected`. */
-  const saveViewedFile = (viewer: ViewerLink, expected: string, content: string) =>
+  const viewFile = (viewer: ViewerLink, encoding?: string) =>
     viewer.origin.kind === "local"
-      ? local.writeText(viewer.path, expected, content)
-      : sftp.writeText(viewer.origin.sessionId, viewer.path, expected, content);
+      ? local.viewText(viewer.path, encoding)
+      : sftp.viewText(viewer.origin.sessionId, viewer.path, encoding);
+  /** Saves a viewer's edited text over its file while the file still holds `expected`. */
+  const saveViewedFile = (viewer: ViewerLink, expected: string, content: string, encoding: string, readAs: string) =>
+    viewer.origin.kind === "local"
+      ? local.writeText(viewer.path, expected, content, encoding, readAs)
+      : sftp.writeText(viewer.origin.sessionId, viewer.path, expected, content, encoding, readAs);
   /** The project folder of a local DEV tab (where its `.plexusterm` settings go), or null. */
   const projectOf = (key: string) => {
     const tab = state.tabs.find((t) => t.key === key);
@@ -1518,8 +1520,8 @@ function AppContent() {
                             // Each View reads the file again (it may have changed, or come from elsewhere).
                             key={viewer.opened}
                             path={viewer.path}
-                            load={() => viewFile(viewer)}
-                            save={(expected, content) => saveViewedFile(viewer, expected, content)}
+                            load={(encoding) => viewFile(viewer, encoding)}
+                            save={(expected, content, encoding, readAs) => saveViewedFile(viewer, expected, content, encoding, readAs)}
                             autoSave={terminalSettings.settings.viewerAutoSave}
                             onDirtyChange={(dirty) => markUnsaved(tab.key, paneId, dirty)}
                             // Changed lines against the last commit, for local files (git on this machine).

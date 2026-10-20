@@ -28,11 +28,15 @@ export const local = {
   repoInfo: (path: string) => invoke<{ root: string; branch: string; dirty: boolean } | null>("git_repo", { path }),
   /** A file's text in its repository's last commit, for the viewer's changed lines; null when it has none. */
   committedText: (path: string) => invoke<string | null>("git_head_text", { path }),
-  /** A text file for the file viewer (the first 4 MiB). */
-  viewText: (path: string) => invoke<{ path: string; content: string; truncated: boolean }>("local_view_text", { path }),
-  /** Saves the viewer's text over a file that still holds `expected` (the text the edits started from). */
-  writeText: (path: string, expected: string, content: string) =>
-    invoke<void>("local_write_text", { path, expected, content }),
+  /** A text file for the file viewer (the first 4 MiB), read with `encoding` or the one it shows. */
+  viewText: (path: string, encoding?: string) =>
+    invoke<{ path: string; content: string; truncated: boolean; encoding: string }>("local_view_text", { path, encoding }),
+  /**
+   * Saves the viewer's text in `encoding` over a file that still holds `expected` (the text the edits
+   * started from), read with `expectedEncoding` (the same as `encoding` when omitted).
+   */
+  writeText: (path: string, expected: string, content: string, encoding?: string, expectedEncoding?: string) =>
+    invoke<void>("local_write_text", { path, expected, content, encoding, expectedEncoding }),
   /** Writes a text file, replacing it. */
   saveText: (path: string, contents: string) => invoke<void>("save_text_file", { path, contents }),
 };

@@ -200,13 +200,60 @@ function editingExtensions(editing?: Editing): Extension {
   ];
 }
 
+/** A file's line break: what its lines are split on and joined with. */
+export type LineBreak = "\n" | "\r\n";
+
+/** The line break a text uses: CRLF when it has one, LF otherwise. */
+export const lineBreakOf = (text: string): LineBreak => (text.includes("\r\n") ? "\r\n" : "\n");
+
+/** The languages a viewer can highlight, by name, in alphabetical order. */
+export const languageNames = () => languages.map((l) => l.name).sort((a, b) => a.localeCompare(b));
+
+/** The language a file's name says, or null for plain text. */
+export const languageOf = (fileName: string) => LanguageDescription.matchFilename(languages, fileName)?.name ?? null;
+
+/** The parts of a view's configuration the status bar changes. */
+const slots = new WeakMap<EditorView, { language: Compartment; lineBreak: Compartment }>();
+
+/** Highlights the view's text as `name` (a name of `languageNames()`), or plain with null. */
+export function setLanguage(view: EditorView, name: string | null) {
+  const slot = slots.get(view);
+  if (!slot) return;
+  const description = name === null ? null : LanguageDescription.matchLanguageName(languages, name, false);
+  if (!description) return void view.dispatch({ effects: slot.language.reconfigure([]) });
+  description
+    .load()
+    .then((support) => {
+      // The view may have been closed while the language loaded.
+      if (view.dom.isConnected) view.dispatch({ effects: slot.language.reconfigure(support) });
+    })
+    .catch(() => {});
+}
+
+/**
+ * Joins the view's lines with another line break: `fileText` then gives the converted text. Not a
+ * change of the document, so the caller tells the edit itself.
+ */
+export function setLineBreak(view: EditorView, lineBreak: LineBreak) {
+  const slot = slots.get(view);
+  if (slot) view.dispatch({ effects: slot.lineBreak.reconfigure(EditorState.lineSeparator.of(lineBreak)) });
+}
+
 /**
  * A CodeMirror view of a file (S2): line numbers, long lines wrapped to the width (S5), search
  * with Ctrl+F, and the language its name says highlighted once loaded (S3). Read-only unless
- * `editing` says what to do with the edits.
+ * `editing` says what to do with the edits. Lines split only on `lineBreak`, the file's own one
+ * by default.
  */
-export function createCodeView(parent: HTMLElement, text: string, fileName: string, editing?: Editing): EditorView {
+export function createCodeView(
+  parent: HTMLElement,
+  text: string,
+  fileName: string,
+  editing?: Editing,
+  lineBreak: LineBreak = lineBreakOf(text),
+): EditorView {
   const languageSlot = new Compartment();
+  const lineBreakSlot = new Compartment();
   const view = new EditorView({
     parent,
     state: EditorState.create({
@@ -218,7 +265,7 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
         highlightSpecialChars(),
         drawSelection(),
         // Lines split only on the file's own line break, so saving writes back the same ones.
-        EditorState.lineSeparator.of(text.includes("\r\n") ? "\r\n" : "\n"),
+        lineBreakSlot.of(EditorState.lineSeparator.of(lineBreak)),
         editingExtensions(editing),
         EditorView.lineWrapping,
         search({ top: true }),
@@ -230,13 +277,7 @@ export function createCodeView(parent: HTMLElement, text: string, fileName: stri
       ],
     }),
   });
-  const description = LanguageDescription.matchFilename(languages, fileName);
-  description
-    ?.load()
-    .then((support) => {
-      // The view may have been closed while the language loaded.
-      if (view.dom.isConnected) view.dispatch({ effects: languageSlot.reconfigure(support) });
-    })
-    .catch(() => {});
+  slots.set(view, { language: languageSlot, lineBreak: lineBreakSlot });
+  setLanguage(view, languageOf(fileName));
   return view;
 }

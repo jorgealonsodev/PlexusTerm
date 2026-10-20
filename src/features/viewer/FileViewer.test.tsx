@@ -205,14 +205,14 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
     expect(saveButton().hasAttribute("disabled")).toBe(false);
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenCalledWith("one", "one two"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("one", "one two", "utf-8", "utf-8"));
     await waitFor(() => expect(screen.queryByLabelText("Unsaved changes")).toBeNull());
     expect(saveButton().hasAttribute("disabled")).toBe(true);
 
     // The next save is checked against what was saved.
     type("!");
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenLastCalledWith("one two", "one two!"));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith("one two", "one two!", "utf-8", "utf-8"));
   });
 
   it("saves with Ctrl+S", async () => {
@@ -221,7 +221,7 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
     type("b");
     fireEvent.keyDown(editorView().contentDOM, { key: "s", code: "KeyS", ctrlKey: true });
-    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "ab"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "ab", "utf-8", "utf-8"));
   });
 
   it("keeps the edits and says why when saving fails", async () => {
@@ -260,7 +260,7 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     type("b");
     type("c");
     expect(save).not.toHaveBeenCalled();
-    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "abc"), { timeout: 3000 });
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a", "abc", "utf-8", "utf-8"), { timeout: 3000 });
     expect(save).toHaveBeenCalledTimes(1);
   });
 
@@ -280,7 +280,7 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     expect(screen.queryByLabelText("Unsaved changes")).toBeNull();
     type("c");
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\r\n", "a\r\nb\r\nc"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\r\n", "a\r\nb\r\nc", "utf-8", "utf-8"));
   });
 
   it("leaves the text and the cursor of a CRLF file alone once it is saved", async () => {
@@ -292,7 +292,7 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     });
     const dispatch = vi.spyOn(editorView(), "dispatch");
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb", "ax\r\nb"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb", "ax\r\nb", "utf-8", "utf-8"));
     await waitFor(() => expect(screen.queryByLabelText("Unsaved changes")).toBeNull());
     expect(dispatch).not.toHaveBeenCalled();
     expect(editorView().state.selection.main.head).toBe(2);
@@ -304,13 +304,13 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     await waitFor(() => expect(document.querySelector(".cm-editor")).toBeTruthy());
     type("!");
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\nc", "a\r\nb\nc!"));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\r\nb\nc", "a\r\nb\nc!", "utf-8", "utf-8"));
     unmount();
     render(<FileViewer path="/p/cr.txt" load={file("a\rb\n")} onClose={() => {}} save={save} />);
     await waitFor(() => expect(document.querySelector(".cm-editor")).toBeTruthy());
     type("!");
     fireEvent.click(saveButton());
-    await waitFor(() => expect(save).toHaveBeenLastCalledWith("a\rb\n", "a\rb\n!"));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith("a\rb\n", "a\rb\n!", "utf-8", "utf-8"));
   });
 
   it("keeps a file shown only in part read-only, and has no save button without a way to save", async () => {
@@ -420,5 +420,105 @@ describe("FileViewer changed lines against the last commit", () => {
     const view = editorView();
     act(() => view.dispatch({ changes: { from: 0, insert: "zero\n" } }));
     expect(marks()).toEqual([{ line: 1, kind: "added" }]);
+  });
+});
+
+describe("FileViewer status bar: encoding, line endings and language", () => {
+  const bar = () => within(screen.getByRole("toolbar", { name: "File status" }));
+  const pick = (button: string, option: string) => {
+    fireEvent.click(bar().getByRole("button", { name: button }));
+    fireEvent.click(screen.getByRole("option", { name: option }));
+  };
+  const shown = () => document.querySelector(".cm-content")?.textContent;
+
+  it("shows the file's encoding, line endings and language", async () => {
+    const { unmount } = render(<FileViewer path="/p/main.ts" load={file("const a = 1;\n")} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("const a = 1;"));
+    expect(bar().getByRole("button", { name: "UTF-8" })).toBeTruthy();
+    expect(bar().getByRole("button", { name: "LF" })).toBeTruthy();
+    expect(bar().getByRole("button", { name: "TypeScript" })).toBeTruthy();
+    unmount();
+    const bom = async () => ({ path: "/p/x", content: "a\r\nb", truncated: false, encoding: "utf-8-bom" });
+    render(<FileViewer path="/p/data.unknownext" load={bom} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("ab"));
+    expect(bar().getByRole("button", { name: "UTF-8 with BOM" })).toBeTruthy();
+    expect(bar().getByRole("button", { name: "CRLF" })).toBeTruthy();
+    expect(bar().getByRole("button", { name: "Plain Text" })).toBeTruthy();
+  });
+
+  it("highlights the text with the language chosen in the list, which a filter narrows", async () => {
+    render(<FileViewer path="/p/notes.txt" load={file("x = 1")} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("x = 1"));
+    fireEvent.click(bar().getByRole("button", { name: "Plain Text" }));
+    const list = screen.getByRole("listbox", { name: "Select language" });
+    expect(within(list).getByRole("option", { name: "Plain Text" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.change(screen.getByRole("textbox", { name: "Filter" }), { target: { value: "pyth" } });
+    expect(within(list).queryByRole("option", { name: "TypeScript" })).toBeNull();
+    fireEvent.click(within(list).getByRole("option", { name: "Python" }));
+    expect(screen.queryByRole("listbox")).toBeNull();
+    await waitFor(() => expect(editorView().state.facet(language)?.name).toBe("python"));
+    expect(bar().getByRole("button", { name: "Python" })).toBeTruthy();
+    pick("Python", "Plain Text");
+    await waitFor(() => expect(editorView().state.facet(language)).toBeNull());
+  });
+
+  it("converts the line endings, which is an edit to save", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/notes.txt" load={file("a\nb\n")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(shown()).toBe("ab"));
+    pick("LF", "CRLF");
+    expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
+    expect(bar().getByRole("button", { name: "CRLF" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("a\nb\n", "a\r\nb\r\n", "utf-8", "utf-8"));
+    pick("CRLF", "LF");
+    expect(screen.getByLabelText("Unsaved changes")).toBeTruthy();
+  });
+
+  it("offers no line ending change for a file shown only in part", async () => {
+    render(<FileViewer path="/p/big.log" load={file("a\nb", true)} onClose={() => {}} save={vi.fn(async () => {})} />);
+    await waitFor(() => expect(shown()).toBe("ab"));
+    expect((bar().getByRole("button", { name: "LF" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("reopens the file with another encoding", async () => {
+    const load = vi.fn(async (encoding?: string) => ({
+      path: "/p/x",
+      content: encoding === "windows-1252" ? "café" : "caf?",
+      truncated: false,
+      encoding: encoding ?? "utf-8",
+    }));
+    render(<FileViewer path="/p/old.txt" load={load} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("caf?"));
+    expect(load).toHaveBeenCalledWith(undefined);
+    pick("UTF-8", "Reopen with encoding");
+    fireEvent.click(screen.getByRole("option", { name: "Windows 1252 — Western" }));
+    await waitFor(() => expect(shown()).toBe("café"));
+    expect(load).toHaveBeenLastCalledWith("windows-1252");
+    expect(bar().getByRole("button", { name: "Windows 1252" })).toBeTruthy();
+  });
+
+  it("saves the file with another encoding, and keeps it for the next saves", async () => {
+    const save = vi.fn(async () => {});
+    render(<FileViewer path="/p/notes.txt" load={file("one")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(shown()).toBe("one"));
+    pick("UTF-8", "Save with encoding");
+    fireEvent.click(screen.getByRole("option", { name: "UTF-16 LE — Unicode" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("one", "one", "utf-16le", "utf-8"));
+    expect(bar().getByRole("button", { name: "UTF-16 LE" })).toBeTruthy();
+    act(() => {
+      const view = editorView();
+      view.dispatch({ changes: { from: 3, insert: "!" }, userEvent: "input.type" });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith("one", "one!", "utf-16le", "utf-16le"));
+  });
+
+  it("closes a list with Escape", async () => {
+    render(<FileViewer path="/p/notes.txt" load={file("x")} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("x"));
+    fireEvent.click(bar().getByRole("button", { name: "Plain Text" }));
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Filter" }), { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 });
