@@ -869,6 +869,24 @@ body.is-resizing {
   outline-color: var(--accent);
 }
 
+/* The Explorer's path bar, actions and "follow" switch stay put; only the list below them scrolls,
+   so the sidebar's tabs stay in view too. */
+.sftp__head {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sftp__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .sftp__pathbar,
 .sftp__toolbar {
   display: flex;

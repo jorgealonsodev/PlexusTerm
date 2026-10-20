@@ -407,121 +407,126 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
 
   return (
     <div className="sidebar__panel sftp">
-      <form
-        className="sftp__pathbar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const target = input.trim();
-          if (target) void navigate(target, true);
-        }}
-      >
-        <button
-          type="button"
-          className="btn btn--small"
-          title={t("sftp.panel.up")}
-          disabled={busy || (path !== null && isRoot(path))}
-          onClick={() => path && void navigate(parentPath(path), true)}
+      {/* The path bar and the actions stay at the top: only the list below them scrolls. */}
+      <div className="sftp__head">
+        <form
+          className="sftp__pathbar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const target = input.trim();
+            if (target) void navigate(target, true);
+          }}
         >
-          ↑
-        </button>
-        <button type="button" className="btn btn--small" title={t("sftp.panel.homeFolder")} onClick={() => void goHome(true)}>
-          ⌂
-        </button>
-        <button type="button" className="btn btn--small" title={t("common.refresh")} disabled={busy} onClick={refresh}>
-          ⟳
-        </button>
-        <input
-          className="sidebar__search sftp__path"
-          aria-label={t("sftp.local.path")}
-          spellCheck={false}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-      </form>
-      <div className="sftp__toolbar">
-        <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newEntry("folder")} />
-        <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newEntry("file")} />
-        <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
-        <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
-        {showWorkspace && (
-          <>
-            <ToolButton icon={FolderInput} label={t("sftp.panel.workspace.add")} onClick={() => void addFolder()} />
-            <ToolButton icon={Save} label={t("sftp.panel.workspace.save")} disabled={busy} onClick={() => void saveWorkspace()} />
-            <ToolButton icon={FolderOpen} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
-          </>
-        )}
-        {devStyle && (
-          <>
-            <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
-            <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={collapseAll} />
-          </>
-        )}
-      </div>
-      <label className="sftp__follow">
-        <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-        {t("sftp.panel.follow")}
-      </label>
-      {error && (
-        <p className="sidebar__note form-error" role="alert">
-          {error}
-        </p>
-      )}
-      {status && <p className="sidebar__note">{status}</p>}
-      {path !== null && entries.length === 0 && !error && <p className="sidebar__note">{t("sftp.panel.empty")}</p>}
-      {devStyle ? (
-        asRoots && path !== null ? (
-          <WorkspaceRoot
-            name={basename(path)}
-            path={path}
-            open={mainOpen}
-            onToggle={() => setMainOpen((v) => !v)}
-            decoration={rootDecoration(gitEntries)}
+          <button
+            type="button"
+            className="btn btn--small"
+            title={t("sftp.panel.up")}
+            disabled={busy || (path !== null && isRoot(path))}
+            onClick={() => path && void navigate(parentPath(path), true)}
           >
-            {mainTree}
-          </WorkspaceRoot>
+            ↑
+          </button>
+          <button type="button" className="btn btn--small" title={t("sftp.panel.homeFolder")} onClick={() => void goHome(true)}>
+            ⌂
+          </button>
+          <button type="button" className="btn btn--small" title={t("common.refresh")} disabled={busy} onClick={refresh}>
+            ⟳
+          </button>
+          <input
+            className="sidebar__search sftp__path"
+            aria-label={t("sftp.local.path")}
+            spellCheck={false}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+        </form>
+        <div className="sftp__toolbar">
+          <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newEntry("folder")} />
+          <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newEntry("file")} />
+          <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
+          <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
+          {showWorkspace && (
+            <>
+              <ToolButton icon={FolderInput} label={t("sftp.panel.workspace.add")} onClick={() => void addFolder()} />
+              <ToolButton icon={Save} label={t("sftp.panel.workspace.save")} disabled={busy} onClick={() => void saveWorkspace()} />
+              <ToolButton icon={FolderOpen} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
+            </>
+          )}
+          {devStyle && (
+            <>
+              <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
+              <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={collapseAll} />
+            </>
+          )}
+        </div>
+        <label className="sftp__follow">
+          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+          {t("sftp.panel.follow")}
+        </label>
+      </div>
+      <div className="sftp__body">
+        {error && (
+          <p className="sidebar__note form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {status && <p className="sidebar__note">{status}</p>}
+        {path !== null && entries.length === 0 && !error && <p className="sidebar__note">{t("sftp.panel.empty")}</p>}
+        {devStyle ? (
+          asRoots && path !== null ? (
+            <WorkspaceRoot
+              name={basename(path)}
+              path={path}
+              open={mainOpen}
+              onToggle={() => setMainOpen((v) => !v)}
+              decoration={rootDecoration(gitEntries)}
+            >
+              {mainTree}
+            </WorkspaceRoot>
+          ) : (
+            mainTree
+          )
         ) : (
-          mainTree
-        )
-      ) : (
-        <FlatFileList
-          entries={entries}
-          selected={selected}
-          onSelect={setSelectedEntry}
-          onOpen={(entry) => void openEntry(entry)}
-          details={details}
-          rowProps={rowProps}
-        />
-      )}
-      {showWorkspace &&
-        workspace.folders.map((folder) => (
-          <WorkspaceFolder
-            key={folder}
-            path={folder}
-            name={basename(folder)}
-            list={listFolder}
-            readGit={readGit}
-            describeError={describeLocalError}
-            git={gitOptions}
+          <FlatFileList
+            entries={entries}
             selected={selected}
             onSelect={setSelectedEntry}
             onOpen={(entry) => void openEntry(entry)}
             details={details}
             rowProps={rowProps}
-            onRemove={() => workspace.onRemove(folder)}
-            collapse={collapse}
-            onDirDrop={(drop) => void moveDropped(drop)}
           />
-        ))}
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
-      {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
-      {dialog?.kind === "permissions" && (
-        <PermissionsDialog
-          entry={dialog.entry}
-          onApply={(mode) => changePermissions(dialog.entry, mode)}
-          describeError={describeLocalError}
-          onClose={() => setDialog(null)}
-        />
-      )}
+        )}
+        {showWorkspace &&
+          workspace.folders.map((folder) => (
+            <WorkspaceFolder
+              key={folder}
+              path={folder}
+              name={basename(folder)}
+              list={listFolder}
+              readGit={readGit}
+              describeError={describeLocalError}
+              git={gitOptions}
+              selected={selected}
+              onSelect={setSelectedEntry}
+              onOpen={(entry) => void openEntry(entry)}
+              details={details}
+              rowProps={rowProps}
+              onRemove={() => workspace.onRemove(folder)}
+              collapse={collapse}
+              onDirDrop={(drop) => void moveDropped(drop)}
+            />
+          ))}
+        {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
+        {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
+        {dialog?.kind === "permissions" && (
+          <PermissionsDialog
+            entry={dialog.entry}
+            onApply={(mode) => changePermissions(dialog.entry, mode)}
+            describeError={describeLocalError}
+            onClose={() => setDialog(null)}
+          />
+        )}
+      </div>
       <div className="sidebar__help">
         {repo && (
           <div className="explorer-repo">
