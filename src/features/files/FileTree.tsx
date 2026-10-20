@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type LiHTMLAttributes } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type LiHTMLAttributes } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import type { SftpEntry } from "../sftp/sftpClient";
@@ -65,7 +65,9 @@ export function FileTree({
   const treeRef = useRef<HTMLUListElement>(null);
   const onDirDropRef = useRef(onDirDrop);
   onDirDropRef.current = onDirDrop;
-  useEffect(() => {
+  // Listening from the moment the rows are in the page (a layout effect runs before they are
+  // painted): a drop on a row that is already shown is never missed.
+  useLayoutEffect(() => {
     const tree = treeRef.current;
     if (!tree) return;
     const listener = (e: Event) => onDirDropRef.current?.((e as CustomEvent<DirDrop>).detail);
