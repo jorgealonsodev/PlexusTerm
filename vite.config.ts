@@ -10,6 +10,9 @@ export default defineConfig(() => ({
   plugins: [react()],
   test: {
     setupFiles: ["src/testSetup.ts"],
+    // App-level tests render the whole window in jsdom; a loaded CI runner (Windows above all)
+    // needs well over the default 5 s for some of them. A passing test ends as soon as it is done.
+    testTimeout: 30_000,
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
