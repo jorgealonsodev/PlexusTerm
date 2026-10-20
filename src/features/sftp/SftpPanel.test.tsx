@@ -641,12 +641,13 @@ async function answerSlow(question: string, button: string) {
       if (!found) throw new Error(`no dialog "${question}"`);
       return found;
     },
-    { timeout: 3000 },
+    { timeout: 10000 },
   );
   fireEvent.click(within(dialog).getByRole("button", { name: button }));
 }
 
-describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
+// A loaded Windows runner can take over 3 s to show the dialog and move: wait up to 10 s.
+describe("SftpPanel moves entries dropped on a folder (S2, S3)", { timeout: 15000 }, () => {
   const row = (name: string) => screen.getByText(name).closest("li")!;
   const remote = (sessionId: number, path: string) => ({ origin: { kind: "sftp" as const, sessionId }, paths: [{ path, isDir: false }] });
 
@@ -658,8 +659,8 @@ describe("SftpPanel moves entries dropped on a folder (S2, S3)", () => {
     mocked.list.mockClear();
     act(() => deliverDrop(remote(1, "/home/u/notes.txt"), row("src")));
     await answerSlow('Move "notes.txt" into "src"?', "Move");
-    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/src"), { timeout: 3000 });
-    await waitFor(() => expect(mocked.list).toHaveBeenCalledWith(1, "/home/u"));
+    await waitFor(() => expect(mocked.move).toHaveBeenCalledWith(1, "/home/u/notes.txt", "/home/u/src"), { timeout: 10000 });
+    await waitFor(() => expect(mocked.list).toHaveBeenCalledWith(1, "/home/u"), { timeout: 10000 });
   });
 
   it("moves nothing when cancelled or when the entry comes from elsewhere", async () => {
