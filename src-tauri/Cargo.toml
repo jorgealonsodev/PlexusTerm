@@ -1,6 +1,6 @@
 [package]
 name = "plexusterm"
-version = "0.2.9"
+version = "0.2.10"
 description = "Terminal and remote-session manager for Linux"
 authors = ["Jorge Alonso"]
 license = "MIT"
