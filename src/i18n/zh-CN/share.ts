@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "最近 1 000 行",
     lines5000: "最近 5 000 行",
     historyNote: "较早的输出可能包含机密信息。",
+    autoApprove: "自动允许所有人",
+    autoApproveTypeWarning: "任何拥有可输入链接的人都无需你确认即可获得这台电脑上的 shell。每次有人加入时仍会通知你。",
+    autoApproveNote: "不会再询问你；每次有人加入时会通知你。",
     start: "共享",
     starting: "正在连接中继…",
     unreachable: "无法连接中继。正在重试…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} 想要加入（{access}），来自 {ip}",
+    joined: "{label} 已加入（{access}），来自 {ip}",
     title: "{tab} 中的加入请求",
     allow: "允许",
     deny: "拒绝",

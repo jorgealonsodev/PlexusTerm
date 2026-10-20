@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "최근 1 000줄",
     lines5000: "최근 5 000줄",
     historyNote: "이전 출력에 비밀 정보가 있을 수 있습니다.",
+    autoApprove: "모두 자동으로 허용",
+    autoApproveTypeWarning: "입력 가능 링크가 있는 사람은 묻지 않고 이 컴퓨터의 셸을 얻게 됩니다. 누군가 참여할 때마다 알림은 계속 받습니다.",
+    autoApproveNote: "묻지 않습니다. 누군가 참여할 때마다 알려 드립니다.",
     start: "공유",
     starting: "릴레이에 연결하는 중…",
     unreachable: "릴레이에 연결할 수 없습니다. 다시 시도하는 중…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label}이(가) 참여하려고 합니다({access}), {ip}에서",
+    joined: "{label}이(가) 참여했습니다({access}), {ip}에서",
     title: "{tab} 참여 요청",
     allow: "허용",
     deny: "거부",

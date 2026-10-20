@@ -46,6 +46,7 @@ pub struct Setup {
     pub audit: Option<Audit>,
     pub link_access: HashMap<LinkId, Access>,
     pub view_needs_approval: bool,
+    pub auto_approve: bool,
     pub record_input: bool,
 }
 
@@ -309,12 +310,13 @@ impl Host {
                     "joinRequest",
                     json!({ "viewer": entry.number, "access": access, "ip": ip, "ua": ua }),
                 );
-                if access == Access::View && !self.s.view_needs_approval {
+                if self.s.auto_approve || (access == Access::View && !self.s.view_needs_approval) {
                     self.s.core.run(|e| e.approve(viewer));
                     self.log("approved", json!({ "viewer": entry.number, "auto": true }));
                     self.emit(ShareEvent::ViewerJoined {
                         viewer: entry,
                         rejoined: false,
+                        auto: true,
                     });
                 } else {
                     self.emit(ShareEvent::JoinRequest { viewer: entry });
@@ -331,6 +333,7 @@ impl Host {
                 self.emit(ShareEvent::ViewerJoined {
                     viewer: entry,
                     rejoined: true,
+                    auto: false,
                 });
             }
             Action::Input { viewer, data } => {
@@ -402,6 +405,7 @@ impl Host {
                         self.emit(ShareEvent::ViewerJoined {
                             viewer: entry,
                             rejoined: false,
+                            auto: false,
                         });
                     }
                 }

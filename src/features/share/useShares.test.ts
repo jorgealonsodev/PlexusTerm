@@ -44,7 +44,7 @@ const args = (sudoReset = false) => ({
   paneId: "p1",
   tabKey: "t1",
   tab: "bash",
-  options: { accesses: ["view", "type"] as ("view" | "type")[], expiry: "oneHour" as const, history: 1000 as const },
+  options: { accesses: ["view", "type"] as ("view" | "type")[], expiry: "oneHour" as const, history: 1000 as const, autoApprove: false },
   relayUrl: "wss://relay.example.com",
   viewerOrigin: "https://view.example.com",
   viewNeedsApproval: true,
@@ -86,8 +86,16 @@ describe("useShares", () => {
     act(() => hook.result.current.command("p1", { cmd: "allow", viewer: 4 }));
     expect(api.shareCommand).toHaveBeenCalledWith(3, { cmd: "allow", viewer: 4 });
     expect(hook.result.current.byPane.p1.pending).toEqual([]);
-    await emit({ event: "viewerJoined", data: { viewer, rejoined: false } });
+    await emit({ event: "viewerJoined", data: { viewer, rejoined: false, auto: false } });
+    expect(notices.some((n) => n.kind === "joined")).toBe(false);
     expect(hook.result.current.viewersOf(["p1"])).toBe(1);
+  });
+
+  it("passes Allow everyone automatically and tells each automatic join", async () => {
+    const { notices, emit } = await started();
+    expect(api.startShare).toHaveBeenCalledWith(expect.objectContaining({ autoApprove: false }));
+    await emit({ event: "viewerJoined", data: { viewer, rejoined: false, auto: true } });
+    expect(notices).toContainEqual({ kind: "joined", tab: "bash", viewer });
   });
 
   it("types viewer input, and holds it at a password prompt with a notice", async () => {

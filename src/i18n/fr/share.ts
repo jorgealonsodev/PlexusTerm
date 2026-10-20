@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "Les 1 000 dernières lignes",
     lines5000: "Les 5 000 dernières lignes",
     historyNote: "La sortie précédente peut contenir des secrets.",
+    autoApprove: "Autoriser tout le monde automatiquement",
+    autoApproveTypeWarning: "Toute personne ayant le lien Peut écrire obtiendra un shell sur cet ordinateur sans vous le demander. Vous serez tout de même averti à chaque arrivée.",
+    autoApproveNote: "Aucune demande ne vous sera faite ; vous serez averti à chaque arrivée.",
     start: "Partager",
     starting: "Connexion au relais…",
     unreachable: "Relais injoignable. Nouvelle tentative…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} veut se joindre ({access}), depuis {ip}",
+    joined: "{label} s’est joint ({access}), depuis {ip}",
     title: "Demande pour se joindre dans {tab}",
     allow: "Autoriser",
     deny: "Refuser",

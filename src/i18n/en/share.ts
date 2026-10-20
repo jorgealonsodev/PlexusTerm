@@ -21,6 +21,9 @@ export const share = {
     lines1000: "Last 1 000 lines",
     lines5000: "Last 5 000 lines",
     historyNote: "Earlier output may contain secrets.",
+    autoApprove: "Allow everyone automatically",
+    autoApproveTypeWarning: "Anyone with the Can type link will get a shell on this computer without asking you. You are still told each time someone joins.",
+    autoApproveNote: "Nobody is asked about; you are told each time someone joins.",
     start: "Share",
     starting: "Connecting to the relay…",
     unreachable: "Relay unreachable. Retrying…",
@@ -62,6 +65,7 @@ export const share = {
   },
   join: {
     request: "{label} wants to join ({access}), from {ip}",
+    joined: "{label} joined ({access}), from {ip}",
     title: "Join request in {tab}",
     allow: "Allow",
     deny: "Deny",

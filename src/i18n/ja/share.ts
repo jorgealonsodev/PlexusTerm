@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "直近 1 000 行",
     lines5000: "直近 5 000 行",
     historyNote: "以前の出力には秘密情報が含まれている可能性があります。",
+    autoApprove: "全員を自動的に許可",
+    autoApproveTypeWarning: "入力可リンクを持つ人は誰でも、確認なしでこのコンピューターのシェルを使えます。参加のたびに通知は届きます。",
+    autoApproveNote: "確認は行いません。参加のたびに通知されます。",
     start: "共有",
     starting: "リレーに接続しています…",
     unreachable: "リレーに接続できません。再試行しています…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} が参加を希望しています ({access})、{ip} から",
+    joined: "{label} が参加しました ({access})、{ip} から",
     title: "{tab} への参加リクエスト",
     allow: "許可",
     deny: "拒否",

@@ -23,6 +23,9 @@ export const share: Messages<typeof en> = {
     lines1000: "Últimas 1 000 líneas",
     lines5000: "Últimas 5 000 líneas",
     historyNote: "La salida anterior puede contener secretos.",
+    autoApprove: "Permitir a todos automáticamente",
+    autoApproveTypeWarning: "Cualquiera con el enlace de puede escribir tendrá una shell en este equipo sin preguntarte. Se te avisará igualmente cada vez que alguien se una.",
+    autoApproveNote: "No se te preguntará por nadie; se te avisará cada vez que alguien se una.",
     start: "Compartir",
     starting: "Conectando con el relay…",
     unreachable: "No se puede contactar con el relay. Reintentando…",
@@ -65,6 +68,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} quiere unirse ({access}), desde {ip}",
+    joined: "{label} se ha unido ({access}), desde {ip}",
     title: "Solicitud para unirse en {tab}",
     allow: "Permitir",
     deny: "Denegar",

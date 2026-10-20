@@ -132,6 +132,7 @@ fn a_tab_cannot_be_shared_twice_nor_after_it_closed() {
         cols: 80,
         rows: 24,
         view_needs_approval: true,
+        auto_approve: false,
         record_input: false,
         block_lid: false,
     };
@@ -272,6 +273,7 @@ async fn a_shared_tab_reaches_a_viewer_and_takes_its_keys() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: true,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -293,6 +295,7 @@ async fn a_shared_tab_reaches_a_viewer_and_takes_its_keys() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: true,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -426,6 +429,7 @@ async fn the_share_ends_when_the_shared_program_exits() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: false,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -466,6 +470,7 @@ async fn a_wrong_token_ends_the_share_as_refused() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: true,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -504,6 +509,7 @@ async fn view_only_joins_can_skip_approval() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: false,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -569,6 +575,7 @@ async fn quitting_ends_every_share_after_the_user_confirmed() {
                 cols: 80,
                 rows: 24,
                 view_needs_approval: true,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -613,6 +620,7 @@ async fn another_plexusterm_watches_and_types_into_a_shared_tab() {
                 cols: 90,
                 rows: 30,
                 view_needs_approval: true,
+                auto_approve: false,
                 record_input: false,
                 block_lid: false,
             },
@@ -713,4 +721,63 @@ async fn next_view(
         .await
         .expect("no view event")
         .expect("view closed")
+}
+
+/// "Allow everyone automatically": a Can type join is let in without asking, and still told.
+#[tokio::test(flavor = "multi_thread")]
+async fn allowing_everyone_lets_can_type_joins_in_without_asking() {
+    let addr = relay().await;
+    let manager = ShareManager::default();
+    let (tap_id, _tap) = taps().register();
+    let (tx, mut events) = unbounded_channel();
+    manager
+        .start(
+            StartRequest {
+                tap: tap_id,
+                tab: "t".into(),
+                relay_url: format!("ws://{addr}"),
+                viewer_origin: "http://localhost".into(),
+                accesses: vec![Access::Type],
+                expiry: Expiry::OneHour,
+                cols: 80,
+                rows: 24,
+                view_needs_approval: true,
+                auto_approve: true,
+                record_input: false,
+                block_lid: false,
+            },
+            TOKEN.into(),
+            move |event| {
+                let _ = tx.send(event);
+            },
+        )
+        .unwrap();
+    let ShareEvent::Live { links, .. } =
+        until_event(&mut events, |e| matches!(e, ShareEvent::Live { .. })).await
+    else {
+        unreachable!()
+    };
+    let mut viewer = TestViewer::join(addr, &links[0].url).await;
+    viewer
+        .until(|e, _| {
+            matches!(
+                e,
+                Event::Joined {
+                    access: Access::Type,
+                    ..
+                }
+            )
+        })
+        .await;
+    let joined = until_event(&mut events, |e| {
+        matches!(
+            e,
+            ShareEvent::ViewerJoined { .. } | ShareEvent::JoinRequest { .. }
+        )
+    })
+    .await;
+    assert!(
+        matches!(joined, ShareEvent::ViewerJoined { auto: true, rejoined: false, ref viewer } if viewer.access == Access::Type),
+        "{joined:?}"
+    );
 }

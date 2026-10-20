@@ -86,6 +86,7 @@ export function ShareDialog(props: ShareDialogProps) {
   const [type, setType] = useState(false);
   const [expiry, setExpiry] = useState<Expiry>("whenStopped");
   const [history, setHistory] = useState<HistoryChoice>(1000);
+  const [autoApprove, setAutoApprove] = useState(false);
   const [busy, setBusy] = useState(false);
   const [build, setBuild] = useState<string | null>(null);
 
@@ -104,7 +105,7 @@ export function ShareDialog(props: ShareDialogProps) {
   const start = () => {
     setBusy(true);
     props
-      .onStart({ accesses, expiry, history })
+      .onStart({ accesses, expiry, history, autoApprove })
       .catch(() => {})
       .finally(() => setBusy(false));
   };
@@ -167,6 +168,15 @@ export function ShareDialog(props: ShareDialogProps) {
               </select>
             </label>
             <p className="muted">{t("share.dialog.historyNote")}</p>
+            <label className="check">
+              <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
+              {t("share.dialog.autoApprove")}
+            </label>
+            {autoApprove && (
+              <p className={type ? "share-warning" : "muted"}>
+                {type ? t("share.dialog.autoApproveTypeWarning") : t("share.dialog.autoApproveNote")}
+              </p>
+            )}
           </>
         )}
         {share && (

@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "آخر 1 000 سطر",
     lines5000: "آخر 5 000 سطر",
     historyNote: "قد يحتوي الإخراج السابق على أسرار.",
+    autoApprove: "السماح للجميع تلقائيًا",
+    autoApproveTypeWarning: "كل من لديه رابط الكتابة سيحصل على صدفة على هذا الحاسوب دون سؤالك. ستُبلَّغ مع ذلك في كل مرة ينضم فيها أحد.",
+    autoApproveNote: "لن تُسأل عن أحد؛ ستُبلَّغ في كل مرة ينضم فيها أحد.",
     start: "مشاركة",
     starting: "جارٍ الاتصال بالمرحّل…",
     unreachable: "تعذّر الوصول إلى المرحّل. جارٍ إعادة المحاولة…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "يريد {label} الانضمام ({access})، من {ip}",
+    joined: "انضم {label} ({access})، من {ip}",
     title: "طلب انضمام في {tab}",
     allow: "سماح",
     deny: "رفض",

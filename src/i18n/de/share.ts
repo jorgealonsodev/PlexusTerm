@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "Letzte 1 000 Zeilen",
     lines5000: "Letzte 5 000 Zeilen",
     historyNote: "Frühere Ausgaben können Geheimnisse enthalten.",
+    autoApprove: "Alle automatisch zulassen",
+    autoApproveTypeWarning: "Wer den Link mit Darf tippen hat, bekommt ohne Rückfrage eine Shell auf diesem Computer. Du wirst trotzdem bei jedem Beitritt benachrichtigt.",
+    autoApproveNote: "Es wird nicht nachgefragt; du wirst bei jedem Beitritt benachrichtigt.",
     start: "Freigeben",
     starting: "Verbindung zum Relay…",
     unreachable: "Relay nicht erreichbar. Neuer Versuch…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} möchte beitreten ({access}), von {ip}",
+    joined: "{label} ist beigetreten ({access}), von {ip}",
     title: "Beitrittsanfrage in {tab}",
     allow: "Erlauben",
     deny: "Ablehnen",

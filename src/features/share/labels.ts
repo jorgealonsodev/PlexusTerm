@@ -46,6 +46,12 @@ export function noticeText(notice: ShareNotice): string {
         access: accessName(notice.viewer.access),
         ip: notice.viewer.ip,
       });
+    case "joined":
+      return t("share.join.joined", {
+        label: viewerLabel(notice.viewer),
+        access: accessName(notice.viewer.access),
+        ip: notice.viewer.ip,
+      });
     case "password":
       return t("share.password", { tab: notice.tab });
     case "sudoSkipped":

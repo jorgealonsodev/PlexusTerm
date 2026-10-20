@@ -31,7 +31,7 @@ export type ShareEvent =
   | { event: "unreachable"; data: { retryIn: number } }
   | { event: "live"; data: { links: LinkInfo[]; expiresAt: number } }
   | { event: "joinRequest"; data: { viewer: ShareViewer } }
-  | { event: "viewerJoined"; data: { viewer: ShareViewer; rejoined: boolean } }
+  | { event: "viewerJoined"; data: { viewer: ShareViewer; rejoined: boolean; auto: boolean } }
   | { event: "viewerLeft"; data: { viewer: number } }
   | { event: "input"; data: { viewer: number; data: string } }
   | { event: "snapshotRequest"; data: { viewer: number } }
@@ -60,6 +60,8 @@ export interface StartRequest {
   cols: number;
   rows: number;
   viewNeedsApproval: boolean;
+  /** Let every join in without asking, Can type included. */
+  autoApprove: boolean;
   recordInput: boolean;
   blockLid: boolean;
 }

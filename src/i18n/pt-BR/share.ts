@@ -26,6 +26,9 @@ export const share: Messages<typeof en> = {
     lines1000: "Últimas 1 000 linhas",
     lines5000: "Últimas 5 000 linhas",
     historyNote: "A saída anterior pode conter segredos.",
+    autoApprove: "Permitir todos automaticamente",
+    autoApproveTypeWarning: "Qualquer pessoa com o link pode digitar terá um shell neste computador sem perguntar a você. Você ainda será avisado a cada entrada.",
+    autoApproveNote: "Ninguém será perguntado; você será avisado a cada entrada.",
     start: "Compartilhar",
     starting: "Conectando ao relay…",
     unreachable: "Relay inacessível. Tentando de novo…",
@@ -66,6 +69,7 @@ export const share: Messages<typeof en> = {
   },
   join: {
     request: "{label} quer entrar ({access}), de {ip}",
+    joined: "{label} entrou ({access}), de {ip}",
     title: "Pedido para entrar em {tab}",
     allow: "Permitir",
     deny: "Negar",

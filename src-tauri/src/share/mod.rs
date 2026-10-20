@@ -295,10 +295,11 @@ pub enum ShareEvent {
     JoinRequest {
         viewer: Viewer,
     },
-    /// A viewer is in: approved, let in without asking, or back after a drop (`rejoined`).
+    /// A viewer is in: approved, let in without asking (`auto`), or back after a drop (`rejoined`).
     ViewerJoined {
         viewer: Viewer,
         rejoined: bool,
+        auto: bool,
     },
     ViewerLeft {
         viewer: u32,
@@ -342,6 +343,9 @@ pub struct StartRequest {
     pub rows: u16,
     /// "View only joins need approval".
     pub view_needs_approval: bool,
+    /// "Allow everyone automatically" (the Share dialog): no join asks, Can type included.
+    #[serde(default)]
+    pub auto_approve: bool,
     /// "Record what viewers type".
     pub record_input: bool,
     /// "Also block lid-close sleep while sharing" (Linux).
@@ -486,6 +490,7 @@ impl ShareManager {
             audit,
             link_access,
             view_needs_approval: request.view_needs_approval,
+            auto_approve: request.auto_approve,
             record_input: request.record_input,
         });
         tauri::async_runtime::spawn(async move {

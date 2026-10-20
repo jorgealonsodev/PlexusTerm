@@ -24,6 +24,8 @@ export interface ShareOptions {
   accesses: Access[];
   expiry: Expiry;
   history: HistoryChoice;
+  /** "Allow everyone automatically": joins do not ask (each one is still told). */
+  autoApprove: boolean;
 }
 
 export interface Share {
@@ -53,6 +55,8 @@ export interface Share {
 export type ShareNotice =
   | { kind: "ended"; tab: string; end: EndKind; code: string | null }
   | { kind: "joinRequest"; tab: string; viewer: ShareViewer }
+  /** Someone joined without being asked about ("Allow everyone automatically"). */
+  | { kind: "joined"; tab: string; viewer: ShareViewer }
   | { kind: "password"; tab: string }
   /** `sudo -k` was not typed: something was on the command line, or a program had the screen. */
   | { kind: "sudoSkipped"; tab: string }
@@ -179,6 +183,7 @@ export function useShares(onNotice: (notice: ShareNotice) => void): Shares {
         patch(paneId, (s) => ({ pending: [...viewerOnly(s.pending, event.data.viewer.viewer), event.data.viewer] }));
         return noticeRef.current({ kind: "joinRequest", tab: share.tab, viewer: event.data.viewer });
       case "viewerJoined":
+        if (event.data.auto) noticeRef.current({ kind: "joined", tab: share.tab, viewer: event.data.viewer });
         return patch(paneId, (s) => ({
           pending: viewerOnly(s.pending, event.data.viewer.viewer),
           viewers: [...viewerOnly(s.viewers, event.data.viewer.viewer), event.data.viewer],
@@ -285,6 +290,7 @@ export function useShares(onNotice: (notice: ShareNotice) => void): Shares {
           cols,
           rows,
           viewNeedsApproval: args.viewNeedsApproval,
+          autoApprove: args.options.autoApprove,
           recordInput: args.recordInput,
           blockLid: args.blockLid,
         },

@@ -418,7 +418,7 @@ function AppContent() {
     const text = noticeText(shareNotice);
     setNotice(text);
     // Nobody joins unnoticed, and a password wait is told even out of sight (PRD-share §4.1.3, §6.2).
-    if (shareNotice.kind === "joinRequest") {
+    if (shareNotice.kind === "joinRequest" || shareNotice.kind === "joined") {
       void showSystemNotification(t("share.join.title", { tab: shareNotice.tab }), text);
     }
     if (shareNotice.kind === "password") void showSystemNotification("PlexusTerm", text);
