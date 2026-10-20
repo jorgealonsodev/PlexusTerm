@@ -77,7 +77,8 @@ describe("Explorer tab", () => {
     await screen.findByTestId("terminal");
     await waitFor(() => expect(pane.fileLinks).toBeTruthy());
     expect(await pane.fileLinks!.resolve("docs/missing.md")).toBeNull();
-    expect(await pane.fileLinks!.resolve("docs/PRD.md")).toBe("/home/me/docs/PRD.md");
+    // Paths are read from the folder of the terminal's program, which arrives on its own.
+    await waitFor(async () => expect(await pane.fileLinks!.resolve("docs/PRD.md")).toBe("/home/me/docs/PRD.md"));
     act(() => pane.fileLinks!.open("/home/me/docs/PRD.md"));
     // The Explorer tab is shown, with the file selected in its folder.
     const tab = await screen.findByRole("tab", { name: "Explorer" });

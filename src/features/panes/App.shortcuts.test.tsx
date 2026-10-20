@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 
@@ -73,6 +73,7 @@ describe("customised shortcuts in the app", () => {
   it("shows the effective shortcut in the pane close button and the toolbar", async () => {
     await renderWith({ closePane: "Alt+X", toggleSidebar: "Alt+B" });
     key({ key: "D", ctrlKey: true, shiftKey: true });
+    await waitFor(() => expect(document.querySelector(".pane__corner")).not.toBeNull());
     fireEvent.mouseEnter(document.querySelector(".pane__corner")!);
     expect(screen.getAllByRole("button", { name: "Close pane" })[0].title).toBe("Close pane (Alt+X closes the focused one)");
     expect(screen.getByRole("button", { name: "Hide sidebar" }).title).toBe("Hide sidebar (Alt+B)");

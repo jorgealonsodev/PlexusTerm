@@ -141,7 +141,7 @@ describe("App macros (S16)", () => {
   it("shows progress, stops on Escape, and reports a waitFor timeout in the pane (S16.3)", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Play Slow" }));
-    expect(screen.getByText(/Running "Slow": step 1 of 1/)).toBeTruthy();
+    expect(await screen.findByText(/Running "Slow": step 1 of 1/)).toBeTruthy();
     key("Escape", {});
     await waitFor(() => expect(screen.queryByText(/Running "Slow"/)).toBeNull());
     expect(notices).toEqual([]);
