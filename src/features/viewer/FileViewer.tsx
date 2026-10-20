@@ -332,8 +332,8 @@ export function FileViewer({
     const edited = draft.current;
     if (!save || !file || !(edited || as) || !editable) return;
     if (saving) {
-      // The newer text is saved once the running save is done.
-      if (autoSave) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
+      // The newer text, or the chosen encoding, is saved once the running save is done.
+      if (autoSave || as) autoSaveTimer.current = setTimeout(() => saveRef.current(as), AUTO_SAVE_MS);
       return;
     }
     const content = edited ? fileText(edited) : file.content;
@@ -528,8 +528,8 @@ export function FileViewer({
               type="button"
               className="viewer__status-item"
               title={t("app.viewer.selectLineBreak")}
-              // Converting is an edit, and a file shown only in part is not edited.
-              disabled={!editable}
+              // Converting is an edit of the code: not of a file shown only in part, nor while rendered.
+              disabled={!editable || (markdown && mode === "preview")}
               onClick={openPicker("lineBreak")}
             >
               {fileLineBreak === "\r\n" ? "CRLF" : "LF"}

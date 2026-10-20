@@ -481,6 +481,15 @@ describe("FileViewer status bar: encoding, line endings and language", () => {
     expect((bar().getByRole("button", { name: "LF" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("offers no line ending change while a Markdown file shows rendered", async () => {
+    render(<FileViewer path="/p/README.md" load={file("# a\n\nb\n")} onClose={() => {}} save={vi.fn(async () => {})} />);
+    await screen.findByRole("heading", { name: "a" });
+    expect((bar().getByRole("button", { name: "LF" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Code" }));
+    await waitFor(() => expect(shown()).toBe("# ab"));
+    expect((bar().getByRole("button", { name: "LF" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("reopens the file with another encoding", async () => {
     const load = vi.fn(async (encoding?: string) => ({
       path: "/p/x",
