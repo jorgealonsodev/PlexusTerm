@@ -50,10 +50,15 @@ pub fn share_command(
     shares.command(id, command)
 }
 
-/// Stops every share (quitting after the user confirmed).
+/// Event asking the frontend to confirm quitting while tabs are shared.
+pub const QUIT_REQUESTED_EVENT: &str = "share-quit-requested";
+
+/// The user confirmed quitting with shares: they end (viewers are told), then PlexusTerm exits.
 #[tauri::command]
-pub fn share_stop_all(shares: State<'_, ShareManager>) {
-    shares.stop_all();
+pub async fn share_quit(app: tauri::AppHandle, shares: State<'_, ShareManager>) -> Result<(), ()> {
+    shares.stop_all(Duration::from_secs(5)).await;
+    app.exit(0);
+    Ok(())
 }
 
 /// The shares an earlier run left behind by crashing; reported once.

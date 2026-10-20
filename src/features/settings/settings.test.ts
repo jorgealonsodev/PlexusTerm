@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
@@ -60,6 +60,12 @@ describe("parseSettings", () => {
       devColumnAtStartup: "last",
       recentFolderLimit: 10,
       devFolderInFooter: true,
+      shareRelayUrl: "",
+      shareViewerOrigin: "",
+      shareViewNeedsApproval: true,
+      shareSudoReset: true,
+      shareBlockLid: false,
+      shareRecordInput: false,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -167,6 +173,12 @@ describe("parseSettings", () => {
       devColumnAtStartup: "last",
       recentFolderLimit: 10,
       devFolderInFooter: true,
+      shareRelayUrl: "",
+      shareViewerOrigin: "",
+      shareViewNeedsApproval: true,
+      shareSudoReset: true,
+      shareBlockLid: false,
+      shareRecordInput: false,
     });
   });
 
@@ -345,6 +357,12 @@ describe("serializeSettings", () => {
       devColumnAtStartup: "last" as const,
       recentFolderLimit: 25,
       devFolderInFooter: false,
+      shareRelayUrl: "wss://relay.example.com",
+      shareViewerOrigin: "https://view.example.com",
+      shareViewNeedsApproval: false,
+      shareSudoReset: false,
+      shareBlockLid: true,
+      shareRecordInput: true,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -490,5 +508,23 @@ describe("terminal line height", () => {
     expect(parseSettings(JSON.stringify({ lineHeight: 1.15 })).lineHeight).toBe(1.15);
     expect(parseSettings(JSON.stringify({ lineHeight: "tall" })).lineHeight).toBe(1);
     expect(LINE_HEIGHTS).toEqual([1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3]);
+  });
+});
+
+describe("sharing settings", () => {
+  it("are off the relay until set, ask for View only joins and reset sudo by default", () => {
+    const d = parseSettings(null);
+    expect([d.shareRelayUrl, d.shareViewerOrigin]).toEqual(["", ""]);
+    expect([d.shareViewNeedsApproval, d.shareSudoReset, d.shareBlockLid, d.shareRecordInput]).toEqual([true, true, false, false]);
+  });
+
+  it("keep only relay and viewer URLs of their schemes", () => {
+    expect(cleanShareUrl(" wss://relay.example.com ", ["wss", "ws"])).toBe("wss://relay.example.com");
+    expect(cleanShareUrl("https://relay.example.com", ["wss", "ws"])).toBe("");
+    expect(cleanShareUrl("https://view.example.com", ["https", "http"])).toBe("https://view.example.com");
+    expect(cleanShareUrl("javascript://x", ["https", "http"])).toBe("");
+    expect(cleanShareUrl(42, ["https"])).toBe("");
+    const parsed = parseSettings(JSON.stringify({ shareRelayUrl: "http://x", shareViewerOrigin: "https://v.example" }));
+    expect([parsed.shareRelayUrl, parsed.shareViewerOrigin]).toEqual(["", "https://v.example"]);
   });
 });

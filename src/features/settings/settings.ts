@@ -140,6 +140,18 @@ export interface TerminalSettings {
   recentFolderLimit: number;
   /** In DEV mode the bar under each terminal names its folder (the last part of the path). */
   devFolderInFooter: boolean;
+  /** Terminal sharing: the relay's `wss://` URL ("" until set). The relay token is in the keyring. */
+  shareRelayUrl: string;
+  /** Terminal sharing: the `https://` origin that serves the viewer page ("" until set). */
+  shareViewerOrigin: string;
+  /** View only joins ask the sharer first; Can type joins always do. */
+  shareViewNeedsApproval: boolean;
+  /** Run `sudo -k` in the tab when a Can type share starts, so typing viewers find no cached sudo. */
+  shareSudoReset: boolean;
+  /** Linux: block lid-close sleep too while sharing (idle sleep is always blocked). */
+  shareBlockLid: boolean;
+  /** The share audit log records what viewers type; otherwise only the time and the byte count. */
+  shareRecordInput: boolean;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -165,6 +177,7 @@ export const MAX_TEXT_EDITOR_LENGTH = 1024;
 export const MAX_AI_HISTORY_CONTEXT = 20;
 export const MAX_AI_MODEL_LENGTH = 200;
 export const MAX_AI_BASE_URL_LENGTH = 500;
+export const MAX_SHARE_URL_LENGTH = 500;
 export const DEFAULT_ASSISTANT_SHORTCUT = "Ctrl+Shift+Space";
 
 export const DEFAULT_SETTINGS: TerminalSettings = {
@@ -212,6 +225,12 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   viewerFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
+  shareRelayUrl: "",
+  shareViewerOrigin: "",
+  shareViewNeedsApproval: true,
+  shareSudoReset: true,
+  shareBlockLid: false,
+  shareRecordInput: false,
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
@@ -266,6 +285,13 @@ export function cleanAiModel(value: unknown, provider: AiProvider): string {
 export function cleanAiBaseUrl(value: unknown): string {
   const url = typeof value === "string" ? value.trim() : "";
   return url.length <= MAX_AI_BASE_URL_LENGTH && /^https?:\/\/\S+$/i.test(url) ? url : "";
+}
+
+/** A sharing URL of one of `schemes` (`wss` for the relay, `https` for the viewer page), or "". */
+export function cleanShareUrl(value: unknown, schemes: string[]): string {
+  const url = typeof value === "string" ? value.trim() : "";
+  const scheme = url.split("://")[0]?.toLowerCase() ?? "";
+  return url.length <= MAX_SHARE_URL_LENGTH && schemes.includes(scheme) && /^[a-z]+:\/\/\S+$/i.test(url) ? url : "";
 }
 
 export const clampAiHistoryContext = (count: number) =>
@@ -430,6 +456,12 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)
         ? clampTabColumnWidth(value.tabColumnWidth)
         : d.tabColumnWidth,
+    shareRelayUrl: cleanShareUrl(value.shareRelayUrl, ["wss", "ws"]),
+    shareViewerOrigin: cleanShareUrl(value.shareViewerOrigin, ["https", "http"]),
+    shareViewNeedsApproval: bool(value.shareViewNeedsApproval, d.shareViewNeedsApproval),
+    shareSudoReset: bool(value.shareSudoReset, d.shareSudoReset),
+    shareBlockLid: bool(value.shareBlockLid, d.shareBlockLid),
+    shareRecordInput: bool(value.shareRecordInput, d.shareRecordInput),
   };
 }
 

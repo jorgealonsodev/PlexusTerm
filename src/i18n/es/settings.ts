@@ -17,6 +17,7 @@ export const settings: Messages<typeof en> = {
     ssh: "SSH",
     files: "Archivos",
     ai: "IA",
+    sharing: "Compartir",
     about: "Acerca de",
   },
   appearance: {

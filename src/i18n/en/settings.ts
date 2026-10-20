@@ -14,6 +14,7 @@ export const settings = {
     ssh: "SSH",
     files: "Files",
     ai: "AI",
+    sharing: "Sharing",
     about: "About",
   },
   appearance: {

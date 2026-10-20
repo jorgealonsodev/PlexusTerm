@@ -63,7 +63,7 @@ describe("SettingsDialog", () => {
   it("shows one section at a time from the side menu, starting with Appearance", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     const sections = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(sections).toEqual(["Appearance", "Terminal", "Shortcuts", "SSH", "Files", "AI", "About"]);
+    expect(sections).toEqual(["Appearance", "Terminal", "Shortcuts", "SSH", "Files", "AI", "Sharing", "About"]);
     const visible = () => screen.getAllByRole("tabpanel").filter((p) => !p.hidden).map((p) => p.getAttribute("aria-label"));
     expect(visible()).toEqual(["Appearance"]);
     expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");

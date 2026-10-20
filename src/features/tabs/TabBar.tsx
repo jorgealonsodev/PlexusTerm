@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties, type Pointer
 import { useT } from "../../i18n/i18n";
 import { ContextMenu } from "../menu/ContextMenu";
 import { ColorMenu } from "../toolbar/ColorMenu";
-import { Code } from "lucide-react";
+import { Code, Share2 } from "lucide-react";
 import { CliIcon, cliName } from "../devmode/CliIcon";
 import { titleWithoutCliMark } from "../devmode/devMode";
 import { clampTabColumnWidth, TAB_COLUMN_MAX_WIDTH, TAB_COLUMN_MIN_WIDTH } from "../settings/settings";
@@ -61,6 +61,10 @@ interface TabBarProps {
   onColor?: (key: string, color: string | null) => void;
   /** A tab dragged to another place: `to` is its index in the new order. Without it tabs do not drag. */
   onMove?: (key: string, to: number) => void;
+  /** Shared tabs and how many people are connected to each: the sharing mark shows it. */
+  shared?: ReadonlyMap<string, number>;
+  /** Opens the Share dialog of a tab (the menu's Share item and the sharing mark). */
+  onShare?: (key: string) => void;
 }
 
 /**
@@ -214,6 +218,10 @@ export function TabBar(props: TabBarProps) {
   const menuItems = (key: string) => {
     const host = hostOf(tabs.find((t) => t.key === key)!);
     return [
+      props.onShare && {
+        label: props.shared?.has(key) ? t("share.menu.sharing") : t("share.menu.share"),
+        onSelect: () => props.onShare!(key),
+      },
       props.onCopyHost && host && { label: t("app.tabs.copyHost", { host }), onSelect: () => props.onCopyHost!(host) },
       props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
       props.onColor && menu && { label: t("app.tabs.colour"), onSelect: () => setColorMenu({ key, x: menu.x, y: menu.y }) },
@@ -286,6 +294,20 @@ export function TabBar(props: TabBarProps) {
                 )}
                 {attention?.has(tab.key) && (
                   <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
+                )}
+                {props.shared?.has(tab.key) && n === 0 && (
+                  <button
+                    type="button"
+                    className="tab__share"
+                    aria-label={t("share.mark", { count: props.shared.get(tab.key) ?? 0 })}
+                    title={t("share.mark", { count: props.shared.get(tab.key) ?? 0 })}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => props.onShare?.(tab.key)}
+                  >
+                    <Share2 size={12} aria-hidden="true" />
+                    {props.shared.get(tab.key) ?? 0}
+                  </button>
                 )}
                 {!folded && shown !== null && (
                   <span className="tab__title" dir="auto">

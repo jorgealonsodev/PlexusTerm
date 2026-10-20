@@ -12,6 +12,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [File explorer](#file-explorer) | Local files of the active local tab, VS Code-style lists and workspaces in DEV mode, viewing files, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
+| [Sharing a tab](#sharing-a-tab) | A link to watch and type into a tab from another computer or a phone, through your own relay |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, tab and window colours, AI command-line tools and DEV mode, copy and paste, find, saving and logging output |
 | [Command suggestions and AI](#command-suggestions-and-ai) | Inline suggestions from your history, AI completion, the AI chat |
@@ -272,6 +273,24 @@ While it is on, each pane shows an **exclude** toggle in its top-right corner to
 Multi-execution is off when the app starts and is never saved.
 
 The SFTP browser and **Follow terminal folder** use the focused pane of the active tab.
+
+## Sharing a tab
+
+**Share…** in a tab's right-click menu gives the tab a link that opens it live in a browser, on another computer or a phone, through a [plexusterm-relay](https://github.com/jorgealonsodev/plexusterm-relay) you run yourself. Nothing moves: the programs keep running on this computer, and the share ends with it.
+
+**Setting up** (Settings → **Sharing**): the relay's **Relay URL** (`wss://…`), the **Viewer origin** that serves the viewer page (`https://…`) and the **Relay token**, which is kept only in the system keyring and is never shown again. `ws://` and `http://` are accepted only for `localhost`.
+
+**Sharing:** the dialog offers **View only** (the default) and **Can type** links, both at once if you want, each with **Copy link** and a QR code; when the share ends (**When I stop sharing**, in 1 hour or in 12 hours: every share ends after 12 hours at most); and the **History sent on join** (the current screen only, or the last 1 000 or 5 000 lines; earlier output may contain secrets). The share uses the tab's focused pane.
+
+- The tab shows a mark with the number of people connected; clicking it opens the dialog again, with the links, who is connected (label, access, address, since when) and **Disconnect**, which also replaces that link, so the viewer cannot come back with it.
+- **Joining:** each request shows a desktop notification and a message in the tab with **Allow** and **Deny**. Can type joins always ask; View only joins ask too unless **View only joins need approval** is off.
+- **While sharing:** **Change to view only** (typing again needs a new share), **Pause viewer input**, and a new end time. A timed share warns 10 minutes before it ends, with **Extend 1 hour**.
+- **Viewer typing** is held, never dropped, while you type, while another viewer typed less than 2 seconds ago, while input is paused, and at a password prompt (you are told a password is needed). Password detection is best effort.
+- **Can type is a remote shell on your computer:** anything you authorized (sudo, ssh-agent, gh auth) is usable by typing viewers. With **Run sudo -k when a Can type share starts** (on by default) the tab runs ` sudo -k` when the share goes live.
+- **Ending:** **Stop sharing**, the expiry, the shared program exiting, or 30 minutes without viewers end it, and viewers are told. Closing a shared tab, or quitting, asks first. If PlexusTerm crashes, the next start says when the share ended.
+- **Staying awake:** while any tab is shared the computer does not sleep when idle (Linux: logind; Windows and macOS: their power APIs). On Linux, **Also block lid-close sleep while sharing** blocks lid-close sleep too; on macOS and Windows closing the lid still sleeps.
+- **Privacy:** output and input are encrypted end to end for each viewer; the relay sees neither. Browser viewers trust the viewer page's server.
+- **Audit log** (**Audit log…** in the dialog or Settings → Sharing): share start and end, join requests, approvals, denials, disconnects, and each viewer's typing (time and byte count; the typed text only with **Record what viewers type in the audit log**). It is kept 30 days in `~/.config/dev.plexusterm.app/share-audit.log`.
 
 ## Interface language
 

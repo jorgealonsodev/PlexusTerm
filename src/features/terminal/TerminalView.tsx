@@ -6,6 +6,7 @@ import { Terminal, type FontWeight } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, type FileLinks } from "./fileLinks";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { softwareWebgl } from "./webglProbe";
@@ -48,6 +49,7 @@ import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextM
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
+import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
 
@@ -115,6 +117,8 @@ interface TerminalViewProps {
   onActivity?: (busy: boolean) => void;
   /** Turns the paths printed in the pane into files that Ctrl+click opens; none without it. */
   fileLinks?: FileLinks;
+  /** Hands out what terminal sharing needs from this pane; returns its unregister function. */
+  registerSharePane?: (pane: SharePane) => () => void;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -266,6 +270,7 @@ export function TerminalView({
   onOutputQuiet,
   onActivity,
   fileLinks,
+  registerSharePane,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
@@ -326,8 +331,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane };
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -371,6 +376,9 @@ export function TerminalView({
     );
     const search = new SearchAddon();
     term.loadAddon(search);
+    // Snapshots of a shared pane for the viewers who join.
+    const serializer = new SerializeAddon();
+    term.loadAddon(serializer);
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
     // returning false lets the event bubble to the window listener without xterm handling it.
     // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.
@@ -414,6 +422,10 @@ export function TerminalView({
     let disposed = false;
     /** Set when the session ended but its pane stays open (serial device gone, mosh-client failed). */
     let ended = false;
+    /** The session's share tap, and the number of the last output written while it is shared. */
+    let tap: number | null = null;
+    let outputSeq = 0;
+    const resizeListeners = new Set<(cols: number, rows: number) => void>();
     /** Macros waiting for output (S16.3). */
     const outputListeners = new Set<(text: string, echo?: boolean) => void>();
     /** A command was sent with Enter and its prompt has not been seen yet. */
@@ -482,7 +494,9 @@ export function TerminalView({
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
-          if (msg.event === "output") {
+          if (msg.event === "tap") tap = msg.data;
+          else if (msg.event === "seq") outputSeq = msg.data;
+          else if (msg.event === "output") {
             latencyMark("O", msg.data.length);
             term.write(msg.data);
             logRef.current?.write(msg.data);
@@ -746,6 +760,36 @@ export function TerminalView({
       notice: (text) => term.write(`\r\n${red(text)}`),
     });
 
+    const unregisterSharePane = callbacks.current.registerSharePane?.({
+      tap: () => tap,
+      size: () => ({ cols: term.cols, rows: term.rows }),
+      snapshot: (history) => {
+        // Everything written up to now (output `outputSeq` included) is parsed when this callback runs.
+        const coversSeq = outputSeq;
+        return new Promise((resolve) =>
+          term.write("", () => {
+            const screen = serializer.serialize({ scrollback: 0 });
+            resolve(
+              history === "screen"
+                ? { coversSeq, screen: null, full: screen }
+                : { coversSeq, screen, full: serializer.serialize({ scrollback: history }) },
+            );
+          }),
+        );
+      },
+      inject: (data) => {
+        write(data);
+        track(data);
+      },
+      sharerTypedAt: () => lastTyped,
+      atPassword: atSecretPrompt,
+      fullScreen,
+      onResize: (listener) => {
+        resizeListeners.add(listener);
+        return () => resizeListeners.delete(listener);
+      },
+    });
+
     const unregisterAssistTarget = callbacks.current.registerAssistTarget?.({
       selection: () => (term.hasSelection() ? term.getSelection() : ""),
       focus: () => term.focus(),
@@ -828,6 +872,7 @@ export function TerminalView({
       term.onScroll(scheduleGhost),
       term.onResize(({ cols, rows }) => {
         if (sessionId !== null) void backend.resize(sessionId, cols, rows);
+        resizeListeners.forEach((listener) => listener(cols, rows));
         // Rows reflow to the new width: colour them again once the size settles (a window drag
         // resizes many times in a row).
         if (errorsTimer) clearTimeout(errorsTimer);
@@ -894,6 +939,8 @@ export function TerminalView({
       unregisterWriter?.();
       unregisterMacroTarget?.();
       unregisterAssistTarget?.();
+      unregisterSharePane?.();
+      resizeListeners.clear();
       outputListeners.clear();
       observer.disconnect();
       if (titleTimer) clearTimeout(titleTimer);

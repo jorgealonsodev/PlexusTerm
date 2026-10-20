@@ -131,8 +131,9 @@ vi.mock("@xterm/xterm", () => ({
     }
     open() {}
     written: string[] = [];
-    write(text: string) {
+    write(text: string, callback?: () => void) {
       this.written.push(text);
+      callback?.();
     }
     focus() {}
     dispose() {}
@@ -180,6 +181,16 @@ vi.mock("@xterm/addon-fit", () => ({
 const webgl = vi.hoisted(() => ({
   addons: [] as { disposed: boolean; loseContext: () => void }[],
   failNext: false,
+}));
+// A shared pane's snapshots: what was written, cut to the screen when `scrollback` is 0.
+vi.mock("@xterm/addon-serialize", () => ({
+  SerializeAddon: class {
+    serialize(options?: { scrollback?: number }) {
+      const term = terms[terms.length - 1];
+      const all = term.written.join("");
+      return options?.scrollback === 0 ? `SCREEN:${term.line}` : `FULL(${options?.scrollback}):${all}`;
+    }
+  },
 }));
 vi.mock("@xterm/addon-webgl", () => ({
   WebglAddon: class {
@@ -1608,6 +1619,80 @@ describe("TerminalView", () => {
         await act(() => vi.advanceTimersByTimeAsync(1000));
         expect(aiSuggest).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("terminal sharing", () => {
+    const shared = async () => {
+      let emit: (event: unknown) => void = () => {};
+      backend.start.mockImplementation((_options, onEvent) => {
+        emit = onEvent as (event: unknown) => void;
+        return Promise.resolve(5);
+      });
+      let pane: import("../share/sharePane").SharePane | null = null;
+      const onExit = vi.fn();
+      render(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={onExit}
+          registerSharePane={(p) => ((pane = p), () => {})}
+        />,
+      );
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalled());
+      return { emit: (event: unknown) => act(async () => emit(event)), pane: () => pane!, onExit };
+    };
+
+    it("learns its tap and output numbers without taking them for the end of the session", async () => {
+      const { emit, pane, onExit } = await shared();
+      expect(pane().tap()).toBeNull();
+      await emit({ event: "tap", data: 42 });
+      await emit({ event: "output", data: "hello" });
+      await emit({ event: "seq", data: 3 });
+      expect(onExit).not.toHaveBeenCalled();
+      expect(pane().tap()).toBe(42);
+      expect(lastTerm().written).toContain("hello");
+      expect(lastTerm().written).not.toContain("42");
+    });
+
+    it("serializes the screen and the chosen history, saying which output they cover", async () => {
+      const { emit, pane } = await shared();
+      await emit({ event: "tap", data: 1 });
+      await emit({ event: "output", data: "abc" });
+      await emit({ event: "seq", data: 7 });
+      lastTerm().line = "$ ";
+      await expect(pane().snapshot(1000)).resolves.toEqual({
+        coversSeq: 7,
+        screen: "SCREEN:$ ",
+        full: expect.stringMatching(/^FULL\(1000\):.*abc/),
+      });
+      await expect(pane().snapshot("screen")).resolves.toEqual({ coversSeq: 7, screen: null, full: "SCREEN:$ " });
+    });
+
+    it("types a viewer's keys into the session without reporting them as the user's", async () => {
+      const onInput = vi.fn();
+      let pane: import("../share/sharePane").SharePane | null = null;
+      backend.start.mockImplementation(() => Promise.resolve(9));
+      render(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          onInput={onInput}
+          registerSharePane={(p) => ((pane = p), () => {})}
+        />,
+      );
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalled());
+      await act(async () => {});
+      const before = pane!.sharerTypedAt();
+      pane!.inject("ls\r");
+      expect(backend.write).toHaveBeenCalledWith(9, "ls\r");
+      expect(onInput).not.toHaveBeenCalled();
+      expect(pane!.sharerTypedAt()).toBe(before);
+      lastTerm().type("x");
+      expect(pane!.sharerTypedAt()).toBeGreaterThan(before);
     });
   });
 });

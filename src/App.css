@@ -2991,3 +2991,152 @@ body.is-dragging-path {
 .tab--row.tab--coloured {
   box-shadow: inset 3px 0 0 var(--tab-color);
 }
+
+/* Terminal sharing: the Share dialog, its links and QR codes, the in-tab toasts and the tab mark. */
+.share-dialog {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.share-dialog h3 {
+  margin: 4px 0 0;
+  font-size: 1em;
+}
+
+.share-dialog__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.share-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Can type is red, and always has its icon and its words too. */
+.share-access--type,
+.share-warning {
+  color: var(--danger);
+}
+
+.share-link {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.share-link__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.share-link__text input {
+  width: 100%;
+  font-family: monospace;
+}
+
+.share-link__qr {
+  flex: none;
+  background: #ffffff;
+  border-radius: 4px;
+}
+
+.share-viewers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.share-viewers li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.share-dialog__build {
+  font-size: 0.9em;
+}
+
+.share-toasts {
+  position: absolute;
+  right: 16px;
+  bottom: 44px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 32px));
+}
+
+.share-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.share-toast--type {
+  border-color: var(--danger);
+}
+
+.share-toast__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tab__share {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--accent);
+  background: transparent;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.share-audit {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+}
+
+.share-audit__table {
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.share-audit table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.share-audit th,
+.share-audit td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}

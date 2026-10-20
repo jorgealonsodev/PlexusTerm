@@ -17,6 +17,7 @@ export const settings: Messages<typeof en> = {
     ssh: "SSH",
     files: "ファイル",
     ai: "AI",
+    sharing: "共有",
     about: "バージョン情報",
   },
   appearance: {

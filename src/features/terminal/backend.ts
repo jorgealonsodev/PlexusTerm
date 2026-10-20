@@ -5,7 +5,11 @@ import { serialBackend } from "../serial/serialBackend";
 import { telnetBackend } from "../telnet/telnetBackend";
 
 export type TerminalEvent =
+  /** First event: the session's share tap (see `share_start`). */
+  | { event: "tap"; data: number }
   | { event: "output"; data: string }
+  /** While the session is shared: the number of the output just sent. */
+  | { event: "seq"; data: number }
   | { event: "exit"; data: number | null };
 
 export interface StartOptions {

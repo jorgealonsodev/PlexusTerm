@@ -548,3 +548,46 @@ async fn view_only_joins_can_skip_approval() {
         "{joined:?}"
     );
 }
+
+/// Quitting with a share asks first; once confirmed, every share ends before PlexusTerm exits.
+#[tokio::test(flavor = "multi_thread")]
+async fn quitting_ends_every_share_after_the_user_confirmed() {
+    let addr = relay().await;
+    let manager = ShareManager::default();
+    assert!(!manager.must_confirm_quit());
+    let (tap_id, _tap) = taps().register();
+    let (tx, mut events) = unbounded_channel();
+    manager
+        .start(
+            StartRequest {
+                tap: tap_id,
+                tab: "t".into(),
+                relay_url: format!("ws://{addr}"),
+                viewer_origin: "http://localhost".into(),
+                accesses: vec![Access::View],
+                expiry: Expiry::OneHour,
+                cols: 80,
+                rows: 24,
+                view_needs_approval: true,
+                record_input: false,
+                block_lid: false,
+            },
+            TOKEN.into(),
+            move |event| {
+                let _ = tx.send(event);
+            },
+        )
+        .unwrap();
+    until_event(&mut events, |e| matches!(e, ShareEvent::Live { .. })).await;
+    assert!(manager.must_confirm_quit());
+    manager.stop_all(WAIT).await;
+    let ended = until_event(&mut events, |e| matches!(e, ShareEvent::Ended { .. })).await;
+    assert!(matches!(
+        ended,
+        ShareEvent::Ended {
+            kind: EndKind::Stopped,
+            ..
+        }
+    ));
+    assert!(!manager.must_confirm_quit());
+}

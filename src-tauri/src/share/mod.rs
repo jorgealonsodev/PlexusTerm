@@ -369,6 +369,8 @@ struct Inner {
     awake: Mutex<awake::Awake>,
     /// Where the audit log and crash markers live (the app's config folder).
     dir: OnceLock<PathBuf>,
+    /// The user confirmed quitting: the window closes without asking again.
+    quitting: AtomicBool,
 }
 
 /// The QR code of a link as SVG.
@@ -510,10 +512,24 @@ impl ShareManager {
             .map_err(|_| ShareError::UnknownShare)
     }
 
-    /// Ends every share (PlexusTerm is quitting after the user confirmed).
-    pub fn stop_all(&self) {
+    /// Whether closing the window must ask first: shares are live and quitting was not confirmed.
+    pub fn must_confirm_quit(&self) -> bool {
+        !self.inner.quitting.load(Ordering::Relaxed)
+            && !self.inner.shares.lock().unwrap().is_empty()
+    }
+
+    /// Ends every share and waits (at most `wait`) for them to end, so viewers are told and no
+    /// crash marker is left behind.
+    pub async fn stop_all(&self, wait: std::time::Duration) {
+        self.inner.quitting.store(true, Ordering::Relaxed);
         for handle in self.inner.shares.lock().unwrap().values() {
             let _ = handle.commands.send(Command::Stop);
+        }
+        let deadline = tokio::time::Instant::now() + wait;
+        while !self.inner.shares.lock().unwrap().is_empty()
+            && tokio::time::Instant::now() < deadline
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
     }
 }

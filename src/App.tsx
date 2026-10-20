@@ -72,6 +72,11 @@ import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
 import { createNotifier } from "./features/notifications/notifier";
 import { showSystemNotification } from "./features/notifications/systemNotification";
+import { useShares, type ShareNotice } from "./features/share/useShares";
+import { ShareDialog } from "./features/share/ShareDialog";
+import { ShareToasts } from "./features/share/ShareToasts";
+import { AuditLogDialog } from "./features/share/AuditLogDialog";
+import { noticeText } from "./features/share/labels";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { setChatSaving } from "./features/ai/chatHistory";
@@ -142,6 +147,9 @@ type Modal =
   | { kind: "editMacro"; macro: Macro; isNew: boolean }
   /** A recording just stopped: name it or discard it (S16.2). */
   | { kind: "nameMacro"; steps: Step[] }
+  /** The Share dialog of a tab's pane. */
+  | { kind: "share"; tabKey: string; paneId: string }
+  | { kind: "shareAudit" }
   | null;
 
 /** Short status of a pane's last failed AI suggestion (S2), with the full message as tooltip. */
@@ -345,9 +353,24 @@ function AppContent() {
    * Dispatches a tab action, asking first when it would close a viewer holding unsaved edits or
    * show another file in it (its tab, its terminal or the viewer itself closing).
    */
-  const dispatchKeepingEdits = async (action: TabsAction) => {
+  /**
+   * Applies a tab action, asking first when it would discard unsaved edits or close shared panes
+   * ("This tab is shared with N people. Stop sharing and close?"). `exited`: the pane's program
+   * exited, which ends its share by itself.
+   */
+  const dispatchKeepingEdits = async (action: TabsAction, exited = false) => {
     const before = stateRef.current;
     const after = tabsReducer(before, action);
+    const remaining = new Set(after.tabs.flatMap((tab) => paneIds(tab.layout)));
+    const closingShared = exited
+      ? []
+      : before.tabs.flatMap((tab) => paneIds(tab.layout)).filter((id) => !remaining.has(id) && shares.byPane[id]);
+    if (closingShared.length > 0) {
+      const count = shares.viewersOf(closingShared);
+      const question = t("share.close.question", { count });
+      if (!(await dialogs.confirm({ message: question, confirmLabel: t("share.close.confirm"), danger: true }))) return;
+      closingShared.forEach((id) => shares.stop(id));
+    }
     const lost = before.tabs.flatMap((tab) =>
       Object.entries(tab.viewers ?? {})
         .filter(([paneId, viewer]) => {
@@ -382,6 +405,29 @@ function AppContent() {
   const [writers] = useState(createWriterRegistry);
   /** Non-blocking message, e.g. a saved password the keyring refused to delete. */
   const [notice, setNotice] = useState<string | null>(null);
+  const shares = useShares((shareNotice: ShareNotice) => {
+    const text = noticeText(shareNotice);
+    setNotice(text);
+    // Nobody joins unnoticed, and a password wait is told even out of sight (PRD-share §4.1.3, §6.2).
+    if (shareNotice.kind === "joinRequest") {
+      void showSystemNotification(t("share.join.title", { tab: shareNotice.tab }), text);
+    }
+    if (shareNotice.kind === "password") void showSystemNotification("PlexusTerm", text);
+  });
+  const sharesRef = useRef(shares);
+  sharesRef.current = shares;
+  // Quitting with shares asks first; the backend holds the window until the answer.
+  useEffect(() => {
+    const stop = listen("share-quit-requested", () => {
+      const all = Object.keys(sharesRef.current.byPane);
+      const count = sharesRef.current.viewersOf(all);
+      void dialogs
+        .confirm({ message: t("share.close.quitQuestion", { count }), confirmLabel: t("share.close.quit"), danger: true })
+        .then((yes) => yes && invoke("share_quit"));
+    });
+    return () => void stop.then((unlisten) => unlisten()).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const macros = useMacros();
   const [macroTargets] = useState(() => createTargetRegistry<MacroTarget>());
   // Refs too: keystrokes can arrive before the next render.
@@ -563,6 +609,20 @@ function AppContent() {
   const attentionTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.attention)).map((t) => t.key),
   );
+  /** Shared tabs and the people connected to them (the sharing mark). */
+  const sharedTabs = new Map(
+    state.tabs
+      .filter((tab) => paneIds(tab.layout).some((id) => shares.byPane[id]))
+      .map((tab) => [tab.key, shares.viewersOf(paneIds(tab.layout))] as const),
+  );
+  /** The Share dialog of a tab: its shared pane, or the focused one to share. */
+  const openShare = (key: string) => {
+    const tab = state.tabs.find((t) => t.key === key);
+    if (!tab) return;
+    const sharedPane = paneIds(tab.layout).find((id) => shares.byPane[id]);
+    const paneId = sharedPane ?? (isTerminalPane(tab, tab.focusedPane) ? tab.focusedPane : terminalPaneOf(tab));
+    if (paneId) setModal({ kind: "share", tabKey: key, paneId });
+  };
   const devTabs = new Set(Object.keys(dev.state));
   /** Tabs whose CLI is working: its pane is printing (S13). */
   const busyTabs = new Set(
@@ -1690,6 +1750,8 @@ function AppContent() {
             onCopyHost={(host) =>
               void writeText(host).catch(() => setNotice(t("app.notice.copyFailed")))
             }
+            shared={sharedTabs}
+            onShare={openShare}
           />
           )}
           <main className="workspace">
@@ -1763,7 +1825,7 @@ function AppContent() {
                               updatePane(paneId, { title });
                               dev.title(tab.key, paneId, title, settings.devCommands);
                             }}
-                            onExit={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
+                            onExit={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId }, true)}
                             onCwd={(cwd) => updatePane(paneId, { cwd })}
                             onSession={(sessionId) => {
                               updatePane(paneId, { sessionId });
@@ -1782,6 +1844,7 @@ function AppContent() {
                             registerWriter={(write) => writers.register(paneId, write)}
                             registerMacroTarget={(target) => macroTargets.register(paneId, target)}
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
+                            registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}
                             aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
@@ -1827,6 +1890,13 @@ function AppContent() {
                             <div className="pane__ai-hint" title={aiHints[paneId].detail}>
                               {aiHints[paneId].text}
                             </div>
+                          )}
+                          {shares.byPane[paneId] && (
+                            <ShareToasts
+                              share={shares.byPane[paneId]}
+                              onCommand={(command) => shares.command(paneId, command)}
+                              onDismissWarning={() => shares.dismissWarning(paneId)}
+                            />
                           )}
                           {paneIds(tab.layout).length > 1 && (
                             <PaneCloseButton
@@ -2024,6 +2094,41 @@ function AppContent() {
           onLanguageNow={(language) => terminalSettings.update({ language })}
         />
       )}
+      {modal?.kind === "share" && (
+        <ShareDialog
+          tab={tabTitle(state.tabs.find((tab) => tab.key === modal.tabKey) ?? state.tabs[0])}
+          share={shares.byPane[modal.paneId]}
+          configured={settings.shareRelayUrl !== "" && settings.shareViewerOrigin !== ""}
+          viewerOrigin={settings.shareViewerOrigin}
+          lidSleeps={platform !== "linux"}
+          onStart={async (options) => {
+            const tab = state.tabs.find((t) => t.key === modal.tabKey);
+            if (!tab) return;
+            const unixShell = tab.target.type !== "local" || platform !== "windows";
+            await shares.start({
+              paneId: modal.paneId,
+              tabKey: tab.key,
+              tab: tabTitle(tab),
+              options,
+              relayUrl: settings.shareRelayUrl,
+              viewerOrigin: settings.shareViewerOrigin,
+              viewNeedsApproval: settings.shareViewNeedsApproval,
+              recordInput: settings.shareRecordInput,
+              blockLid: settings.shareBlockLid,
+              sudoReset:
+                settings.shareSudoReset &&
+                options.accesses.includes("type") &&
+                unixShell &&
+                ["local", "ssh", "mosh"].includes(tab.target.type),
+            });
+          }}
+          onCommand={(command) => shares.command(modal.paneId, command)}
+          onOpenSettings={() => setModal({ kind: "settings", section: "sharing" })}
+          onAuditLog={() => setModal({ kind: "shareAudit" })}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "shareAudit" && <AuditLogDialog onClose={() => setModal(null)} />}
       {modal?.kind === "editMacro" && (
         <MacroEditDialog
           macro={modal.macro}

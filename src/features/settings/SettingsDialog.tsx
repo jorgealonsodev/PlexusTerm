@@ -3,7 +3,7 @@ import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FileText, Globe, Info, KeyRound, Keyboard, Palette, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { FileText, Globe, Info, KeyRound, Keyboard, Palette, Share2, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import type { AppKey } from "../../i18n/catalogs";
 import packageJson from "../../../package.json";
@@ -34,6 +34,7 @@ import {
   clampRecentFolderLimit,
   MAX_VIEWER_FONT_SIZE,
   cleanAiBaseUrl,
+  cleanShareUrl,
   cleanAiModel,
   cleanFontFamily,
   cleanTextEditor,
@@ -56,6 +57,8 @@ import { shortcutLabel } from "../panes/shortcuts";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
 import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
+import { SharingSettings, type SharingValues } from "../share/SharingSettings";
+import { AuditLogDialog } from "../share/AuditLogDialog";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -99,7 +102,7 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
   );
 }
 
-export type SettingsSection = "appearance" | "terminal" | "shortcuts" | "ssh" | "files" | "ai" | "about";
+export type SettingsSection = "appearance" | "terminal" | "shortcuts" | "ssh" | "files" | "ai" | "sharing" | "about";
 type Section = SettingsSection;
 
 const SECTIONS: { id: Section; icon: LucideIcon }[] = [
@@ -109,6 +112,7 @@ const SECTIONS: { id: Section; icon: LucideIcon }[] = [
   { id: "ssh", icon: KeyRound },
   { id: "files", icon: FileText },
   { id: "ai", icon: Sparkles },
+  { id: "sharing", icon: Share2 },
   { id: "about", icon: Info },
 ];
 
@@ -315,6 +319,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
   const [devFolderInFooter, setDevFolderInFooter] = useState(settings.devFolderInFooter);
+  const [sharing, setSharing] = useState<SharingValues>({
+    shareRelayUrl: settings.shareRelayUrl,
+    shareViewerOrigin: settings.shareViewerOrigin,
+    shareViewNeedsApproval: settings.shareViewNeedsApproval,
+    shareSudoReset: settings.shareSudoReset,
+    shareBlockLid: settings.shareBlockLid,
+    shareRecordInput: settings.shareRecordInput,
+  });
+  const [auditOpen, setAuditOpen] = useState(false);
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   /** The well-known monospaced fonts installed here, looked for once per dialog. */
@@ -452,6 +465,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       devCommands: parseDevCommands(devCommands),
       recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
       devFolderInFooter,
+      ...sharing,
+      shareRelayUrl: cleanShareUrl(sharing.shareRelayUrl, ["wss", "ws"]),
+      shareViewerOrigin: cleanShareUrl(sharing.shareViewerOrigin, ["https", "http"]),
     });
   };
 
@@ -963,6 +979,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             <p className="muted">{t("settings.ai.saveChatsHelp")}</p>
           </div>
 
+          <div {...panel("sharing")}>
+            <SharingSettings
+              values={sharing}
+              onChange={(change) => setSharing((current) => ({ ...current, ...change }))}
+              linux={platform === "linux"}
+              onAuditLog={() => setAuditOpen(true)}
+            />
+          </div>
+
           <div {...panel("about")}>
             <div className="settings__about">
               <img
@@ -1039,6 +1064,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </button>
         </div>
       </form>
+      {auditOpen && <AuditLogDialog onClose={() => setAuditOpen(false)} />}
     </div>
   );
 }

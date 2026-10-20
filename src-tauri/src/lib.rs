@@ -671,6 +671,15 @@ pub fn run() {
             );
             Ok(())
         })
+        // Closing the window with shared tabs asks first ("Stop sharing and quit?").
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event
+                && window.state::<share::ShareManager>().must_confirm_quit()
+            {
+                api.prevent_close();
+                let _ = window.emit(share::commands::QUIT_REQUESTED_EVENT, ());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             pty_spawn,
             pty_write,
@@ -782,7 +791,7 @@ pub fn run() {
             launch::launch_workspace_take,
             share::commands::share_start,
             share::commands::share_command,
-            share::commands::share_stop_all,
+            share::commands::share_quit,
             share::commands::share_crashed,
             share::commands::share_audit_log,
             share::commands::share_token_status,
