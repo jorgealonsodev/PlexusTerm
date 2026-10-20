@@ -449,6 +449,12 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     };
   };
 
+  /** The main folder leaves the workspace: the first added folder becomes the main one, as in VS Code. */
+  const removeMain = async () => {
+    const next = workspace?.folders[0];
+    if (next && (await navigate(next, true))) workspace?.onRemove(next);
+  };
+
   const busy = path === null;
   const mainTree = (
     <FileTree
@@ -555,7 +561,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               open={mainOpen}
               onToggle={() => setMainOpen((v) => !v)}
               decoration={rootDecoration(gitEntries)}
-              titleProps={rootProps(path)}
+              titleProps={rootProps(path, () => void removeMain())}
             >
               {mainTree}
             </WorkspaceRoot>

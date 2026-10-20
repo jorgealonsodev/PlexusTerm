@@ -508,11 +508,7 @@ describe("workspace folders in DEV mode", () => {
     fireEvent.click(title);
     expect(within(root).queryByText("server.ts")).toBeNull();
     expect(title.getAttribute("aria-expanded")).toBe("false");
-    // Removed from its right-click menu (the main folder has no such item).
-    fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
-    await screen.findByRole("menuitem", { name: "Properties" });
-    expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
-    fireEvent.keyDown(document, { key: "Escape" });
+    // Removed from its right-click menu.
     fireEvent.contextMenu(title, { clientX: 1, clientY: 1 });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Remove folder from workspace" }));
     expect(onRemove).toHaveBeenCalledWith("/work/api");
@@ -532,11 +528,11 @@ describe("workspace folders in DEV mode", () => {
     const main = await screen.findByRole("group", { name: "me" });
     const root = await screen.findByRole("group", { name: "api" });
     const title = (group: HTMLElement) => group.querySelector<HTMLElement>(".workspace-root__title")!;
-    // The folder's own menu; only an added folder can be removed from the workspace.
+    // The folder's own menu, and Remove folder from workspace.
     fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
     expect(await screen.findByRole("menuitem", { name: "Copy file path" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Rename…" })).toBeTruthy();
-    expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Remove folder from workspace" })).toBeTruthy();
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.contextMenu(within(root).getByRole("button", { name: "api" }), { clientX: 1, clientY: 1 });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Copy file path to terminal" }));
@@ -554,6 +550,18 @@ describe("workspace folders in DEV mode", () => {
     fireEvent.pointerUp(window, { clientX: 400, clientY: 300 });
     stop();
     expect(drops).toEqual([{ origin: { kind: "local" }, paths: [{ path: "/work/api", isDir: true }] }]);
+  });
+
+  it("removes the main folder from the workspace: the first added one becomes the main folder", async () => {
+    listing();
+    const onRemove = vi.fn();
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api", "/work/web"], onAdd: () => {}, onRemove, onOpenFolders: () => {} } }));
+    const main = await screen.findByRole("group", { name: "me" });
+    fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove folder from workspace" }));
+    await waitFor(() => expect(onRemove).toHaveBeenCalledWith("/work/api"));
+    expect(mocked.list).toHaveBeenCalledWith("/work/api");
+    expect(screen.getByRole<HTMLInputElement>("textbox", { name: /path|folder/i }).value).toBe("/work/api");
   });
 
   it("keeps the plain tree, without root titles, while no folder is added", async () => {
