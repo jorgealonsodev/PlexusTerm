@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "在 DEV 模式下，每个终端下方栏的右端显示其所在文件夹的名称（仅最后一部分），以便区分同一标签页中的终端。",
     recentFolderLimit: "要记住的 DEV 模式最近文件夹数",
-    recentFolderLimitHelp: "资源管理器“最近的文件夹”列出的使用过 DEV 模式的文件夹数量，1 到 50。",
+    recentFolderLimitHelp: "资源管理器“打开最近的项目”列出的使用过 DEV 模式的文件夹和工作区文件各自的数量，1 到 50。",
   },
   ssh: {
     remoteMonitor: "远程监视栏（SSH 标签页）",
@@ -219,7 +219,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "网络唤醒 (Wake on LAN)",
       toggleRemoteMonitor: "开启或关闭远程监控栏",
       toggleDevMode: "开启或关闭 DEV 模式",
-      recentFolders: "DEV 模式最近的文件夹",
+      recentFolders: "打开最近的项目（DEV 模式）",
       openSettings: "打开设置",
       assistant: "AI 助手",
     },

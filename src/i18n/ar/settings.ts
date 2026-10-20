@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "في وضع DEV، يعرض الطرف الأيمن من الشريط أسفل كل طرفية اسم المجلد الذي هي فيه (الجزء الأخير فقط)، للتمييز بين طرفيات علامة التبويب.",
     recentFolderLimit: "عدد مجلدات وضع DEV الأخيرة التي تُحفَظ",
-    recentFolderLimitHelp: "عدد المجلدات التي استُخدم فيها وضع DEV وتعرضها قائمة المجلدات الأخيرة في المستكشف، من 1 إلى 50.",
+    recentFolderLimitHelp: "عدد المجلدات التي استُخدم فيها وضع DEV، وعدد ملفات مساحة العمل، التي تعرضها قائمة فتح عنصر حديث في المستكشف، من 1 إلى 50.",
   },
   ssh: {
     remoteMonitor: "شريط المراقب البعيد (علامات تبويب SSH)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "تشغيل شريط المراقبة عن بُعد أو إيقافه",
       toggleDevMode: "تشغيل وضع DEV أو إيقافه",
-      recentFolders: "المجلدات الأخيرة لوضع DEV",
+      recentFolders: "فتح عنصر حديث (وضع DEV)",
       openSettings: "فتح الإعدادات",
       assistant: "مساعد الذكاء الاصطناعي",
     },

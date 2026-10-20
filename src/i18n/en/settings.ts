@@ -91,7 +91,7 @@ export const settings = {
     devFolderInFooterHelp:
       "In DEV mode the right end of the bar under each terminal shows the name of the folder it is in (only its last part), to tell the terminals of a tab apart.",
     recentFolderLimit: "Recent DEV mode folders to remember",
-    recentFolderLimitHelp: "How many folders DEV mode was used in the Explorer's Recent folders lists, from 1 to 50.",
+    recentFolderLimitHelp: "How many folders DEV mode was used in, and how many workspace files, the Explorer's Open recent lists, from 1 to 50.",
   },
   ssh: {
     remoteMonitor: "Remote monitor bar (SSH tabs)",
@@ -220,7 +220,7 @@ export const settings = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Remote monitor bar on or off",
       toggleDevMode: "DEV mode on or off",
-      recentFolders: "Recent DEV mode folders",
+      recentFolders: "Open recent (DEV mode)",
       openSettings: "Open Settings",
       assistant: "AI assistant",
     },

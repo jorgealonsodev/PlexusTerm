@@ -13,8 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "Terminal-Ordner folgen",
     refreshAll: "Explorer aktualisieren",
     collapseAll: "Ordner im Explorer zuklappen",
-    recent: "Zuletzt verwendete Ordner",
-    noRecent: "Noch keine zuletzt verwendeten Ordner",
+    recent: "Zuletzt geöffnet",
+    noRecent: "Noch nichts zuletzt geöffnet",
     branch: "Branch {branch}",
     branchDirty: "Branch {branch}, mit nicht committeten Änderungen",
     workspace: {

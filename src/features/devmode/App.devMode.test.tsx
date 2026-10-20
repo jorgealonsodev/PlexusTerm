@@ -257,6 +257,43 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
   });
 
+  it("shows Claude Code's icon in a DEV mode on by hand when the DEV commands leave claude out", async () => {
+    await renderApp({ devCommands: ["codex"] });
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    await settle();
+    expect(devOn()).toBe(false);
+    fireEvent.click(devButton());
+    await settle();
+    act(() => stub.props.onTitle("✳ Fix the build"));
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    await settle();
+    expect(within(tabBar()).getByRole("tab").querySelector(".cli-icon--claude")).not.toBeNull();
+  });
+
+  it("shows the icon of a CLI started before DEV mode was turned on by hand, after it retitled", async () => {
+    await renderApp({ devCommands: ["codex"] });
+    await run("claude");
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    act(() => stub.props.onTitle("⠂ Fix the build"));
+    await settle();
+    expect(devOn()).toBe(false);
+    fireEvent.click(devButton());
+    await settle();
+    expect(within(tabBar()).getByRole("tab").querySelector(".cli-icon--claude")).not.toBeNull();
+  });
+
+  it("knows no CLI when DEV mode is turned on after the CLI ended", async () => {
+    await renderApp({ devCommands: ["codex"] });
+    await run("claude");
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    act(() => stub.props.onTitle("me@box: ~/repo"));
+    await settle();
+    fireEvent.click(devButton());
+    await settle();
+    expect(devOn()).toBe(true);
+    expect(within(tabBar()).getByRole("tab").querySelector(".cli-icon--claude")).toBeNull();
+  });
+
   it("shows the DEV look while on: tab mark, right column with the CLI's icon, branch and VS Code-style lists", async () => {
     await renderApp();
     await run("claude");
@@ -435,7 +472,7 @@ describe("DEV mode (S10, S13)", () => {
     await renderApp();
     fireEvent.click(devButton());
     await settle();
-    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open recent" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "/home/me/repo/src" }));
     await settle();
     const tabs = within(tabBar()).getAllByRole("tab");
@@ -467,7 +504,7 @@ describe("DEV mode (S10, S13)", () => {
     fireEvent.click(devButton());
     await settle();
     expect(JSON.parse(localStorage.getItem("plexusterm.recentDevFolders")!)).toEqual(["/home/me/repo/src"]);
-    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open recent" }));
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/home/me/repo/src"]);
     localStorage.clear();
   });
@@ -507,8 +544,10 @@ describe("DEV mode (S10, S13)", () => {
         : backend(cmd, args as Parameters<typeof backend>[1]),
     );
     vi.mocked(open).mockResolvedValueOnce("/home/me/app.code-workspace");
+    localStorage.clear();
     fireEvent.click(await screen.findByRole("button", { name: "Open workspace" }));
     await settle();
+    expect(JSON.parse(localStorage.getItem("plexusterm.recentDevWorkspaces")!)).toEqual(["/home/me/app.code-workspace"]);
     const tabs = within(tabBar()).getAllByRole("tab");
     expect(tabs).toHaveLength(2);
     expect(tabs[1].getAttribute("aria-selected")).toBe("true");
@@ -529,12 +568,14 @@ describe("DEV mode (S10, S13)", () => {
   };
 
   it("starts in DEV mode with the workspace file PlexusTerm was opened with, instead of the usual terminal", async () => {
+    localStorage.clear();
     withBackend();
     withWorkspaceFile("/home/me/app.code-workspace");
     render(<App />);
     await screen.findByTestId("terminal");
     await settle();
     expect(within(tabBar()).getAllByRole("tab")).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem("plexusterm.recentDevWorkspaces")!)).toEqual(["/home/me/app.code-workspace"]);
     expect(stub.props.target.cwd).toBe("/home/me/repo");
     expect(devOn()).toBe(true);
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
@@ -563,6 +604,29 @@ describe("DEV mode (S10, S13)", () => {
     expect(tabs[1].getAttribute("aria-selected")).toBe("true");
     expect(stub.props.target.cwd).toBe("/home/me/repo");
     expect(devOn()).toBe(true);
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+  });
+
+  it("lists the workspace files opened last above the recent folders and opens the one chosen again", async () => {
+    localStorage.clear();
+    await renderApp();
+    await run("claude");
+    withWorkspaceFile(null);
+    const handler = vi.mocked(listen).mock.calls.find(([event]) => event === "open-workspace")?.[1];
+    act(() => handler!({ event: "open-workspace", id: 1, payload: "/home/me/app.code-workspace" }));
+    await settle();
+    expect(JSON.parse(localStorage.getItem("plexusterm.recentDevWorkspaces")!)).toEqual(["/home/me/app.code-workspace"]);
+    fireEvent.click(screen.getByRole("button", { name: "Open recent" }));
+    const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+    expect(items[0]).toBe("/home/me/app.code-workspace");
+    expect(items).toContain("/home/me/repo/src");
+    expect(document.querySelectorAll(".context-menu__separator")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("menuitem", { name: "/home/me/app.code-workspace" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
+    expect(tabs[2].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
   });
 
@@ -632,6 +696,7 @@ describe("DEV mode (S10, S13)", () => {
   });
 
   it("lists the recent folders with its shortcut once one is set, and opens the one chosen", async () => {
+    localStorage.clear();
     localStorage.setItem("plexusterm.recentDevFolders", JSON.stringify(["/home/me/repo", "/tmp"]));
     await renderApp({ shortcuts: { recentFolders: "Ctrl+Alt+R" } });
     act(() => void fireEvent.keyDown(window, { key: "r", ctrlKey: true, altKey: true }));

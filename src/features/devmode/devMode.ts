@@ -25,6 +25,13 @@ export function cleanDevCommands(value: unknown): string[] {
   return names;
 }
 
+/**
+ * The CLIs a DEV mode already on recognises: the list and the default ones, so a CLI left out of
+ * the list still shows its icon; only the list turns DEV mode on by itself.
+ */
+export const withDefaultCommands = (commands: readonly string[]): readonly string[] =>
+  DEFAULT_DEV_COMMANDS.every((c) => commands.includes(c)) ? commands : [...commands, ...DEFAULT_DEV_COMMANDS.filter((c) => !commands.includes(c))];
+
 /** The list as typed in Settings: names separated by commas or spaces. */
 export const parseDevCommands = (text: string) => cleanDevCommands(text.split(/[\s,]+/));
 export const devCommandsText = (commands: readonly string[]) => commands.join(", ");
@@ -78,6 +85,13 @@ const mentionsCli = (title: string, cli: string) => {
 const startsWithSymbol = (title: string) => /^[^\p{L}\p{N}\s\x00-\x7F]/u.test(title.trimStart());
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Whether a title still belongs to `cli` running: while a CLI runs its titles name it or start with
+ * a symbol (Claude Code's "✳ <task>"); any other title is the shell's again.
+ */
+export const titleKeepsCli = (title: string, cli: string, commands: readonly string[]) =>
+  cliOfTitle(title, commands) !== null || startsWithSymbol(title) || mentionsCli(title, cli);
 
 /** A tab in DEV mode. */
 export interface DevTab {
@@ -139,8 +153,8 @@ function promptBack(state: DevState, tab: string, pane: string): DevState {
 export function devReducer(state: DevState, action: DevAction): DevState {
   switch (action.type) {
     case "command": {
-      const cli = cliOfCommand(action.command, action.commands);
       const dev = state[action.tab];
+      const cli = cliOfCommand(action.command, dev ? withDefaultCommands(action.commands) : action.commands);
       if (!cli) return state;
       // Typed inside a running CLI: not a shell command.
       if (dev && (!dev.manual || dev.cli !== null)) return state;
@@ -150,17 +164,14 @@ export function devReducer(state: DevState, action: DevAction): DevState {
     }
     case "title": {
       const dev = state[action.tab];
+      const commands = dev ? withDefaultCommands(action.commands) : action.commands;
       if (dev && dev.cli !== null) {
-        // While a CLI runs its titles name it or start with a symbol (Claude Code's "✳ <task>");
-        // any other title in its pane is the shell's again: the CLI has ended.
-        const stillCli =
-          cliOfTitle(action.title, action.commands) !== null ||
-          startsWithSymbol(action.title) ||
-          mentionsCli(action.title, dev.cli);
+        // Another title in its pane is the shell's again: the CLI has ended.
+        const stillCli = titleKeepsCli(action.title, dev.cli, commands);
         return stillCli || dev.pane !== action.pane ? state : promptBack(state, action.tab, action.pane);
       }
       // A hand-made DEV mode learns its CLI from the title.
-      const cli = cliOfTitle(action.title, action.commands);
+      const cli = cliOfTitle(action.title, commands);
       if (!cli) return state;
       if (dev) return { ...state, [action.tab]: { ...dev, cli, pane: action.pane } };
       return {

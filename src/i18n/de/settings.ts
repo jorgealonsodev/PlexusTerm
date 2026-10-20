@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "Im DEV-Modus zeigt das rechte Ende der Leiste unter jedem Terminal den Namen seines Ordners (nur den letzten Teil), um die Terminals eines Tabs zu unterscheiden.",
     recentFolderLimit: "Zu merkende Ordner des DEV-Modus",
-    recentFolderLimitHelp: "Wie viele Ordner, in denen der DEV-Modus verwendet wurde, die zuletzt verwendeten Ordner des Explorers auflisten, von 1 bis 50.",
+    recentFolderLimitHelp: "Wie viele Ordner, in denen der DEV-Modus verwendet wurde, und wie viele Workspace-Dateien „Zuletzt geöffnet“ im Explorer auflistet, von 1 bis 50.",
   },
   ssh: {
     remoteMonitor: "Remote-Monitorleiste (SSH-Tabs)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Remote-Monitorleiste ein- oder ausschalten",
       toggleDevMode: "DEV-Modus ein- oder ausschalten",
-      recentFolders: "Zuletzt im DEV-Modus verwendete Ordner",
+      recentFolders: "Zuletzt geöffnet (DEV-Modus)",
       openSettings: "Einstellungen öffnen",
       assistant: "KI-Assistent",
     },

@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "DEV मोड में हर टर्मिनल के नीचे की पट्टी का दायाँ सिरा उस फ़ोल्डर का नाम दिखाता है जिसमें वह है (सिर्फ़ आख़िरी हिस्सा), ताकि एक टैब के टर्मिनल अलग पहचाने जा सकें।",
     recentFolderLimit: "याद रखने के लिए DEV मोड के हाल के फ़ोल्डर",
-    recentFolderLimitHelp: "एक्सप्लोरर की हाल के फ़ोल्डर सूची DEV मोड वाले कितने फ़ोल्डर दिखाए, 1 से 50 तक।",
+    recentFolderLimitHelp: "एक्सप्लोरर की हाल का खोलें सूची DEV मोड वाले कितने फ़ोल्डर और कितनी वर्कस्पेस फ़ाइलें दिखाए, 1 से 50 तक।",
   },
   ssh: {
     remoteMonitor: "रिमोट मॉनिटर बार (SSH टैब)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "रिमोट मॉनिटर बार चालू या बंद करें",
       toggleDevMode: "DEV मोड चालू या बंद करें",
-      recentFolders: "DEV मोड के हाल के फ़ोल्डर",
+      recentFolders: "हाल का खोलें (DEV मोड)",
       openSettings: "सेटिंग्स खोलें",
       assistant: "AI सहायक",
     },

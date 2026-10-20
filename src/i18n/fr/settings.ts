@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "En mode DEV, l’extrémité droite de la barre sous chaque terminal affiche le nom du dossier où il se trouve (sa dernière partie seulement), pour distinguer les terminaux d’un onglet.",
     recentFolderLimit: "Dossiers récents du mode DEV à retenir",
-    recentFolderLimitHelp: "Combien de dossiers où le mode DEV a été utilisé la liste Dossiers récents de l’Explorateur affiche, de 1 à 50.",
+    recentFolderLimitHelp: "Combien de dossiers où le mode DEV a été utilisé, et combien de fichiers d’espace de travail, la liste Ouvrir un élément récent de l’Explorateur affiche, de 1 à 50.",
   },
   ssh: {
     remoteMonitor: "Barre du moniteur distant (onglets SSH)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Activer ou désactiver la barre de surveillance distante",
       toggleDevMode: "Activer ou désactiver le mode DEV",
-      recentFolders: "Dossiers récents du mode DEV",
+      recentFolders: "Ouvrir un élément récent (mode DEV)",
       openSettings: "Ouvrir les Paramètres",
       assistant: "Assistant IA",
     },

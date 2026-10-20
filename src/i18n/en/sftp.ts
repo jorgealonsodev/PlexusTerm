@@ -11,8 +11,8 @@ export const sftp = {
     follow: "Follow terminal folder",
     refreshAll: "Refresh Explorer",
     collapseAll: "Collapse Folders in Explorer",
-    recent: "Recent folders",
-    noRecent: "No recent folders yet",
+    recent: "Open recent",
+    noRecent: "Nothing opened recently",
     branch: "Branch {branch}",
     branchDirty: "Branch {branch}, with uncommitted changes",
     workspace: {

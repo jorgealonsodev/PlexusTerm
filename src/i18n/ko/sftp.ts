@@ -13,8 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "터미널 폴더 따라가기",
     refreshAll: "탐색기 새로 고침",
     collapseAll: "탐색기의 폴더 축소",
-    recent: "최근 폴더",
-    noRecent: "아직 최근 폴더가 없습니다",
+    recent: "최근 항목 열기",
+    noRecent: "아직 최근 항목이 없습니다",
     branch: "브랜치 {branch}",
     branchDirty: "브랜치 {branch}, 커밋되지 않은 변경 사항 있음",
     workspace: {

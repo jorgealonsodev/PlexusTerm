@@ -29,7 +29,7 @@ import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, neighbour, paneIds, shownLayout } from "./features/panes/paneLayout";
 import { shortcutFor, shortcutLabel, type ShortcutActionId } from "./features/panes/shortcuts";
 import { SerialDialog } from "./features/serial/SerialDialog";
-import { LocalPanel } from "./features/local/LocalPanel";
+import { LocalPanel, recentItems } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
 import { sftp } from "./features/sftp/sftpClient";
 import { quotePath, shellFlavor } from "./features/terminal/shellPath";
@@ -121,7 +121,7 @@ import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
 import { basename } from "./features/local/localPath";
 import { parseWorkspaceFile } from "./features/files/workspaceFile";
-import { addRecentFolder, loadRecentFolders, saveRecentFolders } from "./features/devmode/recentFolders";
+import { addRecentFolder, loadRecentFolders, loadRecentWorkspaces, saveRecentFolders, saveRecentWorkspaces } from "./features/devmode/recentFolders";
 import "./App.css";
 
 
@@ -289,16 +289,16 @@ function AppContent() {
   const terminalSettings = useSettings();
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);
-  const openWorkspaceRef = useRef<(folders: string[]) => void>(() => {});
+  const openWorkspaceFileRef = useRef<(file: string, folders: string[]) => void>(() => {});
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
     // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal.
     void invoke<string | null>("launch_workspace_take")
       .catch(() => null)
-      .then((file) => (file ? workspaceFoldersOf(file) : []))
-      .then((folders) => {
-        if (folders.length > 0) openWorkspaceRef.current(folders);
+      .then(async (file) => ({ file, folders: file ? await workspaceFoldersOf(file) : [] }))
+      .then(({ file, folders }) => {
+        if (file && folders.length > 0) openWorkspaceFileRef.current(file, folders);
         else dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
       });
   }, [terminalSettings.loaded, terminalSettings.settings]);
@@ -453,6 +453,15 @@ function AppContent() {
   const [savedRecentFolders, setRecentFolders] = useState<readonly string[]>(loadRecentFolders);
   // A lower limit in Settings shortens the list at once; the next folder saves it shortened.
   const recentFolders = savedRecentFolders.slice(0, recentFolderLimit);
+  /** The workspace files last opened or saved, newest first, listed above the recent folders. */
+  const [savedRecentWorkspaces, setRecentWorkspaces] = useState<readonly string[]>(loadRecentWorkspaces);
+  const recentWorkspaces = savedRecentWorkspaces.slice(0, recentFolderLimit);
+  const rememberWorkspace = (file: string) =>
+    setRecentWorkspaces((prev) => {
+      const next = addRecentFolder(prev, file, recentFolderLimit);
+      if (next !== prev) saveRecentWorkspaces(next);
+      return next;
+    });
   /** Where the recent folders' menu opened by its shortcut shows, or null while closed. */
   const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null);
   /** The project each local DEV tab was last recorded with: a tab is recorded once per project. */
@@ -713,14 +722,33 @@ function AppContent() {
     setWorkspaceFolders((prev) => ({ ...prev, [key]: others }));
     open(localTargetOf({ localShell, localShellArgs, localCwd: first }));
   };
-  openWorkspaceRef.current = openWorkspace;
+  /** A workspace file's folders open as a new DEV tab, and the file joins the recent ones. */
+  const openWorkspaceFile = (file: string, folders: string[]) => {
+    rememberWorkspace(file);
+    openWorkspace(folders);
+  };
+  openWorkspaceFileRef.current = openWorkspaceFile;
+  /** A recent workspace file, read again: it may have changed or gone since. */
+  const openRecentWorkspace = (file: string) =>
+    void workspaceFoldersOf(file).then((folders) =>
+      folders.length > 0
+        ? openWorkspaceFileRef.current(file, folders)
+        : setNotice(t("sftp.panel.workspace.noFolders", { file: basename(file) })),
+    );
+  /** A recent folder opens in a new DEV tab, like a workspace with that one folder. */
+  const recent = {
+    folders: recentFolders,
+    onOpen: (folder: string) => openWorkspace([folder]),
+    workspaces: recentWorkspaces,
+    onOpenWorkspace: openRecentWorkspace,
+  };
 
   // A workspace file given to a second launch of PlexusTerm (it then exits) opens here.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let disposed = false;
     listen<string>("open-workspace", ({ payload }) => {
-      void workspaceFoldersOf(payload).then((folders) => folders.length > 0 && openWorkspaceRef.current(folders));
+      void workspaceFoldersOf(payload).then((folders) => folders.length > 0 && openWorkspaceFileRef.current(payload, folders));
     })
       .then((stop) => (disposed ? stop() : (unlisten = stop)))
       .catch(() => {});
@@ -1413,8 +1441,8 @@ function AppContent() {
           x={recentMenu.x}
           y={recentMenu.y}
           items={
-            recentFolders.length > 0
-              ? recentFolders.map((folder) => ({ label: folder, onSelect: () => openWorkspace([folder]) }))
+            recentFolders.length > 0 || recentWorkspaces.length > 0
+              ? recentItems(recent)
               : [{ label: t("sftp.panel.noRecent"), onSelect: () => {}, disabled: true }]
           }
           onClose={() => setRecentMenu(null)}
@@ -1469,9 +1497,9 @@ function AppContent() {
                       })),
                     // A workspace file opens a new DEV tab in its first folder, with the others added.
                     onOpenFolders: openWorkspace,
+                    onFile: rememberWorkspace,
                   }}
-                  // A recent folder opens in a new DEV tab, like a workspace with that one folder.
-                  recent={{ folders: recentFolders, onOpen: (folder) => openWorkspace([folder]) }}
+                  recent={recent}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {

@@ -52,8 +52,23 @@ interface LocalPanelProps {
   onView?: (path: string) => void;
   /** DEV mode's workspace: folders added under the main one, as roots of their own (like VS Code's). */
   workspace?: Workspace;
-  /** DEV mode's recent folders: the toolbar lists them and opens the one chosen in a new terminal tab. */
-  recent?: { folders: readonly string[]; onOpen: (folder: string) => void };
+  /**
+   * DEV mode's recent folders and workspace files: the toolbar lists them (the workspace files
+   * first) and opens the one chosen in a new terminal tab.
+   */
+  recent?: {
+    folders: readonly string[];
+    onOpen: (folder: string) => void;
+    workspaces?: readonly string[];
+    onOpenWorkspace?: (file: string) => void;
+  };
+}
+
+/** The recent workspace files, then the recent folders, a separator between them. */
+export function recentItems({ folders, onOpen, workspaces = [], onOpenWorkspace }: NonNullable<LocalPanelProps["recent"]>): ContextMenuItem[] {
+  const files: ContextMenuItem[] = onOpenWorkspace ? workspaces.map((file) => ({ label: file, onSelect: () => onOpenWorkspace(file) })) : [];
+  const dirs: ContextMenuItem[] = folders.map((folder) => ({ label: folder, onSelect: () => onOpen(folder) }));
+  return files.length > 0 && dirs.length > 0 ? [...files, { separator: true }, ...dirs] : [...files, ...dirs];
 }
 
 export interface Workspace {
@@ -62,6 +77,8 @@ export interface Workspace {
   onRemove: (path: string) => void;
   /** Opens the folders a workspace file lists (the first one is the main folder). */
   onOpenFolders: (folders: string[]) => void;
+  /** A workspace file opened or saved here, for the recent ones. */
+  onFile?: (file: string) => void;
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
@@ -354,7 +371,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     const existing = await local.readText(file).catch(() => null);
     await local
       .saveText(file, workspaceFileText([path, ...workspace.folders.filter((f) => f !== path)], file, existing))
-      .then(() => setStatus(t("sftp.panel.workspace.saved", { file: basename(file) })))
+      .then(() => {
+        setStatus(t("sftp.panel.workspace.saved", { file: basename(file) }));
+        workspace.onFile?.(file);
+      })
       .catch((err) => setError(describeLocalError(err)));
   };
 
@@ -368,6 +388,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       if (folders.length === 0) return setError(t("sftp.panel.workspace.noFolders", { file: basename(file) }));
       setError(null);
       workspace.onOpenFolders(folders);
+      workspace.onFile?.(file);
     } catch (err) {
       setError(describeLocalError(err));
     }
@@ -503,7 +524,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
                 <ToolButton
                   icon={History}
                   label={t("sftp.panel.recent")}
-                  disabled={recent.folders.length === 0}
+                  disabled={recent.folders.length === 0 && (recent.workspaces?.length ?? 0) === 0}
                   onClick={(e) => {
                     const box = e.currentTarget.getBoundingClientRect();
                     setRecentMenu({ x: box.left, y: box.bottom });
@@ -576,7 +597,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
           <ContextMenu
             x={recentMenu.x}
             y={recentMenu.y}
-            items={recent.folders.map((folder) => ({ label: folder, onSelect: () => recent.onOpen(folder) }))}
+            items={recentItems(recent)}
             onClose={() => setRecentMenu(null)}
           />
         )}

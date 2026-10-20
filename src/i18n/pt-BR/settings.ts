@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "No modo DEV, a ponta direita da barra abaixo de cada terminal mostra o nome da pasta em que ele está (só a última parte), para diferenciar os terminais de uma aba.",
     recentFolderLimit: "Pastas recentes do modo DEV a lembrar",
-    recentFolderLimitHelp: "Quantas pastas em que o modo DEV foi usado a lista Pastas recentes do Explorador mostra, de 1 a 50.",
+    recentFolderLimitHelp: "Quantas pastas em que o modo DEV foi usado, e quantos arquivos de workspace, a lista Abrir recente do Explorador mostra, de 1 a 50.",
   },
   ssh: {
     remoteMonitor: "Barra do monitor remoto (abas SSH)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Ativar ou desativar a barra de monitor remoto",
       toggleDevMode: "Ativar ou desativar o modo DEV",
-      recentFolders: "Pastas recentes do modo DEV",
+      recentFolders: "Abrir recente (modo DEV)",
       openSettings: "Abrir Configurações",
       assistant: "Assistente de IA",
     },

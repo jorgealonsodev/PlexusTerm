@@ -607,7 +607,7 @@ describe("Shortcuts section", () => {
 
   it("binds a shortcut to list the recent DEV mode folders, which has none by default", () => {
     const { onSave } = openShortcuts();
-    const input = field("Recent DEV mode folders");
+    const input = field("Open recent (DEV mode)");
     expect(input.value).toBe("");
     press(input, { key: "r", ctrlKey: true, altKey: true });
     save();

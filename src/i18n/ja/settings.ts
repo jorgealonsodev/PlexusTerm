@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "DEV モードでは、各ターミナルの下のバーの右端にそのフォルダー名 (最後の部分のみ) を表示し、タブ内のターミナルを見分けられるようにします。",
     recentFolderLimit: "記憶する DEV モードの最近のフォルダー数",
-    recentFolderLimitHelp: "エクスプローラーの「最近使ったフォルダー」に表示する、DEV モードを使ったフォルダーの数 (1～50)。",
+    recentFolderLimitHelp: "エクスプローラーの「最近使った項目を開く」に表示する、DEV モードを使ったフォルダーとワークスペース ファイルのそれぞれの数 (1～50)。",
   },
   ssh: {
     remoteMonitor: "リモートモニターバー (SSH タブ)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "リモートモニターバーのオン/オフ",
       toggleDevMode: "DEV モードのオン/オフ",
-      recentFolders: "DEV モードで最近使ったフォルダー",
+      recentFolders: "最近使った項目を開く (DEV モード)",
       openSettings: "設定を開く",
       assistant: "AI アシスタント",
     },

@@ -123,6 +123,20 @@ describe("devReducer (S10)", () => {
     expect(again).toBe(codex);
   });
 
+  it("knows the default CLIs in a DEV mode already on, even when the list leaves them out", () => {
+    const list = ["codex"];
+    // Unlisted, Claude Code does not turn DEV mode on by itself.
+    expect(devReducer({}, { type: "title", tab: "tab-1", pane: "pane-1", title: "✳ Claude Code", commands: list, id: 2 })).toEqual({});
+    expect(devReducer({}, { type: "command", tab: "tab-1", pane: "pane-1", command: "claude", prompt: "$ ", commands: list, id: 2 })).toEqual({});
+    const on = devReducer({}, { type: "toggle", tab: "tab-1", pane: "pane-1", id: 3 });
+    const byTitle = devReducer(on, { type: "title", tab: "tab-1", pane: "pane-1", title: "✳ Claude Code", commands: list, id: 4 });
+    expect(byTitle["tab-1"]).toMatchObject({ manual: true, cli: "claude" });
+    const byCommand = devReducer(on, { type: "command", tab: "tab-1", pane: "pane-1", command: "claude", prompt: "$ ", commands: list, id: 4 });
+    expect(byCommand["tab-1"]).toMatchObject({ manual: true, cli: "claude" });
+    // Its summary titles keep it known.
+    expect(devReducer(byTitle, { type: "title", tab: "tab-1", pane: "pane-1", title: "✳ Fix the build", commands: list, id: 5 })).toBe(byTitle);
+  });
+
   it("ends the CLI when the title stops being a CLI's: off when automatic, back to no CLI when by hand", () => {
     const title = (state: DevState, text: string) =>
       devReducer(state, { type: "title", tab: "tab-1", pane: "pane-1", title: text, commands, id: 7 });

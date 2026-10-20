@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { addRecentFolder, DEFAULT_RECENT_FOLDERS, loadRecentFolders, saveRecentFolders } from "./recentFolders";
+import { addRecentFolder, DEFAULT_RECENT_FOLDERS, loadRecentFolders, loadRecentWorkspaces, saveRecentFolders, saveRecentWorkspaces } from "./recentFolders";
 
 afterEach(() => localStorage.clear());
 
@@ -35,5 +35,12 @@ describe("recent DEV mode folders", () => {
     // Up to the largest limit Settings allow, whatever the limit now.
     saveRecentFolders(Array.from({ length: 60 }, (_, i) => `/p${i}`));
     expect(loadRecentFolders()).toHaveLength(50);
+  });
+
+  it("keeps the recent workspace files apart from the folders", () => {
+    saveRecentFolders(["/work/app"]);
+    saveRecentWorkspaces(["/work/app.code-workspace"]);
+    expect(loadRecentFolders()).toEqual(["/work/app"]);
+    expect(loadRecentWorkspaces()).toEqual(["/work/app.code-workspace"]);
   });
 });

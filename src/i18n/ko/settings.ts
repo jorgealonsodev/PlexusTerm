@@ -94,7 +94,7 @@ export const settings: Messages<typeof en> = {
     devFolderInFooterHelp:
       "DEV 모드에서 각 터미널 아래 막대의 오른쪽 끝에 터미널이 있는 폴더 이름(마지막 부분만)을 표시해 탭의 터미널을 구분할 수 있게 합니다.",
     recentFolderLimit: "기억할 DEV 모드 최근 폴더 수",
-    recentFolderLimitHelp: "탐색기의 최근 폴더 목록에 표시할, DEV 모드를 사용한 폴더 수(1~50).",
+    recentFolderLimitHelp: "탐색기의 최근 항목 열기 목록에 표시할, DEV 모드를 사용한 폴더와 작업 영역 파일의 수(각각 1~50).",
   },
   ssh: {
     remoteMonitor: "원격 모니터 막대(SSH 탭)",
@@ -222,7 +222,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "원격 모니터 막대 켜기/끄기",
       toggleDevMode: "DEV 모드 켜기/끄기",
-      recentFolders: "DEV 모드 최근 폴더",
+      recentFolders: "최근 항목 열기 (DEV 모드)",
       openSettings: "설정 열기",
       assistant: "AI 도우미",
     },

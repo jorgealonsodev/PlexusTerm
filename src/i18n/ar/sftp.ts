@@ -13,8 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "متابعة مجلد الطرفية",
     refreshAll: "تحديث المستكشف",
     collapseAll: "طي المجلدات في المستكشف",
-    recent: "المجلدات الأخيرة",
-    noRecent: "لا توجد مجلدات حديثة بعد",
+    recent: "فتح عنصر حديث",
+    noRecent: "لم يُفتح شيء مؤخرًا بعد",
     branch: "الفرع {branch}",
     branchDirty: "الفرع {branch}، مع تغييرات غير مُثبتة",
     workspace: {

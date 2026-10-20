@@ -574,10 +574,13 @@ describe("workspace folders in DEV mode", () => {
     mocked.saveText.mockResolvedValue(undefined);
     // A new file: there is nothing to read yet.
     mocked.readText.mockRejectedValueOnce("cannot read /home/me/me.code-workspace: not found");
-    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    const onFile = vi.fn();
+    render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {}, onFile } }));
     await screen.findByText("notes.txt");
     fireEvent.click(screen.getByRole("button", { name: "Save workspace" }));
     await waitFor(() => expect(mocked.saveText).toHaveBeenCalled());
+    // Saved, it is a recent workspace.
+    await waitFor(() => expect(onFile).toHaveBeenCalledWith("/home/me/me.code-workspace"));
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ defaultPath: "/home/me/me.code-workspace", filters: [expect.objectContaining({ extensions: ["code-workspace"] })] }),
     );
@@ -796,20 +799,37 @@ describe("recent DEV mode folders", () => {
     const recent = { folders: ["/work/app", "/work/api"], onOpen };
     const { unmount } = render(panel({ recent }));
     await screen.findByText("notes.txt");
-    expect(screen.queryByRole("button", { name: "Recent folders" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open recent" })).toBeNull();
     unmount();
     render(panel({ devStyle: true, recent }));
     await screen.findByText("notes.txt");
-    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open recent" }));
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/work/app", "/work/api"]);
     fireEvent.click(screen.getByRole("menuitem", { name: "/work/api" }));
     expect(onOpen).toHaveBeenCalledWith("/work/api");
     expect(screen.queryByRole("menuitem")).toBeNull();
   });
 
+  it("lists the recent workspace files first, apart, and opens the one chosen", async () => {
+    const onOpenWorkspace = vi.fn();
+    render(panel({ devStyle: true, recent: { folders: ["/work/app"], workspaces: ["/work/app.code-workspace"], onOpen: () => {}, onOpenWorkspace } }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Open recent" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/work/app.code-workspace", "/work/app"]);
+    expect(screen.getAllByRole("separator").length).toBe(1);
+    fireEvent.click(screen.getByRole("menuitem", { name: "/work/app.code-workspace" }));
+    expect(onOpenWorkspace).toHaveBeenCalledWith("/work/app.code-workspace");
+  });
+
+  it("enables the button with only recent workspace files", async () => {
+    render(panel({ devStyle: true, recent: { folders: [], workspaces: ["/work/app.code-workspace"], onOpen: () => {}, onOpenWorkspace: () => {} } }));
+    await screen.findByText("notes.txt");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Open recent" }).disabled).toBe(false);
+  });
+
   it("disables the button while there are no recent folders", async () => {
     render(panel({ devStyle: true, recent: { folders: [], onOpen: () => {} } }));
     await screen.findByText("notes.txt");
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Recent folders" }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Open recent" }).disabled).toBe(true);
   });
 });
