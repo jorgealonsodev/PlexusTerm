@@ -184,9 +184,10 @@ describe("DEV mode (S10, S13)", () => {
     fireEvent.click(within(right).getByRole("button", { name: /DEV mode/ }));
     await settle();
     const others = () => within(tabBar()).getByRole("list", { name: /^Other terminals of / });
-    const names = () => within(others()).getAllByRole("button").map((b) => b.textContent);
+    const rows = () => [...others().querySelectorAll<HTMLElement>(".tab")];
+    const names = () => rows().map((r) => r.querySelector(".tab__title")?.textContent);
     expect(names()).toEqual(["Terminal 1"]);
-    fireEvent.click(within(others()).getByRole("button", { name: "Terminal 1" }));
+    fireEvent.mouseDown(rows()[0], { button: 0 });
     await settle();
     expect(shown()).toEqual([left]);
     expect(names()).toEqual(["Terminal 2"]);

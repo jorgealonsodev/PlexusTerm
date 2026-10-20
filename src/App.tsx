@@ -168,6 +168,8 @@ interface PaneMeta {
   branch: string | null;
   /** The pane is printing on its own (an AI CLI working). */
   busy: boolean;
+  /** The terminal's own title (its shell's), or null before it sets one. */
+  title: string | null;
 }
 
 /** "Open in terminal" over SSH: the shell is ready once its login output is quiet this long... */
@@ -185,7 +187,17 @@ const workspaceFoldersOf = (file: string) =>
 
 const DEV_TARGETS: ReadonlySet<string> = new Set(["local", "ssh", "mosh"]);
 
-const NO_SESSION: PaneMeta = { sessionId: null, cwd: null, excluded: false, logging: false, attention: false, prompts: 0, branch: null, busy: false };
+const NO_SESSION: PaneMeta = {
+  sessionId: null,
+  cwd: null,
+  excluded: false,
+  logging: false,
+  attention: false,
+  prompts: 0,
+  branch: null,
+  busy: false,
+  title: null,
+};
 
 /** The terminal pane a tab's focus stands for: an AI chat pane stands for its terminal (S9). */
 
@@ -399,7 +411,8 @@ function AppContent() {
         next.attention === current.attention &&
         next.prompts === current.prompts &&
         next.branch === current.branch &&
-        next.busy === current.busy
+        next.busy === current.busy &&
+        next.title === current.title
         ? prev
         : { ...prev, [paneId]: next };
     });
@@ -532,7 +545,11 @@ function AppContent() {
             const cwd = paneMeta[id]?.cwd;
             // Numbered by its place among the tab's terminals, so it keeps its number when shown.
             const n = paneIds(tab.layout).filter((p) => isTerminalPane(tab, p)).indexOf(id) + 1;
-            return { id, label: cwd ? basename(cwd) || cwd : t("app.tabs.terminalN", { n }) };
+            return {
+              id,
+              title: paneMeta[id]?.title || t("app.tabs.terminalN", { n }),
+              folder: cwd ? basename(cwd) || cwd : null,
+            };
           }),
         ] as const,
       ];
@@ -1519,6 +1536,7 @@ function AppContent() {
               devShow(key, pane, othersOf(tab, pane));
               dispatch({ type: "focusPane", key, paneId: pane });
             }}
+            onClosePane={(key, paneId) => void dispatchKeepingEdits({ type: "closePane", key, paneId })}
             columnWidth={settings.tabColumnWidth}
             onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}
@@ -1608,6 +1626,7 @@ function AppContent() {
                             focused={paneId === tab.focusedPane}
                             onTitle={(title) => {
                               if (paneId === tab.focusedPane) dispatch({ type: "rename", key: tab.key, title });
+                              updatePane(paneId, { title });
                               dev.title(tab.key, paneId, title, settings.devCommands);
                             }}
                             onExit={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}

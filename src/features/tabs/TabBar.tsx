@@ -24,9 +24,11 @@ interface TabBarProps {
   /** What the column shows of each tab: the CLI it runs (null for none) and its project folder's name. */
   details?: ReadonlyMap<string, { cli: string | null; folder: string | null }>;
   /** In the column: the terminals a DEV tab keeps out of sight, listed under its row by tab key. */
-  hiddenPanes?: ReadonlyMap<string, readonly { id: string; label: string }[]>;
+  hiddenPanes?: ReadonlyMap<string, readonly { id: string; title: string; folder: string | null }[]>;
   /** A hidden terminal of the column was clicked: the tab shows it instead. */
   onShowPane?: (key: string, pane: string) => void;
+  /** A hidden terminal's close button (or middle click). */
+  onClosePane?: (key: string, pane: string) => void;
   /** The column's width dragged by the user; null keeps the default width. */
   columnWidth?: number | null;
   /** The column's edge was dragged to a width, or double-clicked (null: back to the default). */
@@ -205,21 +207,48 @@ export function TabBar(props: TabBarProps) {
           </div>
           {column && (props.hiddenPanes?.get(tab.key)?.length ?? 0) > 0 && (
             <ul className="tab__panes" aria-label={t("app.tabs.otherTerminals", { title: tabTitle(tab) })}>
-              {props.hiddenPanes!.get(tab.key)!.map((pane) => (
-                <li key={pane.id}>
-                  <button
-                    type="button"
-                    className="tab__pane"
-                    title={pane.label}
-                    onClick={() => {
-                      onActivate(tab.key);
-                      props.onShowPane?.(tab.key, pane.id);
-                    }}
-                  >
-                    {pane.label}
-                  </button>
-                </li>
-              ))}
+              {props.hiddenPanes!.get(tab.key)!.map((pane) => {
+                const show = () => {
+                  onActivate(tab.key);
+                  props.onShowPane?.(tab.key, pane.id);
+                };
+                // The same row as a tab's: terminal icon, title, folder and close button.
+                return (
+                  <li key={pane.id}>
+                    <div
+                      className="tab tab--row"
+                      role="button"
+                      tabIndex={0}
+                      title={pane.title}
+                      onMouseDown={(e) => {
+                        if (e.button === 1) props.onClosePane?.(tab.key, pane.id);
+                        else if (e.button === 0) show();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") show();
+                      }}
+                    >
+                      <CliIcon cli={null} />
+                      <span className="tab__title" dir="auto">
+                        {pane.title}
+                      </span>
+                      {pane.folder && (
+                        <span className="tab__folder" dir="auto">
+                          {pane.folder}
+                        </span>
+                      )}
+                      <button
+                        className="tab__close"
+                        aria-label={t("app.tabs.closeNamed", { title: pane.title })}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => props.onClosePane?.(tab.key, pane.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
           </Fragment>
