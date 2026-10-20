@@ -171,7 +171,7 @@ export function TabBar(props: TabBarProps) {
             const label = pane?.title ?? tabTitle(tab);
             const folder = column ? (pane ? pane.folder : details?.get(tab.key)?.folder) : null;
             const shown = pane
-              ? pane.title
+              ? (rowTitle(pane.title, details?.get(tab.key)?.cli ?? null, !!pane.folder) ?? pane.title)
               : column
                 ? rowTitle(tabTitle(tab), details?.get(tab.key)?.cli ?? null, !!details?.get(tab.key)?.folder)
                 : tabTitle(tab);

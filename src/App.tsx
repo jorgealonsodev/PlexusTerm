@@ -531,7 +531,6 @@ function AppContent() {
       .filter(([, tabDev]) => tabDev.cli !== null && tabDev.pane !== null && paneMeta[tabDev.pane]?.busy)
       .map(([key]) => key),
   );
-  /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
   /** The terminals of each DEV tab that keeps some out of sight, for the column; `shown`: the one on screen. */
   const hiddenPanes = new Map(
     state.tabs.flatMap((tab) => {
@@ -557,6 +556,7 @@ function AppContent() {
       ];
     }),
   );
+  /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
   const tabDetails = new Map(
     state.tabs.map((t) => {
       const tabDev = dev.state[t.key];
