@@ -6,6 +6,7 @@ use std::time::Duration;
 use tauri::State;
 use tauri::ipc::Channel;
 
+use super::watch::{self, Resolved, ViewError, ViewEvent, Watches};
 use super::{
     Command, ShareError, ShareEvent, ShareManager, StartRequest, TOKEN_ACCOUNT, audit, marker,
     viewer_origin,
@@ -124,4 +125,34 @@ pub async fn share_build_hash(origin: String) -> Result<String, ShareError> {
     .await
     .map_err(|_| ShareError::Unreachable(origin.clone()))?;
     Ok(text.trim().chars().take(80).collect())
+}
+
+/// Where a pasted share link's share lives (its relay), read from its viewer page, for the
+/// confirmation "Connect to share on <relay-host>?".
+#[tauri::command]
+pub async fn view_resolve(url: String) -> Result<Resolved, ViewError> {
+    watch::resolve(&url).await
+}
+
+/// Opens a share in a pane after the user confirmed its relay; events arrive on `on_event`.
+#[tauri::command]
+pub fn view_start(
+    url: String,
+    relay_url: String,
+    on_event: Channel<ViewEvent>,
+    watches: State<'_, Watches>,
+) -> Result<u32, ViewError> {
+    watches.start(&url, &relay_url, move |event| {
+        let _ = on_event.send(event);
+    })
+}
+
+#[tauri::command]
+pub fn view_input(id: u32, data: String, watches: State<'_, Watches>) -> Result<(), ViewError> {
+    watches.input(id, data.as_bytes())
+}
+
+#[tauri::command]
+pub fn view_close(id: u32, watches: State<'_, Watches>) {
+    watches.close(id);
 }

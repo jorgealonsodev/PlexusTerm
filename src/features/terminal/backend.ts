@@ -100,5 +100,8 @@ export function backendFor(target: SessionTarget): TerminalBackend {
       return telnetBackend(target);
     case "mosh":
       return moshBackend(target);
+    case "shared":
+      // A shared pane is drawn by SharedView, never by TerminalView.
+      throw new Error("a shared pane has no terminal backend");
   }
 }

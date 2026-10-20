@@ -90,7 +90,19 @@ export interface LocalTarget {
   cwd?: string;
 }
 
-export type SessionTarget = LocalTarget | SshTarget | SerialTarget | TelnetTarget | MoshTarget;
+/**
+ * A tab shared from another PlexusTerm, opened from its link (PRD-share P3): an untrusted pane.
+ * `relayUrl` was read from the link's viewer page and confirmed by the user ("Connect to share on
+ * <relayHost>?"). Never saved: the link holds the share's key.
+ */
+export interface SharedTarget {
+  type: "shared";
+  url: string;
+  relayUrl: string;
+  relayHost: string;
+}
+
+export type SessionTarget = LocalTarget | SshTarget | SerialTarget | TelnetTarget | MoshTarget | SharedTarget;
 
 /** The SSH login of a target: its own for SSH, the one that starts the server for Mosh. */
 export function sshLoginOf(target: SessionTarget): SshTarget | null {
@@ -111,5 +123,7 @@ export function targetTitle(target: SessionTarget): string {
       return `mosh ${target.ssh.username}@${target.ssh.host}`;
     case "ssh":
       return `${target.username}@${target.host}${target.port === 22 ? "" : `:${target.port}`}`;
+    case "shared":
+      return t("share.view.tabTitle", { host: target.relayHost });
   }
 }

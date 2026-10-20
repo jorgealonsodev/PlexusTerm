@@ -656,6 +656,7 @@ pub fn run() {
         .manage(secrets)
         .manage(ai::AiClient::default())
         .manage(share::ShareManager::default())
+        .manage(share::watch::Watches::default())
         .manage(launch)
         .setup(move |app| {
             launch::listen(app.handle().clone());
@@ -797,7 +798,11 @@ pub fn run() {
             share::commands::share_token_status,
             share::commands::share_token_save,
             share::commands::share_token_delete,
-            share::commands::share_build_hash
+            share::commands::share_build_hash,
+            share::commands::view_resolve,
+            share::commands::view_start,
+            share::commands::view_input,
+            share::commands::view_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

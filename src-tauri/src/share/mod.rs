@@ -13,6 +13,7 @@ pub mod commands;
 mod host;
 pub mod marker;
 mod viewers;
+pub mod watch;
 
 use std::collections::HashMap;
 use std::path::PathBuf;

@@ -77,6 +77,8 @@ import { ShareDialog } from "./features/share/ShareDialog";
 import { ShareToasts } from "./features/share/ShareToasts";
 import { AuditLogDialog } from "./features/share/AuditLogDialog";
 import { noticeText } from "./features/share/labels";
+import { SharedView } from "./features/share/SharedView";
+import { OpenSharedDialog } from "./features/share/OpenSharedDialog";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { setChatSaving } from "./features/ai/chatHistory";
@@ -150,6 +152,8 @@ type Modal =
   /** The Share dialog of a tab's pane. */
   | { kind: "share"; tabKey: string; paneId: string }
   | { kind: "shareAudit" }
+  /** Paste a share link to open it as a pane (PRD-share P3). */
+  | { kind: "openShared" }
   | null;
 
 /** Short status of a pane's last failed AI suggestion (S2), with the full message as tooltip. */
@@ -239,12 +243,13 @@ const draftTunnel = (): Tunnel => ({
 });
 
 /** Toolbar menu for the less common session types (S17.3). */
-function MoreMenu({ onTelnet, onMosh }: { onTelnet: () => void; onMosh: () => void }) {
+function MoreMenu({ onTelnet, onMosh, onShared }: { onTelnet: () => void; onMosh: () => void; onShared: () => void }) {
   // Mosh has no Windows client (S18.2).
   const t = useT();
   const offerMosh = usePlatform() !== "windows";
   const items = [{ label: "Telnet…", onSelect: onTelnet }];
   if (offerMosh) items.push({ label: "Mosh…", onSelect: onMosh });
+  items.push({ label: t("share.view.open"), onSelect: onShared });
   return (
     <DropdownMenu
       title={t("app.toolbar.more")}
@@ -602,7 +607,8 @@ function AppContent() {
       (() => {}),
     [activePane, activeSessionId, macroTargets],
   );
-  const canSplit = activeTab !== null && paneIds(activeTab.layout).length < MAX_PANES;
+  const canSplit =
+    activeTab !== null && activeTab.target.type !== "shared" && paneIds(activeTab.layout).length < MAX_PANES;
   const loggingTabs = new Set(
     state.tabs.filter((t) => paneIds(t.layout).some((id) => paneMeta[id]?.logging)).map((t) => t.key),
   );
@@ -1464,6 +1470,7 @@ function AppContent() {
         <MoreMenu
           onTelnet={() => setModal({ kind: "telnet" })}
           onMosh={() => setModal({ kind: "mosh" })}
+          onShared={() => setModal({ kind: "openShared" })}
         />
         <ToolsMenu
           monitorOn={terminalSettings.settings.remoteMonitor}
@@ -1813,6 +1820,20 @@ function AppContent() {
                         );
                       }
                       const excluded = paneMeta[paneId]?.excluded ?? false;
+                      if (tab.target.type === "shared") {
+                        return (
+                          <div className="pane-stack">
+                            <div className="pane-stack__terminal">
+                              <SharedView
+                                target={tab.target}
+                                active={active}
+                                focused={paneId === tab.focusedPane}
+                                settings={terminalSettings.settings}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
                         <div className="pane-stack">
                           <div className="pane-stack__terminal" data-drop-pane={paneId}>
@@ -2129,6 +2150,15 @@ function AppContent() {
         />
       )}
       {modal?.kind === "shareAudit" && <AuditLogDialog onClose={() => setModal(null)} />}
+      {modal?.kind === "openShared" && (
+        <OpenSharedDialog
+          onCancel={() => setModal(null)}
+          onOpen={(target) => {
+            setModal(null);
+            open(target);
+          }}
+        />
+      )}
       {modal?.kind === "editMacro" && (
         <MacroEditDialog
           macro={modal.macro}

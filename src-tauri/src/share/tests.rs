@@ -591,3 +591,126 @@ async fn quitting_ends_every_share_after_the_user_confirmed() {
     ));
     assert!(!manager.must_confirm_quit());
 }
+
+/// One PlexusTerm shares a tab, another opens its link as a pane: it waits, joins once allowed,
+/// gets the snapshot and the live output, types into the shared tab, and is told when it ends.
+#[tokio::test(flavor = "multi_thread")]
+async fn another_plexusterm_watches_and_types_into_a_shared_tab() {
+    use super::watch::{DoneReason, ViewEvent, Watches};
+    let addr = relay().await;
+    let manager = ShareManager::default();
+    let (tap_id, tap) = taps().register();
+    let (tx, mut events) = unbounded_channel();
+    let id = manager
+        .start(
+            StartRequest {
+                tap: tap_id,
+                tab: "t".into(),
+                relay_url: format!("ws://{addr}"),
+                viewer_origin: "http://localhost".into(),
+                accesses: vec![Access::Type],
+                expiry: Expiry::OneHour,
+                cols: 90,
+                rows: 30,
+                view_needs_approval: true,
+                record_input: false,
+                block_lid: false,
+            },
+            TOKEN.into(),
+            move |event| {
+                let _ = tx.send(event);
+            },
+        )
+        .unwrap();
+    let ShareEvent::Live { links, .. } =
+        until_event(&mut events, |e| matches!(e, ShareEvent::Live { .. })).await
+    else {
+        unreachable!()
+    };
+    let seq = tap.output(b"before").unwrap();
+
+    let watches = Watches::default();
+    let (vtx, mut seen) = unbounded_channel();
+    let view = watches
+        .start(&links[0].url, &format!("ws://{addr}"), move |event| {
+            let _ = vtx.send(event);
+        })
+        .unwrap();
+    assert_eq!(next_view(&mut seen).await, ViewEvent::Waiting);
+    let ShareEvent::JoinRequest { viewer } =
+        until_event(&mut events, |e| matches!(e, ShareEvent::JoinRequest { .. })).await
+    else {
+        unreachable!()
+    };
+    assert_eq!(
+        viewer.browser, None,
+        "the native viewer sends no browser user agent"
+    );
+    manager
+        .command(
+            id,
+            Command::Allow {
+                viewer: viewer.viewer,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        next_view(&mut seen).await,
+        ViewEvent::Joined {
+            access: Access::Type,
+            cols: 90,
+            rows: 30
+        }
+    );
+    let ShareEvent::SnapshotRequest { viewer: wanted } = until_event(&mut events, |e| {
+        matches!(e, ShareEvent::SnapshotRequest { .. })
+    })
+    .await
+    else {
+        unreachable!()
+    };
+    manager
+        .command(
+            id,
+            Command::Snapshot {
+                viewer: wanted,
+                covers_seq: seq,
+                screen: None,
+                full: "SNAPSHOT ñ".into(),
+            },
+        )
+        .unwrap();
+    tap.output("live é".as_bytes());
+    let mut shown = String::new();
+    while !shown.contains("live é") {
+        if let ViewEvent::Output(text) = next_view(&mut seen).await {
+            shown.push_str(&text);
+        }
+    }
+    assert!(shown.contains("SNAPSHOT ñ"), "{shown}");
+
+    watches.input(view, b"pwd\r").unwrap();
+    let ShareEvent::Input { data, .. } =
+        until_event(&mut events, |e| matches!(e, ShareEvent::Input { .. })).await
+    else {
+        unreachable!()
+    };
+    assert_eq!(data, "pwd\r");
+
+    manager.command(id, Command::Stop).unwrap();
+    loop {
+        if let ViewEvent::Done { reason, .. } = next_view(&mut seen).await {
+            assert_eq!(reason, DoneReason::Stopped);
+            break;
+        }
+    }
+}
+
+async fn next_view(
+    seen: &mut UnboundedReceiver<super::watch::ViewEvent>,
+) -> super::watch::ViewEvent {
+    tokio::time::timeout(WAIT, seen.recv())
+        .await
+        .expect("no view event")
+        .expect("view closed")
+}

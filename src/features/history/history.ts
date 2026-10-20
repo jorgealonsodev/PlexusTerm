@@ -38,6 +38,9 @@ export function hostKeyOf(target: SessionTarget): string {
       return `telnet:${target.host}:${target.port}`;
     case "serial":
       return `serial:${target.path}`;
+    case "shared":
+      // A shared pane records nothing; the key only names it.
+      return `shared:${target.relayHost}`;
   }
 }
 
