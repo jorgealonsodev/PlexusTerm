@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "切断",
     tabTitle: "共有 · {host}",
     open: "共有リンクを開く…",
     title: "共有されたターミナルを開く",

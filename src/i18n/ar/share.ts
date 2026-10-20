@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "قطع الاتصال",
     tabTitle: "مشتركة · {host}",
     open: "فتح رابط مشترك…",
     title: "فتح طرفية مشتركة",

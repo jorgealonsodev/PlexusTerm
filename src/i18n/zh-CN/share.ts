@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "断开",
     tabTitle: "共享 · {host}",
     open: "打开共享链接…",
     title: "打开共享的终端",

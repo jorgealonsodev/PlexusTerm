@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "Trennen",
     tabTitle: "Geteilt · {host}",
     open: "Geteilten Link öffnen…",
     title: "Ein geteiltes Terminal öffnen",

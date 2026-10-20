@@ -135,6 +135,7 @@ export const share: Messages<typeof en> = {
     bytes: { one: "1 byte", other: "{count} bytes" },
   },
   view: {
+    disconnect: "Desconectar",
     tabTitle: "Compartida · {host}",
     open: "Abrir enlace compartido…",
     title: "Abrir un terminal compartido",

@@ -132,6 +132,7 @@ export const share = {
     bytes: { one: "1 byte", other: "{count} bytes" },
   },
   view: {
+    disconnect: "Disconnect",
     tabTitle: "Shared · {host}",
     open: "Open shared link…",
     title: "Open a shared terminal",

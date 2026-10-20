@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "डिस्कनेक्ट करें",
     tabTitle: "साझा · {host}",
     open: "साझा लिंक खोलें…",
     title: "साझा टर्मिनल खोलें",

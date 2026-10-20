@@ -16,6 +16,24 @@ const tab = (key: string, title: string) => ({
 });
 
 describe("TabBar", () => {
+  it("offers Disconnect instead of Share on a tab that watches another PlexusTerm's share", () => {
+    const onClose = vi.fn();
+    const onShare = vi.fn();
+    const watching = {
+      ...tab("t1", "Shared · relay.example.com"),
+      target: { type: "shared" as const, url: "https://view.example.com/s/a#b", relayUrl: "wss://relay.example.com", relayHost: "relay.example.com" },
+    };
+    render(<TabBar tabs={[watching, tab("t2", "two")]} activeKey="t1" onActivate={() => {}} onNew={() => {}} onClose={onClose} onShare={onShare} />);
+    fireEvent.contextMenu(screen.getByTitle("Shared · relay.example.com"), { clientX: 5, clientY: 5 });
+    expect(screen.queryByRole("menuitem", { name: "Share…" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Disconnect" }));
+    expect(onClose).toHaveBeenCalledWith("t1");
+    // An ordinary tab still offers Share.
+    fireEvent.contextMenu(screen.getByTitle("two"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Share…" }));
+    expect(onShare).toHaveBeenCalledWith("t2");
+  });
+
   it("marks the tabs whose output is logged to a file", () => {
     render(
       <TabBar

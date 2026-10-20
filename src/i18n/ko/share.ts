@@ -139,6 +139,7 @@ export const share: Messages<typeof en> = {
     },
   },
   view: {
+    disconnect: "연결 끊기",
     tabTitle: "공유 · {host}",
     open: "공유 링크 열기…",
     title: "공유된 터미널 열기",

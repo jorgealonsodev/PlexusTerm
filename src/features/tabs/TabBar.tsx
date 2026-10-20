@@ -216,12 +216,17 @@ export function TabBar(props: TabBarProps) {
   };
   const menuIndex = menu ? tabs.findIndex((t) => t.key === menu.key) : -1;
   const menuItems = (key: string) => {
-    const host = hostOf(tabs.find((t) => t.key === key)!);
+    const tab = tabs.find((t) => t.key === key)!;
+    const host = hostOf(tab);
+    // A tab watching another PlexusTerm's share cannot be shared: it is left by closing it.
+    const watching = tab.target.type === "shared";
     return [
-      props.onShare && {
-        label: props.shared?.has(key) ? t("share.menu.sharing") : t("share.menu.share"),
-        onSelect: () => props.onShare!(key),
-      },
+      watching && { label: t("share.view.disconnect"), onSelect: () => onClose(key) },
+      !watching &&
+        props.onShare && {
+          label: props.shared?.has(key) ? t("share.menu.sharing") : t("share.menu.share"),
+          onSelect: () => props.onShare!(key),
+        },
       props.onCopyHost && host && { label: t("app.tabs.copyHost", { host }), onSelect: () => props.onCopyHost!(host) },
       props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
       props.onColor && menu && { label: t("app.tabs.colour"), onSelect: () => setColorMenu({ key, x: menu.x, y: menu.y }) },
