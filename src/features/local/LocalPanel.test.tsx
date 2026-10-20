@@ -6,7 +6,7 @@ import type { SftpEntry } from "../sftp/sftpClient";
 import { writeText } from "../terminal/clipboard";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { deliverDrop, setDropHandler } from "../drop/pathDrag";
-import { LocalPanel } from "./LocalPanel";
+import { FILE_LIST_REFRESH_MS, LocalPanel } from "./LocalPanel";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
 
@@ -626,6 +626,79 @@ describe("workspace folders in DEV mode", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open workspace" }));
     expect((await screen.findByRole("alert")).textContent).toContain("lists no folders");
     expect(onOpenFolders).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("LocalPanel reveals a file (Ctrl+click on a path in the terminal)", () => {
+  const selectedRow = () => document.querySelector('[aria-selected="true"]')?.textContent ?? null;
+
+  it("opens the tree's folders down to a file under the listed folder and selects it", async () => {
+    mocked.list.mockImplementation(async (path) => {
+      if (path === "/home/me") return [entry("src", "dir"), entry("notes.txt", "file")];
+      if (path === "/home/me/src") return [entry("lib", "dir", "/home/me/src")];
+      if (path === "/home/me/src/lib") return [entry("x.ts", "file", "/home/me/src/lib")];
+      return [];
+    });
+    mocked.stat.mockResolvedValue(entry("x.ts", "file", "/home/me/src/lib"));
+    const { rerender } = render(panel({ devStyle: true }));
+    await screen.findByText("notes.txt");
+    rerender(panel({ devStyle: true, reveal: { path: "/home/me/src/lib/x.ts", id: 1 } }));
+    expect(await screen.findByText("x.ts")).toBeTruthy();
+    await waitFor(() => expect(selectedRow()).toContain("x.ts"));
+    // The listed folder stays the same.
+    expect(mocked.list).not.toHaveBeenCalledWith("/home/me/src/lib/x.ts");
+  });
+
+  it("goes to the folder of a file outside the listed folders and selects it", async () => {
+    mocked.list.mockImplementation(async (path) =>
+      path === "/home/me" ? [entry("notes.txt", "file")] : path === "/tmp/other" ? [entry("a.md", "file", "/tmp/other")] : [],
+    );
+    mocked.stat.mockResolvedValue(entry("a.md", "file", "/tmp/other"));
+    const { rerender } = render(panel({ devStyle: true }));
+    await screen.findByText("notes.txt");
+    rerender(panel({ devStyle: true, reveal: { path: "/tmp/other/a.md", id: 1 } }));
+    expect(await screen.findByText("a.md")).toBeTruthy();
+    await waitFor(() => expect(selectedRow()).toContain("a.md"));
+  });
+});
+
+describe("LocalPanel lists files created by the terminal", () => {
+  it("lists the folder again while the terminal prints and when its prompt comes back, keeping the selection", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const listeners: ((text: string, echo?: boolean) => void)[] = [];
+    const subscribeOutput = (listener: (text: string, echo?: boolean) => void) => {
+      listeners.push(listener);
+      return () => void listeners.splice(listeners.indexOf(listener), 1);
+    };
+    const git = { enabled: false, visible: true, prompt: 0, subscribeOutput };
+    const { rerender } = render(panel({ devStyle: true, git }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    const calls = () => mocked.list.mock.calls.filter(([path]) => path === "/home/me").length;
+    const before = calls();
+    // Nothing printed: nothing is read again.
+    await act(() => vi.advanceTimersByTimeAsync(FILE_LIST_REFRESH_MS * 3));
+    expect(calls()).toBe(before);
+    mocked.list.mockImplementation(async (path) =>
+      path === "/home/me" ? [entry("src", "dir"), entry("notes.txt", "file"), entry("PRD.md", "file")] : [],
+    );
+    // The echo of a key is not the terminal at work.
+    act(() => listeners.forEach((listener) => listener("a", true)));
+    await act(() => vi.advanceTimersByTimeAsync(FILE_LIST_REFRESH_MS));
+    expect(calls()).toBe(before);
+    act(() => listeners.forEach((listener) => listener("Wrote PRD.md")));
+    await act(() => vi.advanceTimersByTimeAsync(FILE_LIST_REFRESH_MS));
+    expect(await screen.findByText("PRD.md")).toBeTruthy();
+    expect(screen.getByText("notes.txt").closest("[aria-selected]")?.getAttribute("aria-selected")).toBe("true");
+    // A burst of output reads the folder once, not once per chunk.
+    const once = calls();
+    act(() => {
+      for (let i = 0; i < 20; i++) listeners.forEach((listener) => listener("…"));
+    });
+    await act(() => vi.advanceTimersByTimeAsync(FILE_LIST_REFRESH_MS));
+    expect(calls()).toBe(once + 1);
+    rerender(panel({ devStyle: true, git: { ...git, prompt: 1 } }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(calls()).toBe(once + 2);
   });
 });
 

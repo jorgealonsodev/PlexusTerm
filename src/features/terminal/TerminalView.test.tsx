@@ -36,6 +36,7 @@ vi.mock("@tauri-apps/plugin-opener", () => opener);
 /** Every fake xterm created, newest last. */
 const terms = vi.hoisted(() => [] as FakeTerminal[]);
 interface FakeTerminal {
+  linkProviders: import("@xterm/xterm").ILinkProvider[];
   resize(cols: number, rows: number): void;
   options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
   keyHandler: (e: Partial<KeyboardEvent>) => boolean;
@@ -91,6 +92,8 @@ vi.mock("@xterm/xterm", () => ({
       const line = this.line;
       const row = {
         isWrapped: false,
+        length: line.length,
+        getCell: (x: number) => ({ getChars: () => line[x] ?? "", getWidth: () => 1 }),
         translateToString: (trim?: boolean, start = 0, end?: number) =>
           trim ? line.slice(start, end).trimEnd() : line.slice(start, end),
       };
@@ -117,6 +120,11 @@ vi.mock("@xterm/xterm", () => ({
     addons: unknown[] = [];
     loadAddon(addon: unknown) {
       this.addons.push(addon);
+    }
+    linkProviders: import("@xterm/xterm").ILinkProvider[] = [];
+    registerLinkProvider(provider: import("@xterm/xterm").ILinkProvider) {
+      this.linkProviders.push(provider);
+      return { dispose: () => {} };
     }
     attachCustomKeyEventHandler(handler: (e: unknown) => boolean) {
       this.keyHandler = handler;
@@ -991,6 +999,25 @@ describe("TerminalView", () => {
       expect(t.focus).toHaveBeenCalled();
       unmount();
       expect(unregister).toHaveBeenCalled();
+    });
+
+    it("links the paths it prints to the files its fileLinks find, opened with Ctrl+click", async () => {
+      const first = { resolve: vi.fn(async () => null), open: vi.fn() };
+      const { rerender } = renderView({ fileLinks: first });
+      await settle();
+      const t = term();
+      t.line = "Wrote docs/PRD.md";
+      const links = () =>
+        new Promise<import("@xterm/xterm").ILink[] | undefined>((done) => t.linkProviders[0].provideLinks(1, done));
+      expect(await links()).toBeUndefined();
+      // The latest fileLinks are used, without a new terminal.
+      const latest = { resolve: vi.fn(async (text: string) => `/work/${text}`), open: vi.fn() };
+      rerender(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} fileLinks={latest} />);
+      const [link] = (await links())!;
+      expect(latest.resolve).toHaveBeenCalledWith("docs/PRD.md");
+      link.activate(new MouseEvent("click", { ctrlKey: true }), link.text);
+      expect(latest.open).toHaveBeenCalledWith("/work/docs/PRD.md");
+      expect(t.linkProviders).toHaveLength(1);
     });
 
     it("logs received output to the chosen file without escape sequences", async () => {

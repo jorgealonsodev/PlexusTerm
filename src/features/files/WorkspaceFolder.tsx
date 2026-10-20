@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLA
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { DirDrop } from "../drop/pathDrag";
 import type { SftpEntry } from "../sftp/sftpClient";
-import { FileTree } from "./FileTree";
+import { FileTree, isInside, type Reveal } from "./FileTree";
 import { GitBadge, gitNameClass } from "./GitBadge";
 import { indexGitStatus, rootDecoration, type Decoration, type GitStatusEntry } from "./gitStatus";
 import { useGitStatus, type GitStatusOptions } from "./useGitStatus";
@@ -59,6 +59,8 @@ interface WorkspaceFolderProps {
   collapse: number;
   /** Entries dropped on one of its folders (S2). */
   onDirDrop?: (drop: DirDrop) => void;
+  /** A file to show: inside this folder, the root opens and its tree opens down to it. */
+  reveal?: Reveal;
 }
 
 /** A folder added to the DEV mode workspace: a root with its own tree and its own git status. */
@@ -93,6 +95,12 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
     };
   }, [list, path, git.loads]);
 
+  const revealId = props.reveal?.id;
+  useEffect(() => {
+    if (props.reveal && isInside(props.reveal.path, path)) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealId]);
+
   const gitEntries = useGitStatus(readGit, path, git);
   const gitIndex = useMemo(() => indexGitStatus(gitEntries), [gitEntries]);
 
@@ -123,6 +131,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           rowProps={props.rowProps}
           collapse={props.collapse}
           dropDir={props.onDirDrop ? path : undefined}
+          reveal={props.reveal}
           onDirDrop={props.onDirDrop}
         />
       )}

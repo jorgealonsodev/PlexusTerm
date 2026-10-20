@@ -6,6 +6,7 @@ import { Terminal, type FontWeight } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, type FileLinks } from "./fileLinks";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { softwareWebgl } from "./webglProbe";
 import { latencyFrame, latencyMark } from "./latencyLog";
@@ -112,6 +113,8 @@ interface TerminalViewProps {
    * typed) and with false once it has printed nothing for `ACTIVITY_QUIET_MS`: an AI CLI working.
    */
   onActivity?: (busy: boolean) => void;
+  /** Turns the paths printed in the pane into files that Ctrl+click opens; none without it. */
+  fileLinks?: FileLinks;
 }
 
 /** What the on-demand assistant uses from a pane (S3). */
@@ -262,9 +265,12 @@ export function TerminalView({
   onCommand,
   onOutputQuiet,
   onActivity,
+  fileLinks,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
+  const fileLinksRef = useRef(fileLinks);
+  fileLinksRef.current = fileLinks;
   /** The selection when the right button went down, read by the context menu handler. */
   const selectionAtRightDown = useRef<string | null>(null);
   onAskAiRef.current = onAskAi;
@@ -348,10 +354,21 @@ export function TerminalView({
       theme: themeById(settingsRef.current.theme).theme,
       // Decorations, which colour the error lines, are still a proposed API in xterm.
       allowProposedApi: true,
+      // Hyperlinks a program prints (OSC 8): web links and files open on Ctrl+click.
+      linkHandler: createLinkHandler({
+        openUrl: (url) => void openUrl(url).catch(() => {}),
+        openFile: () => fileLinksRef.current?.open,
+      }),
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.loadAddon(new WebLinksAddon());
+    term.loadAddon(new WebLinksAddon(webLinkHandler((url) => void openUrl(url).catch(() => {}))));
+    term.registerLinkProvider(
+      createFileLinkProvider((y) => cellsOf(term.buffer.active.getLine(y - 1)), {
+        resolve: (text) => fileLinksRef.current?.resolve(text) ?? Promise.resolve(null),
+        open: (path) => fileLinksRef.current?.open(path),
+      }),
+    );
     const search = new SearchAddon();
     term.loadAddon(search);
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);

@@ -32,7 +32,19 @@ interface FileTreeProps {
    */
   dropDir?: string;
   onDirDrop?: (drop: DirDrop) => void;
+  /** A file to show: each change opens the folders down to it and scrolls its row into view. */
+  reveal?: Reveal;
 }
+
+/** A file to show in a list; `id` changes for each request, even for the same file. */
+export interface Reveal {
+  path: string;
+  id: number;
+}
+
+/** `path` lies inside folder `dir` (any separator). */
+export const isInside = (path: string, dir: string) =>
+  path.length > dir.length && path.startsWith(dir) && (/[\\/]$/.test(dir) || /[\\/]/.test(path[dir.length]));
 
 type Children = { state: "loading" } | { state: "error"; message: string } | { state: "ok"; entries: SftpEntry[] };
 
@@ -60,6 +72,7 @@ export function FileTree({
   collapse = 0,
   dropDir,
   onDirDrop,
+  reveal,
 }: FileTreeProps) {
   const t = useT();
   const treeRef = useRef<HTMLUListElement>(null);
@@ -141,6 +154,27 @@ export function FileTree({
   };
   walk(entries, 0, "", null);
   const entryRows = rows.filter((r): r is Extract<Row, { kind: "entry" }> => r.kind === "entry");
+
+  // A file to show: its folders open one level at a time, as their entries arrive; then its row
+  // scrolls into view.
+  const revealing = useRef<string | null>(null);
+  const revealId = reveal?.id;
+  useEffect(() => {
+    revealing.current = reveal?.path ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealId]);
+  useEffect(() => {
+    const target = revealing.current;
+    if (target === null) return;
+    const row = rowRefs.current.get(target);
+    if (row) {
+      row.scrollIntoView?.({ block: "nearest" });
+      revealing.current = null;
+      return;
+    }
+    const folder = entryRows.find((r) => r.entry.kind === "dir" && !expanded.has(r.entry.path) && isInside(target, r.entry.path));
+    if (folder) setOpen(folder.entry, true);
+  });
 
   const focusRow = (path: string | null | undefined) => {
     const row = entryRows.find((r) => r.entry.path === path);

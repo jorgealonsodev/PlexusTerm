@@ -17,7 +17,7 @@ import type { OpenWith, SftpEntry } from "../sftp/sftpClient";
 import { describeLocalError, local } from "./localClient";
 import { basename, isRoot, joinPath, parentPath, validName } from "./localPath";
 import { HelpTip } from "../sidebar/HelpTip";
-import { FileTree } from "../files/FileTree";
+import { FileTree, isInside, type Reveal } from "../files/FileTree";
 import { FlatFileList } from "../files/FlatFileList";
 import { indexGitStatus, rootDecoration } from "../files/gitStatus";
 import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
@@ -56,6 +56,8 @@ interface LocalPanelProps {
    * DEV mode's recent folders and workspace files: the toolbar lists them (the workspace files
    * first) and opens the one chosen in a new terminal tab.
    */
+  /** A file to show (Ctrl+click on a path in the terminal): selected, its folders opened. */
+  reveal?: Reveal;
   recent?: {
     folders: readonly string[];
     onOpen: (folder: string) => void;
@@ -71,6 +73,16 @@ export function recentItems({ folders, onOpen, workspaces = [], onOpenWorkspace 
   return files.length > 0 && dirs.length > 0 ? [...files, { separator: true }, ...dirs] : [...files, ...dirs];
 }
 
+/**
+ * How often, at most, a visible list reads its folders again while the terminal prints (an AI tool
+ * creating files); the first read waits a moment so the files are written.
+ */
+export const FILE_LIST_REFRESH_MS = 1500;
+
+const sameList = (a: SftpEntry[], b: SftpEntry[]) =>
+  a.length === b.length &&
+  a.every((x, i) => x.path === b[i].path && x.kind === b[i].kind && x.size === b[i].size && x.modified === b[i].modified);
+
 export interface Workspace {
   folders: readonly string[];
   onAdd: (path: string) => void;
@@ -82,7 +94,7 @@ export interface Workspace {
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -155,6 +167,47 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   };
 
   const refresh = () => current.current.path !== null && void navigate(current.current.path);
+
+  /**
+   * Lists the folders again without leaving them: the selection stays, the open folders of the
+   * tree and the added ones are read again too; a navigation started meanwhile wins.
+   */
+  const reloadQuietly = useCallback(async () => {
+    const dir = current.current.path;
+    if (dir === null) return;
+    const seq = listSeq.current;
+    const list = await local.list(dir).catch(() => null);
+    if (list === null || seq !== listSeq.current || current.current.path !== dir) return;
+    setEntries((prev) => (sameList(prev, list ?? []) ? prev : (list ?? [])));
+    setLoads((n) => n + 1);
+  }, []);
+
+  // The terminal at work (an AI tool writing files) or its prompt back: the list follows, at most
+  // every FILE_LIST_REFRESH_MS, only while it is on screen.
+  const visible = git?.visible ?? true;
+  const subscribeOutput = git?.subscribeOutput;
+  useEffect(() => {
+    if (!visible || !subscribeOutput) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = subscribeOutput((_text, echo) => {
+      if (echo || timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        void reloadQuietly();
+      }, FILE_LIST_REFRESH_MS);
+    });
+    return () => {
+      stop();
+      if (timer) clearTimeout(timer);
+    };
+  }, [visible, subscribeOutput, reloadQuietly]);
+  const prompt = git?.prompt ?? 0;
+  const promptSeen = useRef(prompt);
+  useEffect(() => {
+    if (prompt === promptSeen.current) return;
+    promptSeen.current = prompt;
+    if (visible) void reloadQuietly();
+  }, [prompt, visible, reloadQuietly]);
 
   /** Opens a file in a desktop program; the file itself is edited, no copy is made. */
   const openWith = (entry: SftpEntry, how: OpenWith) =>
@@ -338,7 +391,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     return () => {
       live = false;
     };
-  }, [readRepo, selected, git?.prompt, loads]);
+    // A prompt coming back lists the folders again, which bumps `loads`.
+  }, [readRepo, selected, loads]);
   /** With added folders, every folder shows as a root, as in a VS Code workspace. */
   const asRoots = showWorkspace && workspace.folders.length > 0;
   const [mainOpen, setMainOpen] = useState(true);
@@ -449,6 +503,40 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     };
   };
 
+  /**
+   * A file to show: selected; under a folder of the tree, its folders open down to it; elsewhere
+   * the list goes to the file's folder.
+   */
+  const [treeReveal, setTreeReveal] = useState<Reveal | null>(null);
+  const revealId = reveal?.id;
+  const revealed = useRef<number | null>(null);
+  // A panel opened by the request first lists its own folder, then shows the file.
+  const listed = path !== null;
+  useEffect(() => {
+    if (!reveal || !listed || revealed.current === reveal.id) return;
+    revealed.current = reveal.id;
+    const file = reveal.path;
+    const dir = parentPath(file);
+    const main = current.current.path;
+    const added = devStyle && workspace ? workspace.folders : [];
+    const select = () =>
+      void Promise.resolve()
+        .then(() => local.stat(file))
+        .catch(() => null)
+        .then((found) =>
+          setSelectedEntry(
+            found ?? { name: basename(file), path: file, kind: "file", size: 0, modified: null, permissions: null, uid: null, gid: null, user: null, group: null },
+          ),
+        );
+    const roots = [...(main !== null ? [main] : []), ...added];
+    if (devStyle && roots.some((root) => root === dir || isInside(file, root))) {
+      if (main !== null && (main === dir || isInside(file, main))) setMainOpen(true);
+      setTreeReveal(reveal);
+      select();
+    } else void navigate(dir).then((ok) => ok && select());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealId, listed]);
+
   /** The main folder leaves the workspace: the first added folder becomes the main one, as in VS Code. */
   const removeMain = async () => {
     const next = workspace?.folders[0];
@@ -470,6 +558,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       gitIndex={gitIndex}
       rowProps={rowProps}
       collapse={collapse}
+      reveal={treeReveal ?? undefined}
       dropDir={path ?? undefined}
       onDirDrop={(drop) => void moveDropped(drop)}
     />
@@ -594,6 +683,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               details={details}
               rowProps={rowProps}
               titleProps={rootProps(folder, () => workspace.onRemove(folder))}
+              reveal={treeReveal ?? undefined}
               collapse={collapse}
               onDirDrop={(drop) => void moveDropped(drop)}
             />

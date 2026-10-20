@@ -36,6 +36,8 @@ import { quotePath, shellFlavor } from "./features/terminal/shellPath";
 import { dropAction, sameMachine } from "./features/drop/dropAction";
 import { dropTargetAt, setDropHandler, type PathDrag, type PathOrigin } from "./features/drop/pathDrag";
 import { local } from "./features/local/localClient";
+import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
+import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { BASE_TEXT_SIZE, stepChatFontSize, stepFontSize } from "./features/settings/settings";
@@ -1059,6 +1061,33 @@ function AppContent() {
         .catch(() => {});
     }
   }, [state.tabs, dev.state]);
+  /** The file the Explorer shows next (Ctrl+click on a path in a terminal). */
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+  /** The home folder, read once, for `~/...` paths printed in local terminals. */
+  const localHome = useRef<Promise<string | null> | null>(null);
+  /**
+   * Paths printed in a local terminal (an AI tool's `docs/PRD.md`): relative ones are read from the
+   * folder of the program running in it, else of its shell; only existing files become links.
+   */
+  const localFileLinks = (paneId: string): FileLinks => ({
+    resolve: async (text) => {
+      const sessionId = paneMeta[paneId]?.sessionId ?? null;
+      const folder = (sessionId !== null ? await local.programCwd(sessionId).catch(() => null) : null) ?? paneMeta[paneId]?.cwd ?? null;
+      localHome.current ??= local.home().catch(() => null);
+      const path = resolvePath(text, folder, await localHome.current);
+      if (path === null) return null;
+      const entry = await local.stat(path).catch(() => null);
+      return entry && entry.kind !== "dir" ? path : null;
+    },
+    // Opened in the editor (the file viewer) and shown in the Explorer, which opens if folded.
+    open: (path) => {
+      viewInTab({ kind: "local" }, path);
+      setReveal((prev) => ({ path, id: (prev?.id ?? 0) + 1 }));
+      setSidebarView("explorer");
+      if (terminalSettings.settings.sidebarCollapsed) terminalSettings.update({ sidebarCollapsed: false });
+    },
+  });
+
   /** Shows a file of the file lists in the viewer of the active tab's terminal, on the side Settings choose. */
   const viewInTab = (origin: PathOrigin, path: string) => {
     if (!activeTab) return;
@@ -1500,6 +1529,7 @@ function AppContent() {
                     onFile: rememberWorkspace,
                   }}
                   recent={recent}
+                  reveal={reveal ?? undefined}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {
@@ -1768,6 +1798,7 @@ function AppContent() {
                             onActivity={(busy) => {
                               if (!busy || tabDev?.cli) updatePane(paneId, { busy });
                             }}
+                            fileLinks={tab.target.type === "local" ? localFileLinks(paneId) : undefined}
                             onOutputQuiet={
                               tabDev?.pane === paneId && tabDev.prompt
                                 ? (row) => dev.quiet(tab.key, paneId, row)

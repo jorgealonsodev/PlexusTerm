@@ -10,16 +10,24 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
-const pane = vi.hoisted(() => ({ lineEmpty: true, inserted: [] as string[], ran: [] as string[] }));
+const pane = vi.hoisted(() => ({
+  lineEmpty: true,
+  inserted: [] as string[],
+  ran: [] as string[],
+  fileLinks: undefined as import("../terminal/fileLinks").FileLinks | undefined,
+}));
 // A terminal that reports its backend session (pty 5) as soon as it mounts.
 vi.mock("../terminal/TerminalView", () => ({
   TerminalView: ({
     onSession,
     registerAssistTarget,
+    fileLinks,
   }: {
+    fileLinks?: import("../terminal/fileLinks").FileLinks;
     onSession?: (id: number | null) => void;
     registerAssistTarget?: (target: import("../terminal/TerminalView").AssistTarget) => () => void;
   }) => {
+    pane.fileLinks = fileLinks;
     useEffect(() => {
       onSession?.(5);
       return registerAssistTarget?.({
@@ -54,6 +62,31 @@ const entry = (path: string, kind = "file") => ({
 });
 
 describe("Explorer tab", () => {
+  it("opens a file Ctrl+clicked in the terminal in the editor and shows it in the Explorer", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
+      const path = (args as { path?: string } | undefined)?.path;
+      if (cmd === "settings_load") return JSON.stringify({ ...DEFAULT_SETTINGS, sidebarWidth: 300 });
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "pty_program_cwd") return "/home/me";
+      if (cmd === "local_list") return path === "/home/me" ? [entry("/home/me/docs", "dir")] : path === "/home/me/docs" ? [entry("/home/me/docs/PRD.md")] : [];
+      if (cmd === "local_stat") return path === "/home/me/docs/PRD.md" ? entry(path) : Promise.reject("not found");
+      if (cmd === "local_view_text") return { path, content: "# PRD", truncated: false, encoding: "utf-8" };
+      return null;
+    });
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await waitFor(() => expect(pane.fileLinks).toBeTruthy());
+    expect(await pane.fileLinks!.resolve("docs/missing.md")).toBeNull();
+    expect(await pane.fileLinks!.resolve("docs/PRD.md")).toBe("/home/me/docs/PRD.md");
+    act(() => pane.fileLinks!.open("/home/me/docs/PRD.md"));
+    // The Explorer tab is shown, with the file selected in its folder.
+    const tab = await screen.findByRole("tab", { name: "Explorer" });
+    await waitFor(() => expect(tab.getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(document.querySelector(".sftp-row--selected")?.textContent).toContain("PRD.md"));
+    // And it opens in the viewer.
+    await waitFor(() => expect(vi.mocked(invoke).mock.calls.some(([cmd, args]) => cmd === "local_view_text" && (args as { path: string }).path === "/home/me/docs/PRD.md")).toBe(true));
+  });
+
   it("is enabled for a local terminal and shows the folder its shell is in", async () => {
     vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
       if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);
