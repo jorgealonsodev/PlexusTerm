@@ -90,6 +90,11 @@ export const settings: Messages<typeof en> = {
     gpuAccelerationHelp: "터미널을 그래픽 카드의 WebGL로 그려 화면을 자주 다시 그리는 프로그램(AI 명령줄 도구, htop)도 부드럽게 표시합니다. WebGL을 쓸 수 없거나 그래픽 카드가 재설정되면 터미널이 자동으로 표준 렌더러로 전환됩니다. 그래픽 드라이버에서 글자가 이상하게 보이거나 깜박이면 끄세요. Linux에서는 기본적으로 꺼져 있습니다. WebKitGTK가 WebGL 터미널을 몇 프레임 늦게 표시해 입력이 느리게 느껴지기 때문입니다.",
     devCommands: "DEV 모드를 켜는 명령",
     devCommandsHelp: "탭의 명령줄이 이 프로그램 중 하나(명령의 첫 단어, 쉼표나 공백으로 구분)를 실행하면 DEV 모드가 되고, 셸 프롬프트가 돌아오면 해제됩니다. DEV 모드에서는 탭이 오른쪽 열에 표시되고, git 브랜치가 보이며, 프로그램을 시작한 프로젝트부터 VS Code처럼 파일을 나열하고, 그 탭의 데스크톱 알림을 보냅니다. 터미널 아래 막대 오른쪽 끝의 DEV 버튼으로 직접 켜거나 끌 수 있습니다.",
+    devFolderInFooter: "DEV 모드에서 터미널 아래 막대에 폴더 표시",
+    devFolderInFooterHelp:
+      "DEV 모드에서 각 터미널 아래 막대의 오른쪽 끝에 터미널이 있는 폴더 이름(마지막 부분만)을 표시해 탭의 터미널을 구분할 수 있게 합니다.",
+    recentFolderLimit: "기억할 DEV 모드 최근 폴더 수",
+    recentFolderLimitHelp: "탐색기의 최근 폴더 목록에 표시할, DEV 모드를 사용한 폴더 수(1~50).",
   },
   ssh: {
     remoteMonitor: "원격 모니터 막대(SSH 탭)",

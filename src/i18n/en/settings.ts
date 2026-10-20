@@ -87,6 +87,11 @@ export const settings = {
     gpuAccelerationHelp: "Terminals are drawn with WebGL on the graphics card, which keeps programs that redraw the screen often (AI command-line tools, htop) smooth. When WebGL is not available or the graphics card resets, terminals switch to the standard renderer by themselves. Turn it off if text looks wrong or flickers with your graphics driver. On Linux it is off by default: WebKitGTK shows a WebGL terminal several frames late, so typing feels slow.",
     devCommands: "Commands that turn DEV mode on",
     devCommandsHelp: "A tab turns to DEV mode when its command line runs one of these programs (the first word of the command, separated by commas or spaces) and back when the shell's prompt returns. DEV mode moves the tabs to a column at the right, shows the git branch, lists the files like VS Code from the project the program started in, and sends desktop notifications for that tab. The DEV button at the right of the bar under the terminal turns it on or off by hand.",
+    devFolderInFooter: "Show the terminal's folder in the bar under it in DEV mode",
+    devFolderInFooterHelp:
+      "In DEV mode the right end of the bar under each terminal shows the name of the folder it is in (only its last part), to tell the terminals of a tab apart.",
+    recentFolderLimit: "Recent DEV mode folders to remember",
+    recentFolderLimitHelp: "How many folders DEV mode was used in the Explorer's Recent folders lists, from 1 to 50.",
   },
   ssh: {
     remoteMonitor: "Remote monitor bar (SSH tabs)",

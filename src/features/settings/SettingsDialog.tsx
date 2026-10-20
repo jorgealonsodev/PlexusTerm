@@ -31,6 +31,7 @@ import {
   MIN_CHAT_FONT_SIZE,
   MAX_CHAT_FONT_SIZE,
   MIN_VIEWER_FONT_SIZE,
+  clampRecentFolderLimit,
   MAX_VIEWER_FONT_SIZE,
   cleanAiBaseUrl,
   cleanAiModel,
@@ -53,6 +54,7 @@ import {
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutLabel } from "../panes/shortcuts";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
+import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 
 interface SettingsDialogProps {
@@ -311,6 +313,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
+  const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
+  const [devFolderInFooter, setDevFolderInFooter] = useState(settings.devFolderInFooter);
   const [theme, setTheme] = useState(settings.theme);
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   /** The well-known monospaced fonts installed here, looked for once per dialog. */
@@ -395,6 +399,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const uiSize = Number.parseFloat(uiFontSize);
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
+    const recentLimit = Number.parseFloat(recentFolderLimit);
     const context = Number.parseFloat(aiHistoryContext);
     onSave({
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
@@ -445,6 +450,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       attentionNotifications,
       gpuAcceleration,
       devCommands: parseDevCommands(devCommands),
+      recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
+      devFolderInFooter,
     });
   };
 
@@ -780,6 +787,22 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </div>
             <p className="muted">{t("settings.terminal.devCommandsHelp")}</p>
+            <label className="check">
+              <input type="checkbox" checked={devFolderInFooter} onChange={(e) => setDevFolderInFooter(e.target.checked)} />
+              {t("settings.terminal.devFolderInFooter")}
+            </label>
+            <p className="muted">{t("settings.terminal.devFolderInFooterHelp")}</p>
+            <label className="field field--size">
+              {t("settings.terminal.recentFolderLimit")}
+              <input
+                type="number"
+                min={1}
+                max={MAX_RECENT_FOLDERS}
+                value={recentFolderLimit}
+                onChange={(e) => setRecentFolderLimit(e.target.value)}
+              />
+            </label>
+            <p className="muted">{t("settings.terminal.recentFolderLimitHelp")}</p>
           </div>
 
           <div {...panel("shortcuts")}>

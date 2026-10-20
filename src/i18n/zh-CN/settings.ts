@@ -90,6 +90,11 @@ export const settings: Messages<typeof en> = {
     gpuAccelerationHelp: "终端在显卡上用 WebGL 绘制，让频繁重绘屏幕的程序（AI 命令行工具、htop）保持流畅。WebGL 不可用或显卡重置时，终端会自动切换到标准渲染器。如果在你的显卡驱动下文字显示异常或闪烁，请关闭此项。 在 Linux 上默认关闭:WebKitGTK 显示 WebGL 终端会延迟几帧,打字会感觉迟缓。",
     devCommands: "开启 DEV 模式的命令",
     devCommandsHelp: "当标签页的命令行运行其中某个程序（命令的第一个词；用逗号或空格分隔）时，该标签页进入 DEV 模式，shell 提示符返回时退出。DEV 模式会把标签页放到右侧的一列，显示 git 分支，从程序启动所在的项目开始像 VS Code 一样列出文件，并为该标签页发送桌面通知。终端下方栏右端的 DEV 按钮可手动开启或关闭。",
+    devFolderInFooter: "在 DEV 模式下于终端下方栏中显示其文件夹",
+    devFolderInFooterHelp:
+      "在 DEV 模式下，每个终端下方栏的右端显示其所在文件夹的名称（仅最后一部分），以便区分同一标签页中的终端。",
+    recentFolderLimit: "要记住的 DEV 模式最近文件夹数",
+    recentFolderLimitHelp: "资源管理器“最近的文件夹”列出的使用过 DEV 模式的文件夹数量，1 到 50。",
   },
   ssh: {
     remoteMonitor: "远程监视栏（SSH 标签页）",

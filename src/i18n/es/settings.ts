@@ -90,6 +90,11 @@ export const settings: Messages<typeof en> = {
     gpuAccelerationHelp: "Los terminales se dibujan con WebGL en la tarjeta gráfica, lo que mantiene fluidos los programas que redibujan la pantalla a menudo (herramientas de IA de línea de comandos, htop). Si WebGL no está disponible o la tarjeta gráfica se reinicia, los terminales pasan solos al renderizador estándar. Desactívalo si el texto se ve mal o parpadea con tu controlador gráfico. En Linux viene desactivada: WebKitGTK muestra un terminal WebGL con varios fotogramas de retraso y escribir se nota lento.",
     devCommands: "Comandos que activan el modo DEV",
     devCommandsHelp: "Una pestaña pasa a modo DEV cuando su línea de comandos ejecuta uno de estos programas (la primera palabra del comando; sepáralos con comas o espacios) y vuelve cuando reaparece el prompt del shell. El modo DEV pasa las pestañas a una columna a la derecha, muestra la rama de git, lista los archivos como VS Code desde el proyecto donde arrancó el programa y envía notificaciones de escritorio de esa pestaña. El botón DEV a la derecha de la barra bajo el terminal lo activa o desactiva a mano.",
+    devFolderInFooter: "Mostrar la carpeta del terminal en la barra de debajo en el modo DEV",
+    devFolderInFooterHelp:
+      "En el modo DEV, el extremo derecho de la barra bajo cada terminal muestra el nombre de la carpeta en la que está (solo su última parte), para distinguir los terminales de una pestaña.",
+    recentFolderLimit: "Carpetas recientes del modo DEV que recordar",
+    recentFolderLimitHelp: "Cuántas carpetas en las que se usó el modo DEV lista Carpetas recientes del Explorador, de 1 a 50.",
   },
   ssh: {
     remoteMonitor: "Barra de monitor remoto (pestañas SSH)",

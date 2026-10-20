@@ -483,6 +483,19 @@ describe("SettingsDialog", () => {
       );
     });
 
+    it("chooses how many recent DEV mode folders to keep, and whether the bar under a DEV terminal names its folder", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+      const limit = screen.getByLabelText("Recent DEV mode folders to remember") as HTMLInputElement;
+      expect(limit.value).toBe("10");
+      fireEvent.change(limit, { target: { value: "99" } });
+      const folder = screen.getByLabelText("Show the terminal's folder in the bar under it in DEV mode") as HTMLInputElement;
+      expect(folder.checked).toBe(true);
+      fireEvent.click(folder);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ recentFolderLimit: 50, devFolderInFooter: false }));
+    });
+
     it("changes the terminal's folder with the file browser by default, and saves the choice (L16)", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Files" }));

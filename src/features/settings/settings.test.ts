@@ -58,6 +58,8 @@ describe("parseSettings", () => {
       devColumnCollapsed: false,
       devColumnHideWhenCollapsed: false,
       devColumnAtStartup: "last",
+      recentFolderLimit: 10,
+      devFolderInFooter: true,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -81,6 +83,16 @@ describe("parseSettings", () => {
     expect(at("collapsed", false)).toBe(true);
     expect(parseSettings(JSON.stringify({ devColumnAtStartup: "sideways" })).devColumnAtStartup).toBe("last");
     expect(parseSettings(JSON.stringify({ devColumnHideWhenCollapsed: true })).devColumnHideWhenCollapsed).toBe(true);
+  });
+
+  it("keeps between 1 and 50 recent DEV mode folders, 10 by default", () => {
+    const of = (recentFolderLimit: unknown) => parseSettings(JSON.stringify({ recentFolderLimit })).recentFolderLimit;
+    expect(of(20)).toBe(20);
+    expect(of(0)).toBe(1);
+    expect(of(99)).toBe(50);
+    expect(of(7.6)).toBe(8);
+    expect(of("many")).toBe(10);
+    expect(parseSettings(JSON.stringify({ devFolderInFooter: false })).devFolderInFooter).toBe(false);
   });
 
   it("reads where the file viewer opens, the left when unknown", () => {
@@ -153,6 +165,8 @@ describe("parseSettings", () => {
       devColumnCollapsed: false,
       devColumnHideWhenCollapsed: false,
       devColumnAtStartup: "last",
+      recentFolderLimit: 10,
+      devFolderInFooter: true,
     });
   });
 
@@ -329,6 +343,8 @@ describe("serializeSettings", () => {
       devColumnCollapsed: true,
       devColumnHideWhenCollapsed: true,
       devColumnAtStartup: "last" as const,
+      recentFolderLimit: 25,
+      devFolderInFooter: false,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });

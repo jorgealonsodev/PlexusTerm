@@ -447,8 +447,11 @@ function AppContent() {
   };
   const dev = useDevMode(locateProject);
   const { forget: forgetDev, toggle: devToggle, show: devShow } = dev;
+  const { recentFolderLimit } = terminalSettings.settings;
   /** The last local folders DEV mode was used in, newest first (the Explorer's Recent folders). */
-  const [recentFolders, setRecentFolders] = useState<readonly string[]>(loadRecentFolders);
+  const [savedRecentFolders, setRecentFolders] = useState<readonly string[]>(loadRecentFolders);
+  // A lower limit in Settings shortens the list at once; the next folder saves it shortened.
+  const recentFolders = savedRecentFolders.slice(0, recentFolderLimit);
   /** Where the recent folders' menu opened by its shortcut shows, or null while closed. */
   const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null);
   /** The project each local DEV tab was last recorded with: a tab is recorded once per project. */
@@ -461,12 +464,12 @@ function AppContent() {
       if (folder === null || tab.target.type !== "local" || recordedDev.current.get(tab.key) === folder) continue;
       recordedDev.current.set(tab.key, folder);
       setRecentFolders((prev) => {
-        const next = addRecentFolder(prev, folder);
+        const next = addRecentFolder(prev, folder, recentFolderLimit);
         if (next !== prev) saveRecentFolders(next);
         return next;
       });
     }
-  }, [state.tabs, dev.state]);
+  }, [state.tabs, dev.state, recentFolderLimit]);
   /** A tab's panes other than `pane` and its own viewer and chat: what DEV mode on `pane` hides. */
   const othersOf = (tab: Tab, pane: string) => {
     const linkOf = (id: string) => tab.chats[id] ?? tab.viewers?.[id];
@@ -1789,6 +1792,11 @@ function AppContent() {
                             const branch = tabDev && !bare ? paneMeta[paneId]?.branch : null;
                             const monitor = tab.target.type === "ssh" && settings.remoteMonitor && !bare;
                             const devButton = DEV_TARGETS.has(tab.target.type);
+                            // DEV mode names each terminal's folder, to tell a tab's terminals apart.
+                            const folder =
+                              tabDev && settings.devFolderInFooter
+                                ? (paneMeta[paneId]?.cwd ?? (tabDev.pane === paneId ? tabDev.folder : null))
+                                : null;
                             if (!branch && !monitor && !devButton) return null;
                             const devShortcut = shortcutLabel("toggleDevMode", settings.shortcuts);
                             return (
@@ -1800,6 +1808,11 @@ function AppContent() {
                                   </span>
                                 )}
                                 {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
+                                {folder && (
+                                  <span className="pane-footer__folder" dir="auto" title={folder}>
+                                    {basename(folder) || folder}
+                                  </span>
+                                )}
                                 {devButton && (
                                   <button
                                     type="button"

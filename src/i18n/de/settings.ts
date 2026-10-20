@@ -90,6 +90,11 @@ export const settings: Messages<typeof en> = {
     gpuAccelerationHelp: "Terminals werden mit WebGL auf der Grafikkarte gezeichnet, damit Programme, die den Bildschirm oft neu zeichnen (KI-Kommandozeilenwerkzeuge, htop), flüssig bleiben. Ist WebGL nicht verfügbar oder wird die Grafikkarte zurückgesetzt, wechseln die Terminals von selbst zum Standard-Renderer. Deaktivieren, wenn Text mit deinem Grafiktreiber falsch aussieht oder flackert. Unter Linux ist sie standardmäßig aus: WebKitGTK zeigt ein WebGL-Terminal mehrere Bilder verspätet an, sodass sich das Tippen träge anfühlt.",
     devCommands: "Befehle, die den DEV-Modus einschalten",
     devCommandsHelp: "Ein Tab wechselt in den DEV-Modus, wenn seine Befehlszeile eines dieser Programme startet (das erste Wort des Befehls; durch Kommas oder Leerzeichen getrennt), und zurück, wenn der Prompt der Shell wiederkommt. Der DEV-Modus zeigt die Tabs als Spalte rechts, zeigt den Git-Branch, listet die Dateien wie VS Code ab dem Projekt, in dem das Programm gestartet wurde, und sendet Desktop-Benachrichtigungen für diesen Tab. Die DEV-Schaltfläche rechts in der Leiste unter dem Terminal schaltet ihn von Hand ein oder aus.",
+    devFolderInFooter: "Ordner des Terminals im DEV-Modus in der Leiste darunter anzeigen",
+    devFolderInFooterHelp:
+      "Im DEV-Modus zeigt das rechte Ende der Leiste unter jedem Terminal den Namen seines Ordners (nur den letzten Teil), um die Terminals eines Tabs zu unterscheiden.",
+    recentFolderLimit: "Zu merkende Ordner des DEV-Modus",
+    recentFolderLimitHelp: "Wie viele Ordner, in denen der DEV-Modus verwendet wurde, die zuletzt verwendeten Ordner des Explorers auflisten, von 1 bis 50.",
   },
   ssh: {
     remoteMonitor: "Remote-Monitorleiste (SSH-Tabs)",

@@ -90,6 +90,11 @@ export const settings: Messages<typeof en> = {
     gpuAccelerationHelp: "Les terminaux sont dessinés avec WebGL sur la carte graphique, ce qui garde fluides les programmes qui redessinent souvent l'écran (outils d'IA en ligne de commande, htop). Si WebGL n'est pas disponible ou si la carte graphique se réinitialise, les terminaux passent d'eux-mêmes au rendu standard. Désactivez-la si le texte s'affiche mal ou scintille avec votre pilote graphique. Sous Linux, elle est désactivée par défaut : WebKitGTK affiche un terminal WebGL avec plusieurs images de retard, et la saisie paraît lente.",
     devCommands: "Commandes qui activent le mode DEV",
     devCommandsHelp: "Un onglet passe en mode DEV quand sa ligne de commande lance l’un de ces programmes (le premier mot de la commande ; séparés par des virgules ou des espaces) et en sort quand l’invite du shell revient. Le mode DEV place les onglets dans une colonne à droite, affiche la branche git, liste les fichiers comme VS Code depuis le projet où le programme a démarré et envoie des notifications de bureau pour cet onglet. Le bouton DEV à droite de la barre sous le terminal l’active ou le désactive à la main.",
+    devFolderInFooter: "Afficher le dossier du terminal dans la barre en dessous en mode DEV",
+    devFolderInFooterHelp:
+      "En mode DEV, l’extrémité droite de la barre sous chaque terminal affiche le nom du dossier où il se trouve (sa dernière partie seulement), pour distinguer les terminaux d’un onglet.",
+    recentFolderLimit: "Dossiers récents du mode DEV à retenir",
+    recentFolderLimitHelp: "Combien de dossiers où le mode DEV a été utilisé la liste Dossiers récents de l’Explorateur affiche, de 1 à 50.",
   },
   ssh: {
     remoteMonitor: "Barre du moniteur distant (onglets SSH)",

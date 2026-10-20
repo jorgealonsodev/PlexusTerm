@@ -10,6 +10,7 @@ import {
 } from "../panes/shortcuts";
 import { isValidShortcut } from "./shortcutCapture";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
+import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -134,6 +135,10 @@ export interface TerminalSettings {
   devColumnHideWhenCollapsed: boolean;
   /** How DEV mode's tab column opens with PlexusTerm: as it was left, always open or always folded. */
   devColumnAtStartup: SidebarAtStartup;
+  /** How many recent DEV mode folders the Explorer keeps, 1..50. */
+  recentFolderLimit: number;
+  /** In DEV mode the bar under each terminal names its folder (the last part of the path). */
+  devFolderInFooter: boolean;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -209,12 +214,15 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
+  recentFolderLimit: DEFAULT_RECENT_FOLDERS,
+  devFolderInFooter: true,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
 export const clampUiFontSize = (size: number) => Math.min(MAX_UI_FONT_SIZE, Math.max(MIN_UI_FONT_SIZE, Math.round(size)));
 export const clampChatFontSize = (size: number) =>
   Math.min(MAX_CHAT_FONT_SIZE, Math.max(MIN_CHAT_FONT_SIZE, Math.round(size)));
+export const clampRecentFolderLimit = (count: number) => Math.min(MAX_RECENT_FOLDERS, Math.max(1, Math.round(count)));
 export const clampViewerFontSize = (size: number) =>
   Math.min(MAX_VIEWER_FONT_SIZE, Math.max(MIN_VIEWER_FONT_SIZE, Math.round(size)));
 const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
@@ -391,6 +399,8 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
         : sidebarAtStartupOf(value.devColumnAtStartup) === "collapsed",
     devColumnHideWhenCollapsed: bool(value.devColumnHideWhenCollapsed, d.devColumnHideWhenCollapsed),
     devColumnAtStartup: sidebarAtStartupOf(value.devColumnAtStartup),
+    recentFolderLimit: size(value.recentFolderLimit, clampRecentFolderLimit, d.recentFolderLimit),
+    devFolderInFooter: bool(value.devFolderInFooter, d.devFolderInFooter),
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),
     localCwd: cleanLocalShell(value.localCwd),

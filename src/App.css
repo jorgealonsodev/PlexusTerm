@@ -2354,6 +2354,21 @@ body.is-dragging-path {
     background-color 150ms ease;
 }
 
+/* DEV mode: the terminal's folder at the right end of the bar, just before the DEV option. */
+.pane-footer__folder {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-inline-start: auto;
+  overflow: hidden;
+  color: var(--text);
+  font-size: calc(12px * var(--ui-scale, 1));
+  text-overflow: ellipsis;
+}
+
+.pane-footer__folder + .pane-footer__dev {
+  margin-inline-start: 0;
+}
+
 .pane-footer__dev svg {
   flex: none;
 }

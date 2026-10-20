@@ -420,6 +420,32 @@ describe("DEV mode (S10, S13)", () => {
     localStorage.clear();
   });
 
+  it("names the terminal's folder at the right of the bar under it, only in DEV mode and while Settings allow it", async () => {
+    await renderApp();
+    act(() => stub.props.onCwd?.("/home/me/repo/src"));
+    await settle();
+    const folder = () => document.querySelector(".pane-footer__folder");
+    expect(folder()).toBeNull();
+    await run("claude");
+    expect(folder()?.textContent).toBe("src");
+    expect(folder()?.getAttribute("title")).toBe("/home/me/repo/src");
+    cleanup();
+    await renderApp({ devFolderInFooter: false });
+    await run("claude");
+    expect(folder()).toBeNull();
+  });
+
+  it("keeps only as many recent folders as Settings ask", async () => {
+    localStorage.setItem("plexusterm.recentDevFolders", JSON.stringify(["/home/me/repo", "/tmp"]));
+    await renderApp({ recentFolderLimit: 1 });
+    fireEvent.click(devButton());
+    await settle();
+    expect(JSON.parse(localStorage.getItem("plexusterm.recentDevFolders")!)).toEqual(["/home/me/repo/src"]);
+    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/home/me/repo/src"]);
+    localStorage.clear();
+  });
+
   it("folds the DEV tab column to its icons from the button next to Settings, shown only in DEV mode", async () => {
     await renderApp();
     expect(screen.queryByRole("button", { name: "Hide DEV tab column" })).toBeNull();
