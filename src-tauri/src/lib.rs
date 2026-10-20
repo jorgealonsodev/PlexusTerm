@@ -41,8 +41,12 @@ enum TerminalEvent {
     /// First event: the session's share tap, to share it (`share_start`).
     Tap(u64),
     Output(String),
-    /// While shared: the number of the output just sent, for the pane's snapshots.
-    Seq(u64),
+    /// Output of a shared session with its number, in one event so a snapshot never claims output
+    /// the pane has not been given yet.
+    SharedOutput {
+        data: String,
+        seq: u64,
+    },
     Exit(Option<u32>),
 }
 
@@ -60,11 +64,10 @@ impl ChannelSink {
             coalesce::forward(rx, |event| match event {
                 coalesce::Event::Output(text) => {
                     diag::mark("S", text.len());
-                    let seq = tap.output(text.as_bytes());
-                    let _ = channel.send(TerminalEvent::Output(text));
-                    if let Some(seq) = seq {
-                        let _ = channel.send(TerminalEvent::Seq(seq));
-                    }
+                    let _ = channel.send(match tap.output(text.as_bytes()) {
+                        Some(seq) => TerminalEvent::SharedOutput { data: text, seq },
+                        None => TerminalEvent::Output(text),
+                    });
                 }
                 coalesce::Event::Exit(code) => {
                     tap.exited();

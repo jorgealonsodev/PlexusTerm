@@ -34,6 +34,7 @@ function fakePane(overrides: Partial<SharePane> = {}): SharePane & { injected: s
     sharerTypedAt: () => -Infinity,
     atPassword: () => false,
     fullScreen: () => false,
+    lineEmpty: () => true,
     onResize: () => () => {},
     ...overrides,
   };
@@ -120,9 +121,25 @@ describe("useShares", () => {
     expect(api.shareCommand).toHaveBeenCalledWith(3, { cmd: "snapshot", viewer: 4, coversSeq: 5, screen: "S", full: "F" });
   });
 
-  it("types sudo -k once the share is live when asked", async () => {
+  it("types sudo -k once the share is live when asked, only on an empty command line", async () => {
     const { pane } = await started(fakePane(), true);
     expect(pane.injected).toEqual([" sudo -k\r"]);
+    const busy = await started(fakePane({ lineEmpty: () => false }), true);
+    expect(busy.pane.injected).toEqual([]);
+    expect(busy.notices).toContainEqual({ kind: "sudoSkipped", tab: "bash" });
+  });
+
+  it("drops the keys a viewer queued once the share is View only or the viewer is disconnected", async () => {
+    const { hook, pane, emit } = await started();
+    act(() => hook.result.current.command("p1", { cmd: "pause", on: true }));
+    await emit({ event: "input", data: { viewer: 4, data: "rm -rf" } });
+    await emit({ event: "input", data: { viewer: 5, data: "ls" } });
+    act(() => hook.result.current.command("p1", { cmd: "disconnect", viewer: 5 }));
+    act(() => hook.result.current.command("p1", { cmd: "viewOnly" }));
+    vi.useFakeTimers();
+    act(() => hook.result.current.command("p1", { cmd: "pause", on: false }));
+    await act(async () => vi.advanceTimersByTime(500));
+    expect(pane.injected).toEqual([]);
   });
 
   it("forgets the share when it ends and tells why", async () => {

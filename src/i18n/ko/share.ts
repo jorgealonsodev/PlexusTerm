@@ -71,6 +71,7 @@ export const share: Messages<typeof en> = {
     deny: "거부",
   },
   password: "{tab}에서 비밀번호가 필요합니다",
+  sudoSkipped: "{tab}에서 sudo -k를 실행하지 않았습니다: 명령줄이 비어 있지 않았습니다. 필요하면 직접 실행하세요.",
   passwordWait: "여기에서 비밀번호를 입력할 때까지 참여자 입력은 대기합니다.",
   expiring: "{tab} 공유가 10분 후에 끝납니다.",
   extendHour: "1시간 연장",

@@ -71,6 +71,7 @@ export const share: Messages<typeof en> = {
     deny: "رفض",
   },
   password: "مطلوب إدخال كلمة مرور في {tab}",
+  sudoSkipped: "لم يُشغَّل sudo -k في {tab}: لم يكن سطر الأوامر فارغًا. شغّله بنفسك إن احتجت.",
   passwordWait: "ينتظر إدخال المشاهدين حتى تُكتب كلمة المرور هنا.",
   expiring: "تنتهي مشاركة {tab} بعد 10 دقائق.",
   extendHour: "تمديد ساعة",

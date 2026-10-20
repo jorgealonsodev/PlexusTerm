@@ -13,7 +13,7 @@ use futures_util::{SinkExt, StreamExt};
 use plexusterm_share_client::sharer::{Action, Snapshot};
 use plexusterm_share_protocol::content::Access;
 use plexusterm_share_protocol::keys::{DerivedKeys, LinkId};
-use plexusterm_share_protocol::wire::{EndReason, RelayToSharer};
+use plexusterm_share_protocol::wire::{EndReason, RelayToSharer, SharerToRelay};
 use serde_json::json;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -55,6 +55,33 @@ pub struct Host {
     bursts: HashMap<u32, Burst>,
     /// The relay confirmed the share on the current connection; frames may flow.
     attached: bool,
+    /// Changes made while the relay was unreachable (a Disconnect's rotate and kick, a new end
+    /// time, a denial), sent once the share is back so none is lost.
+    held: Vec<String>,
+}
+
+/// What to do with a message for the relay while the share is not attached.
+#[derive(Debug, PartialEq, Eq)]
+enum Pending {
+    /// Part of attaching (`create`, `resume`) or worthless later (`ping`): send it now.
+    Send,
+    /// A change the relay must still get: keep it for when the share is back.
+    Hold,
+    /// Ending the share: with no relay to tell, the share ends here.
+    End,
+}
+
+fn pending_kind(text: &str) -> Pending {
+    match serde_json::from_str::<SharerToRelay>(text) {
+        Ok(SharerToRelay::End) => Pending::End,
+        Ok(
+            SharerToRelay::Rotate { .. }
+            | SharerToRelay::Kick { .. }
+            | SharerToRelay::Deny { .. }
+            | SharerToRelay::SetExpiry { .. },
+        ) => Pending::Hold,
+        _ => Pending::Send,
+    }
 }
 
 fn connect(endpoint: String, delay: Duration) -> Connecting {
@@ -86,6 +113,7 @@ impl Host {
             viewers: Viewers::default(),
             bursts: HashMap::new(),
             attached: false,
+            held: Vec::new(),
         }
     }
 
@@ -159,11 +187,15 @@ impl Host {
                 }
                 Some(action) = self.s.outbox.recv() => {
                     match action {
-                        Action::Text(text) => {
-                            if let Some((sink, _)) = conn.as_mut() {
-                                lost = sink.send(Message::Text(text.into())).await.is_err();
+                        Action::Text(text) => match (self.attached, pending_kind(&text)) {
+                            (false, Pending::End) => return (self.end_kind(EndReason::Stopped), None),
+                            (false, Pending::Hold) => self.held.push(text),
+                            _ => {
+                                if let Some((sink, _)) = conn.as_mut() {
+                                    lost = sink.send(Message::Text(text.into())).await.is_err();
+                                }
                             }
-                        }
+                        },
                         Action::Binary(bytes) => {
                             if self.attached && let Some((sink, _)) = conn.as_mut() {
                                 lost = sink.send(Message::Binary(bytes.into())).await.is_err();
@@ -175,6 +207,15 @@ impl Host {
                                     let _ = sink.close().await;
                                 }
                                 return done;
+                            }
+                            // Back on the relay: what changed meanwhile goes now, in order.
+                            if self.attached && !self.held.is_empty() && let Some((sink, _)) = conn.as_mut() {
+                                for text in std::mem::take(&mut self.held) {
+                                    if sink.send(Message::Text(text.into())).await.is_err() {
+                                        lost = true;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -328,24 +369,25 @@ impl Host {
                 self.log("expiry", json!({ "expiresAt": expires_at }));
                 self.emit(ShareEvent::Expiry { expires_at });
             }
-            Action::Ended { reason } => {
-                let kind = if self.s.core.program_exited.load(Ordering::Relaxed) {
-                    EndKind::ProgramExited
-                } else {
-                    match reason {
-                        EndReason::Stopped => EndKind::Stopped,
-                        EndReason::Expired => EndKind::Expired,
-                        EndReason::Offline => EndKind::Offline,
-                        EndReason::Idle => EndKind::Idle,
-                    }
-                };
-                return Some((kind, None));
-            }
+            Action::Ended { reason } => return Some((self.end_kind(reason), None)),
             Action::Refused { code } => {
                 return Some((EndKind::Refused, Some(code_name(code))));
             }
         }
         None
+    }
+
+    /// How the share ended: as the relay says, unless the shared program exited.
+    fn end_kind(&self, reason: EndReason) -> EndKind {
+        if self.s.core.program_exited.load(Ordering::Relaxed) {
+            return EndKind::ProgramExited;
+        }
+        match reason {
+            EndReason::Stopped => EndKind::Stopped,
+            EndReason::Expired => EndKind::Expired,
+            EndReason::Offline => EndKind::Offline,
+            EndReason::Idle => EndKind::Idle,
+        }
     }
 
     fn command(&mut self, command: Command) {
@@ -465,5 +507,30 @@ impl Host {
         for viewer in done {
             self.flush_burst(viewer);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn changes_wait_for_the_relay_while_attaching_goes_at_once() {
+        let text = |m: &SharerToRelay| serde_json::to_string(m).unwrap();
+        assert_eq!(
+            pending_kind(&text(&SharerToRelay::Kick { viewer: 3 })),
+            Pending::Hold
+        );
+        assert_eq!(
+            pending_kind(&text(&SharerToRelay::Deny { viewer: 3 })),
+            Pending::Hold
+        );
+        assert_eq!(
+            pending_kind(&text(&SharerToRelay::SetExpiry { expires_at: 9 })),
+            Pending::Hold
+        );
+        assert_eq!(pending_kind(&text(&SharerToRelay::End)), Pending::End);
+        assert_eq!(pending_kind(&text(&SharerToRelay::Ping)), Pending::Send);
+        assert_eq!(pending_kind("not json"), Pending::Send);
     }
 }

@@ -23,8 +23,10 @@ export interface InputHold {
   push(viewer: number, data: string): void;
   /** Input that may be typed now, in order; the rest stays queued. */
   release(now: number, block: Block): HeldInput[];
-  /** A viewer left: its queued keys are dropped (nobody can type them for it any more). */
+  /** A viewer left or was disconnected: its queued keys are dropped. */
   forget(viewer: number): void;
+  /** The share became View only: no queued key may be typed any more. */
+  clear(): void;
   /** Viewers whose keys are waiting. */
   waiting(): number[];
   /** The viewer holding the input until `until`, if any. */
@@ -52,6 +54,10 @@ export function createInputHold(): InputHold {
     forget(viewer) {
       queue = queue.filter((entry) => entry.viewer !== viewer);
       if (holder?.viewer === viewer) holder = null;
+    },
+    clear() {
+      queue = [];
+      holder = null;
     },
     waiting() {
       return [...new Set(queue.map((entry) => entry.viewer))];

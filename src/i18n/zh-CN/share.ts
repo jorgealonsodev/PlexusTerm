@@ -71,6 +71,7 @@ export const share: Messages<typeof en> = {
     deny: "拒绝",
   },
   password: "{tab} 中需要输入密码",
+  sudoSkipped: "未在 {tab} 中运行 sudo -k：命令行不是空的。如有需要请自行运行。",
   passwordWait: "观看者的输入会等待，直到在这里输入密码。",
   expiring: "{tab} 的共享将在 10 分钟后结束。",
   extendHour: "延长 1 小时",

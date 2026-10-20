@@ -48,6 +48,8 @@ export function noticeText(notice: ShareNotice): string {
       });
     case "password":
       return t("share.password", { tab: notice.tab });
+    case "sudoSkipped":
+      return t("share.sudoSkipped", { tab: notice.tab });
     case "crashed":
       return t("share.crashed", { tab: notice.tab, time: shareTime(notice.at) });
     case "failed":

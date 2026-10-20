@@ -1648,8 +1648,7 @@ describe("TerminalView", () => {
       const { emit, pane, onExit } = await shared();
       expect(pane().tap()).toBeNull();
       await emit({ event: "tap", data: 42 });
-      await emit({ event: "output", data: "hello" });
-      await emit({ event: "seq", data: 3 });
+      await emit({ event: "sharedOutput", data: { data: "hello", seq: 3 } });
       expect(onExit).not.toHaveBeenCalled();
       expect(pane().tap()).toBe(42);
       expect(lastTerm().written).toContain("hello");
@@ -1659,8 +1658,7 @@ describe("TerminalView", () => {
     it("serializes the screen and the chosen history, saying which output they cover", async () => {
       const { emit, pane } = await shared();
       await emit({ event: "tap", data: 1 });
-      await emit({ event: "output", data: "abc" });
-      await emit({ event: "seq", data: 7 });
+      await emit({ event: "sharedOutput", data: { data: "abc", seq: 7 } });
       lastTerm().line = "$ ";
       await expect(pane().snapshot(1000)).resolves.toEqual({
         coversSeq: 7,
@@ -1670,8 +1668,9 @@ describe("TerminalView", () => {
       await expect(pane().snapshot("screen")).resolves.toEqual({ coversSeq: 7, screen: null, full: "SCREEN:$ " });
     });
 
-    it("types a viewer's keys into the session without reporting them as the user's", async () => {
+    it("types a viewer's keys into the session without reporting or recording them as the user's", async () => {
       const onInput = vi.fn();
+      const onCommand = vi.fn();
       let pane: import("../share/sharePane").SharePane | null = null;
       backend.start.mockImplementation(() => Promise.resolve(9));
       render(
@@ -1681,6 +1680,7 @@ describe("TerminalView", () => {
           onTitle={() => {}}
           onExit={() => {}}
           onInput={onInput}
+          onCommand={onCommand}
           registerSharePane={(p) => ((pane = p), () => {})}
         />,
       );
@@ -1690,6 +1690,7 @@ describe("TerminalView", () => {
       pane!.inject("ls\r");
       expect(backend.write).toHaveBeenCalledWith(9, "ls\r");
       expect(onInput).not.toHaveBeenCalled();
+      expect(onCommand).not.toHaveBeenCalled();
       expect(pane!.sharerTypedAt()).toBe(before);
       lastTerm().type("x");
       expect(pane!.sharerTypedAt()).toBeGreaterThan(before);

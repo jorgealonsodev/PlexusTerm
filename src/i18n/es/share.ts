@@ -70,6 +70,7 @@ export const share: Messages<typeof en> = {
     deny: "Denegar",
   },
   password: "Hace falta una contraseña en {tab}",
+  sudoSkipped: "No se ejecutó sudo -k en {tab}: la línea de comandos no estaba vacía. Ejecútalo tú si lo necesitas.",
   passwordWait: "La entrada de los espectadores espera a que se escriba la contraseña aquí.",
   expiring: "La compartición de {tab} termina dentro de 10 minutos.",
   extendHour: "Ampliar 1 hora",

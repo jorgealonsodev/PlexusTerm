@@ -46,8 +46,12 @@ impl Marker {
     }
 }
 
+/// A live share refreshes its marker every 20 s (each ping); one this old belongs to no running
+/// PlexusTerm (another instance's live shares are left alone).
+pub const STALE_SECS: u64 = 90;
+
 /// The shares that ended with a crash, read once: their markers are deleted.
-pub fn take_crashed(dir: &Path) -> Vec<Crashed> {
+pub fn take_crashed(dir: &Path, now_secs: u64) -> Vec<Crashed> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -63,6 +67,12 @@ pub fn take_crashed(dir: &Path) -> Vec<Crashed> {
             let found = std::fs::read_to_string(&path)
                 .ok()
                 .and_then(|text| serde_json::from_str::<Crashed>(&text).ok());
+            if found
+                .as_ref()
+                .is_some_and(|c| now_secs.saturating_sub(c.at) < STALE_SECS)
+            {
+                return None;
+            }
             let _ = std::fs::remove_file(&path);
             found
         })
@@ -83,19 +93,28 @@ mod tests {
         let crashed = Marker::create(dir.path(), 2, "claude", 20);
         crashed.touch(42);
         std::mem::forget(crashed);
+        let now = 42 + STALE_SECS;
         assert_eq!(
-            take_crashed(dir.path()),
+            take_crashed(dir.path(), now),
             vec![Crashed {
                 tab: "claude".into(),
                 at: 42
             }]
         );
-        assert!(take_crashed(dir.path()).is_empty());
+        assert!(take_crashed(dir.path(), now).is_empty());
+    }
+
+    #[test]
+    fn a_share_still_refreshed_by_another_instance_is_not_a_crash() {
+        let dir = tempfile::tempdir().unwrap();
+        let live = Marker::create(dir.path(), 1, "build", 1000);
+        assert!(take_crashed(dir.path(), 1000 + STALE_SECS - 1).is_empty());
+        live.remove();
     }
 
     #[test]
     fn a_missing_folder_has_no_crashes() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(take_crashed(&dir.path().join("none")).is_empty());
+        assert!(take_crashed(&dir.path().join("none"), 0).is_empty());
     }
 }

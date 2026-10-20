@@ -19,6 +19,8 @@ export interface SharePane {
   atPassword: () => boolean;
   /** A full-screen program (vim, less, an AI CLI...) is running. */
   fullScreen: () => boolean;
+  /** Nothing is typed on the command line (and no password prompt or full-screen program). */
+  lineEmpty: () => boolean;
   /** Called with the pane's new size after each resize; returns its unsubscribe function. */
   onResize: (listener: (cols: number, rows: number) => void) => () => void;
 }

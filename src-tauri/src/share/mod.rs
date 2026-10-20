@@ -415,7 +415,7 @@ impl ShareManager {
     /// The shares that ended with a crash of an earlier run (read once).
     pub fn take_crashed(&self) -> Vec<marker::Crashed> {
         self.dir()
-            .map(|d| marker::take_crashed(&d.join(MARKER_DIR)))
+            .map(|d| marker::take_crashed(&d.join(MARKER_DIR), now_secs()))
             .unwrap_or_default()
     }
 

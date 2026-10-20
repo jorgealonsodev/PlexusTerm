@@ -54,6 +54,8 @@ export type ShareNotice =
   | { kind: "ended"; tab: string; end: EndKind; code: string | null }
   | { kind: "joinRequest"; tab: string; viewer: ShareViewer }
   | { kind: "password"; tab: string }
+  /** `sudo -k` was not typed: something was on the command line, or a program had the screen. */
+  | { kind: "sudoSkipped"; tab: string }
   | { kind: "crashed"; tab: string; at: number }
   | { kind: "failed"; tab: string; error: string };
 
@@ -165,9 +167,11 @@ export function useShares(onNotice: (notice: ShareNotice) => void): Shares {
         patch(paneId, () => ({ phase: "live", links: event.data.links, expiresAt: event.data.expiresAt * 1000 }));
         const state = live.current.get(paneId);
         const pane = panes.current.get(paneId);
-        if (first && state?.sudoReset && pane && !pane.fullScreen() && !pane.atPassword()) {
+        if (first && state?.sudoReset && pane) {
+          // Only on an empty command line: typed after half a command it would run with it.
           // A leading space keeps it out of the shell's history.
-          pane.inject(" sudo -k\r");
+          if (pane.lineEmpty()) pane.inject(" sudo -k\r");
+          else noticeRef.current({ kind: "sudoSkipped", tab: share.tab });
         }
         return;
       }
@@ -200,6 +204,8 @@ export function useShares(onNotice: (notice: ShareNotice) => void): Shares {
       case "expiry":
         return patch(paneId, () => ({ expiresAt: event.data.expiresAt * 1000, expiring: false, warned: false }));
       case "links":
+        // View only: keys already waiting from typing viewers must not be typed either.
+        if (event.data.links.every((l) => l.access === "view")) live.current.get(paneId)?.hold.clear();
         return patch(paneId, (s) => ({
           links: event.data.links,
           // View only: every viewer is View only now.
@@ -301,6 +307,10 @@ export function useShares(onNotice: (notice: ShareNotice) => void): Shares {
       patch(paneId, (s) => ({ pending: viewerOnly(s.pending, cmd.viewer) }));
     }
     if (cmd.cmd === "expiry") patch(paneId, () => ({ expiring: false }));
+    // What a removed or no longer typing viewer queued is dropped at once, not when the relay
+    // confirms (it may be unreachable).
+    if (cmd.cmd === "viewOnly") live.current.get(paneId)?.hold.clear();
+    if (cmd.cmd === "disconnect") live.current.get(paneId)?.hold.forget(cmd.viewer);
     send(paneId, cmd);
   };
 

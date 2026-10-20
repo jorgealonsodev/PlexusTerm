@@ -67,6 +67,7 @@ export const share = {
     deny: "Deny",
   },
   password: "A password is needed in {tab}",
+  sudoSkipped: "sudo -k was not run in {tab}: the command line was not empty. Run it yourself if you need to.",
   passwordWait: "Viewer input waits until the password is typed here.",
   expiring: "The share of {tab} ends in 10 minutes.",
   extendHour: "Extend 1 hour",

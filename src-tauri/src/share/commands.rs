@@ -57,7 +57,8 @@ pub const QUIT_REQUESTED_EVENT: &str = "share-quit-requested";
 /// The user confirmed quitting with shares: they end (viewers are told), then PlexusTerm exits.
 #[tauri::command]
 pub async fn share_quit(app: tauri::AppHandle, shares: State<'_, ShareManager>) -> Result<(), ()> {
-    shares.stop_all(Duration::from_secs(5)).await;
+    // Longer than a share takes to stop (the relay's confirmation, 5 s at most, then a tick).
+    shares.stop_all(Duration::from_secs(8)).await;
     app.exit(0);
     Ok(())
 }

@@ -491,11 +491,16 @@ export function TerminalView({
         term.write(`${t("terminal.view.connecting", { target: `${target.host}:${target.port}` })}\r\n`);
       }
       backend
-        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (msg) => {
+        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (event) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
+          // Shared output is output like any other, numbered for the snapshots of the share.
+          let msg = event;
+          if (msg.event === "sharedOutput") {
+            outputSeq = msg.data.seq;
+            msg = { event: "output", data: msg.data.data };
+          }
           if (msg.event === "tap") tap = msg.data;
-          else if (msg.event === "seq") outputSeq = msg.data;
           else if (msg.event === "output") {
             latencyMark("O", msg.data.length);
             term.write(msg.data);
@@ -778,8 +783,16 @@ export function TerminalView({
         );
       },
       inject: (data) => {
+        // Like another pane's input: never recorded in this computer's history.
         write(data);
-        track(data);
+        line = feedExternal(line, data);
+        updateSuggestion();
+      },
+      lineEmpty: () => {
+        if (fullScreen() || atSecretPrompt()) return false;
+        const row = cursorRow();
+        const empty = line.uncertain ? promptOnlyOnScreen(row.toCursor) : line.text === "";
+        return empty && !row.textAfter;
       },
       sharerTypedAt: () => lastTyped,
       atPassword: atSecretPrompt,

@@ -52,4 +52,13 @@ describe("viewer input hold rules (S3)", () => {
     expect(blockOf({ paused: false, atPassword: false, sharerTypedAt: 100 }, 100 + SHARER_HOLD_MS - 1)).toBe("sharer");
     expect(blockOf({ paused: false, atPassword: false, sharerTypedAt: 100 }, 100 + SHARER_HOLD_MS)).toBeNull();
   });
+
+  it("clears every queued key when the share becomes View only", () => {
+    const hold = createInputHold();
+    hold.push(1, "a");
+    hold.push(2, "b");
+    hold.clear();
+    expect(hold.release(0, null)).toEqual([]);
+    expect(hold.owner(0)).toBeNull();
+  });
 });

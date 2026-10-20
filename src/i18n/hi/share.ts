@@ -71,6 +71,7 @@ export const share: Messages<typeof en> = {
     deny: "अस्वीकार करें",
   },
   password: "{tab} में पासवर्ड चाहिए",
+  sudoSkipped: "{tab} में sudo -k नहीं चलाया गया: कमांड लाइन खाली नहीं थी। ज़रूरत हो तो इसे खुद चलाएँ।",
   passwordWait: "यहाँ पासवर्ड टाइप होने तक दर्शकों का इनपुट रुका रहता है।",
   expiring: "{tab} का साझा 10 मिनट में समाप्त होगा।",
   extendHour: "1 घंटा बढ़ाएँ",

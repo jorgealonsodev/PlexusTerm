@@ -71,6 +71,7 @@ export const share: Messages<typeof en> = {
     deny: "Ablehnen",
   },
   password: "In {tab} wird ein Passwort benötigt",
+  sudoSkipped: "sudo -k wurde in {tab} nicht ausgeführt: Die Befehlszeile war nicht leer. Führe es bei Bedarf selbst aus.",
   passwordWait: "Die Eingaben der Zuschauer warten, bis das Passwort hier eingegeben ist.",
   expiring: "Die Freigabe von {tab} endet in 10 Minuten.",
   extendHour: "1 Stunde verlängern",
