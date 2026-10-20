@@ -68,6 +68,18 @@ describe("pi mark", () => {
   });
 });
 
+describe("OpenCode mark", () => {
+  it("is opencode.ai's icon, its frame and lower block, without its background, in the text colour", () => {
+    render(<CliIcon cli="opencode" />);
+    const icon = screen.getByRole("img", { name: "OpenCode" });
+    expect(icon.tagName.toLowerCase()).toBe("svg");
+    expect(icon.getAttribute("viewBox")).toBe("34 34 112 112");
+    expect(icon.querySelectorAll("path").length).toBe(2);
+    expect(icon.getAttribute("fill")).toBe("currentColor");
+    expect(icon.classList.contains("cli-icon--opencode")).toBe(true);
+  });
+});
+
 describe("gentle-shell mark", () => {
   it("is gentle-ai's rose, traced to two paths, named gentle-shell", () => {
     render(<CliIcon cli="gentle-shell" />);

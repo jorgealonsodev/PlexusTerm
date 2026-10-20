@@ -2506,16 +2506,8 @@ body.is-dragging-path {
   color: var(--text);
 }
 
-.cli-icon--badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+.cli-icon--opencode {
   color: var(--text);
-  font-size: calc(8px * var(--ui-scale, 1));
-  font-weight: 700;
-  line-height: 1;
 }
 
 

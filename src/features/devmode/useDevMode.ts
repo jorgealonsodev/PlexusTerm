@@ -14,6 +14,8 @@ export function useDevMode(locate: LocateProject) {
   const nextId = useRef(1);
   /** Whether each pane's last title named a CLI: only a new CLI title turns DEV mode on. */
   const titledCli = useRef(new Map<string, boolean>());
+  /** Each pane's last title and the CLI list it was read with, for a DEV mode turned on later. */
+  const lastTitle = useRef(new Map<string, { title: string; commands: readonly string[] }>());
   const locateRef = useRef(locate);
   locateRef.current = locate;
 
@@ -45,12 +47,22 @@ export function useDevMode(locate: LocateProject) {
         const isCli = cliOfTitle(title, commands) !== null;
         const was = titledCli.current.get(pane) ?? false;
         titledCli.current.set(pane, isCli);
-        if (isCli && !was) apply({ type: "title", tab, pane, title, commands, id: id() });
+        lastTitle.current.set(pane, { title, commands });
+        // A DEV mode on without a CLI (turned on by hand while one ran) learns it from any CLI title.
+        const unknown = current.current[tab]?.cli === null;
+        if (isCli && (!was || unknown)) apply({ type: "title", tab, pane, title, commands, id: id() });
       },
       promptMark: (tab: string, pane: string) => apply({ type: "promptMark", tab, pane }),
       quiet: (tab: string, pane: string, row: string) => apply({ type: "quiet", tab, pane, row }),
       show: (tab: string, pane: string, hidden: readonly string[]) => apply({ type: "show", tab, pane, hidden }),
-      toggle: (tab: string, pane: string, hidden?: readonly string[]) => apply({ type: "toggle", tab, pane, id: id(), hidden }),
+      toggle: (tab: string, pane: string, hidden?: readonly string[]) => {
+        apply({ type: "toggle", tab, pane, id: id(), hidden });
+        // Turned on while a CLI already runs in the pane: its title names it now, not later.
+        const last = lastTitle.current.get(pane);
+        if (current.current[tab] && last && cliOfTitle(last.title, last.commands) !== null) {
+          apply({ type: "title", tab, pane, ...last, id: id() });
+        }
+      },
       forget: (panes: ReadonlyMap<string, readonly string[]>) => apply({ type: "forget", panes }),
     };
   }, [apply]);

@@ -307,6 +307,32 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
   });
 
+  it("shows the CLI's icon in the column once a CLI starts in a DEV tab turned on by hand", async () => {
+    await renderApp();
+    fireEvent.click(devButton());
+    await settle();
+    await run("claude");
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    await settle();
+    const row = within(tabBar()).getAllByRole("tab")[0];
+    expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
+  });
+
+  it("learns the running CLI again when DEV mode is turned back on by hand while the CLI runs", async () => {
+    await renderApp();
+    await run("claude");
+    act(() => stub.props.onTitle("✳ Claude Code"));
+    await settle();
+    fireEvent.click(devButton());
+    await settle();
+    expect(devOn()).toBe(false);
+    fireEvent.click(devButton());
+    await settle();
+    // The CLI keeps the title it had: the row shows its icon at once.
+    const row = within(tabBar()).getAllByRole("tab")[0];
+    expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
+  });
+
   it("opens the column's new terminal in DEV mode, in the default folder; the + on top still opens a plain one", async () => {
     await renderApp({ localCwd: "/srv/default" });
     fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
