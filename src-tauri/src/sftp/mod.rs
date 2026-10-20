@@ -176,11 +176,13 @@ pub async fn read_text(
 }
 
 /// The first [`crate::localfs::MAX_VIEW_BYTES`] of a remote text file, for the file viewer.
+/// `encoding` is an encoding id; `None` detects a BOM and falls back to UTF-8.
 pub async fn view_text(
     sftp: &SftpSession,
     path: &str,
+    encoding: Option<&str>,
 ) -> Result<crate::localfs::TextFile, SftpError> {
-    use crate::localfs::{MAX_VIEW_BYTES, text_for};
+    use crate::localfs::{MAX_VIEW_BYTES, decode_text};
 
     let meta = sftp
         .metadata(path)
@@ -192,7 +194,8 @@ pub async fn view_text(
         });
     }
     let (bytes, truncated) = read_prefix(sftp, path, MAX_VIEW_BYTES).await?;
-    text_for("view", path, bytes, truncated).map_err(|message| SftpError::Sftp { message })
+    decode_text("view", path, bytes, truncated, encoding)
+        .map_err(|message| SftpError::Sftp { message })
 }
 
 /// The first `max` bytes of a remote file, and whether it is longer.
@@ -362,14 +365,22 @@ pub async fn move_into(sftp: &SftpSession, from: &str, dir: &str) -> Result<Stri
 
 /// Replaces the text of the existing remote file `path` with `content`, but only while it still
 /// holds `expected` (the text that was opened), so changes made by someone else are never lost.
+/// `encoding` is the id to write with (`None`: UTF-8); `expected_encoding` the one `expected` was
+/// decoded with (`None`: the same as `encoding`).
 pub async fn write_text(
     sftp: &SftpSession,
     path: &str,
     expected: &str,
     content: &str,
+    encoding: Option<&str>,
+    expected_encoding: Option<&str>,
 ) -> Result<(), SftpError> {
     use russh_sftp::protocol::OpenFlags;
     use tokio::io::AsyncWriteExt;
+
+    let sftp_error = |message| SftpError::Sftp { message };
+    // Encoded first: characters the encoding cannot hold leave the file untouched.
+    let bytes = crate::localfs::encode_text(path, content, encoding).map_err(sftp_error)?;
 
     let (current, truncated) = read_prefix(sftp, path, crate::localfs::MAX_VIEW_BYTES)
         .await
@@ -379,16 +390,19 @@ pub async fn write_text(
             },
             other => other,
         })?;
-    if truncated || current != expected.as_bytes() {
-        return Err(SftpError::Sftp {
-            message: format!("cannot save {path}: it changed on disk since it was opened"),
-        });
-    }
+    crate::localfs::check_unchanged(
+        path,
+        current,
+        truncated,
+        expected,
+        expected_encoding.or(encoding),
+    )
+    .map_err(sftp_error)?;
     let mut file = sftp
         .open_with_flags(path, OpenFlags::WRITE | OpenFlags::TRUNCATE)
         .await
         .map_err(|err| failure("save", path, err))?;
-    file.write_all(content.as_bytes())
+    file.write_all(&bytes)
         .await
         .map_err(|err| failure("save", path, err))?;
     // Waits for every pending write to be acknowledged.

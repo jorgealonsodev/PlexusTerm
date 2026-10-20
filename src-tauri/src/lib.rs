@@ -386,9 +386,10 @@ async fn sftp_read_text(
 async fn sftp_view_text(
     id: u32,
     path: String,
+    encoding: Option<String>,
     ssh: State<'_, SshManager>,
 ) -> Result<localfs::TextFile, SftpError> {
-    sftp::view_text(&*ssh.sftp(id).await?, &path).await
+    sftp::view_text(&*ssh.sftp(id).await?, &path, encoding.as_deref()).await
 }
 
 #[tauri::command]
@@ -464,9 +465,19 @@ async fn sftp_write_text(
     path: String,
     expected: String,
     content: String,
+    encoding: Option<String>,
+    expected_encoding: Option<String>,
     ssh: State<'_, SshManager>,
 ) -> Result<(), SftpError> {
-    sftp::write_text(&*ssh.sftp(id).await?, &path, &expected, &content).await
+    sftp::write_text(
+        &*ssh.sftp(id).await?,
+        &path,
+        &expected,
+        &content,
+        encoding.as_deref(),
+        expected_encoding.as_deref(),
+    )
+    .await
 }
 
 const SESSIONS_FILE: &str = "sessions.json";

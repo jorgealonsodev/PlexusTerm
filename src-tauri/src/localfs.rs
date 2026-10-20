@@ -165,23 +165,34 @@ pub fn move_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
 /// Replaces the text of the existing file `path` with `content`, but only while it still holds
 /// `expected` (the text that was opened), so changes made by someone else are never lost.
 /// Writes in place, so a symlink, the file's mode and its owner are kept.
-pub fn write_text(path: &Path, expected: &str, content: &str) -> Result<(), String> {
+/// `encoding` is the id to write with (`None`: UTF-8); `expected_encoding` the one `expected` was
+/// decoded with (`None`: the same as `encoding`).
+pub fn write_text(
+    path: &Path,
+    expected: &str,
+    content: &str,
+    encoding: Option<&str>,
+    expected_encoding: Option<&str>,
+) -> Result<(), String> {
     use std::io::Write;
+    let label = path.to_string_lossy();
+    // Encoded first: characters the encoding cannot hold leave the file untouched.
+    let bytes = encode_text(&label, content, encoding)?;
     let (current, truncated) = read_prefix(path, MAX_VIEW_BYTES)
         .map_err(|err| err.replacen("cannot read", "cannot save", 1))?;
-    if truncated || current != expected.as_bytes() {
-        return Err(failure(
-            "save",
-            path,
-            "it changed on disk since it was opened",
-        ));
-    }
+    check_unchanged(
+        &label,
+        current,
+        truncated,
+        expected,
+        expected_encoding.or(encoding),
+    )?;
     let mut file = fs::OpenOptions::new()
         .write(true)
         .truncate(true)
         .open(path)
         .map_err(|err| failure("save", path, err))?;
-    file.write_all(content.as_bytes())
+    file.write_all(&bytes)
         .and_then(|()| file.sync_all())
         .map_err(|err| failure("save", path, err))
 }
@@ -241,6 +252,8 @@ pub struct TextFile {
     pub content: String,
     /// The file is longer than what was read.
     pub truncated: bool,
+    /// Id of the encoding `content` was decoded with (`utf-8`, `utf-16le`, `windows-1252`...).
+    pub encoding: String,
 }
 
 /// The text of the first bytes of a file; refused when they hold a NUL byte or invalid UTF-8
@@ -260,21 +273,226 @@ pub fn text_for(
     if bytes.contains(&0) {
         return Err(not_text());
     }
-    let content = match String::from_utf8(bytes) {
-        Ok(text) => text,
+    let content = utf8(bytes, truncated).ok_or_else(not_text)?;
+    Ok(TextFile {
+        path: path.to_string(),
+        content,
+        truncated,
+        encoding: "utf-8".to_string(),
+    })
+}
+
+const UTF8_BOM: &[u8] = b"\xEF\xBB\xBF";
+const UTF16LE_BOM: &[u8] = b"\xFF\xFE";
+const UTF16BE_BOM: &[u8] = b"\xFE\xFF";
+/// Ids of the non-Unicode encodings, as `encoding_rs` labels.
+const LEGACY_ENCODINGS: [&str; 11] = [
+    "windows-1252",
+    "iso-8859-15",
+    "iso-8859-2",
+    "windows-1250",
+    "windows-1251",
+    "koi8-r",
+    "shift_jis",
+    "euc-jp",
+    "gbk",
+    "big5",
+    "euc-kr",
+];
+
+/// How the text of one encoding id is read and written.
+#[derive(Clone, Copy)]
+enum Codec {
+    Utf8,
+    Utf8Bom,
+    Utf16 { little_endian: bool },
+    Legacy(&'static encoding_rs::Encoding),
+}
+
+fn codec_of(verb: &str, path: &str, id: &str) -> Result<Codec, String> {
+    let codec = match id {
+        "utf-8" => Some(Codec::Utf8),
+        "utf-8-bom" => Some(Codec::Utf8Bom),
+        "utf-16le" => Some(Codec::Utf16 {
+            little_endian: true,
+        }),
+        "utf-16be" => Some(Codec::Utf16 {
+            little_endian: false,
+        }),
+        _ if LEGACY_ENCODINGS.contains(&id) => {
+            encoding_rs::Encoding::for_label(id.as_bytes()).map(Codec::Legacy)
+        }
+        _ => None,
+    };
+    codec.ok_or_else(|| format!("cannot {verb} {path}: unknown encoding {id}"))
+}
+
+/// Strict UTF-8; when `truncated`, a character cut at the end is dropped.
+fn utf8(bytes: Vec<u8>, truncated: bool) -> Option<String> {
+    match String::from_utf8(bytes) {
+        Ok(text) => Some(text),
         Err(err) if truncated && err.utf8_error().error_len().is_none() => {
             let valid = err.utf8_error().valid_up_to();
             let mut bytes = err.into_bytes();
             bytes.truncate(valid);
-            String::from_utf8(bytes).map_err(|_| not_text())?
+            String::from_utf8(bytes).ok()
         }
-        Err(_) => return Err(not_text()),
+        Err(_) => None,
+    }
+}
+
+/// UTF-16 without its BOM; when `truncated`, an odd final byte or a cut surrogate pair is dropped.
+fn utf16(bytes: &[u8], truncated: bool, little_endian: bool) -> Option<String> {
+    if bytes.len() % 2 == 1 && !truncated {
+        return None;
+    }
+    // An odd final byte (only possible when truncated) is left out.
+    let (pairs, _) = bytes.as_chunks::<2>();
+    let mut units: Vec<u16> = pairs
+        .iter()
+        .map(|&pair| {
+            if little_endian {
+                u16::from_le_bytes(pair)
+            } else {
+                u16::from_be_bytes(pair)
+            }
+        })
+        .collect();
+    if truncated
+        && units
+            .last()
+            .is_some_and(|unit| (0xD800..0xDC00).contains(unit))
+    {
+        units.pop();
+    }
+    char::decode_utf16(units)
+        .collect::<Result<String, _>>()
+        .ok()
+}
+
+/// A non-Unicode encoding; when `truncated`, a multibyte character cut at the end is dropped.
+fn legacy(
+    encoding: &'static encoding_rs::Encoding,
+    bytes: &[u8],
+    truncated: bool,
+) -> Option<String> {
+    let mut decoder = encoding.new_decoder_without_bom_handling();
+    let mut text =
+        String::with_capacity(decoder.max_utf8_buffer_length_without_replacement(bytes.len())?);
+    // Not the last chunk when truncated: an incomplete final sequence stays buffered, unreported.
+    let (result, _) = decoder.decode_to_string_without_replacement(bytes, &mut text, !truncated);
+    matches!(result, encoding_rs::DecoderResult::InputEmpty).then_some(text)
+}
+
+/// The text of the first bytes of a file decoded with the encoding id `encoding`; `None` detects a
+/// UTF-8 or UTF-16 BOM (left out of the text) and otherwise reads UTF-8 like [`text_for`].
+/// A character cut by the size limit is dropped, not refused.
+pub fn decode_text(
+    verb: &str,
+    path: &str,
+    bytes: Vec<u8>,
+    truncated: bool,
+    encoding: Option<&str>,
+) -> Result<TextFile, String> {
+    let not_text = || format!("cannot {verb} {path}: it is not a text file");
+    let Some(id) = encoding else {
+        let detected = if bytes.starts_with(UTF8_BOM) {
+            "utf-8-bom"
+        } else if bytes.starts_with(UTF16LE_BOM) {
+            "utf-16le"
+        } else if bytes.starts_with(UTF16BE_BOM) {
+            "utf-16be"
+        } else {
+            return text_for(verb, path, bytes, truncated);
+        };
+        return decode_text(verb, path, bytes, truncated, Some(detected)).map_err(|_| not_text());
+    };
+    let codec = codec_of(verb, path, id)?;
+    let malformed = || format!("cannot {verb} {path}: it is not a text file in {id}");
+    if !matches!(codec, Codec::Utf16 { .. }) && bytes.contains(&0) {
+        return Err(not_text());
+    }
+    let content = match codec {
+        Codec::Utf8 => utf8(bytes, truncated).ok_or_else(not_text)?,
+        Codec::Utf8Bom => {
+            let body = bytes.strip_prefix(UTF8_BOM).unwrap_or(&bytes).to_vec();
+            utf8(body, truncated).ok_or_else(not_text)?
+        }
+        Codec::Utf16 { little_endian } => {
+            let bom = if little_endian {
+                UTF16LE_BOM
+            } else {
+                UTF16BE_BOM
+            };
+            let body = bytes.strip_prefix(bom).unwrap_or(&bytes);
+            utf16(body, truncated, little_endian).ok_or_else(malformed)?
+        }
+        Codec::Legacy(encoding) => legacy(encoding, &bytes, truncated).ok_or_else(malformed)?,
     };
     Ok(TextFile {
         path: path.to_string(),
         content,
         truncated,
+        encoding: id.to_string(),
     })
+}
+
+/// `content` as the bytes of the encoding id `encoding` (`None`: UTF-8), with the BOM of UTF-8 with
+/// BOM and UTF-16. Refused when the encoding cannot hold some of its characters.
+pub fn encode_text(path: &str, content: &str, encoding: Option<&str>) -> Result<Vec<u8>, String> {
+    let id = encoding.unwrap_or("utf-8");
+    Ok(match codec_of("save", path, id)? {
+        Codec::Utf8 => content.as_bytes().to_vec(),
+        Codec::Utf8Bom => [UTF8_BOM, content.as_bytes()].concat(),
+        // encoding_rs only decodes UTF-16.
+        Codec::Utf16 { little_endian } => {
+            let bom = if little_endian {
+                UTF16LE_BOM
+            } else {
+                UTF16BE_BOM
+            };
+            let units = content.encode_utf16().flat_map(|unit| {
+                if little_endian {
+                    unit.to_le_bytes()
+                } else {
+                    unit.to_be_bytes()
+                }
+            });
+            bom.iter().copied().chain(units).collect()
+        }
+        Codec::Legacy(encoding) => {
+            let (bytes, _, unmappable) = encoding.encode(content);
+            if unmappable {
+                return Err(format!(
+                    "cannot save {path}: some characters cannot be written in {id}"
+                ));
+            }
+            bytes.into_owned()
+        }
+    })
+}
+
+/// Whether `current` (the first bytes of a file, read up to [`MAX_VIEW_BYTES`]) still holds the
+/// text `expected` once decoded with `encoding`; refused as changed on disk otherwise.
+pub fn check_unchanged(
+    path: &str,
+    current: Vec<u8>,
+    truncated: bool,
+    expected: &str,
+    encoding: Option<&str>,
+) -> Result<(), String> {
+    let id = encoding.unwrap_or("utf-8");
+    codec_of("save", path, id)?;
+    let unchanged = !truncated
+        && decode_text("save", path, current, false, Some(id))
+            .is_ok_and(|text| text.content == expected);
+    if unchanged {
+        Ok(())
+    } else {
+        Err(format!(
+            "cannot save {path}: it changed on disk since it was opened"
+        ))
+    }
 }
 
 /// A folder's entries as text, one per line, folders ending in `/`.
@@ -291,6 +509,7 @@ pub fn listing_text(path: &str, entries: &[Entry]) -> TextFile {
         path: path.to_string(),
         content: lines.join("\n"),
         truncated: entries.len() > MAX_ATTACH_ENTRIES,
+        encoding: "utf-8".to_string(),
     }
 }
 
@@ -304,14 +523,15 @@ pub fn read_text(path: &Path) -> Result<TextFile, String> {
     text_from(&label, bytes, truncated)
 }
 
-/// The first [`MAX_VIEW_BYTES`] of a text file, for the file viewer.
-pub fn view_text(path: &Path) -> Result<TextFile, String> {
+/// The first [`MAX_VIEW_BYTES`] of a text file, for the file viewer, decoded with the encoding id
+/// `encoding` (`None`: detected, see [`decode_text`]).
+pub fn view_text(path: &Path, encoding: Option<&str>) -> Result<TextFile, String> {
     let label = path.to_string_lossy().into_owned();
     if fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false) {
         return Err(format!("cannot view {label}: it is a folder"));
     }
     let (bytes, truncated) = read_prefix(path, MAX_VIEW_BYTES)?;
-    text_for("view", &label, bytes, truncated)
+    decode_text("view", &label, bytes, truncated, encoding)
 }
 
 /// The first `max` bytes of a file, and whether it is longer.
@@ -379,8 +599,8 @@ pub async fn local_read_text(path: String) -> Result<TextFile, String> {
 
 /// A local text file for the file viewer.
 #[tauri::command]
-pub async fn local_view_text(path: String) -> Result<TextFile, String> {
-    view_text(&native(&path))
+pub async fn local_view_text(path: String, encoding: Option<String>) -> Result<TextFile, String> {
+    view_text(&native(&path), encoding.as_deref())
 }
 
 /// Saves the file viewer's text over a local file that still holds `expected`.
@@ -389,8 +609,16 @@ pub async fn local_write_text(
     path: String,
     expected: String,
     content: String,
+    encoding: Option<String>,
+    expected_encoding: Option<String>,
 ) -> Result<(), String> {
-    write_text(&native(&path), &expected, &content)
+    write_text(
+        &native(&path),
+        &expected,
+        &content,
+        encoding.as_deref(),
+        expected_encoding.as_deref(),
+    )
 }
 
 /// Moves a local file or folder into another folder; returns its new path.
@@ -562,28 +790,28 @@ mod tests {
         let long = dir.path().join("long.rs");
         let text = "x".repeat(MAX_ATTACH_BYTES * 2);
         fs::write(&long, &text).unwrap();
-        let read = view_text(&long).unwrap();
+        let read = view_text(&long, None).unwrap();
         assert_eq!(read.content, text);
         assert!(!read.truncated);
 
         let huge = dir.path().join("huge.log");
         fs::write(&huge, "y".repeat(MAX_VIEW_BYTES + 10)).unwrap();
-        let read = view_text(&huge).unwrap();
+        let read = view_text(&huge, None).unwrap();
         assert!(read.truncated);
         assert_eq!(read.content.len(), MAX_VIEW_BYTES);
 
         let binary = dir.path().join("a.bin");
         fs::write(&binary, [0x7f, b'E', b'L', b'F', 0, 1]).unwrap();
         assert_eq!(
-            view_text(&binary).unwrap_err(),
+            view_text(&binary, None).unwrap_err(),
             format!("cannot view {}: it is not a text file", binary.display())
         );
         assert_eq!(
-            view_text(dir.path()).unwrap_err(),
+            view_text(dir.path(), None).unwrap_err(),
             format!("cannot view {}: it is a folder", dir.path().display())
         );
         assert!(
-            view_text(&dir.path().join("x"))
+            view_text(&dir.path().join("x"), None)
                 .unwrap_err()
                 .starts_with("cannot read ")
         );
@@ -604,7 +832,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("a.txt");
         fs::write(&file, "old").unwrap();
-        write_text(&file, "old", "new text").unwrap();
+        write_text(&file, "old", "new text", None, None).unwrap();
         assert_eq!(fs::read_to_string(&file).unwrap(), "new text");
     }
 
@@ -613,7 +841,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("a.txt");
         fs::write(&file, "changed by someone else").unwrap();
-        let err = write_text(&file, "old", "mine").unwrap_err();
+        let err = write_text(&file, "old", "mine", None, None).unwrap_err();
         assert!(err.contains("changed on disk"), "{err}");
         assert_eq!(
             fs::read_to_string(&file).unwrap(),
@@ -625,7 +853,7 @@ mod tests {
     fn write_text_refuses_a_missing_file() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("gone.txt");
-        let err = write_text(&file, "old", "mine").unwrap_err();
+        let err = write_text(&file, "old", "mine", None, None).unwrap_err();
         assert!(err.starts_with("cannot save"), "{err}");
         assert!(!file.exists());
     }
@@ -640,7 +868,7 @@ mod tests {
         chmod(&target, 0o755).unwrap();
         let link = dir.path().join("link.sh");
         std::os::unix::fs::symlink(&target, &link).unwrap();
-        write_text(&link, "echo 1", "echo 2").unwrap();
+        write_text(&link, "echo 1", "echo 2", None, None).unwrap();
         assert!(
             fs::symlink_metadata(&link)
                 .unwrap()
@@ -650,6 +878,178 @@ mod tests {
         assert_eq!(fs::read_to_string(&target).unwrap(), "echo 2");
         let mode = fs::metadata(&target).unwrap().permissions().mode() & 0o7777;
         assert_eq!(mode, 0o755);
+    }
+
+    /// Writes `bytes` to a new file in `dir` and views it with `encoding`.
+    fn view_bytes(dir: &Path, bytes: &[u8], encoding: Option<&str>) -> Result<TextFile, String> {
+        let file = dir.join("f.txt");
+        fs::write(&file, bytes).unwrap();
+        view_text(&file, encoding)
+    }
+
+    #[test]
+    fn viewing_plain_utf8_reports_utf8_as_before() {
+        let dir = tempfile::tempdir().unwrap();
+        let read = view_bytes(dir.path(), "año\n".as_bytes(), None).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("año\n", "utf-8")
+        );
+        let attached = read_text(&dir.path().join("f.txt")).unwrap();
+        assert_eq!(attached.encoding, "utf-8");
+        assert_eq!(read_text(dir.path()).unwrap().encoding, "utf-8");
+    }
+
+    #[test]
+    fn viewing_detects_a_bom_and_leaves_it_out() {
+        let dir = tempfile::tempdir().unwrap();
+        let read = view_bytes(dir.path(), b"\xEF\xBB\xBFhi \xC3\xA9", None).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("hi é", "utf-8-bom")
+        );
+        let read = view_bytes(dir.path(), b"\xFF\xFEh\0i\0\xE9\0", None).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("hié", "utf-16le")
+        );
+        let read = view_bytes(dir.path(), b"\xFE\xFF\0h\0i\0\xE9", None).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("hié", "utf-16be")
+        );
+    }
+
+    #[test]
+    fn viewing_with_an_encoding_decodes_with_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let read = view_bytes(dir.path(), b"caf\xE9 \x80", Some("windows-1252")).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("café €", "windows-1252")
+        );
+        let read = view_bytes(dir.path(), b"\x93\xFA\x96\x7B", Some("shift_jis")).unwrap();
+        assert_eq!(read.content, "日本");
+        // UTF-16 text holds NUL bytes; without a BOM it is decoded as asked.
+        let read = view_bytes(dir.path(), b"a\0b\0", Some("utf-16le")).unwrap();
+        assert_eq!(
+            (read.content.as_str(), read.encoding.as_str()),
+            ("ab", "utf-16le")
+        );
+        let read = view_bytes(dir.path(), b"\xEF\xBB\xBFx", Some("utf-8-bom")).unwrap();
+        assert_eq!(read.content, "x");
+    }
+
+    #[test]
+    fn viewing_refuses_unknown_encodings_and_malformed_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.txt");
+        let label = file.display();
+        assert_eq!(
+            view_bytes(dir.path(), b"x", Some("klingon")).unwrap_err(),
+            format!("cannot view {label}: unknown encoding klingon")
+        );
+        // A Shift_JIS lead byte with nothing after it, and an odd UTF-16 length.
+        assert_eq!(
+            view_bytes(dir.path(), b"a\x93", Some("shift_jis")).unwrap_err(),
+            format!("cannot view {label}: it is not a text file in shift_jis")
+        );
+        assert_eq!(
+            view_bytes(dir.path(), b"a\0b", Some("utf-16le")).unwrap_err(),
+            format!("cannot view {label}: it is not a text file in utf-16le")
+        );
+        assert_eq!(
+            view_bytes(dir.path(), b"a\0b", Some("windows-1252")).unwrap_err(),
+            format!("cannot view {label}: it is not a text file")
+        );
+        assert_eq!(
+            view_bytes(dir.path(), b"\xC3(", Some("utf-8")).unwrap_err(),
+            format!("cannot view {label}: it is not a text file")
+        );
+    }
+
+    #[test]
+    fn a_character_cut_by_the_view_limit_is_dropped_in_any_encoding() {
+        let dir = tempfile::tempdir().unwrap();
+        // UTF-16: a surrogate pair cut after its first unit.
+        let text = format!("{}😀", "a".repeat(MAX_VIEW_BYTES / 2 - 2));
+        let mut bytes = b"\xFF\xFE".to_vec();
+        bytes.extend(text.encode_utf16().flat_map(u16::to_le_bytes));
+        let read = view_bytes(dir.path(), &bytes, None).unwrap();
+        assert!(read.truncated);
+        assert_eq!(read.content, "a".repeat(MAX_VIEW_BYTES / 2 - 2));
+        // Shift_JIS: a two-byte character cut after its first byte.
+        let mut bytes = b"a".repeat(MAX_VIEW_BYTES - 1);
+        bytes.extend(b"\x93\xFAtail");
+        let read = view_bytes(dir.path(), &bytes, Some("shift_jis")).unwrap();
+        assert!(read.truncated);
+        assert_eq!(read.content, "a".repeat(MAX_VIEW_BYTES - 1));
+    }
+
+    #[test]
+    fn writing_keeps_the_encoding_and_its_bom() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.txt");
+        let cases: [(&str, &[u8], &[u8]); 5] = [
+            ("utf-8", b"old", b"n\xC3\xA9w"),
+            ("utf-8-bom", b"\xEF\xBB\xBFold", b"\xEF\xBB\xBFn\xC3\xA9w"),
+            ("utf-16le", b"\xFF\xFEo\0l\0d\0", b"\xFF\xFEn\0\xE9\0w\0"),
+            ("utf-16be", b"\xFE\xFF\0o\0l\0d", b"\xFE\xFF\0n\0\xE9\0w"),
+            ("windows-1252", b"old", b"n\xE9w"),
+        ];
+        for (encoding, before, after) in cases {
+            fs::write(&file, before).unwrap();
+            assert_eq!(view_text(&file, Some(encoding)).unwrap().content, "old");
+            write_text(&file, "old", "néw", Some(encoding), None).unwrap();
+            assert_eq!(fs::read(&file).unwrap(), after, "{encoding}");
+            assert_eq!(view_text(&file, Some(encoding)).unwrap().content, "néw");
+        }
+    }
+
+    #[test]
+    fn writing_with_another_encoding_compares_with_the_one_it_was_opened_with() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.txt");
+        fs::write(&file, "café").unwrap();
+        // Opened as UTF-8, saved as Windows-1252.
+        write_text(&file, "café", "café!", Some("windows-1252"), Some("utf-8")).unwrap();
+        assert_eq!(fs::read(&file).unwrap(), b"caf\xE9!");
+    }
+
+    #[test]
+    fn writing_refuses_characters_the_encoding_cannot_hold() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.txt");
+        fs::write(&file, b"old").unwrap();
+        let err = write_text(&file, "old", "日本", Some("windows-1252"), None).unwrap_err();
+        assert_eq!(
+            err,
+            format!(
+                "cannot save {}: some characters cannot be written in windows-1252",
+                file.display()
+            )
+        );
+        assert_eq!(fs::read(&file).unwrap(), b"old");
+        let err = write_text(&file, "old", "x", Some("klingon"), None).unwrap_err();
+        assert_eq!(
+            err,
+            format!("cannot save {}: unknown encoding klingon", file.display())
+        );
+        assert_eq!(fs::read(&file).unwrap(), b"old");
+    }
+
+    #[test]
+    fn writing_with_an_encoding_still_refuses_a_file_that_changed() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.txt");
+        fs::write(&file, b"caf\xE9 changed").unwrap();
+        let err = write_text(&file, "café", "mine", Some("windows-1252"), None).unwrap_err();
+        assert!(err.contains("changed on disk"), "{err}");
+        assert_eq!(fs::read(&file).unwrap(), b"caf\xE9 changed");
+        // Bytes that do not decode in the encoding count as changed too.
+        fs::write(&file, b"a\0b").unwrap();
+        let err = write_text(&file, "ab", "mine", Some("utf-16le"), None).unwrap_err();
+        assert!(err.contains("changed on disk"), "{err}");
     }
 
     #[test]

@@ -45,6 +45,8 @@ hmac = "=0.13.0"
 tempfile = "3.27.0"
 # AI providers over HTTPS (same version Tauri already pulls in); rustls with the OS trust store.
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
+# Legacy text encodings (Windows-1252, Shift_JIS...) the file viewer reads and saves.
+encoding_rs = "0.8.42"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

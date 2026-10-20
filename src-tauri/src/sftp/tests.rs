@@ -248,7 +248,7 @@ async fn write_text_saves_over_the_text_that_was_opened() {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(root.path().join("a.txt"), b"a much longer old text").unwrap();
     let (sftp, _mgr, _dir) = session(root.path()).await;
-    write_text(&sftp, "/a.txt", "a much longer old text", "short")
+    write_text(&sftp, "/a.txt", "a much longer old text", "short", None, None)
         .await
         .unwrap();
     assert_eq!(std::fs::read(root.path().join("a.txt")).unwrap(), b"short");
@@ -259,7 +259,7 @@ async fn write_text_refuses_a_file_that_changed_since_it_was_opened() {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(root.path().join("a.txt"), b"theirs").unwrap();
     let (sftp, _mgr, _dir) = session(root.path()).await;
-    let err = write_text(&sftp, "/a.txt", "old", "mine")
+    let err = write_text(&sftp, "/a.txt", "old", "mine", None, None)
         .await
         .unwrap_err();
     assert!(err.to_string().contains("changed on disk"), "{err}");
