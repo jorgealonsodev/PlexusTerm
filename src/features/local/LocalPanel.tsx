@@ -393,14 +393,15 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     };
     // A prompt coming back lists the folders again, which bumps `loads`.
   }, [readRepo, selected, loads]);
-  /** With added folders, every folder shows as a root, as in a VS Code workspace. */
-  const asRoots = showWorkspace && workspace.folders.length > 0;
+  /** In DEV mode every folder shows as a root, the main one first, as in a VS Code workspace. */
+  const asRoots = devStyle;
   const [mainOpen, setMainOpen] = useState(true);
 
   /** Collapse Folders: every open folder closes, and with several roots the roots too (as VS Code's). */
   const collapseAll = () => {
     setCollapse((n) => n + 1);
-    if (asRoots) setMainOpen(false);
+    // With added folders the roots close too; alone, the main one stays open.
+    if (showWorkspace && workspace.folders.length > 0) setMainOpen(false);
   };
 
   /** Adds a folder chosen in the system dialog to the workspace, once. */
@@ -650,7 +651,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               open={mainOpen}
               onToggle={() => setMainOpen((v) => !v)}
               decoration={rootDecoration(gitEntries)}
-              titleProps={rootProps(path, () => void removeMain())}
+              // Alone, the main folder cannot leave the workspace.
+              titleProps={rootProps(path, showWorkspace && workspace.folders.length > 0 ? () => void removeMain() : undefined)}
             >
               {mainTree}
             </WorkspaceRoot>

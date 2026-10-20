@@ -204,8 +204,8 @@ describe("LocalPanel git status", () => {
       { path: "src/new.ts", status: "untracked" },
     ]);
     render(panel({ devStyle: true, git }));
-    const badge = await screen.findByTitle("Modified");
-    expect(badge.textContent).toBe("M");
+    // The file's letter; the root has its own dot.
+    await waitFor(() => expect(within(screen.getByText("notes.txt").closest("li")!).getByTitle("Modified").textContent).toBe("M"));
     expect(mocked.gitStatus).toHaveBeenCalledWith("/home/me");
     expect(screen.getByText("notes.txt").className).toContain("git--modified");
     const folder = screen.getByText("src");
@@ -564,10 +564,17 @@ describe("workspace folders in DEV mode", () => {
     expect(screen.getByRole<HTMLInputElement>("textbox", { name: /path|folder/i }).value).toBe("/work/api");
   });
 
-  it("keeps the plain tree, without root titles, while no folder is added", async () => {
+  it("shows the folder as a root even while no folder is added, without Remove folder from workspace", async () => {
     render(panel({ devStyle: true, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
-    await screen.findByText("notes.txt");
-    expect(screen.queryByRole("group")).toBeNull();
+    const main = await screen.findByRole("group", { name: "me" });
+    expect(await within(main).findByText("notes.txt")).toBeTruthy();
+    // It folds like any root.
+    fireEvent.click(within(main).getByRole("button", { name: "me" }));
+    expect(within(main).queryByText("notes.txt")).toBeNull();
+    // Alone, it cannot leave the workspace.
+    fireEvent.contextMenu(within(main).getByRole("button", { name: "me" }), { clientX: 1, clientY: 1 });
+    await screen.findByRole("menuitem", { name: "Properties" });
+    expect(screen.queryByRole("menuitem", { name: "Remove folder from workspace" })).toBeNull();
   });
 
   it("shows no added folders outside DEV mode", async () => {
