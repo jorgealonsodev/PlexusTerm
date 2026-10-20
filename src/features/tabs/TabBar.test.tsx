@@ -50,6 +50,25 @@ describe("TabBar", () => {
     expect(marks[0].closest("[role=tab]")?.className).toContain("tab--attention");
   });
 
+  it("in DEV mode's column, names the tabs after one the tabs below it", () => {
+    const onCloseRight = vi.fn();
+    render(
+      <TabBar
+        tabs={[tab("t1", "one"), tab("t2", "two")]}
+        activeKey="t1"
+        column
+        onActivate={() => {}}
+        onNew={() => {}}
+        onClose={() => {}}
+        onCloseRight={onCloseRight}
+      />,
+    );
+    fireEvent.contextMenu(screen.getByTitle("one"), { clientX: 5, clientY: 5 });
+    expect(screen.queryByRole("menuitem", { name: "Close tabs to the right" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close tabs below" }));
+    expect(onCloseRight).toHaveBeenCalledWith("t1");
+  });
+
   it("offers duplicate, close, close others, close to the right and duplicate on right click", () => {
     const handlers = {
       onClose: vi.fn(),

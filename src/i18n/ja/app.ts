@@ -88,6 +88,7 @@ export const app: Messages<typeof en> = {
     close: "タブを閉じる",
     closeOthers: "他のタブを閉じる",
     closeRight: "右側のタブを閉じる",
+    closeBelow: "下のタブを閉じる",
     closeAll: "すべてのタブを閉じる",
     logging: "ファイルにログを記録中",
     closeNamed: "{title} を閉じる",

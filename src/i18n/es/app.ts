@@ -90,6 +90,7 @@ export const app: Messages<typeof en> = {
     close: "Cerrar pestaña",
     closeOthers: "Cerrar las demás pestañas",
     closeRight: "Cerrar pestañas a la derecha",
+    closeBelow: "Cerrar pestañas inferiores",
     closeAll: "Cerrar todas las pestañas",
     logging: "Registrando en archivo",
     closeNamed: "Cerrar {title}",

@@ -232,7 +232,8 @@ export function TabBar(props: TabBarProps) {
         disabled: tabs.length < 2,
       },
       props.onCloseRight && {
-        label: t("app.tabs.closeRight"),
+        // DEV mode lists the tabs in a column: the ones after are below, not to the right.
+        label: t(column ? "app.tabs.closeBelow" : "app.tabs.closeRight"),
         onSelect: () => props.onCloseRight!(key),
         disabled: menuIndex === tabs.length - 1,
       },

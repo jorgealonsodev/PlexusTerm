@@ -90,6 +90,7 @@ export const app: Messages<typeof en> = {
     close: "Fermer l'onglet",
     closeOthers: "Fermer les autres onglets",
     closeRight: "Fermer les onglets à droite",
+    closeBelow: "Fermer les onglets en dessous",
     closeAll: "Fermer tous les onglets",
     logging: "Journalisation dans un fichier",
     closeNamed: "Fermer {title}",

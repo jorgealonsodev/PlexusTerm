@@ -86,6 +86,7 @@ export const app = {
     close: "Close tab",
     closeOthers: "Close other tabs",
     closeRight: "Close tabs to the right",
+    closeBelow: "Close tabs below",
     closeAll: "Close all tabs",
     logging: "Logging to file",
     closeNamed: "Close {title}",

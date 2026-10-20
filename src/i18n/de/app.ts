@@ -89,6 +89,7 @@ export const app: Messages<typeof en> = {
     close: "Tab schließen",
     closeOthers: "Andere Tabs schließen",
     closeRight: "Tabs rechts schließen",
+    closeBelow: "Tabs darunter schließen",
     closeAll: "Alle Tabs schließen",
     logging: "Protokollierung in Datei",
     closeNamed: "{title} schließen",

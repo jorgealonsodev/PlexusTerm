@@ -92,6 +92,7 @@ export const app: Messages<typeof en> = {
     close: "إغلاق علامة التبويب",
     closeOthers: "إغلاق علامات التبويب الأخرى",
     closeRight: "إغلاق علامات التبويب على اليمين",
+    closeBelow: "إغلاق علامات التبويب في الأسفل",
     closeAll: "إغلاق كل علامات التبويب",
     logging: "يجري التسجيل في ملف",
     closeNamed: "إغلاق {title}",

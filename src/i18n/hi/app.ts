@@ -88,6 +88,7 @@ export const app: Messages<typeof en> = {
     close: "टैब बंद करें",
     closeOthers: "अन्य टैब बंद करें",
     closeRight: "दाईं ओर के टैब बंद करें",
+    closeBelow: "नीचे के टैब बंद करें",
     closeAll: "सभी टैब बंद करें",
     logging: "फ़ाइल में लॉग हो रहा है",
     closeNamed: "{title} बंद करें",

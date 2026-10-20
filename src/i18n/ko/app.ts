@@ -87,6 +87,7 @@ export const app: Messages<typeof en> = {
     close: "탭 닫기",
     closeOthers: "다른 탭 닫기",
     closeRight: "오른쪽 탭 닫기",
+    closeBelow: "아래 탭 닫기",
     closeAll: "모든 탭 닫기",
     logging: "파일에 기록 중",
     closeNamed: "{title} 닫기",

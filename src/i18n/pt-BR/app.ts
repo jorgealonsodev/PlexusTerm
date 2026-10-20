@@ -90,6 +90,7 @@ export const app: Messages<typeof en> = {
     close: "Fechar aba",
     closeOthers: "Fechar as outras abas",
     closeRight: "Fechar abas à direita",
+    closeBelow: "Fechar abas abaixo",
     closeAll: "Fechar todas as abas",
     logging: "Registrando em arquivo",
     closeNamed: "Fechar {title}",
