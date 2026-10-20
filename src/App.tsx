@@ -532,12 +532,13 @@ function AppContent() {
       .map(([key]) => key),
   );
   /** The tab column of DEV mode (S13): each tab's CLI and project folder (its terminal's folder outside DEV mode). */
-  /** The terminals each DEV tab keeps out of sight, for the column: named after their folder. */
+  /** The terminals of each DEV tab that keeps some out of sight, for the column; `shown`: the one on screen. */
   const hiddenPanes = new Map(
     state.tabs.flatMap((tab) => {
       const hidden = dev.state[tab.key]?.hidden ?? [];
-      const terminals = paneIds(tab.layout).filter((id) => hidden.includes(id) && isTerminalPane(tab, id));
-      if (terminals.length === 0 || terminals.length === paneIds(tab.layout).length) return [];
+      const terminals = paneIds(tab.layout).filter((id) => isTerminalPane(tab, id));
+      const out = terminals.filter((id) => hidden.includes(id));
+      if (out.length === 0 || out.length === terminals.length) return [];
       return [
         [
           tab.key,
@@ -549,6 +550,7 @@ function AppContent() {
               id,
               title: paneMeta[id]?.title || t("app.tabs.terminalN", { n }),
               folder: cwd ? basename(cwd) || cwd : null,
+              shown: !hidden.includes(id),
             };
           }),
         ] as const,

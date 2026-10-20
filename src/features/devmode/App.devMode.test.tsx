@@ -186,11 +186,13 @@ describe("DEV mode (S10, S13)", () => {
     const others = () => within(tabBar()).getByRole("list", { name: /^Other terminals of / });
     const rows = () => [...others().querySelectorAll<HTMLElement>(".tab")];
     const names = () => rows().map((r) => r.querySelector(".tab__title")?.textContent);
-    expect(names()).toEqual(["Terminal 1"]);
+    const marked = () => rows().map((r) => r.classList.contains("tab--active"));
+    expect(names()).toEqual(["Terminal 1", "Terminal 2"]);
+    expect(marked()).toEqual([false, true]);
     fireEvent.mouseDown(rows()[0], { button: 0 });
     await settle();
     expect(shown()).toEqual([left]);
-    expect(names()).toEqual(["Terminal 2"]);
+    expect(marked()).toEqual([true, false]);
     expect(right.isConnected).toBe(true);
   });
 

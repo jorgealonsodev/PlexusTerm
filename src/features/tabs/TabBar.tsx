@@ -23,8 +23,11 @@ interface TabBarProps {
   column?: boolean;
   /** What the column shows of each tab: the CLI it runs (null for none) and its project folder's name. */
   details?: ReadonlyMap<string, { cli: string | null; folder: string | null }>;
-  /** In the column: the terminals a DEV tab keeps out of sight, listed under its row by tab key. */
-  hiddenPanes?: ReadonlyMap<string, readonly { id: string; title: string; folder: string | null }[]>;
+  /**
+   * In the column: the terminals of a DEV tab that keeps some out of sight, listed under its row by
+   * tab key; `shown` marks the one on screen.
+   */
+  hiddenPanes?: ReadonlyMap<string, readonly { id: string; title: string; folder: string | null; shown: boolean }[]>;
   /** A hidden terminal of the column was clicked: the tab shows it instead. */
   onShowPane?: (key: string, pane: string) => void;
   /** A hidden terminal's close button (or middle click). */
@@ -216,16 +219,17 @@ export function TabBar(props: TabBarProps) {
                 return (
                   <li key={pane.id}>
                     <div
-                      className="tab tab--row"
+                      className={`tab${pane.shown ? " tab--active" : ""} tab--row`}
                       role="button"
                       tabIndex={0}
+                      aria-current={pane.shown || undefined}
                       title={pane.title}
                       onMouseDown={(e) => {
                         if (e.button === 1) props.onClosePane?.(tab.key, pane.id);
-                        else if (e.button === 0) show();
+                        else if (e.button === 0 && !pane.shown) show();
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") show();
+                        if ((e.key === "Enter" || e.key === " ") && !pane.shown) show();
                       }}
                     >
                       <CliIcon cli={null} />

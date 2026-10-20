@@ -153,8 +153,9 @@ describe("TabBar", () => {
               [
                 "t1",
                 [
-                  { id: "t1-p2", title: "me@box: ~/api", folder: "api" },
-                  { id: "t1-p3", title: "Terminal 3", folder: null },
+                  { id: "t1-p1", title: "Terminal 1", folder: null, shown: true },
+                  { id: "t1-p2", title: "me@box: ~/api", folder: "api", shown: false },
+                  { id: "t1-p3", title: "Terminal 3", folder: null, shown: false },
                 ],
               ],
             ])
@@ -169,10 +170,15 @@ describe("TabBar", () => {
       const list = screen.getByRole("list", { name: "Other terminals of one" });
       const rows = within(list).getAllByRole("listitem").map((li) => li.querySelector(".tab")!);
       // The same row as a tab's: terminal icon, title, folder and close button.
-      expect(rows.map((r) => r.className)).toEqual(["tab tab--row", "tab tab--row"]);
-      expect(rows.map((r) => r.querySelector(".tab__title")?.textContent)).toEqual(["me@box: ~/api", "Terminal 3"]);
-      expect(rows.map((r) => r.querySelector(".tab__folder")?.textContent ?? null)).toEqual(["api", null]);
+      // The terminal on screen is marked like the active tab.
+      expect(rows.map((r) => r.className)).toEqual(["tab tab--active tab--row", "tab tab--row", "tab tab--row"]);
+      expect(rows[0].getAttribute("aria-current")).toBe("true");
+      expect(rows.map((r) => r.querySelector(".tab__title")?.textContent)).toEqual(["Terminal 1", "me@box: ~/api", "Terminal 3"]);
+      expect(rows.map((r) => r.querySelector(".tab__folder")?.textContent ?? null)).toEqual([null, "api", null]);
       expect(rows.every((r) => r.querySelector(".cli-icon, svg") !== null)).toBe(true);
+      fireEvent.mouseDown(rows[0], { button: 0 });
+      expect(onShowPane).not.toHaveBeenCalled();
+      rows.shift();
       fireEvent.mouseDown(rows[1], { button: 0 });
       expect(onShowPane).toHaveBeenCalledWith("t1", "t1-p3");
       expect(onActivate).toHaveBeenCalledWith("t1");
@@ -187,7 +193,7 @@ describe("TabBar", () => {
         <TabBar
           tabs={[tab("t1", "one")]}
           activeKey="t1"
-          hiddenPanes={new Map([["t1", [{ id: "t1-p2", title: "Terminal 2", folder: null }]]])}
+          hiddenPanes={new Map([["t1", [{ id: "t1-p2", title: "Terminal 2", folder: null, shown: false }]]])}
           onShowPane={() => {}}
           onActivate={() => {}}
           onClose={() => {}}
