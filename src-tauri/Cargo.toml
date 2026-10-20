@@ -47,7 +47,18 @@ tempfile = "3.27.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
 # Legacy text encodings (Windows-1252, Shift_JIS...) the file viewer reads and saves.
 encoding_rs = "0.8.42"
+# Terminal sharing through plexusterm-relay: the sans-IO sharer engine and its wire types,
+# over a TLS WebSocket (the relay is only reachable over wss://).
+plexusterm-share-client = { git = "https://github.com/jorgealonsodev/plexusterm-relay", rev = "5b330608fbfa3b4625826f6f3c0b42f0aec583eb" }
+plexusterm-share-protocol = { git = "https://github.com/jorgealonsodev/plexusterm-relay", rev = "5b330608fbfa3b4625826f6f3c0b42f0aec583eb" }
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
+futures-util = "0.3"
+# QR codes of share links, drawn as SVG.
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 
+[dev-dependencies]
+# A real relay for the sharing end-to-end tests.
+plexusterm-relay = { git = "https://github.com/jorgealonsodev/plexusterm-relay", rev = "5b330608fbfa3b4625826f6f3c0b42f0aec583eb" }
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
@@ -62,3 +73,7 @@ strip = true
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = "0.13.2"
 zbus = "5.19.0"
+
+# Keeping the system awake while a tab is shared.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Power"] }

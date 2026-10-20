@@ -12,6 +12,7 @@ mod screen_color;
 mod secrets;
 mod serial;
 mod sftp;
+mod share;
 mod ssh;
 mod storage;
 mod telnet;
@@ -37,26 +38,38 @@ use tunnels::{StatusUpdate, TunnelDefinition, TunnelError, TunnelManager};
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "event", content = "data", rename_all = "camelCase")]
 enum TerminalEvent {
+    /// First event: the session's share tap, to share it (`share_start`).
+    Tap(u64),
     Output(String),
+    /// While shared: the number of the output just sent, for the pane's snapshots.
+    Seq(u64),
     Exit(Option<u32>),
 }
 
 /// Sends a session's events to the webview through a thread that gathers bursts of output
-/// (see [`terminal::coalesce`]).
+/// (see [`terminal::coalesce`]). Each batch goes through the session's share tap first, so a
+/// shared tab's viewers get the output in the order the pane renders it.
 struct ChannelSink(std::sync::mpsc::Sender<coalesce::Event>);
 
 impl ChannelSink {
     fn new(channel: Channel<TerminalEvent>) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
+        let (tap_id, tap) = share::taps().register();
+        let _ = channel.send(TerminalEvent::Tap(tap_id));
         std::thread::spawn(move || {
-            coalesce::forward(rx, |event| {
-                let _ = channel.send(match event {
-                    coalesce::Event::Output(text) => {
-                        diag::mark("S", text.len());
-                        TerminalEvent::Output(text)
+            coalesce::forward(rx, |event| match event {
+                coalesce::Event::Output(text) => {
+                    diag::mark("S", text.len());
+                    let seq = tap.output(text.as_bytes());
+                    let _ = channel.send(TerminalEvent::Output(text));
+                    if let Some(seq) = seq {
+                        let _ = channel.send(TerminalEvent::Seq(seq));
                     }
-                    coalesce::Event::Exit(code) => TerminalEvent::Exit(code),
-                });
+                }
+                coalesce::Event::Exit(code) => {
+                    tap.exited();
+                    let _ = channel.send(TerminalEvent::Exit(code));
+                }
             })
         });
         Self(tx)
@@ -642,9 +655,13 @@ pub fn run() {
         .manage(SshManager::for_current_user().with_secrets(secrets.clone()))
         .manage(secrets)
         .manage(ai::AiClient::default())
+        .manage(share::ShareManager::default())
         .manage(launch)
         .setup(move |app| {
             launch::listen(app.handle().clone());
+            if let Ok(dir) = app.path().app_config_dir() {
+                app.state::<share::ShareManager>().set_dir(dir);
+            }
             let handle = app.handle().clone();
             app.manage(
                 TunnelManager::for_current_user(move |update| {
@@ -762,7 +779,16 @@ pub fn run() {
             project::project_colors_get,
             project::project_color_set,
             screen_color::screen_color_pick,
-            launch::launch_workspace_take
+            launch::launch_workspace_take,
+            share::commands::share_start,
+            share::commands::share_command,
+            share::commands::share_stop_all,
+            share::commands::share_crashed,
+            share::commands::share_audit_log,
+            share::commands::share_token_status,
+            share::commands::share_token_save,
+            share::commands::share_token_delete,
+            share::commands::share_build_hash
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
