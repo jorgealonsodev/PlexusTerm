@@ -534,6 +534,52 @@ pub fn view_text(path: &Path, encoding: Option<&str>) -> Result<TextFile, String
     decode_text("view", &label, bytes, truncated, encoding)
 }
 
+/// Largest image the Markdown preview shows.
+pub const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
+const IMAGE_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif",
+];
+
+/// Whether a path names an image, by its extension: a Markdown file may point anywhere, so the
+/// preview reads nothing else (not a key or a document named in an image link).
+pub fn is_image_path(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            IMAGE_EXTENSIONS
+                .iter()
+                .any(|known| ext.eq_ignore_ascii_case(known))
+        })
+}
+
+pub fn not_an_image(path: &str) -> String {
+    format!("cannot show {path}: it is not an image")
+}
+
+pub fn image_too_large(path: &str) -> String {
+    format!(
+        "cannot show {path}: it is larger than {} MiB",
+        MAX_IMAGE_BYTES / (1024 * 1024)
+    )
+}
+
+/// The bytes of an image file a Markdown file shows, up to [`MAX_IMAGE_BYTES`].
+pub fn read_image(path: &Path) -> Result<Vec<u8>, String> {
+    let label = path.to_string_lossy().into_owned();
+    // A network share or a device is never opened: Windows would sign in to the share's host with
+    // the user's credentials. Only a regular file is read (a FIFO would never end).
+    let remote = label.starts_with(r"\\") || label.starts_with("//");
+    if remote || !is_image_path(&label) || !fs::metadata(path).is_ok_and(|m| m.is_file()) {
+        return Err(not_an_image(&label));
+    }
+    let (bytes, truncated) = read_prefix(path, MAX_IMAGE_BYTES)?;
+    if truncated {
+        return Err(image_too_large(&label));
+    }
+    Ok(bytes)
+}
+
 /// The first `max` bytes of a file, and whether it is longer.
 fn read_prefix(path: &Path, max: usize) -> Result<(Vec<u8>, bool), String> {
     use std::io::Read;
@@ -601,6 +647,12 @@ pub async fn local_read_text(path: String) -> Result<TextFile, String> {
 #[tauri::command]
 pub async fn local_view_text(path: String, encoding: Option<String>) -> Result<TextFile, String> {
     view_text(&native(&path), encoding.as_deref())
+}
+
+/// A local image for the Markdown preview, as raw bytes.
+#[tauri::command]
+pub async fn local_read_image(path: String) -> Result<tauri::ipc::Response, String> {
+    read_image(&native(&path)).map(tauri::ipc::Response::new)
 }
 
 /// Saves the file viewer's text over a local file that still holds `expected`.
@@ -780,6 +832,64 @@ mod tests {
             read_text(&dir.path().join("x"))
                 .unwrap_err()
                 .starts_with("cannot read ")
+        );
+    }
+
+    #[test]
+    fn reads_images_for_the_markdown_preview_and_refuses_other_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let png = dir.path().join("shot.PNG");
+        fs::write(&png, [0x89, b'P', b'N', b'G', 1, 2, 3]).unwrap();
+        assert_eq!(read_image(&png).unwrap(), [0x89, b'P', b'N', b'G', 1, 2, 3]);
+
+        let key = dir.path().join("id_ed25519");
+        fs::write(&key, "secret").unwrap();
+        assert_eq!(
+            read_image(&key).unwrap_err(),
+            format!("cannot show {}: it is not an image", key.display())
+        );
+        let folder = dir.path().join("pics.png");
+        fs::create_dir(&folder).unwrap();
+        assert_eq!(
+            read_image(&folder).unwrap_err(),
+            format!("cannot show {}: it is not an image", folder.display())
+        );
+        let big = dir.path().join("big.jpg");
+        fs::write(&big, vec![0u8; MAX_IMAGE_BYTES + 1]).unwrap();
+        assert_eq!(
+            read_image(&big).unwrap_err(),
+            format!("cannot show {}: it is larger than 20 MiB", big.display())
+        );
+        assert!(read_image(&dir.path().join("missing.gif")).is_err());
+        // Network shares and devices are never opened: Windows would sign in to the share's host.
+        for path in [
+            r"\\attacker.example\s\x.png",
+            r"\\?\C:\x.png",
+            "//attacker.example/s/x.png",
+        ] {
+            assert_eq!(
+                read_image(Path::new(path)).unwrap_err(),
+                not_an_image(path),
+                "{path}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_image_name_on_something_that_is_not_a_file_is_not_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let fifo = dir.path().join("pipe.png");
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&fifo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        assert_eq!(
+            read_image(&fifo).unwrap_err(),
+            not_an_image(&fifo.to_string_lossy())
         );
     }
 

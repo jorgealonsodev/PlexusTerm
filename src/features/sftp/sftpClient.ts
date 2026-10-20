@@ -64,6 +64,8 @@ export const sftp = {
   discardCopies: (id: number) => invoke<void>("sftp_discard_copies", { id }),
   /** Git status of the files under a remote folder (one read-only git command); empty outside a repository. */
   gitStatus: (id: number, path: string) => invoke<GitStatusEntry[]>("ssh_git_status", { id, path }),
+  /** A remote image a Markdown file shows (up to 20 MiB), as raw bytes; only image files are read. */
+  readImage: (id: number, path: string) => invoke<ArrayBuffer>("sftp_read_image", { id, path }),
   /** A remote text file for the file viewer (the first 4 MiB), read with `encoding` or the one it shows. */
   viewText: (id: number, path: string, encoding?: string) =>
     invoke<{ path: string; content: string; truncated: boolean; encoding: string }>("sftp_view_text", { id, path, encoding }),

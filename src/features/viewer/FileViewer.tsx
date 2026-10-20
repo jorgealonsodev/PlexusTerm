@@ -43,6 +43,8 @@ interface FileViewerProps {
   onClose: () => void;
   /** Opens a web link of a Markdown preview; the system browser by default. */
   onOpenLink?: (url: string) => void;
+  /** Reads an image a Markdown file shows from its own disk (local or SFTP); without it they stay blank. */
+  loadImage?: (path: string) => Promise<Blob>;
   /**
    * Listens to the output of the viewer's terminal: while it prints (an AI tool editing files) the
    * file is read again, at most once every REFRESH_MS. Returns the function that stops listening.
@@ -154,10 +156,44 @@ const openInBrowser = (url: string) => void openUrl(url).catch(() => {});
 
 /**
  * A Markdown file rendered (S4). Links never navigate the window: web links open in the system
- * browser, the others (mail, relative, anchors) do nothing.
+ * browser, the others (mail, relative, anchors) do nothing. The file's own images are read with
+ * `loadImage` and shown from memory (`blob:`); one that cannot be read keeps its alternative text.
  */
-function MarkdownPreview({ text, onOpenLink }: { text: string; onOpenLink: (url: string) => void }) {
-  const html = useMemo(() => renderMarkdown(text), [text]);
+function MarkdownPreview({
+  text,
+  path,
+  onOpenLink,
+  loadImage,
+}: {
+  text: string;
+  path: string;
+  onOpenLink: (url: string) => void;
+  loadImage?: (path: string) => Promise<Blob>;
+}) {
+  const html = useMemo(() => renderMarkdown(text, path), [text, path]);
+  const article = useRef<HTMLElement>(null);
+  const loadImageRef = useRef(loadImage);
+  loadImageRef.current = loadImage;
+  useEffect(() => {
+    const load = loadImageRef.current;
+    if (!load || !article.current) return;
+    let live = true;
+    const urls: string[] = [];
+    for (const img of article.current.querySelectorAll<HTMLImageElement>("img[data-file-src]")) {
+      load(img.dataset.fileSrc!)
+        .then((blob) => {
+          if (!live) return;
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          img.src = url;
+        })
+        .catch(() => {});
+    }
+    return () => {
+      live = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [html]);
   const onClick = (e: MouseEvent<HTMLElement>) => {
     const link = (e.target as Element).closest("a");
     if (!link) return;
@@ -176,6 +212,7 @@ function MarkdownPreview({ text, onOpenLink }: { text: string; onOpenLink: (url:
   };
   return (
     <article
+      ref={article}
       className="viewer__markdown"
       onClick={onClick}
       onAuxClick={onAuxClick}
@@ -193,6 +230,7 @@ export function FileViewer({
   load,
   onClose,
   onOpenLink = openInBrowser,
+  loadImage,
   subscribeOutput,
   prompt,
   save,
@@ -523,7 +561,7 @@ export function FileViewer({
             </p>
           )}
           {markdown && mode === "preview" ? (
-            <MarkdownPreview text={shown} onOpenLink={onOpenLink} />
+            <MarkdownPreview text={shown} path={path} onOpenLink={onOpenLink} loadImage={loadImage} />
           ) : (
             <CodeView
               text={dirty ? shown : loaded.file.content}

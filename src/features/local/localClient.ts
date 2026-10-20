@@ -28,6 +28,8 @@ export const local = {
   repoInfo: (path: string) => invoke<{ root: string; branch: string; dirty: boolean } | null>("git_repo", { path }),
   /** A file's text in its repository's last commit, for the viewer's changed lines; null when it has none. */
   committedText: (path: string) => invoke<string | null>("git_head_text", { path }),
+  /** An image a Markdown file shows (up to 20 MiB), as raw bytes; only image files are read. */
+  readImage: (path: string) => invoke<ArrayBuffer>("local_read_image", { path }),
   /** A text file for the file viewer (the first 4 MiB), read with `encoding` or the one it shows. */
   viewText: (path: string, encoding?: string) =>
     invoke<{ path: string; content: string; truncated: boolean; encoding: string }>("local_view_text", { path, encoding }),

@@ -65,6 +65,7 @@ import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type TabsAction, type ViewerLink } from "./features/tabs/tabs";
 import { FileViewer } from "./features/viewer/FileViewer";
+import { imageType } from "./features/viewer/markdown";
 import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
 import { createNotifier } from "./features/notifications/notifier";
@@ -974,6 +975,12 @@ function AppContent() {
     viewer.origin.kind === "local"
       ? local.viewText(viewer.path, encoding)
       : sftp.viewText(viewer.origin.sessionId, viewer.path, encoding);
+  /** An image a viewed Markdown file shows, read from the same disk as the file. */
+  const viewImage = async (viewer: ViewerLink, path: string) => {
+    const bytes =
+      viewer.origin.kind === "local" ? await local.readImage(path) : await sftp.readImage(viewer.origin.sessionId, path);
+    return new Blob([bytes], { type: imageType(path) });
+  };
   /** Saves a viewer's edited text over its file while the file still holds `expected`. */
   const saveViewedFile = (viewer: ViewerLink, expected: string, content: string, encoding: string, readAs: string) =>
     viewer.origin.kind === "local"
@@ -1647,6 +1654,7 @@ function AppContent() {
                             key={viewer.opened}
                             path={viewer.path}
                             load={(encoding) => viewFile(viewer, encoding)}
+                            loadImage={(imagePath) => viewImage(viewer, imagePath)}
                             save={(expected, content, encoding, readAs) => saveViewedFile(viewer, expected, content, encoding, readAs)}
                             autoSave={terminalSettings.settings.viewerAutoSave}
                             onDirtyChange={(dirty) => markUnsaved(tab.key, paneId, dirty)}

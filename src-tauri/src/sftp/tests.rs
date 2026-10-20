@@ -244,13 +244,34 @@ async fn rename_moves_an_entry() {
 }
 
 #[tokio::test]
+async fn read_image_reads_remote_images_only() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("logo.svg"), b"<svg/>").unwrap();
+    std::fs::write(root.path().join("notes.txt"), b"text").unwrap();
+    let (sftp, _mgr, _dir) = session(root.path()).await;
+    assert_eq!(read_image(&sftp, "/logo.svg").await.unwrap(), b"<svg/>");
+    let err = read_image(&sftp, "/notes.txt").await.unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "cannot show /notes.txt: it is not an image"
+    );
+}
+
+#[tokio::test]
 async fn write_text_saves_over_the_text_that_was_opened() {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(root.path().join("a.txt"), b"a much longer old text").unwrap();
     let (sftp, _mgr, _dir) = session(root.path()).await;
-    write_text(&sftp, "/a.txt", "a much longer old text", "short", None, None)
-        .await
-        .unwrap();
+    write_text(
+        &sftp,
+        "/a.txt",
+        "a much longer old text",
+        "short",
+        None,
+        None,
+    )
+    .await
+    .unwrap();
     assert_eq!(std::fs::read(root.path().join("a.txt")).unwrap(), b"short");
 }
 

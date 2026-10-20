@@ -198,6 +198,33 @@ pub async fn view_text(
         .map_err(|message| SftpError::Sftp { message })
 }
 
+/// The bytes of a remote image a Markdown file shows, up to
+/// [`crate::localfs::MAX_IMAGE_BYTES`].
+pub async fn read_image(sftp: &SftpSession, path: &str) -> Result<Vec<u8>, SftpError> {
+    use crate::localfs::{MAX_IMAGE_BYTES, image_too_large, is_image_path, not_an_image};
+
+    let not_image = || SftpError::Sftp {
+        message: not_an_image(path),
+    };
+    if !is_image_path(path) {
+        return Err(not_image());
+    }
+    let meta = sftp
+        .metadata(path)
+        .await
+        .map_err(|err| failure("read", path, err))?;
+    if meta.is_dir() {
+        return Err(not_image());
+    }
+    let (bytes, truncated) = read_prefix(sftp, path, MAX_IMAGE_BYTES).await?;
+    if truncated {
+        return Err(SftpError::Sftp {
+            message: image_too_large(path),
+        });
+    }
+    Ok(bytes)
+}
+
 /// The first `max` bytes of a remote file, and whether it is longer.
 async fn read_prefix(
     sftp: &SftpSession,

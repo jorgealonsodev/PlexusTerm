@@ -121,6 +121,39 @@ describe("FileViewer Markdown (S4)", () => {
   });
 });
 
+describe("FileViewer shows a Markdown file's images", () => {
+  it("reads the file's own images next to it, keeps web ones, and lets the blob addresses go when closed", async () => {
+    const made: Blob[] = [];
+    const revoked: string[] = [];
+    vi.stubGlobal("URL", Object.assign(URL, {
+      createObjectURL: (blob: Blob) => {
+        made.push(blob);
+        return `blob:test/${made.length}`;
+      },
+      revokeObjectURL: (url: string) => revoked.push(url),
+    }));
+    const loadImage = vi.fn(async (path: string) => new Blob([path], { type: "image/png" }));
+    const { unmount } = render(
+      <FileViewer
+        path="/p/README.md"
+        load={file("![shot](img/shot.png)\n\n![badge](https://example.com/b.svg)\n\n![missing](gone.png)")}
+        loadImage={(path) => (path.endsWith("gone.png") ? Promise.reject(new Error("no such file")) : loadImage(path))}
+        onClose={() => {}}
+      />,
+    );
+    const preview = await screen.findByRole("article");
+    const shot = within(preview).getByAltText("shot");
+    await waitFor(() => expect(shot.getAttribute("src")).toBe("blob:test/1"));
+    expect(loadImage).toHaveBeenCalledWith("/p/img/shot.png");
+    expect(within(preview).getByAltText("badge").getAttribute("src")).toBe("https://example.com/b.svg");
+    // An image that cannot be read keeps its alternative text.
+    expect(within(preview).getByAltText("missing").getAttribute("src")).toBeNull();
+    unmount();
+    expect(revoked).toEqual(["blob:test/1"]);
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("FileViewer follows the file while its terminal works", () => {
   it("reads the file again when the terminal prints, at most once a second, keeping the same view", async () => {
     vi.useFakeTimers();

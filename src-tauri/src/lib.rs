@@ -381,6 +381,18 @@ async fn sftp_read_text(
     sftp::read_text(&*ssh.sftp(id).await?, &path).await
 }
 
+/// A remote image for the Markdown preview, as raw bytes.
+#[tauri::command]
+async fn sftp_read_image(
+    id: u32,
+    path: String,
+    ssh: State<'_, SshManager>,
+) -> Result<tauri::ipc::Response, SftpError> {
+    sftp::read_image(&*ssh.sftp(id).await?, &path)
+        .await
+        .map(tauri::ipc::Response::new)
+}
+
 /// A remote text file for the file viewer.
 #[tauri::command]
 async fn sftp_view_text(
@@ -672,6 +684,7 @@ pub fn run() {
             sftp_list,
             sftp_read_text,
             sftp_view_text,
+            sftp_read_image,
             sftp_download,
             sftp_upload,
             sftp_mkdir,
@@ -735,6 +748,7 @@ pub fn run() {
             localfs::local_open,
             localfs::local_read_text,
             localfs::local_view_text,
+            localfs::local_read_image,
             diag::diag_latency_log,
             localfs::local_write_text,
             localfs::local_move,
