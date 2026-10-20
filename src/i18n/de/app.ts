@@ -78,7 +78,6 @@ export const app: Messages<typeof en> = {
     newSsh: "Neue SSH-Sitzung",
   },
   tabs: {
-    otherTerminals: "Weitere Terminals von {title}",
     terminalN: "Terminal {n}",
     copyHost: "Hostadresse kopieren ({host})",
     duplicate: "Tab duplizieren",

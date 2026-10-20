@@ -139,22 +139,24 @@ describe("TabBar", () => {
   });
 
   describe("DEV tab column (S13)", () => {
-    it("lists a tab's hidden terminals under its row, as rows like it, and shows the one clicked", () => {
+    it("shows a tab that hides terminals as one row per terminal, the one on screen as the tab", () => {
       const onShowPane = vi.fn();
       const onActivate = vi.fn();
       const onClosePane = vi.fn();
-      render(
+      const onClose = vi.fn();
+      const { container } = render(
         <TabBar
           tabs={[tab("t1", "one"), tab("t2", "two")]}
           activeKey="t1"
           column
+          dev={new Set(["t1"])}
           hiddenPanes={
             new Map([
               [
                 "t1",
                 [
-                  { id: "t1-p1", title: "Terminal 1", folder: null, shown: true },
-                  { id: "t1-p2", title: "me@box: ~/api", folder: "api", shown: false },
+                  { id: "t1-p1", title: "Terminal 1", folder: null, shown: false },
+                  { id: "t1-p2", title: "me@box: ~/api", folder: "api", shown: true },
                   { id: "t1-p3", title: "Terminal 3", folder: null, shown: false },
                 ],
               ],
@@ -163,29 +165,30 @@ describe("TabBar", () => {
           onShowPane={onShowPane}
           onClosePane={onClosePane}
           onActivate={onActivate}
-          onClose={() => {}}
+          onClose={onClose}
           onNew={() => {}}
         />,
       );
-      const list = screen.getByRole("list", { name: "Other terminals of one" });
-      const rows = within(list).getAllByRole("listitem").map((li) => li.querySelector(".tab")!);
-      // The same row as a tab's: terminal icon, title, folder and close button.
-      // The terminal on screen is marked like the active tab.
-      expect(rows.map((r) => r.className)).toEqual(["tab tab--active tab--row", "tab tab--row", "tab tab--row"]);
-      expect(rows[0].getAttribute("aria-current")).toBe("true");
-      expect(rows.map((r) => r.querySelector(".tab__title")?.textContent)).toEqual(["Terminal 1", "me@box: ~/api", "Terminal 3"]);
-      expect(rows.map((r) => r.querySelector(".tab__folder")?.textContent ?? null)).toEqual([null, "api", null]);
-      expect(rows.every((r) => r.querySelector(".cli-icon, svg") !== null)).toBe(true);
-      fireEvent.mouseDown(rows[0], { button: 0 });
-      expect(onShowPane).not.toHaveBeenCalled();
-      rows.shift();
+      // Three terminals, three rows (no extra row for the tab), then the other tab.
+      const rows = [...container.querySelectorAll<HTMLElement>(".tab--row")];
+      expect(rows.map((r) => r.querySelector(".tab__title")?.textContent)).toEqual(["Terminal 1", "me@box: ~/api", "Terminal 3", "two"]);
+      expect(rows.map((r) => r.classList.contains("tab--active"))).toEqual([false, true, false, false]);
+      expect(screen.getAllByRole("tab").map((r) => r.querySelector(".tab__title")?.textContent)).toEqual(["me@box: ~/api", "two"]);
+      expect(rows[1].querySelector(".tab__folder")?.textContent).toBe("api");
+      expect(within(rows[1]).getByLabelText("DEV mode")).toBeTruthy();
+      expect(within(rows[0]).queryByLabelText("DEV mode")).toBeNull();
       fireEvent.mouseDown(rows[1], { button: 0 });
+      expect(onShowPane).not.toHaveBeenCalled();
+      fireEvent.mouseDown(rows[2], { button: 0 });
       expect(onShowPane).toHaveBeenCalledWith("t1", "t1-p3");
       expect(onActivate).toHaveBeenCalledWith("t1");
-      fireEvent.click(within(rows[0] as HTMLElement).getByRole("button", { name: "Close me@box: ~/api" }));
-      expect(onClosePane).toHaveBeenCalledWith("t1", "t1-p2");
-      expect(onShowPane).toHaveBeenCalledTimes(1);
-      expect(screen.queryByRole("list", { name: "Other terminals of two" })).toBeNull();
+      fireEvent.click(within(rows[0]).getByRole("button", { name: "Close Terminal 1" }));
+      fireEvent.click(within(rows[1]).getByRole("button", { name: "Close me@box: ~/api" }));
+      expect(onClosePane.mock.calls).toEqual([
+        ["t1", "t1-p1"],
+        ["t1", "t1-p2"],
+      ]);
+      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("lists no hidden terminals outside the column", () => {
@@ -200,7 +203,7 @@ describe("TabBar", () => {
           onNew={() => {}}
         />,
       );
-      expect(screen.queryByRole("list")).toBeNull();
+      expect(screen.queryByText("Terminal 2")).toBeNull();
     });
 
     const details = new Map([

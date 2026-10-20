@@ -2404,15 +2404,6 @@ body.is-dragging-path {
   border-inline-start: 1px solid var(--border);
 }
 
-/* A DEV tab's terminals out of sight, under its row in the column, as rows like it: a click shows one. */
-.tab__panes {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .tabbar__resizer {
   position: relative;
   z-index: 1;

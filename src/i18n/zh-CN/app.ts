@@ -76,7 +76,6 @@ export const app: Messages<typeof en> = {
     newSsh: "新建 SSH 会话",
   },
   tabs: {
-    otherTerminals: "{title} 的其他终端",
     terminalN: "终端 {n}",
     copyHost: "复制主机地址 ({host})",
     duplicate: "复制标签页",

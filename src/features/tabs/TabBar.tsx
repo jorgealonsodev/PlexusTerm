@@ -8,6 +8,14 @@ import { titleWithoutCliMark } from "../devmode/devMode";
 import { clampTabColumnWidth, TAB_COLUMN_MAX_WIDTH, TAB_COLUMN_MIN_WIDTH } from "../settings/settings";
 import { tabTitle, type Tab } from "./tabs";
 
+/** A terminal of a DEV tab that hides some, as the column lists it; `shown`: the one on screen. */
+interface PaneRow {
+  id: string;
+  title: string;
+  folder: string | null;
+  shown: boolean;
+}
+
 interface TabBarProps {
   tabs: Tab[];
   activeKey: string | null;
@@ -27,7 +35,7 @@ interface TabBarProps {
    * In the column: the terminals of a DEV tab that keeps some out of sight, listed under its row by
    * tab key; `shown` marks the one on screen.
    */
-  hiddenPanes?: ReadonlyMap<string, readonly { id: string; title: string; folder: string | null; shown: boolean }[]>;
+  hiddenPanes?: ReadonlyMap<string, readonly PaneRow[]>;
   /** A hidden terminal of the column was clicked: the tab shows it instead. */
   onShowPane?: (key: string, pane: string) => void;
   /** A hidden terminal's close button (or middle click). */
@@ -152,111 +160,120 @@ export function TabBar(props: TabBarProps) {
         aria-orientation={column ? "vertical" : undefined}
         style={column && shownWidth !== null ? { width: shownWidth } : undefined}
       >
-        {tabs.map((tab) => (
-          <Fragment key={tab.key}>
-          <div
-            role="tab"
-            aria-selected={tab.key === activeKey}
-            className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}${column ? " tab--row" : ""}${tab.color ? " tab--coloured" : ""}`}
-            style={tab.color ? ({ "--tab-color": tab.color } as CSSProperties) : undefined}
-            onMouseDown={(e) => {
-              if (e.button === 1) onClose(tab.key);
-              else if (e.button === 0) onActivate(tab.key);
-            }}
-            title={tabTitle(tab)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setMenu({ key: tab.key, x: e.clientX, y: e.clientY });
-            }}
-          >
-            {column && <CliIcon cli={details?.get(tab.key)?.cli ?? null} />}
-            {busy?.has(tab.key) && (
-              <span className="tab__busy" role="img" aria-label={t("app.tabs.working")} title={t("app.tabs.working")} />
-            )}
-            {logging?.has(tab.key) && (
-              <span className="tab__log" role="img" aria-label={t("app.tabs.logging")} title={t("app.tabs.logging")}>
-                ●
-              </span>
-            )}
-            {attention?.has(tab.key) && (
-              <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
-            )}
-            {(() => {
-              const shown = column ? rowTitle(tabTitle(tab), details?.get(tab.key)?.cli ?? null, !!details?.get(tab.key)?.folder) : tabTitle(tab);
-              return shown === null ? null : (
+        {tabs.map((tab) => {
+          const paneRows = column ? props.hiddenPanes?.get(tab.key) : undefined;
+          /**
+           * The tab's row. When the tab lists its terminals, it stands for the one on screen (its
+           * title, folder and close button), so each terminal has one row and no extra row repeats it.
+           */
+          const tabRow = (pane?: PaneRow) => {
+            const close = () => (pane ? props.onClosePane?.(tab.key, pane.id) : onClose(tab.key));
+            const label = pane?.title ?? tabTitle(tab);
+            const folder = column ? (pane ? pane.folder : details?.get(tab.key)?.folder) : null;
+            const shown = pane
+              ? pane.title
+              : column
+                ? rowTitle(tabTitle(tab), details?.get(tab.key)?.cli ?? null, !!details?.get(tab.key)?.folder)
+                : tabTitle(tab);
+            return (
+              <div
+                key={pane?.id ?? tab.key}
+                role="tab"
+                aria-selected={tab.key === activeKey}
+                className={`tab ${tab.key === activeKey ? "tab--active" : ""}${attention?.has(tab.key) ? " tab--attention" : ""}${column ? " tab--row" : ""}${tab.color ? " tab--coloured" : ""}`}
+                style={tab.color ? ({ "--tab-color": tab.color } as CSSProperties) : undefined}
+                onMouseDown={(e) => {
+                  if (e.button === 1) close();
+                  else if (e.button === 0) onActivate(tab.key);
+                }}
+                title={label}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenu({ key: tab.key, x: e.clientX, y: e.clientY });
+                }}
+              >
+                {column && <CliIcon cli={details?.get(tab.key)?.cli ?? null} />}
+                {busy?.has(tab.key) && (
+                  <span className="tab__busy" role="img" aria-label={t("app.tabs.working")} title={t("app.tabs.working")} />
+                )}
+                {logging?.has(tab.key) && (
+                  <span className="tab__log" role="img" aria-label={t("app.tabs.logging")} title={t("app.tabs.logging")}>
+                    ●
+                  </span>
+                )}
+                {attention?.has(tab.key) && (
+                  <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
+                )}
+                {shown !== null && (
+                  <span className="tab__title" dir="auto">
+                    {shown}
+                  </span>
+                )}
+                {folder && (
+                  <span className="tab__folder" dir="auto">
+                    {folder}
+                  </span>
+                )}
+                {dev?.has(tab.key) && (
+                  <span className="tab__dev" role="img" aria-label={t("app.tabs.dev")} title={t("app.tabs.dev")}>
+                    <Code size={12} aria-hidden="true" />
+                  </span>
+                )}
+                <button
+                  className="tab__close"
+                  aria-label={t("app.tabs.closeNamed", { title: label })}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={close}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          };
+          /** A terminal of the tab out of sight: the same row as a tab's; a click shows it. */
+          const paneRow = (pane: PaneRow) => {
+            const show = () => {
+              onActivate(tab.key);
+              props.onShowPane?.(tab.key, pane.id);
+            };
+            return (
+              <div
+                key={pane.id}
+                className="tab tab--row"
+                role="button"
+                tabIndex={0}
+                title={pane.title}
+                onMouseDown={(e) => {
+                  if (e.button === 1) props.onClosePane?.(tab.key, pane.id);
+                  else if (e.button === 0) show();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") show();
+                }}
+              >
+                <CliIcon cli={null} />
                 <span className="tab__title" dir="auto">
-                  {shown}
+                  {pane.title}
                 </span>
-              );
-            })()}
-            {column && details?.get(tab.key)?.folder && (
-              <span className="tab__folder" dir="auto">
-                {details.get(tab.key)!.folder}
-              </span>
-            )}
-            {dev?.has(tab.key) && (
-              <span className="tab__dev" role="img" aria-label={t("app.tabs.dev")} title={t("app.tabs.dev")}>
-                <Code size={12} aria-hidden="true" />
-              </span>
-            )}
-            <button
-              className="tab__close"
-              aria-label={t("app.tabs.closeNamed", { title: tabTitle(tab) })}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={() => onClose(tab.key)}
-            >
-              ×
-            </button>
-          </div>
-          {column && (props.hiddenPanes?.get(tab.key)?.length ?? 0) > 0 && (
-            <ul className="tab__panes" aria-label={t("app.tabs.otherTerminals", { title: tabTitle(tab) })}>
-              {props.hiddenPanes!.get(tab.key)!.map((pane) => {
-                const show = () => {
-                  onActivate(tab.key);
-                  props.onShowPane?.(tab.key, pane.id);
-                };
-                // The same row as a tab's: terminal icon, title, folder and close button.
-                return (
-                  <li key={pane.id}>
-                    <div
-                      className={`tab${pane.shown ? " tab--active" : ""} tab--row`}
-                      role="button"
-                      tabIndex={0}
-                      aria-current={pane.shown || undefined}
-                      title={pane.title}
-                      onMouseDown={(e) => {
-                        if (e.button === 1) props.onClosePane?.(tab.key, pane.id);
-                        else if (e.button === 0 && !pane.shown) show();
-                      }}
-                      onKeyDown={(e) => {
-                        if ((e.key === "Enter" || e.key === " ") && !pane.shown) show();
-                      }}
-                    >
-                      <CliIcon cli={null} />
-                      <span className="tab__title" dir="auto">
-                        {pane.title}
-                      </span>
-                      {pane.folder && (
-                        <span className="tab__folder" dir="auto">
-                          {pane.folder}
-                        </span>
-                      )}
-                      <button
-                        className="tab__close"
-                        aria-label={t("app.tabs.closeNamed", { title: pane.title })}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={() => props.onClosePane?.(tab.key, pane.id)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          </Fragment>
-        ))}
+                {pane.folder && (
+                  <span className="tab__folder" dir="auto">
+                    {pane.folder}
+                  </span>
+                )}
+                <button
+                  className="tab__close"
+                  aria-label={t("app.tabs.closeNamed", { title: pane.title })}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => props.onClosePane?.(tab.key, pane.id)}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          };
+          if (!paneRows?.length) return tabRow();
+          return <Fragment key={tab.key}>{paneRows.map((pane) => (pane.shown ? tabRow(pane) : paneRow(pane)))}</Fragment>;
+        })}
         <button className="tabbar__new" aria-label={t("app.tabs.newLocal")} onClick={onNew}>
           +
         </button>

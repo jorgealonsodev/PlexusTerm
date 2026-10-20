@@ -77,7 +77,6 @@ export const app: Messages<typeof en> = {
     newSsh: "新しい SSH セッション",
   },
   tabs: {
-    otherTerminals: "{title} のほかのターミナル",
     terminalN: "ターミナル {n}",
     copyHost: "ホストアドレスをコピー ({host})",
     duplicate: "タブを複製",
