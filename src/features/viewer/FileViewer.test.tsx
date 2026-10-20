@@ -523,6 +523,66 @@ describe("FileViewer status bar: encoding, line endings and language", () => {
     await waitFor(() => expect(save).toHaveBeenLastCalledWith("one", "one!", "utf-16le", "utf-16le"));
   });
 
+  it("keeps a clean file clean when it is read again with other line endings", async () => {
+    let content = "a\nb\n";
+    const save = vi.fn(async () => {});
+    const load = async () => ({ path: "/p/x", content, truncated: false });
+    const { rerender } = render(<FileViewer path="/p/notes.txt" load={load} onClose={() => {}} save={save} autoSave prompt={0} />);
+    await waitFor(() => expect(shown()).toBe("ab"));
+    content = "a\r\nb\r\n";
+    rerender(<FileViewer path="/p/notes.txt" load={load} onClose={() => {}} save={save} autoSave prompt={1} />);
+    await waitFor(() => expect(bar().getByRole("button", { name: "CRLF" })).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(screen.queryByLabelText("Unsaved changes")).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("keeps the shown text when reopening with an encoding fails, and reads it as before afterwards", async () => {
+    const load = vi.fn(async (encoding?: string) => {
+      if (encoding === "shift_jis") throw "cannot view /p/x: it is not a text file in shift_jis";
+      return { path: "/p/x", content: "hello", truncated: false, encoding: "utf-8" };
+    });
+    const { rerender } = render(<FileViewer path="/p/notes.txt" load={load} onClose={() => {}} prompt={0} />);
+    await waitFor(() => expect(shown()).toBe("hello"));
+    pick("UTF-8", "Reopen with encoding");
+    fireEvent.click(screen.getByRole("option", { name: "Shift JIS — Japanese" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("cannot view /p/x: it is not a text file in shift_jis");
+    expect(shown()).toBe("hello");
+    expect(bar().getByRole("button", { name: "UTF-8" })).toBeTruthy();
+    rerender(<FileViewer path="/p/notes.txt" load={load} onClose={() => {}} prompt={1} />);
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(3));
+    expect(load).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it("highlights the last language chosen, even when an earlier one loads later", async () => {
+    render(<FileViewer path="/p/notes.txt" load={file("x = 1")} onClose={() => {}} />);
+    await waitFor(() => expect(shown()).toBe("x = 1"));
+    pick("Plain Text", "Python");
+    pick("Python", "Plain Text");
+    await new Promise((r) => setTimeout(r, 100));
+    expect(editorView().state.facet(language)).toBeNull();
+  });
+
+  it("saves with the encoding chosen while another save runs, even after more typing", async () => {
+    let finish: () => void = () => {};
+    const save = vi.fn((_e: string, _c: string, _enc: string, _from: string) => new Promise<void>((r) => (finish = r)));
+    render(<FileViewer path="/p/notes.txt" load={file("one")} onClose={() => {}} save={save} />);
+    await waitFor(() => expect(shown()).toBe("one"));
+    const add = (text: string) =>
+      act(() => {
+        const view = editorView();
+        view.dispatch({ changes: { from: view.state.doc.length, insert: text }, userEvent: "input.type" });
+      });
+    add("!");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    pick("UTF-8", "Save with encoding");
+    fireEvent.click(screen.getByRole("option", { name: "UTF-16 LE — Unicode" }));
+    add("?");
+    await act(async () => finish());
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save.mock.calls[1].slice(1, 3)).toEqual(["one!?", "utf-16le"]);
+  });
+
   it("closes a list with Escape", async () => {
     render(<FileViewer path="/p/notes.txt" load={file("x")} onClose={() => {}} />);
     await waitFor(() => expect(shown()).toBe("x"));

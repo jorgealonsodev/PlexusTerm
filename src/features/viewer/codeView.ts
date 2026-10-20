@@ -213,19 +213,21 @@ export const languageNames = () => languages.map((l) => l.name).sort((a, b) => a
 export const languageOf = (fileName: string) => LanguageDescription.matchFilename(languages, fileName)?.name ?? null;
 
 /** The parts of a view's configuration the status bar changes. */
-const slots = new WeakMap<EditorView, { language: Compartment; lineBreak: Compartment }>();
+const slots = new WeakMap<EditorView, { language: Compartment; lineBreak: Compartment; seq: number }>();
 
 /** Highlights the view's text as `name` (a name of `languageNames()`), or plain with null. */
 export function setLanguage(view: EditorView, name: string | null) {
   const slot = slots.get(view);
   if (!slot) return;
+  // A language still loading must not replace one chosen after it.
+  const seq = ++slot.seq;
   const description = name === null ? null : LanguageDescription.matchLanguageName(languages, name, false);
   if (!description) return void view.dispatch({ effects: slot.language.reconfigure([]) });
   description
     .load()
     .then((support) => {
       // The view may have been closed while the language loaded.
-      if (view.dom.isConnected) view.dispatch({ effects: slot.language.reconfigure(support) });
+      if (view.dom.isConnected && seq === slot.seq) view.dispatch({ effects: slot.language.reconfigure(support) });
     })
     .catch(() => {});
 }
@@ -277,7 +279,7 @@ export function createCodeView(
       ],
     }),
   });
-  slots.set(view, { language: languageSlot, lineBreak: lineBreakSlot });
+  slots.set(view, { language: languageSlot, lineBreak: lineBreakSlot, seq: 0 });
   setLanguage(view, languageOf(fileName));
   return view;
 }

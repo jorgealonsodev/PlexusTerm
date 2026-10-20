@@ -96,8 +96,8 @@ function CodeView({
   keep: boolean;
   /** The file's text in its last commit, to mark the lines that differ; null marks none. */
   committed: string | null;
-  /** What the lines are joined with; changing it is an edit. */
-  lineBreak: LineBreak;
+  /** The line break chosen in the status bar (null: the text's own); choosing one is an edit. */
+  lineBreak: LineBreak | null;
   /** The language highlighted, a name of `languageNames()`; null for plain text. */
   language: string | null;
 }) {
@@ -119,7 +119,7 @@ function CodeView({
       onEdit: (doc) => editingRef.current?.onEdit(doc),
       onSave: () => editingRef.current?.onSave(),
     };
-    view.current = createCodeView(host.current!, textRef.current, name, relay, lineBreakRef.current);
+    view.current = createCodeView(host.current!, textRef.current, name, relay, lineBreakRef.current ?? undefined);
     shownLanguage.current = languageOf(name);
     showChanges(view.current, committedRef.current);
     return () => {
@@ -137,7 +137,8 @@ function CodeView({
   }, [committed]);
   useEffect(() => {
     const v = view.current;
-    if (!v || v.state.lineBreak === lineBreak) return;
+    // Only a choice converts: the text read again keeps its own line breaks.
+    if (!v || lineBreak === null || v.state.lineBreak === lineBreak) return;
     setLineBreak(v, lineBreak);
     editingRef.current?.onEdit(v.state);
   }, [lineBreak]);
@@ -226,6 +227,8 @@ export function FileViewer({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** An encoding chosen with "Save with encoding" while a save was running: saved with once it ends. */
+  const pendingEncoding = useRef<string | null>(null);
   const stopAutoSave = () => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = null;
@@ -289,11 +292,12 @@ export function FileViewer({
       (file) =>
         // Unsaved edits are kept; saving says if the file changed meanwhile.
         dirtyRef.current ||
-        setLoaded((prev) =>
-          prev.state === "ok" && prev.file.content === file.content && prev.file.truncated === file.truncated
-            ? prev
-            : { state: "ok", file },
-        ),
+        setLoaded((prev) => {
+          if (prev.state === "ok" && prev.file.content === file.content && prev.file.truncated === file.truncated) return prev;
+          // The file's new text has its own line breaks.
+          setLineBreakChoice(null);
+          return { state: "ok", file };
+        }),
       () => {},
     );
   };
@@ -332,16 +336,23 @@ export function FileViewer({
     const edited = draft.current;
     if (!save || !file || !(edited || as) || !editable) return;
     if (saving) {
-      // The newer text, or the chosen encoding, is saved once the running save is done.
-      if (autoSave || as) autoSaveTimer.current = setTimeout(() => saveRef.current(as), AUTO_SAVE_MS);
+      // The newer text is saved once the running save is done; a chosen encoding right after it.
+      if (as) pendingEncoding.current = as;
+      else if (autoSave) autoSaveTimer.current = setTimeout(() => saveRef.current(), AUTO_SAVE_MS);
       return;
     }
     const content = edited ? fileText(edited) : file.content;
     const target = as ?? encoding;
     setSaving(true);
+    const afterSave = () => {
+      const pending = pendingEncoding.current;
+      pendingEncoding.current = null;
+      if (pending) setTimeout(() => saveRef.current(pending));
+    };
     save(file.content, content, target, encoding).then(
       () => {
         setSaving(false);
+        afterSave();
         setSaveError(null);
         // Typing during the save keeps the newer text to save.
         if (draft.current === edited) {
@@ -355,6 +366,7 @@ export function FileViewer({
       (err) => {
         setSaving(false);
         setSaveError(describeAttachError(err));
+        afterSave();
       },
     );
   };
@@ -398,10 +410,19 @@ export function FileViewer({
       options: encodingOptions,
       selected: encoding,
       filter: true,
-      onChoose: (id: string) => {
-        readAs.current = id;
-        read();
-      },
+      onChoose: (id: string) =>
+        loadRef.current(id).then(
+          (reopened) => {
+            readAs.current = id;
+            draft.current = null;
+            setDirty(false);
+            setSaveError(null);
+            setLineBreakChoice(null);
+            setLoaded({ state: "ok", file: reopened });
+          },
+          // The file stays as it was shown, read as before.
+          (err) => setSaveError(describeAttachError(err)),
+        ),
     },
     saveAs: {
       label: t("app.viewer.selectEncoding"),
@@ -510,7 +531,7 @@ export function FileViewer({
               editing={editing}
               keep={dirty}
               committed={changesShown ? committed : null}
-              lineBreak={fileLineBreak}
+              lineBreak={lineBreak}
               language={shownLanguage}
             />
           )}
