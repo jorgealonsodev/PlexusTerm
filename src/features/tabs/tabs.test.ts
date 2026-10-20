@@ -164,6 +164,21 @@ describe("tabsReducer panes", () => {
     expect(keepActive.activeKey).toBe(a);
   });
 
+  it("moves a tab to another place, keeping the active one and every tab's panes", () => {
+    const state = open(open(open(initialTabs)));
+    const [a, b, c] = state.tabs.map((t) => t.key);
+    const keys = (next: TabsState) => next.tabs.map((t) => t.key);
+    expect(keys(tabsReducer(state, { type: "move", key: a, to: 2 }))).toEqual([b, c, a]);
+    expect(keys(tabsReducer(state, { type: "move", key: c, to: 0 }))).toEqual([c, a, b]);
+    const moved = tabsReducer(state, { type: "move", key: b, to: 99 });
+    expect(keys(moved)).toEqual([a, c, b]);
+    expect(moved.activeKey).toBe(state.activeKey);
+    expect(moved.tabs.find((t) => t.key === b)).toBe(state.tabs.find((t) => t.key === b));
+    // Nothing to move: the same state.
+    expect(tabsReducer(state, { type: "move", key: b, to: 1 })).toBe(state);
+    expect(tabsReducer(state, { type: "move", key: "nope", to: 0 })).toBe(state);
+  });
+
   it("closes every tab", () => {
     const next = tabsReducer(open(open(initialTabs)), { type: "closeAll" });
     expect(next.tabs).toEqual([]);

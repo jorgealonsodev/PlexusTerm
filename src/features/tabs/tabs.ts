@@ -94,6 +94,8 @@ export type TabsAction =
   | { type: "closeRight"; key: string }
   | { type: "closeAll" }
   | { type: "activate"; key: string }
+  /** Puts a tab at index `to` of the tab list (dragged in the tab bar or DEV mode's column). */
+  | { type: "move"; key: string; to: number }
   | { type: "rename"; key: string; title: string }
   /** A new tab for the same target, with the same colour. */
   | { type: "duplicate"; key: string }
@@ -167,6 +169,14 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     }
     case "closeAll":
       return { ...state, tabs: [], activeKey: null };
+    case "move": {
+      const from = state.tabs.findIndex((t) => t.key === action.key);
+      const to = Math.max(0, Math.min(action.to, state.tabs.length - 1));
+      if (from === -1 || from === to) return state;
+      const tabs = state.tabs.filter((t) => t.key !== action.key);
+      tabs.splice(to, 0, state.tabs[from]);
+      return { ...state, tabs };
+    }
     case "activate":
       return state.tabs.some((t) => t.key === action.key)
         ? { ...state, activeKey: action.key }

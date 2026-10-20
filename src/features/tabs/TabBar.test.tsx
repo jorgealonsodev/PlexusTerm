@@ -394,6 +394,75 @@ describe("TabBar", () => {
   });
 });
 
+describe("dragging tabs", () => {
+  /** Lays the tab rows out side by side (or stacked in the column), 100 px each. */
+  const layOut = (column = false) => {
+    screen.getAllByRole("tab").forEach((el, i) => {
+      const start = i * 100;
+      el.getBoundingClientRect = () =>
+        (column
+          ? { left: 0, right: 200, top: start, bottom: start + 100, width: 200, height: 100, x: 0, y: start }
+          : { left: start, right: start + 100, top: 0, bottom: 30, width: 100, height: 30, x: start, y: 0 }) as DOMRect;
+    });
+  };
+  const bar = (props: Partial<Parameters<typeof TabBar>[0]> = {}) => (
+    <TabBar
+      tabs={[tab("t1", "one"), tab("t2", "two"), tab("t3", "three")]}
+      activeKey="t1"
+      onActivate={() => {}}
+      onClose={() => {}}
+      onNew={() => {}}
+      {...props}
+    />
+  );
+
+  it("moves a tab dragged along the bar to where it is dropped, marking the place meanwhile", () => {
+    const onMove = vi.fn();
+    render(bar({ onMove }));
+    layOut();
+    const [one] = screen.getAllByRole("tab");
+    fireEvent.pointerDown(one, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 260, clientY: 10, pointerId: 1 });
+    expect(one.classList.contains("tab--dragging")).toBe(true);
+    expect(document.querySelector(".tab--drop-after")?.textContent).toContain("three");
+    fireEvent.pointerUp(window, { clientX: 260, clientY: 10, pointerId: 1 });
+    expect(onMove).toHaveBeenCalledWith("t1", 2);
+    expect(document.querySelector(".tab--dragging, .tab--drop-before, .tab--drop-after")).toBeNull();
+  });
+
+  it("moves a tab up the DEV column", () => {
+    const onMove = vi.fn();
+    render(bar({ onMove, column: true }));
+    layOut(true);
+    const three = screen.getAllByRole("tab")[2];
+    fireEvent.pointerDown(three, { button: 0, clientX: 50, clientY: 250, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 50, clientY: 40, pointerId: 1 });
+    expect(document.querySelector(".tab--drop-before")?.textContent).toContain("one");
+    fireEvent.pointerUp(window, { clientX: 50, clientY: 40, pointerId: 1 });
+    expect(onMove).toHaveBeenCalledWith("t3", 0);
+  });
+
+  it("leaves a click a click, and a drop back in place moves nothing", () => {
+    const onMove = vi.fn();
+    const onActivate = vi.fn();
+    render(bar({ onMove, onActivate }));
+    layOut();
+    const two = screen.getAllByRole("tab")[1];
+    fireEvent.pointerDown(two, { button: 0, clientX: 150, clientY: 10, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 153, clientY: 11, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 153, clientY: 11, pointerId: 1 });
+    fireEvent.pointerDown(two, { button: 0, clientX: 150, clientY: 10, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 170, clientY: 10, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 170, clientY: 10, pointerId: 1 });
+    expect(onMove).not.toHaveBeenCalled();
+    // The close button never starts a drag.
+    fireEvent.pointerDown(screen.getAllByRole("button", { name: /^Close/ })[0], { button: 0, clientX: 90, clientY: 10, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 290, clientY: 10, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 290, clientY: 10, pointerId: 1 });
+    expect(onMove).not.toHaveBeenCalled();
+  });
+});
+
 describe("tab colours", () => {
   const coloured = [{ ...tab("t1", "one"), color: "#c0392b" }, tab("t2", "two")];
 

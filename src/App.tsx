@@ -1613,6 +1613,7 @@ function AppContent() {
             columnWidth={settings.tabColumnWidth}
             onColumnWidthChange={(tabColumnWidth) => terminalSettings.update({ tabColumnWidth })}
             onActivate={(key) => dispatch({ type: "activate", key })}
+            onMove={(key, to) => dispatch({ type: "move", key, to })}
             onClose={(key) => void dispatchKeepingEdits({ type: "close", key })}
             onNew={() => {
               // From the DEV column the new terminal stays in DEV mode, as the column does.

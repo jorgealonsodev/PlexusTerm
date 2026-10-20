@@ -754,6 +754,34 @@ body.is-resizing {
   cursor: col-resize;
 }
 
+/* A tab being dragged to another place (TabBar). */
+body.is-moving-tab {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grabbing;
+}
+
+.tabbar .tab.tab--dragging {
+  opacity: 0.5;
+}
+
+/* Where the dragged tab lands: a line before or after a tab, across the bar or the column. */
+.tabbar .tab.tab--drop-before {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tabbar .tab.tab--drop-after {
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
+.tabbar--column .tab.tab--drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tabbar--column .tab.tab--drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 /* Drag handle over the sidebar's edge; the inline width of the sidebar follows it. */
 .sidebar__resizer {
   position: relative;
