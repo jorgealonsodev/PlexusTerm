@@ -1233,6 +1233,16 @@ body.is-resizing {
   line-height: 1;
 }
 
+/* DEV mode's column button goes at the right end with Settings, just before it. */
+.toolbar .toolbar__dev-column {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.toolbar__dev-column + .toolbar__settings {
+  margin-inline-start: 0;
+}
+
 .tab__log {
   color: var(--danger);
   font-size: calc(9px * var(--ui-scale, 1));
