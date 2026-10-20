@@ -106,4 +106,44 @@ describe("Markdown preview (S4)", () => {
     expect(b.getAttribute("data-file-src")).toBeNull();
     expect(b.getAttribute("src")).toBe("https://example.com/b.png");
   });
+
+  it("shows the image of a <picture> source that matches, as GitHub does for light and dark logos", () => {
+    const picture = [
+      '<p align="center"><picture>',
+      '<source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">',
+      '<img src="docs/logo-light.svg" alt="logo" width="520" srcset="docs/logo@2x.svg 2x">',
+      "</picture></p>",
+    ].join("\n");
+    const render = (dark: boolean) => {
+      window.matchMedia = ((query: string) => ({ matches: dark && query.includes("dark") })) as typeof window.matchMedia;
+      const host = document.createElement("div");
+      host.innerHTML = renderMarkdown(picture, "/home/me/repo/README.md");
+      return host;
+    };
+    const dark = render(true);
+    expect(dark.querySelector("img")?.getAttribute("data-file-src")).toBe("/home/me/repo/docs/logo-dark.svg");
+    // No address is left for the browser to resolve against the app itself.
+    expect(dark.querySelector("source, [srcset]")).toBeNull();
+    expect(render(false).querySelector("img")?.getAttribute("data-file-src")).toBe("/home/me/repo/docs/logo-light.svg");
+  });
+
+  it("keeps web sources of a <picture>, and drops srcset anywhere else", () => {
+    window.matchMedia = (() => ({ matches: true })) as unknown as typeof window.matchMedia;
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown(
+      '<picture><source srcset="https://example.com/a.png 1x, https://example.com/a2.png 2x"><img src="b.png" alt="a"></picture>\n\n<img src="https://example.com/c.png" srcset="https://evil.example/c.png 2x" alt="c">',
+      "/r/README.md",
+    );
+    const [a, c] = [...host.querySelectorAll("img")];
+    expect(a.getAttribute("src")).toBe("https://example.com/a.png");
+    expect(a.getAttribute("data-file-src")).toBeNull();
+    expect(c.getAttribute("srcset")).toBeNull();
+    expect(host.querySelector("source")).toBeNull();
+  });
+
+  it("drops the sources of a <picture> with no image of its own", () => {
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown('<picture><source srcset="docs/a.png"></picture>', "/r/README.md");
+    expect(host.querySelector("source, [srcset]")).toBeNull();
+  });
 });

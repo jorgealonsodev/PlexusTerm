@@ -22,15 +22,28 @@ export function renderMarkdown(text: string, filePath = ""): string {
     // Ids and names get a `user-content-` prefix, so none can stand for a global of the window.
     SANITIZE_NAMED_PROPS: true,
   });
-  if (!clean.includes("<img")) return clean;
+  if (!/<img|<source|srcset/i.test(clean)) return clean;
   const page = document.createElement("template");
   page.innerHTML = clean;
+  // A <picture> shows the image of its first source whose media query matches (a dark logo in a
+  // dark theme), else its <img>; its image goes through the same checks as any other below.
+  for (const picture of page.content.querySelectorAll("picture")) {
+    const img = picture.querySelector("img");
+    const chosen = [...picture.querySelectorAll("source")]
+      .filter((source) => mediaMatches(source.getAttribute("media")))
+      .map((source) => firstCandidate(source.getAttribute("srcset") ?? ""))
+      .find((src) => src && (isWebImage(src) || !/^[a-z][a-z0-9+.-]*:/i.test(src)));
+    if (img && chosen) img.setAttribute("src", chosen);
+  }
+  // No other address may reach the browser, which would look for it in the app itself.
+  page.content.querySelectorAll("source").forEach((source) => source.remove());
+  page.content.querySelectorAll("[srcset]").forEach((el) => el.removeAttribute("srcset"));
   for (const img of page.content.querySelectorAll("img")) {
     const src = img.getAttribute("src") ?? "";
     img.removeAttribute("src");
     // Only paths worked out here are read: the file may write the attribute itself.
     img.removeAttribute("data-file-src");
-    if (/^https:\/\//i.test(src) || /^data:image\//i.test(src)) {
+    if (isWebImage(src)) {
       img.setAttribute("src", src);
       img.setAttribute("referrerpolicy", "no-referrer");
     } else {
@@ -40,6 +53,16 @@ export function renderMarkdown(text: string, filePath = ""): string {
   }
   return page.innerHTML;
 }
+
+/** Web images over https and images inside the file (`data:image/…`) are shown as they are. */
+const isWebImage = (src: string) => /^https:\/\//i.test(src) || /^data:image\//i.test(src);
+
+/** A source without a media query always matches; the window answers the others. */
+const mediaMatches = (media: string | null) =>
+  !media || (typeof window.matchMedia === "function" && window.matchMedia(media).matches);
+
+/** The first address of a `srcset` (`a.png 1x, b.png 2x` → `a.png`). */
+const firstCandidate = (srcset: string) => srcset.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
 
 /** The file an image link of the Markdown file `filePath` names, or null when it names none. */
 function fileImagePath(src: string, filePath: string): string | null {
