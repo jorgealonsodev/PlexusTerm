@@ -19,7 +19,7 @@ Publish the GitHub Release first: the manifests point at its assets.
 Fetch the checksums once:
 
 ```bash
-V=0.2.14   # new version, without the leading v
+V=0.2.15   # new version, without the leading v
 curl -fsSL -o checksums.txt \
   "https://github.com/jorgealonsodev/PlexusTerm/releases/download/v$V/checksums.txt"
 ```
