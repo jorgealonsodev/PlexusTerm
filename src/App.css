@@ -2392,19 +2392,26 @@ body.is-dragging-path {
     background-color 150ms ease;
 }
 
-/* DEV mode: the terminal's folder at the right end of the bar, just before the DEV option. */
+/* DEV mode: the terminal's folder at the start of the bar, before its branch (as the Explorer shows them). */
 .pane-footer__folder {
+  display: inline-flex;
   flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
-  margin-inline-start: auto;
-  overflow: hidden;
+  max-width: 40%;
   color: var(--text);
   font-size: calc(12px * var(--ui-scale, 1));
-  text-overflow: ellipsis;
 }
 
-.pane-footer__folder + .pane-footer__dev {
-  margin-inline-start: 0;
+.pane-footer__folder svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.pane-footer__folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pane-footer__dev svg {

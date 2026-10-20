@@ -126,6 +126,7 @@ import {
   SquareTerminal,
   Usb,
   Cable,
+  Laptop,
   Link,
   Smartphone,
 } from "lucide-react";
@@ -1965,6 +1966,12 @@ function AppContent() {
                             const devShortcut = shortcutLabel("toggleDevMode", settings.shortcuts);
                             return (
                               <div className={`pane-footer${bare ? " pane-footer--bare" : ""}`}>
+                                {folder && (
+                                  <span className="pane-footer__folder" dir="auto" title={folder}>
+                                    <Laptop size={13} aria-hidden="true" />
+                                    <span className="pane-footer__folder-name">{basename(folder) || folder}</span>
+                                  </span>
+                                )}
                                 {branch && (
                                   <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
                                     <GitBranch size={13} aria-hidden="true" />
@@ -1972,11 +1979,6 @@ function AppContent() {
                                   </span>
                                 )}
                                 {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
-                                {folder && (
-                                  <span className="pane-footer__folder" dir="auto" title={folder}>
-                                    {basename(folder) || folder}
-                                  </span>
-                                )}
                                 {devButton && (
                                   <button
                                     type="button"

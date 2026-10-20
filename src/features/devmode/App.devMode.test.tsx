@@ -483,7 +483,7 @@ describe("DEV mode (S10, S13)", () => {
     localStorage.clear();
   });
 
-  it("names the terminal's folder at the right of the bar under it, only in DEV mode and while Settings allow it", async () => {
+  it("names the terminal's folder first in the bar under it, before the branch, only in DEV mode and while Settings allow it", async () => {
     await renderApp();
     act(() => stub.props.onCwd?.("/home/me/repo/src"));
     await settle();
@@ -492,6 +492,9 @@ describe("DEV mode (S10, S13)", () => {
     await run("claude");
     expect(folder()?.textContent).toBe("src");
     expect(folder()?.getAttribute("title")).toBe("/home/me/repo/src");
+    // With its icon, at the start of the bar, as the Explorer shows its folder and branch.
+    expect(folder()?.querySelector("svg")).not.toBeNull();
+    expect(folder()?.parentElement?.firstElementChild).toBe(folder());
     cleanup();
     await renderApp({ devFolderInFooter: false });
     await run("claude");
