@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "يطوي {shortcut} أو زر شريط الأدوات الشريط الجانبي إلى أيقونات علاماته، أو يخفيه تمامًا مع هذا الخيار.",
     sidebarHelpNoShortcut:
       "يطوي زر شريط الأدوات الشريط الجانبي إلى أيقونات علاماته، أو يخفيه تمامًا مع هذا الخيار.",
+    hideDevColumn: "إخفاء عمود علامات تبويب DEV بالكامل عند طيّه",
+    devColumnAtStartup: "عمود علامات تبويب DEV عند فتح PlexusTerm",
+    devColumnHelp:
+      "يطوي {shortcut} أو الزر المجاور للإعدادات عمود علامات تبويب وضع DEV إلى أيقوناته، أو يخفيه بالكامل مع هذا الخيار.",
+    devColumnHelpNoShortcut:
+      "يطوي الزر المجاور للإعدادات عمود علامات تبويب وضع DEV إلى أيقوناته، أو يخفيه بالكامل مع هذا الخيار.",
   },
   terminal: {
     shell: "الصدفة للطرفيات المحلية",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "تصغير الخط",
       fontReset: "حجم الخط الافتراضي",
       toggleSidebar: "إظهار الشريط الجانبي أو طيّه",
+      toggleDevColumn: "إظهار عمود علامات تبويب DEV أو طيّه",
       showSessions: "إظهار الجلسات",
       showSftp: "إظهار SFTP",
       showExplorer: "إظهار المستكشف",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "تشغيل شريط المراقبة عن بُعد أو إيقافه",
       toggleDevMode: "تشغيل وضع DEV أو إيقافه",
+      recentFolders: "المجلدات الأخيرة لوضع DEV",
       openSettings: "فتح الإعدادات",
       assistant: "مساعد الذكاء الاصطناعي",
     },

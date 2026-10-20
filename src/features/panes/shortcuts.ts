@@ -48,7 +48,11 @@ export type Shortcut =
   | { type: "toggleRemoteMonitor" }
   | { type: "openSettings" }
   /** The active tab's DEV mode on or off (S10). */
-  | { type: "toggleDevMode" };
+  | { type: "toggleDevMode" }
+  /** Folds DEV mode's tab column to its icons (or hides it) and opens it again. */
+  | { type: "toggleDevColumn" }
+  /** Lists the folders DEV mode was last used in, to open one in a new DEV tab. */
+  | { type: "recentFolders" };
 
 export type ShortcutGroup = "tabs" | "connections" | "terminal" | "font" | "sidebar" | "tools" | "ai";
 
@@ -89,6 +93,7 @@ export const SHORTCUT_ACTIONS = {
   saveOutput: { shortcut: { type: "saveOutput" }, group: "terminal", defaults: [] },
   toggleLogging: { shortcut: { type: "toggleLogging" }, group: "terminal", defaults: [] },
   toggleDevMode: { shortcut: { type: "toggleDevMode" }, group: "terminal", defaults: [] },
+  recentFolders: { shortcut: { type: "recentFolders" }, group: "terminal", defaults: [] },
   askAi: { shortcut: { type: "askAi" }, group: "ai", defaults: [] },
   fontIncrease: {
     shortcut: { type: "fontSize", step: "increase" },
@@ -98,6 +103,7 @@ export const SHORTCUT_ACTIONS = {
   fontDecrease: { shortcut: { type: "fontSize", step: "decrease" }, group: "font", defaults: ["Ctrl+-", "Ctrl+Shift+-"] },
   fontReset: { shortcut: { type: "fontSize", step: "reset" }, group: "font", defaults: ["Ctrl+0", "Ctrl+Shift+0"] },
   toggleSidebar: { shortcut: { type: "toggleSidebar" }, group: "sidebar", defaults: ["Ctrl+Shift+B"] },
+  toggleDevColumn: { shortcut: { type: "toggleDevColumn" }, group: "sidebar", defaults: [] },
   showSessions: { shortcut: { type: "sidebarView", view: "sessions" }, group: "sidebar", defaults: [] },
   showSftp: { shortcut: { type: "sidebarView", view: "sftp" }, group: "sidebar", defaults: [] },
   showExplorer: { shortcut: { type: "sidebarView", view: "explorer" }, group: "sidebar", defaults: [] },

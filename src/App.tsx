@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ColorMenu } from "./features/toolbar/ColorMenu";
+import { ContextMenu } from "./features/menu/ContextMenu";
 import { loadToolbarColor, saveToolbarColor } from "./features/toolbar/toolbarColor";
 import { readableOn } from "./features/settings/uiTheme";
 import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
@@ -107,6 +108,8 @@ import {
   KeyRound,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Radio,
   Rows2,
   Settings as SettingsIcon,
@@ -117,6 +120,7 @@ import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
 import { basename } from "./features/local/localPath";
 import { parseWorkspaceFile } from "./features/files/workspaceFile";
+import { addRecentFolder, loadRecentFolders, saveRecentFolders } from "./features/devmode/recentFolders";
 import "./App.css";
 
 
@@ -443,6 +447,26 @@ function AppContent() {
   };
   const dev = useDevMode(locateProject);
   const { forget: forgetDev, toggle: devToggle, show: devShow } = dev;
+  /** The last local folders DEV mode was used in, newest first (the Explorer's Recent folders). */
+  const [recentFolders, setRecentFolders] = useState<readonly string[]>(loadRecentFolders);
+  /** Where the recent folders' menu opened by its shortcut shows, or null while closed. */
+  const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null);
+  /** The project each local DEV tab was last recorded with: a tab is recorded once per project. */
+  const recordedDev = useRef(new Map<string, string>());
+  useEffect(() => {
+    for (const tab of state.tabs) {
+      const tabDev = dev.state[tab.key];
+      const folder = tabDev ? (tabDev.root ?? tabDev.folder) : null;
+      if (folder === null) recordedDev.current.delete(tab.key);
+      if (folder === null || tab.target.type !== "local" || recordedDev.current.get(tab.key) === folder) continue;
+      recordedDev.current.set(tab.key, folder);
+      setRecentFolders((prev) => {
+        const next = addRecentFolder(prev, folder);
+        if (next !== prev) saveRecentFolders(next);
+        return next;
+      });
+    }
+  }, [state.tabs, dev.state]);
   /** A tab's panes other than `pane` and its own viewer and chat: what DEV mode on `pane` hides. */
   const othersOf = (tab: Tab, pane: string) => {
     const linkOf = (id: string) => tab.chats[id] ?? tab.viewers?.[id];
@@ -1189,6 +1213,11 @@ function AppContent() {
           return macroKeys.current.toggleRecording();
         case "toggleSidebar":
           return updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }));
+        case "toggleDevColumn":
+          return updateSettingsWith((s) => ({ devColumnCollapsed: !s.devColumnCollapsed }));
+        case "recentFolders":
+          // Under the toolbar, in the middle: the Explorer's button may be out of sight.
+          return setRecentMenu({ x: Math.round(window.innerWidth / 2), y: 48 });
         case "sidebarView":
           // Like a click on the sidebar tab: a folded sidebar opens.
           setSidebarView(shortcut.view);
@@ -1343,6 +1372,22 @@ function AppContent() {
           <Circle size={16} />
           <span className="btn__label">{t("app.toolbar.recordMacro")}</span>
         </button>
+        {activeDev && (
+          // DEV mode's tab column folds like the sidebar: to its icons, or away (Settings).
+          <button
+            type="button"
+            className="btn btn--icon toolbar__dev-column"
+            aria-label={settings.devColumnCollapsed ? t("app.toolbar.showDevColumn") : t("app.toolbar.hideDevColumn")}
+            title={
+              settings.devColumnCollapsed
+                ? titleWith("app.toolbar.showDevColumnTitle", "app.toolbar.showDevColumn", "toggleDevColumn")
+                : titleWith("app.toolbar.hideDevColumnTitle", "app.toolbar.hideDevColumn", "toggleDevColumn")
+            }
+            onClick={() => updateSettingsWith((s) => ({ devColumnCollapsed: !s.devColumnCollapsed }))}
+          >
+            {settings.devColumnCollapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
+          </button>
+        )}
         <button
           className="btn btn--icon toolbar__settings"
           aria-label={t("app.toolbar.settings")}
@@ -1353,6 +1398,18 @@ function AppContent() {
         </button>
       </header>
       <EditUploads onNotice={setNotice} />
+      {recentMenu && (
+        <ContextMenu
+          x={recentMenu.x}
+          y={recentMenu.y}
+          items={
+            recentFolders.length > 0
+              ? recentFolders.map((folder) => ({ label: folder, onSelect: () => openWorkspace([folder]) }))
+              : [{ label: t("sftp.panel.noRecent"), onSelect: () => {}, disabled: true }]
+          }
+          onClose={() => setRecentMenu(null)}
+        />
+      )}
       {update && <UpdateNotice release={update} onClose={() => setUpdate(null)} />}
       {notice && (
         <div className="notice" role="status">
@@ -1403,6 +1460,8 @@ function AppContent() {
                     // A workspace file opens a new DEV tab in its first folder, with the others added.
                     onOpenFolders: openWorkspace,
                   }}
+                  // A recent folder opens in a new DEV tab, like a workspace with that one folder.
+                  recent={{ folders: recentFolders, onOpen: (folder) => openWorkspace([folder]) }}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
                   onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {
@@ -1522,6 +1581,7 @@ function AppContent() {
         )}
         {/* DEV mode puts the tabs in a column at the right (S13); the workspace keeps its place in the tree. */}
         <section className={`main${activeDev ? " main--dev" : ""}`}>
+          {!(activeDev && settings.devColumnCollapsed && settings.devColumnHideWhenCollapsed) && (
           <TabBar
             tabs={state.tabs}
             activeKey={state.activeKey}
@@ -1530,6 +1590,7 @@ function AppContent() {
             dev={devTabs}
             busy={busyTabs}
             column={activeDev !== undefined}
+            collapsed={settings.devColumnCollapsed}
             details={tabDetails}
             hiddenPanes={hiddenPanes}
             onShowPane={(key, pane) => {
@@ -1561,6 +1622,7 @@ function AppContent() {
               void writeText(host).catch(() => setNotice(t("app.notice.copyFailed")))
             }
           />
+          )}
           <main className="workspace">
             {state.tabs.map((tab) => {
               const active = tab.key === state.activeKey;

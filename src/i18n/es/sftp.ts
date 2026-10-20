@@ -13,6 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "Seguir la carpeta del terminal",
     refreshAll: "Actualizar el explorador",
     collapseAll: "Contraer las carpetas del explorador",
+    recent: "Carpetas recientes",
+    noRecent: "Aún no hay carpetas recientes",
     branch: "Rama {branch}",
     branchDirty: "Rama {branch}, con cambios sin confirmar",
     workspace: {

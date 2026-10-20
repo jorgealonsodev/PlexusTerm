@@ -468,6 +468,21 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarAtStartup: "collapsed" }));
     });
 
+    it("chooses how DEV mode's tab column folds and how it opens at startup", () => {
+      const { onSave } = setup();
+      const hide = screen.getByLabelText("Hide the DEV tab column completely when folded") as HTMLInputElement;
+      expect(hide.checked).toBe(false);
+      fireEvent.click(hide);
+      const select = screen.getByLabelText("DEV tab column when PlexusTerm opens") as HTMLSelectElement;
+      expect(select.value).toBe("last");
+      expect([...select.options].map((o) => o.textContent)).toEqual(["As I left it", "Open", "Folded"]);
+      fireEvent.change(select, { target: { value: "expanded" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ devColumnHideWhenCollapsed: true, devColumnAtStartup: "expanded", devColumnCollapsed: false }),
+      );
+    });
+
     it("changes the terminal's folder with the file browser by default, and saves the choice (L16)", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Files" }));
@@ -565,6 +580,24 @@ describe("Shortcuts section", () => {
     press(input, { key: "a" });
     expect(screen.getByText("Use Ctrl, Alt or Meta with a key.")).toBeTruthy();
     expect(input.value).toBe("");
+  });
+
+  it("binds a shortcut to fold DEV mode's tab column, which has none by default", () => {
+    const { onSave } = openShortcuts();
+    const input = field("Toggle DEV tab column");
+    expect(input.value).toBe("");
+    press(input, { key: "b", ctrlKey: true, altKey: true });
+    save();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ shortcuts: { toggleDevColumn: "Ctrl+Alt+B" } }));
+  });
+
+  it("binds a shortcut to list the recent DEV mode folders, which has none by default", () => {
+    const { onSave } = openShortcuts();
+    const input = field("Recent DEV mode folders");
+    expect(input.value).toBe("");
+    press(input, { key: "r", ctrlKey: true, altKey: true });
+    save();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ shortcuts: { recentFolders: "Ctrl+Alt+R" } }));
   });
 
   it("lets a freed default be taken by another action", () => {

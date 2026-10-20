@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 
 interface ToolButtonProps {
@@ -5,7 +6,7 @@ interface ToolButtonProps {
   /** Its accessible name and tooltip. */
   label: string;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void;
 }
 
 /** An action of a file list's toolbar, shown as an icon named by its tooltip. */

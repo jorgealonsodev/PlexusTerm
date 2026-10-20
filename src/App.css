@@ -888,13 +888,16 @@ body.is-resizing {
 }
 
 .sftp__pathbar,
+/* A narrow sidebar puts the icons that do not fit on the next row. */
 .sftp__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
-/* The toolbar's actions: square icons in one row, like the path bar's ↑ ⌂ ⟳. */
+/* The toolbar's actions: square icons, like the path bar's ↑ ⌂ ⟳; they keep their size. */
 .sftp__tool {
+  flex: none;
   display: inline-grid;
   place-items: center;
   width: 26px;
@@ -2459,6 +2462,20 @@ body.is-dragging-path {
 .tabbar--column .tabbar__new {
   align-self: flex-start;
   margin: 4px 6px;
+}
+
+/* Folded: a narrow strip of the rows' icons, as the folded sidebar's. */
+.tabbar--column.tabbar--collapsed {
+  width: 44px;
+}
+
+.tabbar--collapsed .tab--row {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.tabbar--collapsed .tabbar__new {
+  align-self: center;
 }
 
 .cli-icon {

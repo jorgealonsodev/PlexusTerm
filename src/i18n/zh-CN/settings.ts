@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} 或工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
     sidebarHelpNoShortcut:
       "工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
+    hideDevColumn: "折叠时完全隐藏 DEV 标签列",
+    devColumnAtStartup: "PlexusTerm 打开时的 DEV 标签列",
+    devColumnHelp:
+      "{shortcut} 或“设置”旁的按钮会将 DEV 模式的标签列折叠为图标，启用此选项则完全隐藏。",
+    devColumnHelpNoShortcut:
+      "“设置”旁的按钮会将 DEV 模式的标签列折叠为图标，启用此选项则完全隐藏。",
   },
   terminal: {
     shell: "本地终端的 Shell",
@@ -195,6 +201,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "减小字号",
       fontReset: "默认字号",
       toggleSidebar: "显示或折叠侧边栏",
+      toggleDevColumn: "显示或隐藏 DEV 标签列",
       showSessions: "显示会话",
       showSftp: "显示 SFTP",
       showExplorer: "显示资源管理器",
@@ -207,6 +214,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "网络唤醒 (Wake on LAN)",
       toggleRemoteMonitor: "开启或关闭远程监控栏",
       toggleDevMode: "开启或关闭 DEV 模式",
+      recentFolders: "DEV 模式最近的文件夹",
       openSettings: "打开设置",
       assistant: "AI 助手",
     },

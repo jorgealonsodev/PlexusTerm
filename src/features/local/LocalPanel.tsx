@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
-import { ChevronsDownUp, FilePlus, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
+import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
@@ -52,6 +52,8 @@ interface LocalPanelProps {
   onView?: (path: string) => void;
   /** DEV mode's workspace: folders added under the main one, as roots of their own (like VS Code's). */
   workspace?: Workspace;
+  /** DEV mode's recent folders: the toolbar lists them and opens the one chosen in a new terminal tab. */
+  recent?: { folders: readonly string[]; onOpen: (folder: string) => void };
 }
 
 export interface Workspace {
@@ -63,7 +65,7 @@ export interface Workspace {
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -76,6 +78,8 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   const [status, setStatus] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; entry: SftpEntry } | null>(null);
   const [dialog, setDialog] = useState<{ kind: "properties" | "permissions"; entry: SftpEntry } | null>(null);
+  /** Where the recent folders' menu opens (under its button), or null while closed. */
+  const [recentMenu, setRecentMenu] = useState<{ x: number; y: number } | null>(null);
   /** Counts listings, so the git status is read again after each one. */
   const [loads, setLoads] = useState(0);
   /** Bumped by Collapse Folders (DEV mode): every open folder of the tree closes. */
@@ -456,6 +460,17 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             <>
               <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
               <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={collapseAll} />
+              {recent && (
+                <ToolButton
+                  icon={History}
+                  label={t("sftp.panel.recent")}
+                  disabled={recent.folders.length === 0}
+                  onClick={(e) => {
+                    const box = e.currentTarget.getBoundingClientRect();
+                    setRecentMenu({ x: box.left, y: box.bottom });
+                  }}
+                />
+              )}
             </>
           )}
         </div>
@@ -517,6 +532,14 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             />
           ))}
         {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.entry)} onClose={() => setMenu(null)} />}
+        {recentMenu && recent && (
+          <ContextMenu
+            x={recentMenu.x}
+            y={recentMenu.y}
+            items={recent.folders.map((folder) => ({ label: folder, onSelect: () => recent.onOpen(folder) }))}
+            onClose={() => setRecentMenu(null)}
+          />
+        )}
         {dialog?.kind === "properties" && <PropertiesDialog entry={dialog.entry} onClose={() => setDialog(null)} />}
         {dialog?.kind === "permissions" && (
           <PermissionsDialog

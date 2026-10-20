@@ -13,6 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "跟随终端文件夹",
     refreshAll: "刷新资源管理器",
     collapseAll: "在资源管理器中折叠文件夹",
+    recent: "最近的文件夹",
+    noRecent: "还没有最近的文件夹",
     branch: "分支 {branch}",
     branchDirty: "分支 {branch}，有未提交的更改",
     workspace: {

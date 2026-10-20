@@ -13,6 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "टर्मिनल फ़ोल्डर का अनुसरण करें",
     refreshAll: "एक्सप्लोरर रीफ़्रेश करें",
     collapseAll: "एक्सप्लोरर के फ़ोल्डर संक्षिप्त करें",
+    recent: "हाल के फ़ोल्डर",
+    noRecent: "अभी कोई हाल का फ़ोल्डर नहीं",
     branch: "ब्रांच {branch}",
     branchDirty: "ब्रांच {branch}, बिना कमिट किए बदलावों के साथ",
     workspace: {

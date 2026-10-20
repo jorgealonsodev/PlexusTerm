@@ -55,6 +55,9 @@ describe("parseSettings", () => {
       viewerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
+      devColumnCollapsed: false,
+      devColumnHideWhenCollapsed: false,
+      devColumnAtStartup: "last",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -67,6 +70,17 @@ describe("parseSettings", () => {
     expect(at("expanded", true)).toBe(false);
     expect(at("collapsed", false)).toBe(true);
     expect(parseSettings(JSON.stringify({ sidebarAtStartup: "sideways" })).sidebarAtStartup).toBe("last");
+  });
+
+  it("opens the DEV tab column as Settings choose at startup, or as it was left", () => {
+    const at = (devColumnAtStartup: string, devColumnCollapsed: boolean) =>
+      parseSettings(JSON.stringify({ devColumnAtStartup, devColumnCollapsed })).devColumnCollapsed;
+    expect(at("last", true)).toBe(true);
+    expect(at("last", false)).toBe(false);
+    expect(at("expanded", true)).toBe(false);
+    expect(at("collapsed", false)).toBe(true);
+    expect(parseSettings(JSON.stringify({ devColumnAtStartup: "sideways" })).devColumnAtStartup).toBe("last");
+    expect(parseSettings(JSON.stringify({ devColumnHideWhenCollapsed: true })).devColumnHideWhenCollapsed).toBe(true);
   });
 
   it("reads where the file viewer opens, the left when unknown", () => {
@@ -136,6 +150,9 @@ describe("parseSettings", () => {
       viewerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
+      devColumnCollapsed: false,
+      devColumnHideWhenCollapsed: false,
+      devColumnAtStartup: "last",
     });
   });
 
@@ -309,6 +326,9 @@ describe("serializeSettings", () => {
       viewerFontSize: 13,
       devCommands: ["aider"],
       tabColumnWidth: 300,
+      devColumnCollapsed: true,
+      devColumnHideWhenCollapsed: true,
+      devColumnAtStartup: "last" as const,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });

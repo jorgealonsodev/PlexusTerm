@@ -55,6 +55,12 @@ export const settings = {
       "{shortcut} or the toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
     sidebarHelpNoShortcut:
       "The toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
+    hideDevColumn: "Hide the DEV tab column completely when folded",
+    devColumnAtStartup: "DEV tab column when PlexusTerm opens",
+    devColumnHelp:
+      "{shortcut} or the toolbar button next to Settings folds DEV mode's tab column to its icons, or hides it completely with this option.",
+    devColumnHelpNoShortcut:
+      "The toolbar button next to Settings folds DEV mode's tab column to its icons, or hides it completely with this option.",
   },
   terminal: {
     shell: "Shell for local terminals",
@@ -196,6 +202,7 @@ export const settings = {
       fontDecrease: "Smaller font",
       fontReset: "Default font size",
       toggleSidebar: "Toggle sidebar",
+      toggleDevColumn: "Toggle DEV tab column",
       showSessions: "Show Sessions",
       showSftp: "Show SFTP",
       showExplorer: "Show Explorer",
@@ -208,6 +215,7 @@ export const settings = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Remote monitor bar on or off",
       toggleDevMode: "DEV mode on or off",
+      recentFolders: "Recent DEV mode folders",
       openSettings: "Open Settings",
       assistant: "AI assistant",
     },

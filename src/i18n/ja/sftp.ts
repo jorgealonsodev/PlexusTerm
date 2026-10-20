@@ -13,6 +13,8 @@ export const sftp: Messages<typeof en> = {
     follow: "ターミナルのフォルダーに追従",
     refreshAll: "エクスプローラーを最新の情報に更新",
     collapseAll: "エクスプローラーのフォルダーを折りたたむ",
+    recent: "最近使ったフォルダー",
+    noRecent: "最近使ったフォルダーはまだありません",
     branch: "ブランチ {branch}",
     branchDirty: "ブランチ {branch}（未コミットの変更あり）",
     workspace: {

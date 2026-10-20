@@ -128,6 +128,12 @@ export interface TerminalSettings {
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
   tabColumnWidth: number | null;
+  /** DEV mode's tab column is folded to its icons (the toolbar button or its shortcut). */
+  devColumnCollapsed: boolean;
+  /** Folding hides DEV mode's tab column completely instead of leaving its icons. */
+  devColumnHideWhenCollapsed: boolean;
+  /** How DEV mode's tab column opens with PlexusTerm: as it was left, always open or always folded. */
+  devColumnAtStartup: SidebarAtStartup;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -200,6 +206,9 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   viewerFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
+  devColumnCollapsed: false,
+  devColumnHideWhenCollapsed: false,
+  devColumnAtStartup: "last",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -375,6 +384,13 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
         ? bool(value.sidebarCollapsed, d.sidebarCollapsed)
         : sidebarAtStartupOf(value.sidebarAtStartup) === "collapsed",
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
+    // DEV mode's tab column too, with its own choice.
+    devColumnCollapsed:
+      sidebarAtStartupOf(value.devColumnAtStartup) === "last"
+        ? bool(value.devColumnCollapsed, d.devColumnCollapsed)
+        : sidebarAtStartupOf(value.devColumnAtStartup) === "collapsed",
+    devColumnHideWhenCollapsed: bool(value.devColumnHideWhenCollapsed, d.devColumnHideWhenCollapsed),
+    devColumnAtStartup: sidebarAtStartupOf(value.devColumnAtStartup),
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),
     localCwd: cleanLocalShell(value.localCwd),

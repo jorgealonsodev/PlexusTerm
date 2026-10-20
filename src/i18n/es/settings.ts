@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} o el botón de la barra de herramientas pliega la barra lateral a los iconos de sus pestañas, o la oculta por completo con esta opción.",
     sidebarHelpNoShortcut:
       "El botón de la barra de herramientas pliega la barra lateral a los iconos de sus pestañas, o la oculta por completo con esta opción.",
+    hideDevColumn: "Ocultar por completo la columna de pestañas DEV al plegarla",
+    devColumnAtStartup: "Columna de pestañas DEV al abrir PlexusTerm",
+    devColumnHelp:
+      "{shortcut} o el botón junto a Ajustes pliega la columna de pestañas del modo DEV a sus iconos, o la oculta por completo con esta opción.",
+    devColumnHelpNoShortcut:
+      "El botón junto a Ajustes pliega la columna de pestañas del modo DEV a sus iconos, o la oculta por completo con esta opción.",
   },
   terminal: {
     shell: "Shell de los terminales locales",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "Fuente más pequeña",
       fontReset: "Tamaño de fuente predeterminado",
       toggleSidebar: "Mostrar u ocultar la barra lateral",
+      toggleDevColumn: "Mostrar u ocultar la columna de pestañas DEV",
       showSessions: "Mostrar Sesiones",
       showSftp: "Mostrar SFTP",
       showExplorer: "Mostrar Explorador",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Activar o desactivar la barra de monitor remoto",
       toggleDevMode: "Activar o desactivar el modo DEV",
+      recentFolders: "Carpetas recientes del modo DEV",
       openSettings: "Abrir Ajustes",
       assistant: "Asistente de IA",
     },

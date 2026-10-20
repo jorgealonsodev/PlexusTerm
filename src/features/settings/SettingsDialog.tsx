@@ -318,6 +318,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [sidebarAtStartup, setSidebarAtStartup] = useState(settings.sidebarAtStartup);
+  const [devColumnHideWhenCollapsed, setDevColumnHideWhenCollapsed] = useState(settings.devColumnHideWhenCollapsed);
+  const [devColumnAtStartup, setDevColumnAtStartup] = useState(settings.devColumnAtStartup);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
   const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
   const [updateState, setUpdateState] = useState<
@@ -432,6 +434,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       localCwd: cleanLocalShell(localCwd),
       sidebarWidth: settings.sidebarWidth,
       tabColumnWidth: settings.tabColumnWidth,
+      devColumnCollapsed: settings.devColumnCollapsed,
+      devColumnHideWhenCollapsed,
+      devColumnAtStartup,
       checkUpdates,
       aiSaveChats,
       language,
@@ -453,6 +458,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     .filter(Boolean)
     .join(" / ");
   const sidebarShortcut = shortcutLabel("toggleSidebar", shortcuts);
+  const devColumnShortcut = shortcutLabel("toggleDevColumn", shortcuts);
 
   const panel = (id: Section) => ({
     role: "tabpanel" as const,
@@ -654,6 +660,27 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             <label className="field">
               {t("settings.appearance.sidebarAtStartup")}
               <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
+                <option value="last">{t("settings.appearance.sidebarLast")}</option>
+                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
+                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
+              </select>
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={devColumnHideWhenCollapsed}
+                onChange={(e) => setDevColumnHideWhenCollapsed(e.target.checked)}
+              />
+              {t("settings.appearance.hideDevColumn")}
+            </label>
+            <p className="muted">
+              {devColumnShortcut
+                ? t("settings.appearance.devColumnHelp", { shortcut: devColumnShortcut })
+                : t("settings.appearance.devColumnHelpNoShortcut")}
+            </p>
+            <label className="field">
+              {t("settings.appearance.devColumnAtStartup")}
+              <select value={devColumnAtStartup} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
                 <option value="last">{t("settings.appearance.sidebarLast")}</option>
                 <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
                 <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>

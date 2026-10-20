@@ -298,6 +298,38 @@ describe("TabBar", () => {
     });
   });
 
+  describe("folded DEV tab column", () => {
+    it("shows only each row's icon, keeps the title as its tooltip, and still activates and opens tabs", () => {
+      const onActivate = vi.fn();
+      const onNew = vi.fn();
+      const { container } = render(
+        <TabBar
+          tabs={[tab("t1", "one"), tab("t2", "two")]}
+          activeKey="t1"
+          column
+          collapsed
+          columnWidth={300}
+          details={new Map([["t1", { cli: "claude", folder: "app" }]])}
+          onActivate={onActivate}
+          onClose={() => {}}
+          onNew={onNew}
+        />,
+      );
+      const bar = screen.getByRole("tablist");
+      expect(bar.classList.contains("tabbar--collapsed")).toBe(true);
+      expect(bar.style.width).toBe("");
+      const rows = screen.getAllByRole("tab");
+      expect(rows.map((r) => r.getAttribute("title"))).toEqual(["one", "two"]);
+      expect(container.querySelectorAll(".tab__title, .tab__folder, .tab__close")).toHaveLength(0);
+      expect(container.querySelectorAll(".cli-icon")).toHaveLength(2);
+      expect(screen.queryByRole("separator")).toBeNull();
+      fireEvent.mouseDown(rows[1], { button: 0 });
+      expect(onActivate).toHaveBeenCalledWith("t2");
+      fireEvent.click(screen.getByRole("button", { name: "New local terminal" }));
+      expect(onNew).toHaveBeenCalled();
+    });
+  });
+
   describe("resizable DEV tab column", () => {
     const columnAt = (right: number) =>
       vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({

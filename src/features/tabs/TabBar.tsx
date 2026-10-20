@@ -29,6 +29,8 @@ interface TabBarProps {
   busy?: ReadonlySet<string>;
   /** DEV mode's layout (S13): a column of rows, each with its CLI's icon and project folder. */
   column?: boolean;
+  /** The column folded to a narrow strip of its rows' icons, each titled with its tab's title. */
+  collapsed?: boolean;
   /** What the column shows of each tab: the CLI it runs (null for none) and its project folder's name. */
   details?: ReadonlyMap<string, { cli: string | null; folder: string | null }>;
   /**
@@ -80,6 +82,7 @@ function hostOf(tab: Tab): string | null {
 
 export function TabBar(props: TabBarProps) {
   const { tabs, activeKey, logging, attention, dev, busy, column = false, details, onActivate, onClose, onNew } = props;
+  const folded = column && (props.collapsed ?? false);
   const t = useT();
   const [menu, setMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const [colorMenu, setColorMenu] = useState<{ key: string; x: number; y: number } | null>(null);
@@ -155,10 +158,10 @@ export function TabBar(props: TabBarProps) {
     <>
       <div
         ref={listRef}
-        className={`tabbar${column ? " tabbar--column" : ""}`}
+        className={`tabbar${column ? " tabbar--column" : ""}${folded ? " tabbar--collapsed" : ""}`}
         role="tablist"
         aria-orientation={column ? "vertical" : undefined}
-        style={column && shownWidth !== null ? { width: shownWidth } : undefined}
+        style={column && !folded && shownWidth !== null ? { width: shownWidth } : undefined}
       >
         {tabs.map((tab) => {
           const paneRows = column ? props.hiddenPanes?.get(tab.key) : undefined;
@@ -204,29 +207,31 @@ export function TabBar(props: TabBarProps) {
                 {attention?.has(tab.key) && (
                   <span className="tab__attention" role="img" aria-label={t("app.tabs.attention")} title={t("app.tabs.attention")} />
                 )}
-                {shown !== null && (
+                {!folded && shown !== null && (
                   <span className="tab__title" dir="auto">
                     {shown}
                   </span>
                 )}
-                {folder && (
+                {!folded && folder && (
                   <span className="tab__folder" dir="auto">
                     {folder}
                   </span>
                 )}
-                {dev?.has(tab.key) && (
+                {!folded && dev?.has(tab.key) && (
                   <span className="tab__dev" role="img" aria-label={t("app.tabs.dev")} title={t("app.tabs.dev")}>
                     <Code size={12} aria-hidden="true" />
                   </span>
                 )}
-                <button
-                  className="tab__close"
-                  aria-label={t("app.tabs.closeNamed", { title: label })}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={close}
-                >
-                  ×
-                </button>
+                {!folded && (
+                  <button
+                    className="tab__close"
+                    aria-label={t("app.tabs.closeNamed", { title: label })}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={close}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           };
@@ -252,22 +257,26 @@ export function TabBar(props: TabBarProps) {
                 }}
               >
                 <CliIcon cli={null} />
-                <span className="tab__title" dir="auto">
-                  {pane.title}
-                </span>
-                {pane.folder && (
-                  <span className="tab__folder" dir="auto">
-                    {pane.folder}
-                  </span>
+                {!folded && (
+                  <>
+                    <span className="tab__title" dir="auto">
+                      {pane.title}
+                    </span>
+                    {pane.folder && (
+                      <span className="tab__folder" dir="auto">
+                        {pane.folder}
+                      </span>
+                    )}
+                    <button
+                      className="tab__close"
+                      aria-label={t("app.tabs.closeNamed", { title: pane.title })}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => props.onClosePane?.(tab.key, pane.id)}
+                    >
+                      ×
+                    </button>
+                  </>
                 )}
-                <button
-                  className="tab__close"
-                  aria-label={t("app.tabs.closeNamed", { title: pane.title })}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={() => props.onClosePane?.(tab.key, pane.id)}
-                >
-                  ×
-                </button>
               </div>
             );
           };
@@ -290,7 +299,7 @@ export function TabBar(props: TabBarProps) {
           <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.key)} onClose={() => setMenu(null)} />
         )}
       </div>
-      {column && (
+      {column && !folded && (
         // After the column in the tree: DEV mode's row-reverse layout puts it between the terminals and the column.
         <div
           role="separator"

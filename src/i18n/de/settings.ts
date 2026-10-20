@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} oder die Schaltfläche in der Symbolleiste klappt die Seitenleiste auf ihre Tab-Symbole ein oder blendet sie mit dieser Option vollständig aus.",
     sidebarHelpNoShortcut:
       "Die Schaltfläche in der Symbolleiste klappt die Seitenleiste auf ihre Tab-Symbole ein oder blendet sie mit dieser Option vollständig aus.",
+    hideDevColumn: "DEV-Tab-Spalte beim Einklappen ganz ausblenden",
+    devColumnAtStartup: "DEV-Tab-Spalte beim Start von PlexusTerm",
+    devColumnHelp:
+      "{shortcut} oder die Schaltfläche neben Einstellungen klappt die Tab-Spalte des DEV-Modus auf ihre Symbole ein oder blendet sie mit dieser Option ganz aus.",
+    devColumnHelpNoShortcut:
+      "Die Schaltfläche neben Einstellungen klappt die Tab-Spalte des DEV-Modus auf ihre Symbole ein oder blendet sie mit dieser Option ganz aus.",
   },
   terminal: {
     shell: "Shell für lokale Terminals",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "Kleinere Schrift",
       fontReset: "Standard-Schriftgröße",
       toggleSidebar: "Seitenleiste ein- oder ausklappen",
+      toggleDevColumn: "DEV-Tab-Spalte ein- oder ausklappen",
       showSessions: "Sitzungen anzeigen",
       showSftp: "SFTP anzeigen",
       showExplorer: "Explorer anzeigen",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Remote-Monitorleiste ein- oder ausschalten",
       toggleDevMode: "DEV-Modus ein- oder ausschalten",
+      recentFolders: "Zuletzt im DEV-Modus verwendete Ordner",
       openSettings: "Einstellungen öffnen",
       assistant: "KI-Assistent",
     },

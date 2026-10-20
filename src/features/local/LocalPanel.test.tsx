@@ -749,3 +749,27 @@ describe("LocalPanel moves entries dropped on a folder (S2, S3)", () => {
     expect(mocked.move).not.toHaveBeenCalled();
   });
 });
+
+describe("recent DEV mode folders", () => {
+  it("lists the recent folders from the toolbar, only in DEV mode, and opens the one chosen", async () => {
+    const onOpen = vi.fn();
+    const recent = { folders: ["/work/app", "/work/api"], onOpen };
+    const { unmount } = render(panel({ recent }));
+    await screen.findByText("notes.txt");
+    expect(screen.queryByRole("button", { name: "Recent folders" })).toBeNull();
+    unmount();
+    render(panel({ devStyle: true, recent }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/work/app", "/work/api"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "/work/api" }));
+    expect(onOpen).toHaveBeenCalledWith("/work/api");
+    expect(screen.queryByRole("menuitem")).toBeNull();
+  });
+
+  it("disables the button while there are no recent folders", async () => {
+    render(panel({ devStyle: true, recent: { folders: [], onOpen: () => {} } }));
+    await screen.findByText("notes.txt");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Recent folders" }).disabled).toBe(true);
+  });
+});

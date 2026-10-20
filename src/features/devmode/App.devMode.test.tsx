@@ -399,6 +399,52 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
   });
 
+  it("remembers the folders DEV mode was used in and opens one in a new DEV terminal from the Explorer", async () => {
+    localStorage.clear();
+    await renderApp();
+    await run("claude");
+    expect(JSON.parse(localStorage.getItem("plexusterm.recentDevFolders")!)).toEqual(["/home/me/repo/src"]);
+    cleanup();
+    // After a restart the list is still there.
+    await renderApp();
+    fireEvent.click(devButton());
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Recent folders" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "/home/me/repo/src" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo/src");
+    expect(devOn()).toBe(true);
+    localStorage.clear();
+  });
+
+  it("folds the DEV tab column to its icons from the button next to Settings, shown only in DEV mode", async () => {
+    await renderApp();
+    expect(screen.queryByRole("button", { name: "Hide DEV tab column" })).toBeNull();
+    fireEvent.click(devButton());
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Hide DEV tab column" }));
+    await settle();
+    expect(tabBar().classList.contains("tabbar--collapsed")).toBe(true);
+    const saved = vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "settings_save");
+    expect(JSON.parse((saved[saved.length - 1][1] as { contents: string }).contents).devColumnCollapsed).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Show DEV tab column" }));
+    await settle();
+    expect(tabBar().classList.contains("tabbar--collapsed")).toBe(false);
+  });
+
+  it("hides the folded DEV tab column completely when Settings ask, and opens folded as saved", async () => {
+    await renderApp({ devColumnCollapsed: true, devColumnHideWhenCollapsed: true });
+    fireEvent.click(devButton());
+    await settle();
+    expect(document.querySelector(".tabbar")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show DEV tab column" }));
+    await settle();
+    expect(tabBar().classList.contains("tabbar--column")).toBe(true);
+  });
+
   it("opens a workspace file in a new DEV tab: the terminal in its first folder, the others added", async () => {
     await renderApp();
     await run("claude");
@@ -531,6 +577,33 @@ describe("DEV mode (S10, S13)", () => {
     act(() => void fireEvent.keyDown(window, { key: "Y", ctrlKey: true, shiftKey: true }));
     await settle();
     expect(devOn()).toBe(false);
+  });
+
+  it("lists the recent folders with its shortcut once one is set, and opens the one chosen", async () => {
+    localStorage.setItem("plexusterm.recentDevFolders", JSON.stringify(["/home/me/repo", "/tmp"]));
+    await renderApp({ shortcuts: { recentFolders: "Ctrl+Alt+R" } });
+    act(() => void fireEvent.keyDown(window, { key: "r", ctrlKey: true, altKey: true }));
+    await settle();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["/home/me/repo", "/tmp"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "/tmp" }));
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(2);
+    expect(stub.props.target.cwd).toBe("/tmp");
+    expect(devOn()).toBe(true);
+    localStorage.clear();
+  });
+
+  it("folds and opens the DEV tab column with its shortcut once one is set in Settings", async () => {
+    await renderApp({ shortcuts: { toggleDevColumn: "Ctrl+Alt+B" } });
+    fireEvent.click(devButton());
+    await settle();
+    expect(screen.getByRole("button", { name: "Hide DEV tab column" }).getAttribute("title")).toBe("Hide DEV tab column (Ctrl+Alt+B)");
+    act(() => void fireEvent.keyDown(window, { key: "b", ctrlKey: true, altKey: true }));
+    await settle();
+    expect(tabBar().classList.contains("tabbar--collapsed")).toBe(true);
+    act(() => void fireEvent.keyDown(window, { key: "b", ctrlKey: true, altKey: true }));
+    await settle();
+    expect(tabBar().classList.contains("tabbar--collapsed")).toBe(false);
   });
 
   it("opens the Explorer at the folder the tool was opened in and follows the terminal while Follow terminal folder is on", async () => {

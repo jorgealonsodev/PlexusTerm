@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} 또는 도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
     sidebarHelpNoShortcut:
       "도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
+    hideDevColumn: "접을 때 DEV 탭 열을 완전히 숨기기",
+    devColumnAtStartup: "PlexusTerm을 열 때 DEV 탭 열",
+    devColumnHelp:
+      "{shortcut} 또는 설정 옆 버튼이 DEV 모드의 탭 열을 아이콘만 남기고 접거나, 이 옵션을 켜면 완전히 숨깁니다.",
+    devColumnHelpNoShortcut:
+      "설정 옆 버튼이 DEV 모드의 탭 열을 아이콘만 남기고 접거나, 이 옵션을 켜면 완전히 숨깁니다.",
   },
   terminal: {
     shell: "로컬 터미널 셸",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "글꼴 작게",
       fontReset: "기본 글꼴 크기",
       toggleSidebar: "사이드바 표시/접기",
+      toggleDevColumn: "DEV 탭 열 표시/숨기기",
       showSessions: "세션 표시",
       showSftp: "SFTP 표시",
       showExplorer: "탐색기 표시",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "원격 모니터 막대 켜기/끄기",
       toggleDevMode: "DEV 모드 켜기/끄기",
+      recentFolders: "DEV 모드 최근 폴더",
       openSettings: "설정 열기",
       assistant: "AI 도우미",
     },

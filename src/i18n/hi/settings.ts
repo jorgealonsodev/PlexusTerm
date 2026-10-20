@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} या टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
     sidebarHelpNoShortcut:
       "टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
+    hideDevColumn: "मोड़ने पर DEV टैब कॉलम को पूरी तरह छिपाएँ",
+    devColumnAtStartup: "PlexusTerm खुलने पर DEV टैब कॉलम",
+    devColumnHelp:
+      "{shortcut} या सेटिंग्स के पास वाला बटन DEV मोड के टैब कॉलम को उसके आइकनों तक मोड़ता है, या इस विकल्प से उसे पूरी तरह छिपाता है।",
+    devColumnHelpNoShortcut:
+      "सेटिंग्स के पास वाला बटन DEV मोड के टैब कॉलम को उसके आइकनों तक मोड़ता है, या इस विकल्प से उसे पूरी तरह छिपाता है।",
   },
   terminal: {
     shell: "लोकल टर्मिनल का शेल",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "छोटा फ़ॉन्ट",
       fontReset: "डिफ़ॉल्ट फ़ॉन्ट आकार",
       toggleSidebar: "साइडबार दिखाएँ या फ़ोल्ड करें",
+      toggleDevColumn: "DEV टैब कॉलम दिखाएँ या छिपाएँ",
       showSessions: "सत्र दिखाएँ",
       showSftp: "SFTP दिखाएँ",
       showExplorer: "एक्सप्लोरर दिखाएँ",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "रिमोट मॉनिटर बार चालू या बंद करें",
       toggleDevMode: "DEV मोड चालू या बंद करें",
+      recentFolders: "DEV मोड के हाल के फ़ोल्डर",
       openSettings: "सेटिंग्स खोलें",
       assistant: "AI सहायक",
     },

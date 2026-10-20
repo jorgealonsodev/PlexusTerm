@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} またはツールバーのボタンで、サイドバーをタブアイコンだけに折りたたみます。このオプションを有効にすると完全に隠します。",
     sidebarHelpNoShortcut:
       "ツールバーのボタンで、サイドバーをタブアイコンだけに折りたたみます。このオプションを有効にすると完全に隠します。",
+    hideDevColumn: "折りたたむときに DEV タブ列を完全に隠す",
+    devColumnAtStartup: "PlexusTerm 起動時の DEV タブ列",
+    devColumnHelp:
+      "{shortcut} または設定の隣のボタンで DEV モードのタブ列をアイコンだけに折りたたみます。このオプションでは完全に隠します。",
+    devColumnHelpNoShortcut:
+      "設定の隣のボタンで DEV モードのタブ列をアイコンだけに折りたたみます。このオプションでは完全に隠します。",
   },
   terminal: {
     shell: "ローカル端末のシェル",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "フォントを小さく",
       fontReset: "既定のフォントサイズ",
       toggleSidebar: "サイドバーの表示/折りたたみ",
+      toggleDevColumn: "DEV タブ列の表示/非表示",
       showSessions: "セッションを表示",
       showSftp: "SFTP を表示",
       showExplorer: "エクスプローラーを表示",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "リモートモニターバーのオン/オフ",
       toggleDevMode: "DEV モードのオン/オフ",
+      recentFolders: "DEV モードで最近使ったフォルダー",
       openSettings: "設定を開く",
       assistant: "AI アシスタント",
     },

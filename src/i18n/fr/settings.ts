@@ -58,6 +58,12 @@ export const settings: Messages<typeof en> = {
       "{shortcut} ou le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
     sidebarHelpNoShortcut:
       "Le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
+    hideDevColumn: "Masquer entièrement la colonne d’onglets DEV une fois repliée",
+    devColumnAtStartup: "Colonne d’onglets DEV à l’ouverture de PlexusTerm",
+    devColumnHelp:
+      "{shortcut} ou le bouton à côté de Paramètres replie la colonne d’onglets du mode DEV sur ses icônes, ou la masque entièrement avec cette option.",
+    devColumnHelpNoShortcut:
+      "Le bouton à côté de Paramètres replie la colonne d’onglets du mode DEV sur ses icônes, ou la masque entièrement avec cette option.",
   },
   terminal: {
     shell: "Shell des terminaux locaux",
@@ -198,6 +204,7 @@ export const settings: Messages<typeof en> = {
       fontDecrease: "Police plus petite",
       fontReset: "Taille de police par défaut",
       toggleSidebar: "Afficher ou replier la barre latérale",
+      toggleDevColumn: "Afficher ou masquer la colonne d’onglets DEV",
       showSessions: "Afficher Sessions",
       showSftp: "Afficher SFTP",
       showExplorer: "Afficher l'Explorateur",
@@ -210,6 +217,7 @@ export const settings: Messages<typeof en> = {
       wakeOnLan: "Wake on LAN",
       toggleRemoteMonitor: "Activer ou désactiver la barre de surveillance distante",
       toggleDevMode: "Activer ou désactiver le mode DEV",
+      recentFolders: "Dossiers récents du mode DEV",
       openSettings: "Ouvrir les Paramètres",
       assistant: "Assistant IA",
     },
