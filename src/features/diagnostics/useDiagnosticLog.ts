@@ -36,7 +36,8 @@ export function useDiagnosticLog(loaded: boolean, enabled: boolean, dir: string,
     let due = performance.now() + HEARTBEAT_MS;
     const beat = () => {
       const now = performance.now();
-      const lateMs = Math.max(0, Math.round(now - due));
+      // A hidden window's timers are slowed down on purpose: that is no block.
+      const lateMs = document.hidden ? 0 : Math.max(0, Math.round(now - due));
       due = now + HEARTBEAT_MS;
       void invoke("diag_heartbeat", { lateMs })
         .then(() => {

@@ -240,6 +240,10 @@ pub fn diag_log_configure(
     };
     let path = configure(Some(&dir)).map_err(|e| format!("{}: {e}", dir.display()))?;
     info(&graphics_environment(|name| std::env::var(name).ok()));
+    let cards = graphics_cards(Path::new("/sys/class/drm"));
+    if !cards.is_empty() {
+        info(&format!("graphics cards: {}", cards.join(", ")));
+    }
     start_watchdog();
     Ok(path.map(|p| p.to_string_lossy().into_owned()))
 }
@@ -257,6 +261,47 @@ const GRAPHICS_VARS: &[&str] = &[
     "__NV_DISABLE_EXPLICIT_SYNC",
     "LIBGL_ALWAYS_SOFTWARE",
 ];
+
+/// The graphics cards Linux lists in `drm` (`/sys/class/drm/cardN`), as `AMD 0x73df (amdgpu)`:
+/// WebKit hides the GPU's name from WebGL, so it is read here.
+fn graphics_cards(drm: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(drm) else {
+        return Vec::new();
+    };
+    let mut cards: Vec<_> = entries
+        .flatten()
+        .filter(|e| {
+            let name = e.file_name();
+            let name = name.to_string_lossy();
+            name.starts_with("card")
+                && name[4..].chars().all(|c| c.is_ascii_digit())
+                && name.len() > 4
+        })
+        .map(|e| e.path().join("device"))
+        .collect();
+    cards.sort();
+    cards
+        .iter()
+        .map(|device| {
+            let read = |file: &str| {
+                std::fs::read_to_string(device.join(file))
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_default()
+            };
+            let vendor = match read("vendor").as_str() {
+                "0x1002" => "AMD".to_string(),
+                "0x10de" => "NVIDIA".to_string(),
+                "0x8086" => "Intel".to_string(),
+                other => other.to_string(),
+            };
+            let driver = std::fs::read_link(device.join("driver"))
+                .ok()
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| "no driver".into());
+            format!("{vendor} {} ({driver})", read("device"))
+        })
+        .collect()
+}
 
 /// `graphics environment: XDG_SESSION_TYPE=wayland …, NVIDIA driver yes`, for the variables set.
 fn graphics_environment(var: impl Fn(&str) -> Option<String>) -> String {
@@ -289,11 +334,15 @@ pub fn diag_log_default_dir(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+/// A timer this much late means the interface thread was blocked. Less is ignored: WebKit fires the
+/// timers of a hidden or covered window once every two seconds, a second late each time.
+const BLOCKED_AFTER_MS: u64 = 2000;
+
 /// The interface is alive; `late_ms` is how much later than due its timer fired (a blocked UI thread).
 #[tauri::command]
 pub fn diag_heartbeat(late_ms: u64) {
     UI_BEAT.store(now_millis(), Ordering::Relaxed);
-    if late_ms >= 1000 {
+    if late_ms >= BLOCKED_AFTER_MS {
         warn(&format!(
             "interface thread was blocked for about {:.1} s",
             late_ms as f64 / 1000.0
@@ -364,6 +413,33 @@ mod tests {
             "{line}"
         );
         assert!(graphics_environment(|_| None).starts_with("graphics environment: none set,"));
+    }
+
+    #[test]
+    fn names_the_graphics_cards_with_their_vendor_and_driver() {
+        let drm = tempfile::tempdir().unwrap();
+        let card = |name: &str, vendor: &str, device: &str, driver: Option<&str>| {
+            let dev = drm.path().join(name).join("device");
+            std::fs::create_dir_all(&dev).unwrap();
+            std::fs::write(dev.join("vendor"), format!("{vendor}\n")).unwrap();
+            std::fs::write(dev.join("device"), format!("{device}\n")).unwrap();
+            if let Some(driver) = driver {
+                let target = drm.path().join("drivers").join(driver);
+                std::fs::create_dir_all(&target).unwrap();
+                #[cfg(unix)]
+                std::os::unix::fs::symlink(&target, dev.join("driver")).unwrap();
+            }
+        };
+        card("card1", "0x1002", "0x73df", Some("amdgpu"));
+        card("card0", "0x10de", "0x2484", None);
+        // Connectors are not cards.
+        std::fs::create_dir_all(drm.path().join("card1-HDMI-A-1")).unwrap();
+        let cards = graphics_cards(drm.path());
+        assert_eq!(cards[0], "NVIDIA 0x2484 (no driver)");
+        #[cfg(unix)]
+        assert_eq!(cards[1], "AMD 0x73df (amdgpu)");
+        assert_eq!(cards.len(), 2);
+        assert!(graphics_cards(&drm.path().join("missing")).is_empty());
     }
 
     #[test]

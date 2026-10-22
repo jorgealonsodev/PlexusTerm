@@ -48,6 +48,17 @@ describe("useDiagnosticLog", () => {
     expect(calls("diag_log")[0][1]).toEqual({ level: "info", message: expect.stringMatching(/^graphics: .*, GPU acceleration off$/) });
   });
 
+  it("reports no lateness while the window is hidden, whose timers are slowed on purpose", () => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    try {
+      renderHook(() => useDiagnosticLog(true, true, ""));
+      vi.advanceTimersByTime(HEARTBEAT_MS * 2);
+      expect(calls("diag_heartbeat").map(([, args]) => args)).toEqual([{ lateMs: 0 }, { lateMs: 0 }]);
+    } finally {
+      delete (document as { hidden?: boolean }).hidden;
+    }
+  });
+
   it("logs uncaught errors while on", () => {
     renderHook(() => useDiagnosticLog(true, true, ""));
     window.dispatchEvent(new ErrorEvent("error", { message: "boom", filename: "app.js", lineno: 3, colno: 7 }));
