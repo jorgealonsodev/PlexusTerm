@@ -66,6 +66,8 @@ describe("parseSettings", () => {
       shareSudoReset: true,
       shareBlockLid: false,
       shareRecordInput: false,
+      diagnosticLog: false,
+      diagnosticLogDir: "",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -179,6 +181,8 @@ describe("parseSettings", () => {
       shareSudoReset: true,
       shareBlockLid: false,
       shareRecordInput: false,
+      diagnosticLog: false,
+      diagnosticLogDir: "",
     });
   });
 
@@ -363,6 +367,8 @@ describe("serializeSettings", () => {
       shareSudoReset: false,
       shareBlockLid: true,
       shareRecordInput: true,
+      diagnosticLog: true,
+      diagnosticLogDir: "/var/tmp/plexus-logs",
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -408,6 +414,19 @@ describe("local shell settings", () => {
     const parsed = parseSettings(JSON.stringify({ localShell: 7, localShellArgs: "x".repeat(1025) }));
     expect(parsed.localShell).toBe("");
     expect(parsed.localShellArgs).toBe("");
+  });
+});
+
+describe("diagnostic log settings", () => {
+  it("is off by default, in the app's log folder, and keeps only a saved boolean and a trimmed folder", () => {
+    expect(DEFAULT_SETTINGS.diagnosticLog).toBe(false);
+    expect(DEFAULT_SETTINGS.diagnosticLogDir).toBe("");
+    const parsed = parseSettings(JSON.stringify({ diagnosticLog: true, diagnosticLogDir: "  ~/logs  " }));
+    expect(parsed.diagnosticLog).toBe(true);
+    expect(parsed.diagnosticLogDir).toBe("~/logs");
+    const bad = parseSettings(JSON.stringify({ diagnosticLog: "yes", diagnosticLogDir: 7 }));
+    expect(bad.diagnosticLog).toBe(false);
+    expect(bad.diagnosticLogDir).toBe("");
   });
 });
 

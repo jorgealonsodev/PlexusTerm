@@ -544,6 +544,10 @@ Settings → About has **Check for updates** to ask at any time; it says whether
 
 Settings → About has **Report a problem** and **Suggest an improvement**. Each opens a form on GitHub in your browser; the bug form already has your PlexusTerm version filled in. Nothing is sent until you submit the form there, and a GitHub account is needed. Remove passwords, keys and host names from what you write. Report security vulnerabilities privately, as the [security policy](https://github.com/jorgealonsodev/PlexusTerm/security/policy) explains, not in a public issue.
 
+### Diagnostic log
+
+If PlexusTerm sometimes stops responding, turn on **Write a diagnostic log** in Settings → About. It writes `plexusterm.log` in **Log folder**; leave the field empty to use the folder it shows (on Linux `~/.local/share/dev.plexusterm.app/logs`). The log records the version, the sessions opened and closed, errors and panics, and when the window or the backend stops responding and for how long (`interface (window) not responding for 6.0 s`, `backend async runtime not responding …`). It never records what you type or what the terminals show; SSH entries name the user, host and port. At 5 MB the file moves to `plexusterm.log.1` and a new one starts. Attach it, after checking the host names, to a problem report.
+
 ## Windows
 
 PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:

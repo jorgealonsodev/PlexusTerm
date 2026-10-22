@@ -59,6 +59,7 @@ import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 import { SharingSettings, type SharingValues } from "../share/SharingSettings";
 import { AuditLogDialog } from "../share/AuditLogDialog";
+import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -339,6 +340,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [devColumnAtStartup, setDevColumnAtStartup] = useState(settings.devColumnAtStartup);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
   const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
+  const [diagnosticLog, setDiagnosticLog] = useState(settings.diagnosticLog);
+  const [diagnosticLogDir, setDiagnosticLogDir] = useState(settings.diagnosticLogDir);
+  const [defaultLogDir, setDefaultLogDir] = useState<string | null>(null);
+  useEffect(() => {
+    void diagnosticLogDefaultDir().then(setDefaultLogDir);
+  }, []);
+  // The file the log goes to, as typed now; Windows paths keep their backslashes.
+  const logDir = diagnosticLogDir.trim() || defaultLogDir;
+  const logFile = logDir ? `${logDir.replace(/[\\/]+$/, "")}${logDir.includes("\\") ? "\\" : "/"}plexusterm.log` : null;
   const [updateState, setUpdateState] = useState<
     | { state: "idle" }
     | { state: "checking" }
@@ -457,6 +467,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       devColumnAtStartup,
       checkUpdates,
       aiSaveChats,
+      diagnosticLog,
+      diagnosticLogDir: cleanLocalShell(diagnosticLogDir),
       language,
       shortcuts,
       shiftEnterNewline,
@@ -1032,6 +1044,38 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
               <p className="muted">{t("settings.about.feedbackHelp")}</p>
+              <label className="check">
+                <input type="checkbox" checked={diagnosticLog} onChange={(e) => setDiagnosticLog(e.target.checked)} />
+                {t("settings.about.diagnosticLog")}
+              </label>
+              <div className="field">
+                <label htmlFor="settings-log-dir">{t("settings.about.diagnosticLogDir")}</label>
+                <div className="form-row field__picker">
+                  <input
+                    id="settings-log-dir"
+                    value={diagnosticLogDir}
+                    placeholder={defaultLogDir ?? ""}
+                    spellCheck={false}
+                    disabled={!diagnosticLog}
+                    onChange={(e) => setDiagnosticLogDir(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label={t("settings.about.chooseLogDir")}
+                    disabled={!diagnosticLog}
+                    onClick={() =>
+                      void open({ title: t("settings.about.chooseLogDir"), multiple: false, directory: true })
+                        .then((dir) => typeof dir === "string" && setDiagnosticLogDir(dir))
+                        .catch(() => {})
+                    }
+                  >
+                    {t("common.browse")}
+                  </button>
+                </div>
+              </div>
+              <p className="muted">{t("settings.about.diagnosticLogHelp")}</p>
+              {logFile && <p className="settings__log-file">{t("settings.about.diagnosticLogFile", { path: logFile })}</p>}
               <p>
                 <a href={REPO_URL} onClick={(e) => openLink(e, REPO_URL)}>
                   github.com/jorgealonsodev/PlexusTerm

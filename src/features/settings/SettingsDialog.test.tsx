@@ -800,6 +800,23 @@ describe("Updates in About", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, checkUpdates: false });
   });
+
+  it("turns the diagnostic log on and saves its folder, trimmed", () => {
+    const onSave = renderAbout();
+    const dir = screen.getByLabelText("Log folder") as HTMLInputElement;
+    expect(dir.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Write a diagnostic log"));
+    expect(dir.disabled).toBe(false);
+    fireEvent.change(dir, { target: { value: "  /var/log/plexus  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, diagnosticLog: true, diagnosticLogDir: "/var/log/plexus" });
+  });
+
+  it("shows the log file in the chosen folder", () => {
+    renderAbout();
+    fireEvent.change(screen.getByLabelText("Log folder"), { target: { value: "/var/log/plexus/" } });
+    expect(screen.getByText("Log file: /var/log/plexus/plexusterm.log")).toBeTruthy();
+  });
 });
 
 describe("Feedback in About", () => {

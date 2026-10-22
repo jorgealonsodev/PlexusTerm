@@ -44,6 +44,7 @@ import { BASE_TEXT_SIZE, stepChatFontSize, stepFontSize } from "./features/setti
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
+import { useDiagnosticLog } from "./features/diagnostics/useDiagnosticLog";
 import { chainTarget, collectLogins } from "./features/sessions/jumpHosts";
 import {
   isMoshSession,
@@ -306,6 +307,11 @@ function AppContent() {
   const [state, dispatch] = useReducer(tabsReducer, initialTabs);
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  useDiagnosticLog(
+    terminalSettings.loaded,
+    terminalSettings.settings.diagnosticLog,
+    terminalSettings.settings.diagnosticLogDir,
+  );
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);
   const openWorkspaceFileRef = useRef<(file: string, folders: string[]) => void>(() => {});

@@ -152,6 +152,10 @@ export interface TerminalSettings {
   shareBlockLid: boolean;
   /** The share audit log records what viewers type; otherwise only the time and the byte count. */
   shareRecordInput: boolean;
+  /** Write a diagnostic log (sessions, errors, freezes) to help find why PlexusTerm stops responding. */
+  diagnosticLog: boolean;
+  /** Folder of the diagnostic log; "" uses the app's log folder. */
+  diagnosticLogDir: string;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -231,6 +235,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shareSudoReset: true,
   shareBlockLid: false,
   shareRecordInput: false,
+  diagnosticLog: false,
+  diagnosticLogDir: "",
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
@@ -462,6 +468,8 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     shareSudoReset: bool(value.shareSudoReset, d.shareSudoReset),
     shareBlockLid: bool(value.shareBlockLid, d.shareBlockLid),
     shareRecordInput: bool(value.shareRecordInput, d.shareRecordInput),
+    diagnosticLog: bool(value.diagnosticLog, d.diagnosticLog),
+    diagnosticLogDir: cleanLocalShell(value.diagnosticLogDir),
   };
 }
 

@@ -1,5 +1,6 @@
 mod ai;
 mod diag;
+mod diaglog;
 mod git;
 mod history;
 mod launch;
@@ -94,7 +95,12 @@ fn pty_spawn(
     on_event: Channel<TerminalEvent>,
     ptys: State<'_, PtyManager>,
 ) -> Result<u32, PtyError> {
-    ptys.spawn(request, ChannelSink::new(on_event))
+    let result = ptys.spawn(request, ChannelSink::new(on_event));
+    match &result {
+        Ok(id) => diaglog::info(&format!("local terminal {id} opened")),
+        Err(e) => diaglog::warn(&format!("local terminal failed to open: {e}")),
+    }
+    result
 }
 
 #[tauri::command]
@@ -195,6 +201,7 @@ async fn pty_program_cwd(id: u32, ptys: State<'_, PtyManager>) -> Result<Option<
 
 #[tauri::command]
 fn pty_close(id: u32, ptys: State<'_, PtyManager>) -> Result<(), PtyError> {
+    diaglog::info(&format!("local terminal {id} closed"));
     ptys.close(id)
 }
 
@@ -320,8 +327,16 @@ async fn ssh_connect(
     on_event: Channel<TerminalEvent>,
     ssh: State<'_, SshManager>,
 ) -> Result<u32, SshError> {
-    ssh.connect_with(request, storage, ChannelSink::new(on_event))
-        .await
+    let target = format!("{}@{}:{}", request.username, request.host, request.port);
+    diaglog::info(&format!("ssh connecting to {target}"));
+    let result = ssh
+        .connect_with(request, storage, ChannelSink::new(on_event))
+        .await;
+    match &result {
+        Ok(id) => diaglog::info(&format!("ssh session {id} opened to {target}")),
+        Err(e) => diaglog::warn(&format!("ssh to {target} failed: {e}")),
+    }
+    result
 }
 
 /// Whether a system keyring (Secret Service) can hold saved passwords.
@@ -370,6 +385,7 @@ fn ssh_close(
 ) -> Result<(), SshError> {
     // Temporary copies opened from the SFTP browser go with their session.
     copies.remove(id);
+    diaglog::info(&format!("ssh session {id} closed"));
     ssh.close(id)
 }
 
@@ -787,6 +803,10 @@ pub fn run() {
             localfs::local_view_text,
             localfs::local_read_image,
             diag::diag_latency_log,
+            diaglog::diag_log_configure,
+            diaglog::diag_log_default_dir,
+            diaglog::diag_heartbeat,
+            diaglog::diag_log,
             localfs::local_write_text,
             localfs::local_move,
             project::project_colors_get,

@@ -1827,6 +1827,16 @@ body.is-moving-tab {
   color: var(--accent);
 }
 
+/* The panel's items take their own width; the log folder field takes the whole row. */
+.settings__about .field {
+  align-self: stretch;
+}
+
+.settings__log-file {
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .settings__logo {
   height: 28px;
   margin-bottom: 8px;
