@@ -161,7 +161,23 @@ export interface TerminalSettings {
   fileIconsList: IconPack;
   /** File icon pack of DEV mode's file trees. */
   fileIconsTree: IconPack;
+  /** Colour of the focused pane's border (#rrggbb); "" uses the colour scheme's accent. */
+  focusBorderColor: string;
+  /** How much of that colour shows over the background, in percent (FOCUS_BORDER_STRENGTHS bounds). */
+  focusBorderStrength: number;
 }
+
+export const MIN_FOCUS_BORDER_STRENGTH = 10;
+export const MAX_FOCUS_BORDER_STRENGTH = 100;
+export const clampFocusBorderStrength = (value: number) =>
+  Math.min(MAX_FOCUS_BORDER_STRENGTH, Math.max(MIN_FOCUS_BORDER_STRENGTH, Math.round(value)));
+/** A #rrggbb colour in lower case, or "" (the scheme's accent). */
+export const cleanHexColor = (value: unknown): string =>
+  typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim()) ? value.trim().toLowerCase() : "";
+
+/** The CSS colour of the focused pane's border. */
+export const focusBorderCss = (color: string, strength: number) =>
+  `color-mix(in srgb, ${color || "var(--accent)"} ${strength}%, var(--bg))`;
 
 export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_FAMILY_LENGTH = 200;
@@ -244,6 +260,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   diagnosticLogDir: "",
   fileIconsList: DEFAULT_ICON_PACKS.list,
   fileIconsTree: DEFAULT_ICON_PACKS.tree,
+  focusBorderColor: "",
+  focusBorderStrength: 55,
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
@@ -479,6 +497,8 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     diagnosticLogDir: cleanLocalShell(value.diagnosticLogDir),
     fileIconsList: isIconPack(value.fileIconsList) ? value.fileIconsList : d.fileIconsList,
     fileIconsTree: isIconPack(value.fileIconsTree) ? value.fileIconsTree : d.fileIconsTree,
+    focusBorderColor: cleanHexColor(value.focusBorderColor),
+    focusBorderStrength: size(value.focusBorderStrength, clampFocusBorderStrength, d.focusBorderStrength),
   };
 }
 

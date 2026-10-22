@@ -283,8 +283,8 @@ textarea::placeholder {
 }
 
 .pane--focused {
-  /* The accent toned down towards the background: it marks the pane without glaring. */
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--bg));
+  /* Settings → Appearance: the accent (or a chosen colour) toned down towards the background. */
+  border-color: var(--focus-border, color-mix(in srgb, var(--accent) 55%, var(--bg)));
 }
 
 .pane-divider {
@@ -627,6 +627,38 @@ textarea::placeholder {
   color: var(--muted);
   border-radius: 50%;
   cursor: help;
+}
+
+/* Settings → Appearance: the focused pane's border, with a sample of it. */
+.focus-border {
+  align-items: center;
+}
+
+.focus-border input[type="color"] {
+  width: 40px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+}
+
+.focus-border__preview {
+  width: 48px;
+  height: 24px;
+  border: 2px solid;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.focus-border__strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.focus-border__strength input {
+  flex: 1;
 }
 
 /* A setting's name with its "?" right after it. */

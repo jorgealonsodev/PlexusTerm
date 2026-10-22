@@ -50,6 +50,11 @@ import {
   MAX_FONT_SIZE,
   MAX_TEXT_EDITOR_LENGTH,
   MIN_FONT_SIZE,
+  MIN_FOCUS_BORDER_STRENGTH,
+  MAX_FOCUS_BORDER_STRENGTH,
+  clampFocusBorderStrength,
+  cleanHexColor,
+  focusBorderCss,
   type AiProvider,
   type TerminalSettings, type SidebarAtStartup, type ViewerPosition } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
@@ -312,6 +317,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [lineHeight, setLineHeight] = useState(settings.lineHeight);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
+  const [focusBorderColor, setFocusBorderColor] = useState(settings.focusBorderColor);
+  const [focusBorderStrength, setFocusBorderStrength] = useState(settings.focusBorderStrength);
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
@@ -332,6 +339,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   });
   const [auditOpen, setAuditOpen] = useState(false);
   const [theme, setTheme] = useState(settings.theme);
+  /** The scheme's accent, which the colour picker starts from while no colour is chosen. */
+  const themeAccent = (themeById(theme).theme.blue ?? "#5ec4ff").slice(0, 7).toLowerCase();
   const [fontFamily, setFontFamily] = useState(settings.fontFamily);
   /** The well-known monospaced fonts installed here, looked for once per dialog. */
   const installedFonts = useMemo(() => detectInstalledFonts(), []);
@@ -435,6 +444,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       lineHeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
+      focusBorderColor: cleanHexColor(focusBorderColor),
+      focusBorderStrength: clampFocusBorderStrength(focusBorderStrength),
       copyOnSelect,
       rightClickPastes,
       confirmMultilinePaste,
@@ -683,6 +694,39 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setViewerFontSize(e.target.value)}
               />
             </label>
+            <div className="field">
+              <span className="setting-title">
+                {t("settings.appearance.focusBorder")} <HelpTip text={t("settings.appearance.focusBorderHelp")} />
+              </span>
+              <div className="form-row focus-border">
+                <input
+                  type="color"
+                  aria-label={t("settings.appearance.focusBorderColor")}
+                  title={t("settings.appearance.focusBorderColor")}
+                  value={focusBorderColor || themeAccent}
+                  onChange={(e) => setFocusBorderColor(e.target.value.toLowerCase())}
+                />
+                <button type="button" className="btn" disabled={!focusBorderColor} onClick={() => setFocusBorderColor("")}>
+                  {t("settings.appearance.focusBorderAccent")}
+                </button>
+                <span
+                  className="focus-border__preview"
+                  aria-hidden="true"
+                  style={{ borderColor: focusBorderCss(focusBorderColor, focusBorderStrength) }}
+                />
+              </div>
+              <label className="focus-border__strength">
+                {t("settings.appearance.focusBorderStrength", { value: focusBorderStrength })}
+                <input
+                  type="range"
+                  min={MIN_FOCUS_BORDER_STRENGTH}
+                  max={MAX_FOCUS_BORDER_STRENGTH}
+                  step={5}
+                  value={focusBorderStrength}
+                  onChange={(e) => setFocusBorderStrength(Number(e.target.value))}
+                />
+              </label>
+            </div>
             <label className="check">
               <input
                 type="checkbox"

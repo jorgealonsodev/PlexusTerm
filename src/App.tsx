@@ -40,7 +40,7 @@ import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
 import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { BASE_TEXT_SIZE, stepChatFontSize, stepFontSize } from "./features/settings/settings";
+import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepFontSize } from "./features/settings/settings";
 import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
@@ -358,6 +358,11 @@ function AppContent() {
     root.setProperty("--chat-scale", String(chatFontSize / BASE_TEXT_SIZE));
     root.setProperty("--viewer-scale", String(viewerFontSize / BASE_TEXT_SIZE));
   }, [uiFontSize, chatFontSize, viewerFontSize]);
+  // The focused pane's border, as Settings → Appearance choose it.
+  const { focusBorderColor, focusBorderStrength } = terminalSettings.settings;
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--focus-border", focusBorderCss(focusBorderColor, focusBorderStrength));
+  }, [focusBorderColor, focusBorderStrength]);
   // The interface language (S3): the chosen one, or the system's, English when unsupported.
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);

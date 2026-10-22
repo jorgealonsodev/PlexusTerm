@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
@@ -70,6 +70,8 @@ describe("parseSettings", () => {
       diagnosticLogDir: "",
       fileIconsList: "material",
       fileIconsTree: "seti",
+      focusBorderColor: "",
+      focusBorderStrength: 55,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -187,6 +189,8 @@ describe("parseSettings", () => {
       diagnosticLogDir: "",
       fileIconsList: "material",
       fileIconsTree: "seti",
+      focusBorderColor: "",
+      focusBorderStrength: 55,
     });
   });
 
@@ -375,6 +379,8 @@ describe("serializeSettings", () => {
       diagnosticLogDir: "/var/tmp/plexus-logs",
       fileIconsList: "lines" as const,
       fileIconsTree: "material" as const,
+      focusBorderColor: "#ff8800",
+      focusBorderStrength: 30,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -420,6 +426,18 @@ describe("local shell settings", () => {
     const parsed = parseSettings(JSON.stringify({ localShell: 7, localShellArgs: "x".repeat(1025) }));
     expect(parsed.localShell).toBe("");
     expect(parsed.localShellArgs).toBe("");
+  });
+});
+
+describe("focused pane border", () => {
+  it("uses the scheme's accent at 55% by default, keeps a #rrggbb colour and a strength within 10..100", () => {
+    expect([DEFAULT_SETTINGS.focusBorderColor, DEFAULT_SETTINGS.focusBorderStrength]).toEqual(["", 55]);
+    const parsed = parseSettings(JSON.stringify({ focusBorderColor: " #FF8800 ", focusBorderStrength: 3 }));
+    expect([parsed.focusBorderColor, parsed.focusBorderStrength]).toEqual(["#ff8800", 10]);
+    const bad = parseSettings(JSON.stringify({ focusBorderColor: "red", focusBorderStrength: "x" }));
+    expect([bad.focusBorderColor, bad.focusBorderStrength]).toEqual(["", 55]);
+    expect(focusBorderCss("", 55)).toBe("color-mix(in srgb, var(--accent) 55%, var(--bg))");
+    expect(focusBorderCss("#ff8800", 100)).toBe("color-mix(in srgb, #ff8800 100%, var(--bg))");
   });
 });
 

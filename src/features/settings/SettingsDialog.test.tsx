@@ -819,6 +819,21 @@ describe("Updates in About", () => {
   });
 });
 
+describe("Focused pane border in Appearance", () => {
+  it("saves a chosen colour and intensity, and goes back to the scheme's accent", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} initialSection="appearance" />);
+    fireEvent.change(screen.getByLabelText("Border colour"), { target: { value: "#FF8800" } });
+    fireEvent.change(screen.getByLabelText("Intensity: 55%"), { target: { value: "30" } });
+    expect(screen.getByLabelText("Intensity: 30%")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, focusBorderColor: "#ff8800", focusBorderStrength: 30 });
+    fireEvent.click(screen.getByRole("button", { name: "Scheme accent" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, focusBorderStrength: 30 });
+  });
+});
+
 describe("File icon packs in Files", () => {
   it("saves the pack of the plain lists and the one of DEV mode's trees", () => {
     const onSave = vi.fn();
