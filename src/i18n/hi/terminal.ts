@@ -48,6 +48,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "क्लिपबोर्ड पढ़ा नहीं जा सका।",
     saveError: "आउटपुट सहेजा नहीं जा सका: {error}",
     loggingStopped: "लॉगिंग रुक गई: {error}",
+    logDropped: "[PlexusTerm: आउटपुट के {count} अक्षर यहाँ लॉग नहीं हुए; डिस्क बहुत धीमी थी]",
     hostKeyCancelled: "कनेक्शन रद्द: होस्ट कुंजी पर भरोसा नहीं किया गया।",
     cancelled: "कनेक्शन रद्द किया गया।",
   },

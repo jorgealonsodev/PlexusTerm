@@ -48,6 +48,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "Die Zwischenablage konnte nicht gelesen werden.",
     saveError: "Die Ausgabe konnte nicht gespeichert werden: {error}",
     loggingStopped: "Protokollierung beendet: {error}",
+    logDropped: "[PlexusTerm: {count} Zeichen Ausgabe wurden hier nicht protokolliert; die Festplatte war zu langsam]",
     hostKeyCancelled: "Verbindung abgebrochen: Hostschlüssel nicht vertraut.",
     cancelled: "Verbindung abgebrochen.",
   },

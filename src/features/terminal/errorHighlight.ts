@@ -52,6 +52,8 @@ interface Disposable {
 interface Marker extends Disposable {
   readonly line: number;
   readonly isDisposed: boolean;
+  /** Fires when the marker goes, also when its row leaves the scrollback. */
+  onDispose(listener: () => void): Disposable;
 }
 interface Row {
   readonly isWrapped: boolean;
@@ -90,13 +92,20 @@ interface Coloured {
  * Colours error lines as output arrives. Only finished lines are read (the cursor's line may still
  * grow); a line wrapped over several rows is read whole and every row is coloured. Rows on the
  * screen can be rewritten (`clear`, progress bars), so their colours are checked again on every
- * write; rows in the scrollback can no longer change.
+ * write; rows in the scrollback can no longer change, so a scan never looks at them again and its
+ * cost follows the screen, not the number of colours kept.
  */
 /** The next frame, or a timer where there are no frames (tests, hidden pages). */
 const nextFrame = (callback: () => void) => {
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(callback);
   else setTimeout(callback, 16);
 };
+
+/**
+ * Most error rows kept coloured: older ones lose their colour. xterm gives every marker a listener
+ * it calls for each line that leaves a full scrollback, so thousands of them slow output down.
+ */
+export const MAX_COLOURED = 1000;
 
 export function attachErrorHighlight(
   term: HighlightTerminal,
@@ -105,9 +114,17 @@ export function attachErrorHighlight(
     color: () => string;
     /** Runs a scan later; once per frame by default, as writes come many per frame. */
     schedule?: (scan: () => void) => void;
+    /** Most rows kept coloured (MAX_COLOURED by default). */
+    maxColoured?: number;
   },
 ): ErrorHighlight {
-  let coloured: Coloured[] = [];
+  const maxColoured = options.maxColoured ?? MAX_COLOURED;
+  /** Every colour kept; each leaves when its marker goes (left the scrollback, rewritten, cleared). */
+  const coloured = new Set<Coloured>();
+  /** The colours that were on the screen at the last scan: the only ones whose rows can still change. */
+  let onScreen: Coloured[] = [];
+  /** The scrollback's length at the last scan: when it shrinks (the pane grew), rows come back. */
+  let lastBaseY = 0;
   /** The first row not read yet; a marker follows it when old rows leave the scrollback. */
   let next: Marker | null = null;
 
@@ -131,22 +148,55 @@ export function attachErrorHighlight(
     let end = cursor;
     while (end > 0 && buffer.getLine(end)?.isWrapped) end--;
 
-    // Rows that left the scrollback took their marker and decoration with them.
-    coloured = coloured.filter((c) => !c.marker.isDisposed);
-    // A screen row that no longer reads as an error (cleared, overwritten) loses its colour.
-    coloured = coloured.filter((c) => {
-      if (c.marker.line < buffer.baseY || isErrorLine(lineAt(c.marker.line, Math.max(end, c.marker.line + 1)).text)) return true;
-      c.decoration.dispose();
-      c.marker.dispose();
-      return false;
-    });
+    // Rows the scrollback gave back to the screen (a taller or wider pane) can be rewritten
+    // again: their colours are looked at like the screen's.
+    if (buffer.baseY < lastBaseY) {
+      const back = [...coloured].filter((c) => !c.marker.isDisposed && c.marker.line >= buffer.baseY);
+      onScreen = [...new Set([...onScreen, ...back])];
+    }
+    lastBaseY = buffer.baseY;
+    // A screen row that no longer reads as an error (cleared, overwritten) loses its colour. Rows
+    // that scrolled above the screen keep theirs and are not looked at again; rows that left the
+    // scrollback took their marker and decoration with them.
+    const kept: Coloured[] = [];
+    const still: Coloured[] = [];
+    /** The last line read, so the rows of a wrapped line read it once. */
+    let line: { first: number; last: number; error: boolean } | null = null;
+    for (const c of onScreen.filter((c) => !c.marker.isDisposed).sort((a, b) => a.marker.line - b.marker.line)) {
+      const row = c.marker.line;
+      if (row < buffer.baseY) {
+        kept.push(c);
+        continue;
+      }
+      let error: boolean;
+      if (row >= end) {
+        error = isErrorLine(lineAt(row, row + 1).text);
+      } else {
+        if (!line || row < line.first || row > line.last) {
+          const { first, last, text } = lineAt(row, end);
+          line = { first, last, error: isErrorLine(text) };
+        }
+        error = line.error;
+      }
+      if (error) {
+        kept.push(c);
+        still.push(c);
+      } else {
+        c.decoration.dispose();
+        c.marker.dispose();
+      }
+    }
+    onScreen = still;
 
     // Without a marker (it left the scrollback) everything is read again; when the cursor went
     // back above it, the screen was rewritten and is read again from its top.
-    let start = next && !next.isDisposed ? next.line : 0;
+    const known = next && !next.isDisposed;
+    let start = known ? next!.line : 0;
     if (start > end) start = Math.min(buffer.baseY, end);
     if (start < end) {
-      const decorated = new Set(coloured.map((c) => c.marker.line));
+      // Rows already coloured: the read starts at the last scan's end or on the screen, where only
+      // the last screen's colours can be, unless everything is read again.
+      const decorated = new Set([...(known ? kept : coloured)].map((c) => c.marker.line));
       const color = options.color();
       for (let row = start; row < end; ) {
         const { last, text } = lineAt(row, end);
@@ -160,8 +210,18 @@ export function attachErrorHighlight(
             } catch {
               // Left uncoloured; the marker must not outlive it.
             }
-            if (decoration) coloured.push({ marker, decoration });
-            else marker.dispose();
+            if (decoration) {
+              const c = { marker, decoration };
+              coloured.add(c);
+              marker.onDispose(() => coloured.delete(c));
+              if (r >= buffer.baseY) onScreen.push(c);
+              // Over the limit, the oldest colour goes (a Set keeps insertion order).
+              if (coloured.size > maxColoured) {
+                const oldest = coloured.values().next().value!;
+                oldest.decoration.dispose();
+                oldest.marker.dispose();
+              }
+            } else marker.dispose();
           }
         }
         row = last + 1;
@@ -181,8 +241,10 @@ export function attachErrorHighlight(
   };
 
   const clear = () => {
-    coloured.forEach((c) => (c.decoration.dispose(), c.marker.dispose()));
-    coloured = [];
+    [...coloured].forEach((c) => (c.decoration.dispose(), c.marker.dispose()));
+    coloured.clear();
+    onScreen = [];
+    lastBaseY = 0;
     next?.dispose();
     next = null;
   };

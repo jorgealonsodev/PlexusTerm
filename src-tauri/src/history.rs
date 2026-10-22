@@ -29,11 +29,18 @@ pub fn save_to(path: &Path, contents: &str) -> Result<(), StorageError> {
     storage::save(path, contents)
 }
 
+// Async with the file work on the blocking pool: a sync command runs on the main thread, where a
+// slow disk would hold up the window.
 #[tauri::command]
-pub fn history_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    load_from(&crate::config_path(&app, HISTORY_FILE)?)
+pub async fn history_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = crate::config_path(&app, HISTORY_FILE)?;
+    tauri::async_runtime::spawn_blocking(move || load_from(&path))
+        .await
+        .map_err(|err| StorageError::Io(err.to_string()))?
 }
 
+// Sync on purpose: the main thread runs saves in the order they were sent, so an older save can
+// never land after a newer one.
 #[tauri::command]
 pub fn history_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     save_to(&crate::config_path(&app, HISTORY_FILE)?, &contents)

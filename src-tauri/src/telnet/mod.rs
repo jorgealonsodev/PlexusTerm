@@ -145,10 +145,18 @@ impl TelnetManager {
             writer_stop.notify_one();
         });
 
+        let flow = sink.flow();
         tokio::spawn(async move {
             let mut decoder = Utf8Stream::default();
             let mut buf = [0u8; 8192];
             loop {
+                // While the webview catches up; closing (the stop below) still ends the session.
+                if let Some(gate) = &flow {
+                    tokio::select! {
+                        _ = gate.wait() => {}
+                        _ = stop.notified() => break,
+                    }
+                }
                 let read = tokio::select! {
                     read = reader.read(&mut buf) => read,
                     _ = stop.notified() => break,
@@ -205,3 +213,92 @@ impl TelnetManager {
 
 #[cfg(test)]
 mod tests;
+
+/// Flow control: a paused session reads nothing until resumed, and still closes at once.
+#[cfg(test)]
+mod flow_tests {
+    use super::*;
+    use crate::terminal::FlowGate;
+    use std::sync::Arc;
+    use tokio::net::TcpListener;
+    use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+
+    enum Event {
+        Data(String),
+        Exit,
+    }
+
+    struct GatedSink(UnboundedSender<Event>, Arc<FlowGate>);
+
+    impl TerminalSink for GatedSink {
+        fn data(&self, text: String) {
+            let _ = self.0.send(Event::Data(text));
+        }
+        fn exit(&self, _code: Option<u32>) {
+            let _ = self.0.send(Event::Exit);
+        }
+        fn flow(&self) -> Option<Arc<FlowGate>> {
+            Some(self.1.clone())
+        }
+    }
+
+    /// A paused client connected to a server that has not sent anything yet.
+    async fn paused() -> (
+        TelnetManager,
+        u32,
+        TcpStream,
+        Arc<FlowGate>,
+        UnboundedReceiver<Event>,
+    ) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (tx, rx) = unbounded_channel();
+        let gate = Arc::new(FlowGate::new());
+        gate.set_paused(true);
+        let mgr = TelnetManager::default();
+        let request = TelnetRequest {
+            host: "127.0.0.1".into(),
+            port,
+            cols: 80,
+            rows: 24,
+        };
+        let id = mgr
+            .connect(request, GatedSink(tx, gate.clone()))
+            .await
+            .unwrap();
+        let (peer, _) = listener.accept().await.unwrap();
+        (mgr, id, peer, gate, rx)
+    }
+
+    #[tokio::test]
+    async fn a_paused_session_reads_nothing_until_resumed() {
+        let (_mgr, _id, mut peer, gate, mut rx) = paused().await;
+        peer.write_all(b"hello-flow").await.unwrap();
+        let early = tokio::time::timeout(Duration::from_millis(500), rx.recv()).await;
+        assert!(early.is_err(), "output was read while paused");
+        gate.set_paused(false);
+        let mut out = String::new();
+        while !out.contains("hello-flow") {
+            match tokio::time::timeout(Duration::from_secs(5), rx.recv()).await {
+                Ok(Some(Event::Data(text))) => out.push_str(&text),
+                other => panic!("no output after resume: {:?}", other.is_ok()),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn closing_a_paused_session_still_ends_it_at_once() {
+        let (mgr, id, _peer, _gate, mut rx) = paused().await;
+        mgr.close(id).unwrap();
+        let exited = tokio::time::timeout(Duration::from_secs(2), async {
+            while let Some(event) = rx.recv().await {
+                if matches!(event, Event::Exit) {
+                    return true;
+                }
+            }
+            false
+        })
+        .await;
+        assert!(matches!(exited, Ok(true)), "the session did not end");
+    }
+}

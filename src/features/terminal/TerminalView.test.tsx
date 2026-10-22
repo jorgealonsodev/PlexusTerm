@@ -10,7 +10,17 @@ const backend = vi.hoisted(() => ({
   close: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("./backend", () => ({ backendFor: () => backend }));
+const flow = vi.hoisted(() => ({ setTerminalFlow: vi.fn(async (_tap: number, _paused: boolean) => {}) }));
+vi.mock("./backend", () => ({ backendFor: () => backend, setTerminalFlow: flow.setTerminalFlow }));
+/** While `held`, the fake xterm keeps write callbacks (output not parsed yet) until `release`. */
+const parsing = vi.hoisted(() => ({
+  held: false,
+  queue: [] as (() => void)[],
+  release() {
+    const callbacks = parsing.queue.splice(0);
+    callbacks.forEach((callback) => callback());
+  },
+}));
 const clipboard = vi.hoisted(() => ({ readText: vi.fn(async () => ""), writeText: vi.fn(async () => {}) }));
 vi.mock("./clipboard", () => clipboard);
 // Only the keyring commands reach `invoke` here (the backend is mocked): a keyring is available.
@@ -133,7 +143,8 @@ vi.mock("@xterm/xterm", () => ({
     written: string[] = [];
     write(text: string, callback?: () => void) {
       this.written.push(text);
-      callback?.();
+      if (parsing.held && callback) parsing.queue.push(callback);
+      else callback?.();
     }
     focus() {}
     dispose() {}
@@ -245,9 +256,58 @@ globalThis.ResizeObserver = class {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  parsing.held = false;
+  parsing.queue = [];
 });
 
 describe("TerminalView", () => {
+  describe("output flow control", () => {
+    const started = async () => {
+      let emit: (msg: import("./backend").TerminalEvent) => void = () => {};
+      backend.start.mockImplementationOnce((_options, onEvent) => {
+        emit = onEvent as typeof emit;
+        return Promise.resolve(7);
+      });
+      const view = render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      act(() => emit({ event: "tap", data: 42 }));
+      return { emit: (msg: import("./backend").TerminalEvent) => act(() => emit(msg)), view };
+    };
+    const chunk = "x".repeat(64 * 1024);
+
+    it("pauses the session once while xterm has a large backlog, and resumes it once xterm caught up", async () => {
+      const { emit } = await started();
+      parsing.held = true;
+      for (let i = 0; i < 12; i++) emit({ event: "output", data: chunk });
+      expect(flow.setTerminalFlow.mock.calls).toEqual([[42, true]]);
+      act(() => parsing.release());
+      expect(flow.setTerminalFlow.mock.calls).toEqual([
+        [42, true],
+        [42, false],
+      ]);
+      // Every chunk still reached the terminal, in order.
+      expect(lastTerm().written.filter((text) => text === chunk)).toHaveLength(12);
+    });
+
+    it("output xterm keeps up with never pauses the session", async () => {
+      const { emit } = await started();
+      for (let i = 0; i < 40; i++) emit({ event: "sharedOutput", data: { data: chunk, seq: i + 1 } });
+      expect(flow.setTerminalFlow).not.toHaveBeenCalled();
+      expect(lastTerm().written.filter((text) => text === chunk)).toHaveLength(40);
+    });
+
+    it("resumes a paused session when the pane closes", async () => {
+      const { emit, view } = await started();
+      parsing.held = true;
+      for (let i = 0; i < 12; i++) emit({ event: "output", data: chunk });
+      view.unmount();
+      expect(flow.setTerminalFlow.mock.calls).toEqual([
+        [42, true],
+        [42, false],
+      ]);
+    });
+  });
+
   it("opens the backend session once under StrictMode (serial ports allow a single opener)", async () => {
     render(
       <StrictMode>

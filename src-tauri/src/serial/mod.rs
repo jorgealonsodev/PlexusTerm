@@ -188,6 +188,8 @@ impl SerialManager {
         std::thread::spawn(move || {
             let mut decoder = Utf8Stream::default();
             let mut buf = [0u8; 4096];
+            // Never paused by flow control: a serial device has no backpressure (without RTS/CTS
+            // or XON/XOFF its output would overflow the system's few-KB buffer and be lost).
             while !stop.load(Ordering::Relaxed) {
                 match reader.read(&mut buf) {
                     Ok(0) => {}
@@ -244,3 +246,99 @@ impl SerialManager {
 // The tests drive a Unix pseudo-terminal pair.
 #[cfg(all(test, unix))]
 mod tests;
+
+/// Flow control: a serial session keeps reading even when its terminal asks to pause, so the
+/// device's output is never lost, and still closes at once.
+#[cfg(all(test, unix))]
+mod flow_tests {
+    use super::*;
+    use crate::terminal::FlowGate;
+    use portable_pty::{PtySize, native_pty_system};
+    use std::io::Write;
+    use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
+    use std::time::Instant;
+
+    struct GatedSink(Sender<String>, Arc<FlowGate>);
+
+    impl TerminalSink for GatedSink {
+        fn data(&self, text: String) {
+            let _ = self.0.send(text);
+        }
+        fn exit(&self, _code: Option<u32>) {}
+        fn flow(&self) -> Option<Arc<FlowGate>> {
+            Some(self.1.clone())
+        }
+    }
+
+    /// A paused session on a pseudo-terminal standing in for the device.
+    fn paused() -> (
+        SerialManager,
+        u32,
+        portable_pty::PtyPair,
+        Arc<FlowGate>,
+        Receiver<String>,
+    ) {
+        let pair = native_pty_system()
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+        let path = pair
+            .master
+            .tty_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let (tx, rx) = channel();
+        let gate = Arc::new(FlowGate::new());
+        gate.set_paused(true);
+        let mgr = SerialManager::default();
+        let request = SerialRequest {
+            path,
+            baud: 115_200,
+            data_bits: 8,
+            parity: ParitySetting::None,
+            stop_bits: 1,
+            flow: FlowSetting::None,
+        };
+        let id = mgr.open(request, GatedSink(tx, gate.clone())).unwrap();
+        (mgr, id, pair, gate, rx)
+    }
+
+    #[test]
+    fn a_paused_session_keeps_reading_so_nothing_is_lost() {
+        let (mgr, id, pair, _gate, rx) = paused();
+        let mut writer = pair.master.take_writer().unwrap();
+        writer.write_all(b"boot-flow\r\n").unwrap();
+        writer.flush().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut out = String::new();
+        while !out.contains("boot-flow") && Instant::now() < deadline {
+            if let Ok(text) = rx.recv_timeout(Duration::from_millis(100)) {
+                out.push_str(&text);
+            }
+        }
+        assert!(out.contains("boot-flow"), "output was {out:?}");
+        mgr.close(id).unwrap();
+    }
+
+    #[test]
+    fn closing_a_paused_session_still_stops_its_reader_at_once() {
+        let (mgr, id, _pair, _gate, rx) = paused();
+        let started = Instant::now();
+        mgr.close(id).unwrap();
+        // The reader thread owns the sink; it is dropped once the reader stops.
+        loop {
+            match rx.recv_timeout(Duration::from_millis(50)) {
+                Err(RecvTimeoutError::Disconnected) => break,
+                _ => assert!(
+                    started.elapsed() < Duration::from_secs(2),
+                    "reader still running"
+                ),
+            }
+        }
+    }
+}

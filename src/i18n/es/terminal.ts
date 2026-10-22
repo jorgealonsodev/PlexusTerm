@@ -52,6 +52,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "No se pudo leer el portapapeles.",
     saveError: "No se pudo guardar la salida: {error}",
     loggingStopped: "Registro detenido: {error}",
+    logDropped: "[PlexusTerm: aquí no se registraron {count} caracteres de salida; el disco iba demasiado lento]",
     hostKeyCancelled: "Conexión cancelada: no se confió en la clave del host.",
     cancelled: "Conexión cancelada.",
   },

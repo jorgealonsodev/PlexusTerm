@@ -55,6 +55,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "تعذّرت قراءة الحافظة.",
     saveError: "تعذّر حفظ المخرجات: {error}",
     loggingStopped: "توقف التسجيل: {error}",
+    logDropped: "[PlexusTerm: لم يُسجَّل هنا {count} حرفًا من المخرجات؛ كان القرص بطيئًا جدًا]",
     hostKeyCancelled: "أُلغي الاتصال: لم يتم الوثوق بمفتاح المضيف.",
     cancelled: "أُلغي الاتصال.",
   },

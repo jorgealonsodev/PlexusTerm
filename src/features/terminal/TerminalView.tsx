@@ -35,7 +35,8 @@ import type { MacroTarget } from "../macros/player";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
-import { backendFor } from "./backend";
+import { backendFor, setTerminalFlow } from "./backend";
+import { createOutputFlow } from "./flowControl";
 import { runningShellOf } from "./localShell";
 import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
@@ -431,6 +432,10 @@ export function TerminalView({
     /** The session's share tap, and the number of the last output written while it is shared. */
     let tap: number | null = null;
     let outputSeq = 0;
+    /** Pauses reading the session while xterm has too much output still to parse. */
+    const outputFlow = createOutputFlow((paused) => {
+      if (tap !== null) void setTerminalFlow(tap, paused).catch(() => {});
+    });
     const resizeListeners = new Set<(cols: number, rows: number) => void>();
     /** Macros waiting for output (S16.3). */
     const outputListeners = new Set<(text: string, echo?: boolean) => void>();
@@ -535,7 +540,7 @@ export function TerminalView({
           if (msg.event === "tap") tap = msg.data;
           else if (msg.event === "output") {
             latencyMark("O", msg.data.length);
-            term.write(msg.data);
+            term.write(msg.data, outputFlow.queued(msg.data.length));
             logRef.current?.write(msg.data);
             // The echo of a key in an idle pane is not a program at work.
             const echo = !activityTimer && performance.now() - lastTyped < ECHO_MS;
@@ -978,6 +983,7 @@ export function TerminalView({
 
     return () => {
       disposed = true;
+      outputFlow.dispose();
       host.removeEventListener("paste", onPaste, true);
       host.removeEventListener("mouseup", onMouseUp);
       // Closing the pane writes what the log still holds.
@@ -1183,6 +1189,7 @@ export function TerminalView({
     const path = await save({ defaultPath: "session.log", filters: textFilters() });
     if (!path || logRef.current || !termRef.current) return;
     const log = createSessionLog(path, (file, contents) => invoke("append_text_file", { path: file, contents }), {
+      droppedNote: (count) => `\n${t("terminal.view.logDropped", { count })}\n`,
       onError: (err) => {
         if (logRef.current !== log) return;
         termRef.current?.write(red(t("terminal.view.loggingStopped", { error: String(err) })));

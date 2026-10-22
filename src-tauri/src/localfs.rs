@@ -176,7 +176,11 @@ fn free_name(dir: &Path, name: &std::ffi::OsStr, is_dir: bool) -> PathBuf {
     };
     (1..)
         .map(|n| {
-            let suffix = if n == 1 { " copy".to_string() } else { format!(" copy {n}") };
+            let suffix = if n == 1 {
+                " copy".to_string()
+            } else {
+                format!(" copy {n}")
+            };
             dir.join(format!("{stem}{suffix}{ext}"))
         })
         .find(|candidate| fs::symlink_metadata(candidate).is_err())
@@ -213,7 +217,11 @@ pub fn copy_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
         .file_name()
         .ok_or_else(|| failure("copy", &from, "not a file name"))?;
     if dir.starts_with(&from) {
-        return Err(failure("copy", &from, "a folder cannot be copied into itself"));
+        return Err(failure(
+            "copy",
+            &from,
+            "a folder cannot be copied into itself",
+        ));
     }
     let is_dir = fs::symlink_metadata(&from)
         .map_err(|err| failure("copy", &from, err))?
@@ -221,7 +229,11 @@ pub fn copy_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
     let to = free_name(&dir, name, is_dir);
     if let Err(err) = copy_entry(&from, &to) {
         // A copy that stopped half-way is removed rather than left incomplete.
-        let _ = if is_dir { fs::remove_dir_all(&to) } else { fs::remove_file(&to) };
+        let _ = if is_dir {
+            fs::remove_dir_all(&to)
+        } else {
+            fs::remove_file(&to)
+        };
         return Err(failure("copy", &from, err));
     }
     Ok(to)
@@ -662,62 +674,72 @@ fn native(path: &str) -> PathBuf {
     platform::expand_home(path)
 }
 
+/// Runs blocking filesystem work on the blocking pool: the async runtime's workers also carry
+/// SSH sessions and every async command, and a slow disk or a large folder must not hold them.
+async fn off_runtime<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|err| err.to_string())?
+}
+
 #[tauri::command]
 pub async fn local_home() -> Result<String, String> {
-    home()
+    off_runtime(home).await
 }
 
 #[tauri::command]
 pub async fn local_list(path: String) -> Result<Vec<Entry>, String> {
-    list(&native(&path))
+    off_runtime(move || list(&native(&path))).await
 }
 
 #[tauri::command]
 pub async fn local_stat(path: String) -> Result<Entry, String> {
-    stat(&native(&path))
+    off_runtime(move || stat(&native(&path))).await
 }
 
 #[tauri::command]
 pub async fn local_mkdir(path: String) -> Result<(), String> {
-    mkdir(&native(&path))
+    off_runtime(move || mkdir(&native(&path))).await
 }
 
 #[tauri::command]
 pub async fn local_create_file(path: String) -> Result<(), String> {
-    create_file(&native(&path))
+    off_runtime(move || create_file(&native(&path))).await
 }
 
 #[tauri::command]
 pub async fn local_rename(from: String, to: String) -> Result<(), String> {
-    rename(&native(&from), &native(&to))
+    off_runtime(move || rename(&native(&from), &native(&to))).await
 }
 
 #[tauri::command]
 pub async fn local_remove(path: String, is_dir: bool) -> Result<(), String> {
-    remove(&native(&path), is_dir)
+    off_runtime(move || remove(&native(&path), is_dir)).await
 }
 
 #[tauri::command]
 pub async fn local_chmod(path: String, mode: u32) -> Result<(), String> {
-    chmod(&native(&path), mode)
+    off_runtime(move || chmod(&native(&path), mode)).await
 }
 
 /// A local file's text (or a folder's listing) to attach to an AI question.
 #[tauri::command]
 pub async fn local_read_text(path: String) -> Result<TextFile, String> {
-    read_text(&native(&path))
+    off_runtime(move || read_text(&native(&path))).await
 }
 
 /// A local text file for the file viewer.
 #[tauri::command]
 pub async fn local_view_text(path: String, encoding: Option<String>) -> Result<TextFile, String> {
-    view_text(&native(&path), encoding.as_deref())
+    off_runtime(move || view_text(&native(&path), encoding.as_deref())).await
 }
 
 /// A local image for the Markdown preview, as raw bytes.
 #[tauri::command]
 pub async fn local_read_image(path: String) -> Result<tauri::ipc::Response, String> {
-    read_image(&native(&path)).map(tauri::ipc::Response::new)
+    off_runtime(move || read_image(&native(&path)).map(tauri::ipc::Response::new)).await
 }
 
 /// Saves the file viewer's text over a local file that still holds `expected`.
@@ -729,31 +751,40 @@ pub async fn local_write_text(
     encoding: Option<String>,
     expected_encoding: Option<String>,
 ) -> Result<(), String> {
-    write_text(
-        &native(&path),
-        &expected,
-        &content,
-        encoding.as_deref(),
-        expected_encoding.as_deref(),
-    )
+    off_runtime(move || {
+        write_text(
+            &native(&path),
+            &expected,
+            &content,
+            encoding.as_deref(),
+            expected_encoding.as_deref(),
+        )
+    })
+    .await
 }
 
 /// Copies a local file or folder into another folder; returns the copy's path.
 #[tauri::command]
 pub async fn local_copy(from: String, dir: String) -> Result<String, String> {
-    copy_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
+    off_runtime(move || {
+        copy_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
+    })
+    .await
 }
 
 /// Moves a local file or folder into another folder; returns its new path.
 #[tauri::command]
 pub async fn local_move(from: String, dir: String) -> Result<String, String> {
-    move_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
+    off_runtime(move || {
+        move_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
+    })
+    .await
 }
 
 /// Opens a local file in its default program, the text editor or a chosen program.
 #[tauri::command]
 pub async fn local_open(path: String, with: OpenWith) -> Result<(), String> {
-    launch(&with, &native(&path)).map_err(|err| err.to_string())
+    off_runtime(move || launch(&with, &native(&path)).map_err(|err| err.to_string())).await
 }
 
 #[cfg(test)]
@@ -762,6 +793,28 @@ mod tests {
 
     fn names(entries: &[Entry]) -> Vec<&str> {
         entries.iter().map(|e| e.name.as_str()).collect()
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn commands_run_off_the_runtime_and_keep_their_results() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("b.txt"), "hello").unwrap();
+        fs::create_dir(dir.path().join("Alpha")).unwrap();
+        let path = dir.path().to_string_lossy().into_owned();
+        // On a single-threaded runtime, a ticker keeps running while the listing waits.
+        let ticks = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counter = ticks.clone();
+        let ticker = tokio::spawn(async move {
+            loop {
+                counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                tokio::task::yield_now().await;
+            }
+        });
+        let entries = local_list(path.clone()).await.unwrap();
+        ticker.abort();
+        assert_eq!(names(&entries), ["Alpha", "b.txt"]);
+        assert!(ticks.load(std::sync::atomic::Ordering::Relaxed) > 0);
+        assert!(local_list(format!("{path}/missing")).await.is_err());
     }
 
     #[test]
@@ -1247,15 +1300,33 @@ mod tests {
         assert_eq!(fs::read_to_string(&copied).unwrap(), "x");
         assert!(dir.path().join("f.txt").exists());
         copy_into(&dir.path().join("sub"), &dest).unwrap();
-        assert_eq!(fs::read_to_string(dest.join("sub/deep/inner")).unwrap(), "y");
+        assert_eq!(
+            fs::read_to_string(dest.join("sub/deep/inner")).unwrap(),
+            "y"
+        );
 
         // Into its own folder (or wherever the name is taken): "copy", then "copy 2"; never replaced.
-        assert_eq!(copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(), dir.path().join("f copy.txt"));
-        assert_eq!(copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(), dir.path().join("f copy 2.txt"));
-        assert_eq!(copy_into(&dir.path().join("sub"), &dest).unwrap(), dest.join("sub copy"));
+        assert_eq!(
+            copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(),
+            dir.path().join("f copy.txt")
+        );
+        assert_eq!(
+            copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(),
+            dir.path().join("f copy 2.txt")
+        );
+        assert_eq!(
+            copy_into(&dir.path().join("sub"), &dest).unwrap(),
+            dest.join("sub copy")
+        );
         assert_eq!(fs::read_to_string(dir.path().join("f.txt")).unwrap(), "x");
 
-        assert!(copy_into(&dir.path().join("sub"), &dir.path().join("sub").join("deep")).is_err());
+        assert!(
+            copy_into(
+                &dir.path().join("sub"),
+                &dir.path().join("sub").join("deep")
+            )
+            .is_err()
+        );
         assert!(copy_into(&dir.path().join("missing"), &dest).is_err());
     }
 

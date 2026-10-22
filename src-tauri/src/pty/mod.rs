@@ -3,15 +3,15 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 use crate::platform;
 
 mod shell_integration;
-use crate::terminal::{TerminalSink, Utf8Stream};
+use crate::terminal::{FlowGate, TerminalSink, Utf8Stream};
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -107,6 +107,9 @@ struct Session {
     killer: Box<dyn ChildKiller + Send + Sync>,
     /// The child's process id, to read its working folder; None when the system does not give it.
     pid: Option<u32>,
+    /// The gate the reader waits on while the webview catches up; closed with the session so a
+    /// paused reader still sees the end.
+    flow: Option<Arc<FlowGate>>,
 }
 
 #[derive(Default)]
@@ -172,6 +175,7 @@ impl PtyManager {
             }
         });
         let pid = child.process_id();
+        let flow = sink.flow();
 
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
         self.sessions.lock().unwrap().insert(
@@ -181,6 +185,7 @@ impl PtyManager {
                 input,
                 killer,
                 pid,
+                flow: flow.clone(),
             },
         );
 
@@ -188,6 +193,9 @@ impl PtyManager {
             let mut decoder = Utf8Stream::default();
             let mut buf = [0u8; 8192];
             loop {
+                if let Some(gate) = &flow {
+                    gate.wait_sync();
+                }
                 match reader.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
@@ -263,6 +271,9 @@ impl PtyManager {
             .ok_or(PtyError::UnknownSession(id))?;
         // The process may already be gone; dropping the session closes the PTY either way.
         let _ = session.killer.kill();
+        if let Some(gate) = session.flow.take() {
+            gate.close();
+        }
         Ok(())
     }
 }
@@ -566,6 +577,65 @@ mod tests {
             mgr.write(id, b"x"),
             Err(PtyError::UnknownSession(_))
         ));
+    }
+
+    /// A sink whose reader waits on `gate`, as the webview's does.
+    struct GatedSink(Sender<Event>, std::sync::Arc<crate::terminal::FlowGate>);
+
+    impl TerminalSink for GatedSink {
+        fn data(&self, text: String) {
+            let _ = self.0.send(Event::Data(text));
+        }
+        fn exit(&self, code: Option<u32>) {
+            let _ = self.0.send(Event::Exit(code));
+        }
+        fn flow(&self) -> Option<std::sync::Arc<crate::terminal::FlowGate>> {
+            Some(self.1.clone())
+        }
+    }
+
+    fn gated_sink() -> (
+        GatedSink,
+        std::sync::Arc<crate::terminal::FlowGate>,
+        Receiver<Event>,
+    ) {
+        let (tx, rx) = channel();
+        let gate = std::sync::Arc::new(crate::terminal::FlowGate::new());
+        (GatedSink(tx, gate.clone()), gate, rx)
+    }
+
+    #[test]
+    fn a_paused_session_reads_nothing_until_resumed() {
+        let mgr = PtyManager::default();
+        let (s, gate, rx) = gated_sink();
+        gate.set_paused(true);
+        mgr.spawn(req("/bin/sh", &["-c", "echo flow-ok; sleep 5"]), s)
+            .unwrap();
+        assert!(
+            rx.recv_timeout(Duration::from_millis(500)).is_err(),
+            "output was read while paused"
+        );
+        gate.set_paused(false);
+        let (out, _) = wait_for(&rx, "flow-ok");
+        assert!(out.contains("flow-ok"), "output was {out:?}");
+    }
+
+    #[test]
+    fn closing_a_paused_session_still_ends_it_at_once() {
+        let mgr = PtyManager::default();
+        let (s, gate, rx) = gated_sink();
+        gate.set_paused(true);
+        let id = mgr.spawn(req("/bin/sleep", &["30"]), s).unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        let started = Instant::now();
+        mgr.close(id).unwrap();
+        let (_, exit) = wait_for(&rx, "");
+        assert!(exit.is_some(), "process did not exit after close");
+        assert!(
+            started.elapsed() < Duration::from_secs(3),
+            "exit took {:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

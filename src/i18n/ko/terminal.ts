@@ -48,6 +48,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "클립보드를 읽을 수 없습니다.",
     saveError: "출력을 저장할 수 없습니다: {error}",
     loggingStopped: "기록이 중지되었습니다: {error}",
+    logDropped: "[PlexusTerm: 출력 {count}자가 여기 기록되지 않았습니다. 디스크가 너무 느렸습니다]",
     hostKeyCancelled: "연결이 취소되었습니다. 호스트 키를 신뢰하지 않았습니다.",
     cancelled: "연결이 취소되었습니다.",
   },

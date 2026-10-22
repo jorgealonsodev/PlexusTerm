@@ -70,8 +70,10 @@ class FakeTerminal implements HighlightTerminal {
   cols = 80;
   type: "normal" | "alternate" = "normal";
   rows: [string, boolean][] = [];
-  markers: { line: number; isDisposed: boolean; dispose(): void }[] = [];
-  decorations: { line: number; color: string; width: number; disposed: boolean }[] = [];
+  markers: { line: number; isDisposed: boolean; dispose(): void; onDispose(listener: () => void): { dispose(): void } }[] = [];
+  decorations: { line: number; color: string; width: number; disposed: boolean; disposeCalls: number }[] = [];
+  /** How many times each row's text was read. */
+  reads = new Map<number, number>();
   /** The cursor's row; the last row unless a test moves it (as `clear` does). */
   cursor: number | null = null;
   /** The first row of the screen; rows above it are scrollback. */
@@ -90,16 +92,29 @@ class FakeTerminal implements HighlightTerminal {
         baseY: this.baseY,
         cursorY: this.cursorRow - this.baseY,
         getLine: (i: number) =>
-          rows[i] && { isWrapped: rows[i][1], translateToString: (trim?: boolean) => (trim ? rows[i][0].trimEnd() : rows[i][0]) },
+          rows[i] && {
+            isWrapped: rows[i][1],
+            translateToString: (trim?: boolean) => {
+              this.reads.set(i, (this.reads.get(i) ?? 0) + 1);
+              return trim ? rows[i][0].trimEnd() : rows[i][0];
+            },
+          },
       },
     };
   }
   registerMarker(offset = 0) {
+    let listeners: (() => void)[] = [];
     const marker = {
       line: this.cursorRow + offset,
       isDisposed: false,
       dispose() {
+        if (marker.isDisposed) return;
         marker.isDisposed = true;
+        listeners.forEach((l) => l());
+      },
+      onDispose(listener: () => void) {
+        listeners.push(listener);
+        return { dispose: () => (listeners = listeners.filter((l) => l !== listener)) };
       },
     };
     this.markers.push(marker);
@@ -107,11 +122,12 @@ class FakeTerminal implements HighlightTerminal {
   }
   registerDecoration(options: { marker: { line: number }; foregroundColor?: string; width?: number }) {
     if (this.type === "alternate") return undefined;
-    const decoration = { line: options.marker.line, color: options.foregroundColor ?? "", width: options.width ?? 1, disposed: false };
+    const decoration = { line: options.marker.line, color: options.foregroundColor ?? "", width: options.width ?? 1, disposed: false, disposeCalls: 0 };
     this.decorations.push(decoration);
     return {
       dispose() {
         decoration.disposed = true;
+        decoration.disposeCalls++;
       },
     };
   }
@@ -178,6 +194,28 @@ describe("attachErrorHighlight", () => {
     term.print("$ ");
     term.print("x", "$ ");
     expect(term.live()).toEqual([[1, "#ef6b73"]]);
+  });
+
+  it("keeps at most the limit of coloured rows, dropping the oldest", () => {
+    const term = new FakeTerminal();
+    attachErrorHighlight(term, { enabled: () => true, color: () => "#f00", schedule: (scan) => scan(), maxColoured: 2 });
+    term.print("error: one", "error: two", "error: three", "$ ");
+    expect(term.live()).toEqual([
+      [1, "#f00"],
+      [2, "#f00"],
+    ]);
+  });
+
+  it("uncolours a row the scrollback gave back to the screen once it is rewritten", () => {
+    const { term } = setup();
+    term.print("error: old", "x", "y", "$ ");
+    expect(term.live()).toEqual([[0, "#ef6b73"]]);
+    // The error scrolls above the screen, then a taller pane brings it back and the screen is cleared.
+    term.baseY = 2;
+    term.print("$ ");
+    term.baseY = 0;
+    term.rewrite(0, "$ ls", "notes", "$ ");
+    expect(term.live()).toEqual([]);
   });
 
   it("colours every row of a wrapped error line", () => {
@@ -260,5 +298,49 @@ describe("attachErrorHighlight", () => {
     highlight.dispose();
     term.print("error: two", "$ ");
     expect(term.live()).toEqual([]);
+  });
+
+  it("never touches the coloured rows that scrolled above the screen again", () => {
+    const { term } = setup();
+    for (let i = 0; i < 50; i++) term.print(`error: ${i}`);
+    term.print("$ ");
+    expect(term.live()).toHaveLength(50);
+    // The screen moves down past every coloured row; the next scan lets them go.
+    term.baseY = 50;
+    term.print("x", "$ ");
+    // From now on a scan reads nothing of them: neither their markers nor their text.
+    let touched = 0;
+    for (const marker of term.markers.filter((m) => m.line < 50)) {
+      const { line, isDisposed } = marker;
+      Object.defineProperty(marker, "line", { get: () => (touched++, line) });
+      Object.defineProperty(marker, "isDisposed", { get: () => (touched++, isDisposed) });
+    }
+    term.reads.clear();
+    term.print("y", "$ ");
+    term.print("z", "$ ");
+    expect(touched).toBe(0);
+    expect([...term.reads.keys()].filter((row) => row < 50)).toEqual([]);
+    expect(term.live()).toHaveLength(50);
+  });
+
+  it("reads a wrapped error line on the screen once per scan", () => {
+    const { term } = setup();
+    term.print("$ cmd", "fatal: a very long", [" message", true], [" that wraps", true], [" four rows", true], "$ ");
+    expect(term.live()).toHaveLength(4);
+    term.reads.clear();
+    term.print("x", "$ ");
+    expect([1, 2, 3, 4].map((row) => term.reads.get(row))).toEqual([1, 1, 1, 1]);
+    expect(term.live()).toHaveLength(4);
+  });
+
+  it("forgets a colour whose row left the scrollback", () => {
+    const { term, highlight } = setup();
+    term.print("error: one", "$ ");
+    const [decoration] = term.decorations;
+    // The terminal drops the oldest row: its marker and decoration go with it.
+    term.markers.find((m) => m.line === 0 && !m.isDisposed)!.dispose();
+    decoration.disposed = true;
+    highlight.dispose();
+    expect(decoration.disposeCalls).toBe(0);
   });
 });

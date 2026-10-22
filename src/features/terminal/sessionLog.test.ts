@@ -53,4 +53,58 @@ describe("createSessionLog", () => {
     expect(onError).toHaveBeenCalledWith("disk full");
     expect(append).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps one append in flight and joins the batches that arrive meanwhile", async () => {
+    let release: () => void = () => {};
+    const append = vi.fn((_path: string, _text: string) => new Promise<void>((resolve) => (release = resolve)));
+    const log = createSessionLog("/tmp/s.log", append, { intervalMs: 500 });
+    log.write("a");
+    await vi.advanceTimersByTimeAsync(500);
+    log.write("b");
+    await vi.advanceTimersByTimeAsync(500);
+    log.write("c");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(append.mock.calls.map((c) => c[1])).toEqual(["a"]);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(append.mock.calls.map((c) => c[1])).toEqual(["a", "bc"]);
+  });
+
+  it("leaves out what does not fit while the disk is slow, and says so in the log", async () => {
+    let release: () => void = () => {};
+    const append = vi.fn((_path: string, _text: string) => new Promise<void>((resolve) => (release = resolve)));
+    const log = createSessionLog("/tmp/s.log", append, { intervalMs: 500, maxBacklog: 4, droppedNote: (n) => `[${n} lost]` });
+    log.write("x");
+    await vi.advanceTimersByTimeAsync(500);
+    log.write("123456");
+    await vi.advanceTimersByTimeAsync(500);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(append.mock.calls.map((c) => c[1])).toEqual(["x", "1234[2 lost]"]);
+    release();
+    await log.stop();
+    expect(append).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops after the append in flight, without growing a queue", async () => {
+    let release: () => void = () => {};
+    const append = vi.fn((_path: string, _text: string) => new Promise<void>((resolve) => (release = resolve)));
+    const log = createSessionLog("/tmp/s.log", append, { intervalMs: 500 });
+    log.write("one");
+    await vi.advanceTimersByTimeAsync(500);
+    log.write("two");
+    let stopped = false;
+    void log.stop().then(() => (stopped = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(false);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(true);
+    expect(append.mock.calls.map((c) => c[1])).toEqual(["one", "two"]);
+    log.write("late");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(append).toHaveBeenCalledTimes(2);
+  });
 });

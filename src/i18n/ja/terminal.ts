@@ -49,6 +49,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "クリップボードを読み取れませんでした。",
     saveError: "出力を保存できませんでした: {error}",
     loggingStopped: "ログ記録を停止しました: {error}",
+    logDropped: "[PlexusTerm: 出力の {count} 文字はここに記録されませんでした。ディスクが遅すぎました]",
     hostKeyCancelled: "接続をキャンセルしました。ホストキーが信頼されていません。",
     cancelled: "接続をキャンセルしました。",
   },

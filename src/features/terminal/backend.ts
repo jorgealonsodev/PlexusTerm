@@ -33,6 +33,11 @@ export interface TerminalBackend {
   close(id: number): Promise<void>;
 }
 
+/** Pauses or resumes reading the session of share tap `tap` (see `flowControl.ts`). */
+export function setTerminalFlow(tap: number, paused: boolean) {
+  return invoke<void>("terminal_flow", { tap, paused });
+}
+
 function channelFor(onEvent: (event: TerminalEvent) => void) {
   const channel = new Channel<TerminalEvent>();
   channel.onmessage = onEvent;

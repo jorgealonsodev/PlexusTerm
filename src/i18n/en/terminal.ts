@@ -46,6 +46,7 @@ export const terminal = {
     clipboardError: "Could not read the clipboard.",
     saveError: "Could not save the output: {error}",
     loggingStopped: "Logging stopped: {error}",
+    logDropped: "[PlexusTerm: {count} characters of output were not logged here; the disk was too slow]",
     hostKeyCancelled: "Connection cancelled: host key not trusted.",
     cancelled: "Connection cancelled.",
   },

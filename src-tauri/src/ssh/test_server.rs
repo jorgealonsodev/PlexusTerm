@@ -398,6 +398,9 @@ impl russh::server::Handler for Handler {
                 session.eof(channel)?;
                 session.close(channel)
             }
+            // Stops this connection's session loop for good: no more input is read and no
+            // window is opened again, like a remote that froze.
+            b"stall" => std::future::pending().await,
             b"size?" => {
                 let (cols, rows) = *self.size.lock().unwrap();
                 session.data(channel, format!("size={cols}x{rows}\r\n").into_bytes())

@@ -52,6 +52,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "Não foi possível ler a área de transferência.",
     saveError: "Não foi possível salvar a saída: {error}",
     loggingStopped: "Registro interrompido: {error}",
+    logDropped: "[PlexusTerm: {count} caracteres de saída não foram registrados aqui; o disco estava lento demais]",
     hostKeyCancelled: "Conexão cancelada: chave do host não confiável.",
     cancelled: "Conexão cancelada.",
   },

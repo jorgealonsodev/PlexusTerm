@@ -48,6 +48,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "无法读取剪贴板。",
     saveError: "无法保存输出：{error}",
     loggingStopped: "记录已停止：{error}",
+    logDropped: "[PlexusTerm：此处有 {count} 个字符的输出未记录；磁盘太慢]",
     hostKeyCancelled: "连接已取消：主机密钥未受信任。",
     cancelled: "连接已取消。",
   },

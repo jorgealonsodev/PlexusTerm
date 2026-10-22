@@ -40,7 +40,7 @@ use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use crate::platform;
 use crate::secrets::{self, NoStore, SharedSecrets};
 use crate::sftp::SftpError;
-use crate::terminal::{TerminalSink, Utf8Stream};
+use crate::terminal::{FlowGate, TerminalSink, Utf8Stream};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// How long saving or forgetting a password may take after a login. A locked
@@ -794,7 +794,6 @@ async fn authenticate(
 enum Command {
     Data(Vec<u8>),
     Resize(u16, u16),
-    Close,
 }
 
 /// The SFTP subsystem of a session, opened on first use.
@@ -804,6 +803,12 @@ struct SessionEntry {
     tx: UnboundedSender<Command>,
     handle: Arc<Connection>,
     sftp: SftpSlot,
+    /// Dropped when the session is closed (or the manager is): the writer task stops at once,
+    /// even in the middle of a write the remote does not accept, instead of after it.
+    _closed: tokio::sync::oneshot::Sender<()>,
+    /// The gate the reader waits on while the webview catches up; closed with the session so a
+    /// paused reader still sees the end.
+    flow: Option<Arc<FlowGate>>,
 }
 
 pub struct SshManager {
@@ -915,15 +920,19 @@ impl SshManager {
         }
 
         let (tx, mut commands) = unbounded_channel();
+        let (closed_tx, mut closed) = tokio::sync::oneshot::channel::<()>();
         let id = self.next_id.fetch_add(1, Ordering::Relaxed) + 1;
         let (mut reader, writer) = channel.split();
         let handle = Arc::new(handle);
+        let flow = sink.flow();
         self.sessions.lock().unwrap().insert(
             id,
             SessionEntry {
                 tx,
                 handle: handle.clone(),
                 sftp: SftpSlot::default(),
+                _closed: closed_tx,
+                flow: flow.clone(),
             },
         );
 
@@ -931,22 +940,47 @@ impl SshManager {
         // window while the reader keeps draining output (otherwise both stall).
         let (writer_handle, writer_jumps) = (handle.clone(), jumps.clone());
         tokio::spawn(async move {
-            while let Some(command) = commands.recv().await {
+            // A write waits for the remote's window, which a remote that stops reading never
+            // opens again (not even once the connection is gone): closing must not queue behind it.
+            let mut cancelled = false;
+            loop {
+                let command = tokio::select! {
+                    biased;
+                    _ = &mut closed => {
+                        cancelled = true;
+                        break;
+                    }
+                    command = commands.recv() => command,
+                };
                 match command {
-                    Command::Data(data) => {
-                        if writer.data(&data[..]).await.is_err() {
-                            break;
+                    None => break,
+                    Some(Command::Data(data)) => {
+                        tokio::select! {
+                            biased;
+                            _ = &mut closed => {
+                                cancelled = true;
+                                break;
+                            }
+                            written = writer.data(&data[..]) => {
+                                if written.is_err() {
+                                    break;
+                                }
+                            }
                         }
                     }
-                    Command::Resize(cols, rows) => {
+                    Some(Command::Resize(cols, rows)) => {
                         let _ = writer.window_change(cols.into(), rows.into(), 0, 0).await;
                     }
-                    Command::Close => break,
                 }
             }
             // Closed by the user (or the manager was dropped): end the whole connection,
-            // which also ends the reader below.
-            let _ = writer.close().await;
+            // which also ends the reader below. Closing the channel politely is only tried
+            // briefly: a remote that stopped reading may never answer.
+            if !cancelled {
+                let _ = writer.close().await;
+            } else {
+                let _ = tokio::time::timeout(Duration::from_secs(1), writer.close()).await;
+            }
             let _ = writer_handle
                 .disconnect(russh::Disconnect::ByApplication, "", "en")
                 .await;
@@ -956,7 +990,13 @@ impl SshManager {
         tokio::spawn(async move {
             let mut decoder = Utf8Stream::default();
             let mut exit_code = None;
-            while let Some(message) = reader.wait().await {
+            loop {
+                if let Some(gate) = &flow {
+                    gate.wait().await;
+                }
+                let Some(message) = reader.wait().await else {
+                    break;
+                };
                 match message {
                     ChannelMsg::Data { data } | ChannelMsg::ExtendedData { data, .. } => {
                         let text = decoder.push(&data);
@@ -1002,8 +1042,13 @@ impl SshManager {
             .unwrap()
             .remove(&id)
             .ok_or(SshError::UnknownSession { id })?;
-        // The session task may already have ended; nothing else to clean up then.
-        let _ = entry.tx.send(Command::Close);
+        // A paused reader must see the end too.
+        if let Some(gate) = &entry.flow {
+            gate.close();
+        }
+        // Dropping the entry drops its `_closed` sender, which stops the writer task (it may
+        // already have ended; nothing else to clean up then).
+        drop(entry);
         Ok(())
     }
 
@@ -1526,6 +1571,122 @@ mod tests {
             mgr.resize(99, 1, 1),
             Err(SshError::UnknownSession { id: 99 })
         ));
+    }
+
+    #[tokio::test]
+    async fn close_ends_a_session_whose_input_the_remote_stopped_reading() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+        // The server stops reading: the next large write waits for a window that never opens.
+        mgr.write(id, b"stall").unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        mgr.write(id, &vec![b'x'; 8 << 20]).unwrap();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        mgr.close(id).unwrap();
+        let exit = tokio::time::timeout(Duration::from_secs(4), async {
+            loop {
+                match rx.recv().await {
+                    Some(Event::Exit(code)) => return Some(code),
+                    Some(Event::Data(_)) => {}
+                    None => return None,
+                }
+            }
+        })
+        .await;
+        assert!(
+            matches!(exit, Ok(Some(_))),
+            "the session did not end after close: {exit:?}"
+        );
+    }
+
+    /// A sink whose reader waits on `gate`, as the webview's does.
+    struct GatedSink(UnboundedSender<Event>, Arc<crate::terminal::FlowGate>);
+
+    impl TerminalSink for GatedSink {
+        fn data(&self, text: String) {
+            let _ = self.0.send(Event::Data(text));
+        }
+        fn exit(&self, code: Option<u32>) {
+            let _ = self.0.send(Event::Exit(code));
+        }
+        fn flow(&self) -> Option<Arc<crate::terminal::FlowGate>> {
+            Some(self.1.clone())
+        }
+    }
+
+    fn gated_sink() -> (
+        GatedSink,
+        Arc<crate::terminal::FlowGate>,
+        UnboundedReceiver<Event>,
+    ) {
+        let (tx, rx) = unbounded_channel();
+        let gate = Arc::new(crate::terminal::FlowGate::new());
+        (GatedSink(tx, gate.clone()), gate, rx)
+    }
+
+    #[tokio::test]
+    async fn a_paused_session_reads_nothing_until_resumed() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, gate, mut rx) = gated_sink();
+
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+        gate.set_paused(true);
+        // A read already waiting when the pause came may still deliver one message.
+        mgr.write(id, b"first").unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        while rx.try_recv().is_ok() {}
+        mgr.write(id, b"second").unwrap();
+        let early = tokio::time::timeout(Duration::from_millis(500), rx.recv()).await;
+        assert!(early.is_err(), "output was read while paused");
+        gate.set_paused(false);
+        let (out, _) = wait_for(&mut rx, "second").await;
+        assert!(out.contains("second"), "output was {out:?}");
+    }
+
+    #[tokio::test]
+    async fn closing_a_paused_session_still_ends_it_at_once() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, gate, mut rx) = gated_sink();
+
+        let id = mgr
+            .connect(request(server.addr.port(), password(PASSWORD)), s)
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+        gate.set_paused(true);
+        mgr.write(id, b"first").unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        mgr.close(id).unwrap();
+        let exit = tokio::time::timeout(Duration::from_secs(3), async {
+            loop {
+                match rx.recv().await {
+                    Some(Event::Exit(code)) => return Some(code),
+                    Some(Event::Data(_)) => {}
+                    None => return None,
+                }
+            }
+        })
+        .await;
+        assert!(
+            matches!(exit, Ok(Some(_))),
+            "the session did not end after close: {exit:?}"
+        );
     }
 
     /// Manager trusting the test server whose keyring is `store`.

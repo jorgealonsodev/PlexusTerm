@@ -55,39 +55,64 @@ enum TerminalEvent {
 /// Sends a session's events to the webview through a thread that gathers bursts of output
 /// (see [`terminal::coalesce`]). Each batch goes through the session's share tap first, so a
 /// shared tab's viewers get the output in the order the pane renders it.
-struct ChannelSink(std::sync::mpsc::Sender<coalesce::Event>);
+///
+/// The session's reader waits on its flow gate while the pane asks to pause (`terminal_flow`,
+/// keyed by the share tap id it gets first): sending never blocks, so without it a program that
+/// prints faster than the terminal parses piles its output up in the webview.
+struct ChannelSink {
+    tx: std::sync::mpsc::Sender<coalesce::Event>,
+    flow: std::sync::Arc<terminal::FlowGate>,
+}
 
 impl ChannelSink {
     fn new(channel: Channel<TerminalEvent>) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
         let (tap_id, tap) = share::taps().register();
+        let flow = std::sync::Arc::new(terminal::FlowGate::new());
+        terminal::flow::gates().register(tap_id, &flow);
         let _ = channel.send(TerminalEvent::Tap(tap_id));
+        let gate = flow.clone();
         std::thread::spawn(move || {
             coalesce::forward(rx, |event| match event {
                 coalesce::Event::Output(text) => {
                     diag::mark("S", text.len());
-                    let _ = channel.send(match tap.output(text.as_bytes()) {
+                    let sent = channel.send(match tap.output(text.as_bytes()) {
                         Some(seq) => TerminalEvent::SharedOutput { data: text, seq },
                         None => TerminalEvent::Output(text),
                     });
+                    // No webview to catch up any more: never hold the reader back again.
+                    if sent.is_err() {
+                        gate.close();
+                    }
                 }
                 coalesce::Event::Exit(code) => {
+                    gate.close();
                     tap.exited();
                     let _ = channel.send(TerminalEvent::Exit(code));
                 }
             })
         });
-        Self(tx)
+        Self { tx, flow }
     }
 }
 
 impl TerminalSink for ChannelSink {
     fn data(&self, text: String) {
-        let _ = self.0.send(coalesce::Event::Output(text));
+        let _ = self.tx.send(coalesce::Event::Output(text));
     }
     fn exit(&self, code: Option<u32>) {
-        let _ = self.0.send(coalesce::Event::Exit(code));
+        let _ = self.tx.send(coalesce::Event::Exit(code));
     }
+    fn flow(&self) -> Option<std::sync::Arc<terminal::FlowGate>> {
+        Some(self.flow.clone())
+    }
+}
+
+/// Pauses (or resumes) reading the session of share tap `tap` while its pane has too much output
+/// still to parse. A session already gone is ignored.
+#[tauri::command]
+fn terminal_flow(tap: u64, paused: bool) {
+    terminal::flow::gates().set_paused(tap, paused);
 }
 
 #[tauri::command]
@@ -565,9 +590,22 @@ fn config_path(app: &AppHandle, file: &str) -> Result<std::path::PathBuf, Storag
     Ok(dir.join(file))
 }
 
+/// Runs file work on the blocking pool, off the main thread where a sync command runs (a slow disk
+/// would hold up the window). Only for reads and one-off writes: the `*_save` commands stay sync,
+/// because the main thread runs them in the order they were sent and a newer save can never be
+/// overwritten by an older one finishing later.
+async fn on_disk<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, StorageError> + Send + 'static,
+) -> Result<T, StorageError> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|err| StorageError::Io(err.to_string()))?
+}
+
 #[tauri::command]
-fn sessions_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&config_path(&app, SESSIONS_FILE)?)
+async fn sessions_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, SESSIONS_FILE)?;
+    on_disk(move || storage::load(&path)).await
 }
 
 #[tauri::command]
@@ -579,13 +617,14 @@ fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
 const IMPORT_MAX_BYTES: u64 = 5 * 1024 * 1024;
 
 #[tauri::command]
-fn import_read_file(path: String) -> Result<Vec<u8>, StorageError> {
-    storage::read_bounded(std::path::Path::new(&path), IMPORT_MAX_BYTES)
+async fn import_read_file(path: String) -> Result<Vec<u8>, StorageError> {
+    on_disk(move || storage::read_bounded(std::path::Path::new(&path), IMPORT_MAX_BYTES)).await
 }
 
 #[tauri::command]
-fn tunnels_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&config_path(&app, TUNNELS_FILE)?)
+async fn tunnels_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, TUNNELS_FILE)?;
+    on_disk(move || storage::load(&path)).await
 }
 
 #[tauri::command]
@@ -596,8 +635,9 @@ fn tunnels_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
 const MACROS_FILE: &str = "macros.json";
 
 #[tauri::command]
-fn macros_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&config_path(&app, MACROS_FILE)?)
+async fn macros_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, MACROS_FILE)?;
+    on_disk(move || storage::load(&path)).await
 }
 
 #[tauri::command]
@@ -609,8 +649,9 @@ fn macros_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
 const AI_CHATS_FILE: &str = "ai-chats.json";
 
 #[tauri::command]
-fn ai_chats_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&config_path(&app, AI_CHATS_FILE)?)
+async fn ai_chats_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, AI_CHATS_FILE)?;
+    on_disk(move || storage::load(&path)).await
 }
 
 #[tauri::command]
@@ -621,8 +662,9 @@ fn ai_chats_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
 const SETTINGS_FILE: &str = "settings.json";
 
 #[tauri::command]
-fn settings_load(app: AppHandle) -> Result<Option<String>, StorageError> {
-    storage::load(&config_path(&app, SETTINGS_FILE)?)
+async fn settings_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, SETTINGS_FILE)?;
+    on_disk(move || storage::load(&path)).await
 }
 
 #[tauri::command]
@@ -635,14 +677,21 @@ const TEXT_FILE_MAX_BYTES: u64 = 50 * 1024 * 1024;
 
 /// Saves terminal output to a file the user picked in the save dialog.
 #[tauri::command]
-fn save_text_file(path: String, contents: String) -> Result<(), StorageError> {
-    storage::write_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+async fn save_text_file(path: String, contents: String) -> Result<(), StorageError> {
+    on_disk(move || {
+        storage::write_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+    })
+    .await
 }
 
 /// Appends a batch of session log output to the file the user picked.
 #[tauri::command]
-fn append_text_file(path: String, contents: String) -> Result<(), StorageError> {
-    storage::append_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+async fn append_text_file(path: String, contents: String) -> Result<(), StorageError> {
+    // One append at a time (the session log waits for each), so order is kept off the main thread.
+    on_disk(move || {
+        storage::append_text(std::path::Path::new(&path), &contents, TEXT_FILE_MAX_BYTES)
+    })
+    .await
 }
 
 /// Event carrying every tunnel status change.
@@ -725,6 +774,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            terminal_flow,
             pty_spawn,
             pty_write,
             pty_resize,

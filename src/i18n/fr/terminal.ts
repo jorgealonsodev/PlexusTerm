@@ -52,6 +52,7 @@ export const terminal: Messages<typeof en> = {
     clipboardError: "Impossible de lire le presse-papiers.",
     saveError: "Impossible d'enregistrer la sortie : {error}",
     loggingStopped: "Journalisation arrêtée : {error}",
+    logDropped: "[PlexusTerm : {count} caractères de sortie n'ont pas été journalisés ici ; le disque était trop lent]",
     hostKeyCancelled: "Connexion annulée : clé d'hôte non approuvée.",
     cancelled: "Connexion annulée.",
   },

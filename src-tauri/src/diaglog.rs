@@ -339,29 +339,30 @@ pub fn diag_log_default_dir(app: tauri::AppHandle) -> Result<String, String> {
 const BLOCKED_AFTER_MS: u64 = 1000;
 
 /// The interface is alive; `late_ms` is how much later than due its timer fired (a blocked UI thread).
+// Both are async and write on the blocking pool: a sync command runs on the main thread, and the
+// log file is on disk.
 #[tauri::command]
-pub fn diag_heartbeat(late_ms: u64) {
+pub async fn diag_heartbeat(late_ms: u64) {
     UI_BEAT.store(now_millis(), Ordering::Relaxed);
     if late_ms >= BLOCKED_AFTER_MS {
-        warn(&format!(
+        let message = format!(
             "interface thread was blocked for about {:.1} s",
             late_ms as f64 / 1000.0
-        ));
+        );
+        let _ = tauri::async_runtime::spawn_blocking(move || warn(&message)).await;
     }
 }
 
 /// An entry from the interface (errors, slow backend replies).
 #[tauri::command]
-pub fn diag_log(level: String, message: String) {
+pub async fn diag_log(level: String, message: String) {
     let level = match level.as_str() {
         "error" => "ERROR",
         "warn" => "WARN",
         _ => "INFO",
     };
-    log(
-        level,
-        &format!("[ui] {}", message.chars().take(2000).collect::<String>()),
-    );
+    let message = format!("[ui] {}", message.chars().take(2000).collect::<String>());
+    let _ = tauri::async_runtime::spawn_blocking(move || log(level, &message)).await;
 }
 
 #[cfg(test)]
