@@ -93,15 +93,15 @@ const ICONS: Record<FileCategory, LucideIcon> = {
  * The icon of an entry in the plain list (outside DEV mode, which uses VS Code's file icons):
  * line icons, folders tinted, files by what they hold.
  */
-export function FlatFileIcon({ entry }: { entry: SftpEntry }) {
-  if (entry.kind === "dir") {
-    const Icon = entry.name === ".git" ? FolderGit2 : Folder;
+export function FlatFileIcon({ name, kind }: { name: string; kind: SftpEntry["kind"] }) {
+  if (kind === "dir") {
+    const Icon = name === ".git" ? FolderGit2 : Folder;
     return <Icon size={15} className="flat-icon flat-icon--folder" data-kind="folder" aria-hidden="true" />;
   }
-  if (entry.kind === "symlink") {
+  if (kind === "symlink") {
     return <Link2 size={15} className="flat-icon flat-icon--link" data-kind="symlink" aria-hidden="true" />;
   }
-  const category = fileCategory(entry.name);
+  const category = fileCategory(name);
   const Icon = ICONS[category];
   return <Icon size={15} className={`flat-icon flat-icon--${category}`} data-kind={category} aria-hidden="true" />;
 }

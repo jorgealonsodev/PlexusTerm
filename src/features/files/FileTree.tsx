@@ -4,7 +4,7 @@ import { useT } from "../../i18n/i18n";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { DIR_DROP_EVENT, type DirDrop } from "../drop/pathDrag";
 import { formatDate, formatSize } from "../sftp/format";
-import { FileTypeIcon } from "./FileTypeIcon";
+import { EntryIcon, type IconPack } from "./iconPacks";
 import { GitBadge, gitNameClass } from "./GitBadge";
 import { decorationFor, type GitStatusIndex } from "./gitStatus";
 
@@ -39,6 +39,8 @@ interface FileTreeProps {
    * Enter or leaving it renames, Escape cancels. Without it, F2 does nothing.
    */
   onRename?: (entry: SftpEntry, name: string) => void;
+  /** The icon pack its rows are drawn with (Settings → Files); VS Code's Seti when missing. */
+  iconPack?: IconPack;
 }
 
 
@@ -116,6 +118,7 @@ export function FileTree({
   onDirDrop,
   reveal,
   onRename,
+  iconPack = "seti",
 }: FileTreeProps) {
   const t = useT();
   /** The row whose name is being edited in place (F2). */
@@ -323,7 +326,7 @@ export function FileTree({
             <span className="tree-chevron" aria-hidden="true">
               {isDir && (open ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
             </span>
-            <FileTypeIcon name={entry.name} kind={entry.kind} open={open} />
+            <EntryIcon pack={iconPack} name={entry.name} kind={entry.kind} open={open} />
             {editing === entry.path ? (
               <RenameField entry={entry} onDone={(name) => endRename(entry, name)} />
             ) : (

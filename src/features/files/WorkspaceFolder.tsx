@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLAttributes, type ReactNode } from "react";
+import type { IconPack } from "./iconPacks";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { DirDrop } from "../drop/pathDrag";
 import type { SftpEntry } from "../sftp/sftpClient";
@@ -55,6 +56,8 @@ interface WorkspaceFolderProps {
   onRename?: (entry: SftpEntry, name: string) => void;
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
+  /** The icon pack of its tree (Settings → Files). */
+  iconPack?: IconPack;
   /** The root title's handlers (menu with Remove folder from workspace, drag). */
   titleProps: HTMLAttributes<HTMLDivElement>;
   /** Collapse Folders: changes when every open folder, this root included, should close. */
@@ -130,6 +133,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           onOpen={props.onOpen}
           onRename={props.onRename}
           details={props.details}
+          iconPack={props.iconPack}
           gitIndex={gitIndex}
           rowProps={props.rowProps}
           collapse={props.collapse}

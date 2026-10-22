@@ -819,6 +819,17 @@ describe("Updates in About", () => {
   });
 });
 
+describe("File icon packs in Files", () => {
+  it("saves the pack of the plain lists and the one of DEV mode's trees", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} initialSection="files" />);
+    fireEvent.change(screen.getByLabelText("File list icons"), { target: { value: "lines" } });
+    fireEvent.change(screen.getByLabelText("DEV mode tree icons"), { target: { value: "material" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, fileIconsList: "lines", fileIconsTree: "material" });
+  });
+});
+
 describe("Feedback in About", () => {
   const renderAbout = () =>
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} initialSection="about" />);

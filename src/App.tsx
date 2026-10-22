@@ -309,6 +309,10 @@ function AppContent() {
   const [state, dispatch] = useReducer(tabsReducer, initialTabs);
   const [modal, setModal] = useState<Modal>(null);
   const terminalSettings = useSettings();
+  const fileIconPacks = useMemo(
+    () => ({ list: terminalSettings.settings.fileIconsList, tree: terminalSettings.settings.fileIconsTree }),
+    [terminalSettings.settings.fileIconsList, terminalSettings.settings.fileIconsTree],
+  );
   useDiagnosticLog(
     terminalSettings.loaded,
     terminalSettings.settings.diagnosticLog,
@@ -1639,6 +1643,7 @@ function AppContent() {
                   }}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
+                  iconPacks={fileIconPacks}
                   onOpenInTerminal={openInTerminal}
                   onView={(path) => viewInTab({ kind: "local" }, path)}
                   // DEV mode's tree, icons and git status (S10).
@@ -1668,6 +1673,7 @@ function AppContent() {
                   }
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
+                  iconPacks={fileIconPacks}
                   onOpenInTerminal={openInTerminal}
                   onView={(path) => sftpSessionId !== null && viewInTab({ kind: "sftp", sessionId: sftpSessionId }, path)}
                   // DEV mode's tree, icons and git status (S10).

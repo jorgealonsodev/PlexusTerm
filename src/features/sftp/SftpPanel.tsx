@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LiHTMLAttributes } from "react";
+import { DEFAULT_ICON_PACKS, type FileIconPacks } from "../files/iconPacks";
 import { ToolButton } from "../files/ToolButton";
 import { ChevronsDownUp, Download, FilePlus, FolderPlus, Pencil, Trash2, Upload, RefreshCw } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -36,6 +37,8 @@ interface SftpPanelProps {
   onUserNavigate?: (path: string) => void;
   /** Show each entry's size and date (Settings → Files); hidden when missing. */
   details?: boolean;
+  /** The icon packs of the plain list and of DEV mode's tree (Settings → Files). */
+  iconPacks?: FileIconPacks;
   /** Colour entries by their git status (Settings → Files), refreshed with the terminal; off when missing. */
   git?: Omit<GitStatusOptions, "loads">;
   /**
@@ -54,7 +57,7 @@ interface SftpPanelProps {
 const validName = (name: string) => name !== "" && name !== "." && name !== ".." && !name.includes("/");
 
 /** Remote file browser for one SSH session (S7.4), optionally following the terminal folder (S7.5). */
-export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView }: SftpPanelProps) {
+export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView }: SftpPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -482,6 +485,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           onOpen={(entry) => void openEntry(entry)}
           onRename={(entry, name) => void renameTo(entry, name)}
           details={details}
+          iconPack={iconPacks.tree}
           gitIndex={gitIndex}
           rowProps={rowProps}
           collapse={collapse}
@@ -495,6 +499,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           onSelect={setSelectedEntry}
           onOpen={(entry) => void openEntry(entry)}
           details={details}
+          iconPack={iconPacks.list}
           rowProps={rowProps}
         />
       )}

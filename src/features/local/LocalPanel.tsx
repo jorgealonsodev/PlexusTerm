@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLAttributes } from "react";
+import { DEFAULT_ICON_PACKS, type FileIconPacks } from "../files/iconPacks";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
 import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
@@ -37,6 +38,8 @@ interface LocalPanelProps {
   onUserNavigate?: (path: string) => void;
   /** Show each entry's size and date (Settings → Files); hidden when missing. */
   details?: boolean;
+  /** The icon packs of the plain list and of DEV mode's tree (Settings → Files). */
+  iconPacks?: FileIconPacks;
   /** Colour entries by their git status (Settings → Files), refreshed with the terminal; off when missing. */
   git?: Omit<GitStatusOptions, "loads">;
   /**
@@ -96,7 +99,7 @@ export interface Workspace {
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -572,6 +575,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       onOpen={(entry) => void openEntry(entry)}
       onRename={(entry, name) => void renameTo(entry, name)}
       details={details}
+      iconPack={iconPacks.tree}
       gitIndex={gitIndex}
       rowProps={rowProps}
       collapse={collapse}
@@ -682,6 +686,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             onSelect={setSelectedEntry}
             onOpen={(entry) => void openEntry(entry)}
             details={details}
+            iconPack={iconPacks.list}
             rowProps={rowProps}
           />
         )}
@@ -700,6 +705,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               onOpen={(entry) => void openEntry(entry)}
               onRename={(entry, name) => void renameTo(entry, name)}
               details={details}
+              iconPack={iconPacks.tree}
               rowProps={rowProps}
               titleProps={rootProps(folder, () => workspace.onRemove(folder))}
               reveal={treeReveal ?? undefined}

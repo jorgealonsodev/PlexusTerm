@@ -26,7 +26,7 @@ describe("plain list icons", () => {
 
   it("draws folders, the .git folder and links with their own icons", () => {
     const kindOf = (e: SftpEntry) => {
-      const { container } = render(<FlatFileIcon entry={e} />);
+      const { container } = render(<FlatFileIcon name={e.name} kind={e.kind} />);
       const kind = container.querySelector("svg")!.getAttribute("data-kind");
       cleanup();
       return kind;
@@ -34,7 +34,7 @@ describe("plain list icons", () => {
     expect(kindOf(entry("src", "dir"))).toBe("folder");
     expect(kindOf(entry("current", "symlink"))).toBe("symlink");
     expect(kindOf(entry("nuevo.txt"))).toBe("text");
-    const { container } = render(<FlatFileIcon entry={entry(".git", "dir")} />);
+    const { container } = render(<FlatFileIcon name=".git" kind="dir" />);
     expect(container.querySelector("svg")!.getAttribute("class")).toContain("lucide-folder-git");
   });
 });

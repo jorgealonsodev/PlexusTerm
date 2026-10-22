@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "각 SSH 창 아래에 서버의 CPU, 메모리, 디스크, 네트워크, 사용자를 같은 연결로 읽어 표시하는 막대입니다. 도구 메뉴에도 있습니다.",
   },
   files: {
+    iconsList: "파일 목록 아이콘",
+    iconsTree: "DEV 모드 트리 아이콘",
+    iconPack: { material: "Material(언어별 컬러 아이콘)", seti: "Seti(VS Code)", lines: "선(간단한 선 아이콘)" },
+    iconsHelp: "탐색기와 SFTP 브라우저의 아이콘 팩: 일반 목록과 DEV 모드 트리입니다. Material과 Seti는 VS Code용 Material Icon Theme와 VS Code 자체의 아이콘 테마입니다.",
     textEditor: "텍스트 편집기",
     systemDefault: "시스템 기본값",
     useSystemDefault: "시스템 기본값 사용",

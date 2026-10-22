@@ -59,6 +59,7 @@ import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 import { SharingSettings, type SharingValues } from "../share/SharingSettings";
 import { AuditLogDialog } from "../share/AuditLogDialog";
+import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 
 interface SettingsDialogProps {
@@ -369,6 +370,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [gitFileStatus, setGitFileStatus] = useState(settings.gitFileStatus);
   const [viewerAutoSave, setViewerAutoSave] = useState(settings.viewerAutoSave);
   const [viewerPosition, setViewerPosition] = useState(settings.viewerPosition);
+  const [fileIconsList, setFileIconsList] = useState(settings.fileIconsList);
+  const [fileIconsTree, setFileIconsTree] = useState(settings.fileIconsTree);
   const [terminalFollowsBrowser, setTerminalFollowsBrowser] = useState(settings.terminalFollowsBrowser);
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
@@ -443,6 +446,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       gitFileStatus,
       viewerAutoSave,
       viewerPosition,
+      fileIconsList,
+      fileIconsTree,
       // Set with the viewer's own button, not here.
       viewerChangedLines: settings.viewerChangedLines,
       terminalFollowsBrowser,
@@ -890,6 +895,27 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               {t("settings.files.autoSave")}
             </label>
             <p className="muted">{t("settings.files.autoSaveHelp")}</p>
+            <label className="field">
+              {t("settings.files.iconsList")}
+              <select value={fileIconsList} onChange={(e) => isIconPack(e.target.value) && setFileIconsList(e.target.value)}>
+                {ICON_PACKS.map((pack) => (
+                  <option key={pack} value={pack}>
+                    {t(`settings.files.iconPack.${pack}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              {t("settings.files.iconsTree")}
+              <select value={fileIconsTree} onChange={(e) => isIconPack(e.target.value) && setFileIconsTree(e.target.value)}>
+                {ICON_PACKS.map((pack) => (
+                  <option key={pack} value={pack}>
+                    {t(`settings.files.iconPack.${pack}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted">{t("settings.files.iconsHelp")}</p>
             <label className="field">
               {t("settings.files.viewerPosition")}
               <select value={viewerPosition} onChange={(e) => setViewerPosition(e.target.value as ViewerPosition)}>

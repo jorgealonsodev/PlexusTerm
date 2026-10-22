@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "Eine Leiste unter jedem SSH-Bereich mit CPU, Arbeitsspeicher, Datenträger, Netzwerk und Benutzern des Servers, über dieselbe Verbindung gelesen. Auch unter Werkzeuge.",
   },
   files: {
+    iconsList: "Symbole der Dateilisten",
+    iconsTree: "Symbole des DEV-Modus-Baums",
+    iconPack: { material: "Material (farbige Symbole je Sprache)", seti: "Seti (VS Code)", lines: "Linien (einfache Liniensymbole)" },
+    iconsHelp: "Die Symbolpakete des Explorers und des SFTP-Browsers: die einfachen Listen und die Bäume des DEV-Modus. Material und Seti sind die Symbolthemen von Material Icon Theme für VS Code und von VS Code selbst.",
     textEditor: "Texteditor",
     systemDefault: "Systemstandard",
     useSystemDefault: "Systemstandard verwenden",

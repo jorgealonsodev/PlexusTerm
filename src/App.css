@@ -692,7 +692,22 @@ textarea::placeholder {
   font-weight: 500;
 }
 
-/* Icons of the plain file lists (outside DEV mode): line icons, folders tinted, files by kind. */
+/* The Material icon pack: an image per scheme where the icon has a light variant. */
+.material-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.material-icon .material-icon__light,
+:root[data-theme="light"] .material-icon:has(.material-icon__light) .material-icon__dark {
+  display: none;
+}
+
+:root[data-theme="light"] .material-icon .material-icon__light {
+  display: inline;
+}
+
+/* The "lines" icon pack: line icons, folders tinted, files by kind. */
 .flat-icon {
   flex: none;
   color: var(--muted);

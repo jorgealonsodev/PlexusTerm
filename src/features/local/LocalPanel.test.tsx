@@ -443,14 +443,14 @@ describe("LocalPanel Open in terminal", () => {
 });
 
 describe("LocalPanel outside DEV mode", () => {
-  it("keeps the plain list: generic icons, double-click enters folders, a click does not expand, no git call", async () => {
+  it("keeps the plain list: its own icons, double-click enters folders, a click does not expand, no git call", async () => {
     mocked.gitStatus.mockResolvedValue([{ path: "notes.txt", status: "modified" }]);
     const { container } = render(panel({ git: { enabled: true, visible: true, prompt: 0 } }));
     const folder = await screen.findByText("src");
     const row = folder.closest("li")!;
-    expect(row.querySelector(".sftp-row__icon [data-kind]")!.getAttribute("data-kind")).toBe("folder");
-    expect(screen.getByText("notes.txt").closest("li")!.querySelector(".sftp-row__icon [data-kind]")!.getAttribute("data-kind")).toBe("text");
-    expect(container.querySelector("[role=tree], .tree-chevron, [data-icon], .sftp-row__git")).toBeNull();
+    expect(row.querySelector(".sftp-row__icon")!.getAttribute("data-icon")).toBe("folder-src");
+    expect(screen.getByText("notes.txt").closest("li")!.querySelector(".sftp-row__icon")!.getAttribute("data-icon")).toBe("document");
+    expect(container.querySelector("[role=tree], .tree-chevron, .file-icon, .sftp-row__git")).toBeNull();
     fireEvent.click(folder);
     expect(row.getAttribute("aria-expanded")).toBeNull();
     fireEvent.doubleClick(folder);

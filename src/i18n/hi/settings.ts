@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "हर SSH पेन के नीचे एक बार, जिसमें सर्वर का CPU, मेमोरी, डिस्क, नेटवर्क और उपयोगकर्ता उसी कनेक्शन से पढ़कर दिखाए जाते हैं। टूल में भी उपलब्ध।",
   },
   files: {
+    iconsList: "फ़ाइल सूची के आइकन",
+    iconsTree: "DEV मोड ट्री के आइकन",
+    iconPack: { material: "Material (भाषा के अनुसार रंगीन आइकन)", seti: "Seti (VS Code)", lines: "रेखाएँ (सरल रेखा आइकन)" },
+    iconsHelp: "एक्सप्लोरर और SFTP ब्राउज़र के आइकन पैक: सामान्य सूचियाँ और DEV मोड के ट्री। Material और Seti, VS Code के Material Icon Theme और स्वयं VS Code की आइकन थीम हैं।",
     textEditor: "टेक्स्ट एडिटर",
     systemDefault: "सिस्टम डिफ़ॉल्ट",
     useSystemDefault: "सिस्टम डिफ़ॉल्ट का उपयोग करें",

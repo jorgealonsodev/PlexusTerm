@@ -11,6 +11,7 @@ import {
 import { isValidShortcut } from "./shortcutCapture";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
+import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPacks";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -156,6 +157,10 @@ export interface TerminalSettings {
   diagnosticLog: boolean;
   /** Folder of the diagnostic log; "" uses the app's log folder. */
   diagnosticLogDir: string;
+  /** File icon pack of the plain file lists (Explorer and SFTP outside DEV mode). */
+  fileIconsList: IconPack;
+  /** File icon pack of DEV mode's file trees. */
+  fileIconsTree: IconPack;
 }
 
 export const MIN_FONT_SIZE = 8;
@@ -237,6 +242,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shareRecordInput: false,
   diagnosticLog: false,
   diagnosticLogDir: "",
+  fileIconsList: DEFAULT_ICON_PACKS.list,
+  fileIconsTree: DEFAULT_ICON_PACKS.tree,
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
@@ -470,6 +477,8 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     shareRecordInput: bool(value.shareRecordInput, d.shareRecordInput),
     diagnosticLog: bool(value.diagnosticLog, d.diagnosticLog),
     diagnosticLogDir: cleanLocalShell(value.diagnosticLogDir),
+    fileIconsList: isIconPack(value.fileIconsList) ? value.fileIconsList : d.fileIconsList,
+    fileIconsTree: isIconPack(value.fileIconsTree) ? value.fileIconsTree : d.fileIconsTree,
   };
 }
 

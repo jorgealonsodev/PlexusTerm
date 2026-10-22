@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "شريط أسفل كل جزء SSH يعرض CPU الخادم والذاكرة والقرص والشبكة والمستخدمين، ويُقرأ عبر الاتصال نفسه. متاح أيضًا في الأدوات.",
   },
   files: {
+    iconsList: "أيقونات قوائم الملفات",
+    iconsTree: "أيقونات شجرة وضع DEV",
+    iconPack: { material: "Material (أيقونات ملوّنة حسب اللغة)", seti: "Seti (VS Code)", lines: "خطوط (أيقونات خطية بسيطة)" },
+    iconsHelp: "حزم أيقونات المستكشف ومتصفح SFTP: القوائم العادية وأشجار وضع DEV. ‏Material وSeti هما سمتا الأيقونات Material Icon Theme لـ VS Code وسمة VS Code نفسه.",
     textEditor: "محرر النصوص",
     systemDefault: "افتراضي النظام",
     useSystemDefault: "استخدام افتراضي النظام",

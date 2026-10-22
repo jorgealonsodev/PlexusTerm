@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "Una barra bajo cada panel SSH con la CPU, la memoria, el disco, la red y los usuarios del servidor, leídos por la misma conexión. También en Herramientas.",
   },
   files: {
+    iconsList: "Iconos de las listas de archivos",
+    iconsTree: "Iconos del árbol del modo DEV",
+    iconPack: { material: "Material (iconos a color por lenguaje)", seti: "Seti (VS Code)", lines: "Líneas (iconos de línea sencillos)" },
+    iconsHelp: "Los packs de iconos del Explorador y del navegador SFTP: las listas normales y los árboles del modo DEV. Material y Seti son los temas de iconos de Material Icon Theme para VS Code y del propio VS Code.",
     textEditor: "Editor de texto",
     systemDefault: "Predeterminado del sistema",
     useSystemDefault: "Usar el predeterminado del sistema",

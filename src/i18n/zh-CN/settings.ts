@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "在每个 SSH 窗格下方显示服务器的 CPU、内存、磁盘、网络和用户信息，通过同一连接读取。也可在“工具”中打开。",
   },
   files: {
+    iconsList: "文件列表图标",
+    iconsTree: "DEV 模式树图标",
+    iconPack: { material: "Material（按语言着色的图标）", seti: "Seti（VS Code）", lines: "线条（简洁的线条图标）" },
+    iconsHelp: "资源管理器和 SFTP 浏览器的图标包：普通列表和 DEV 模式的树。Material 和 Seti 分别是 VS Code 的 Material Icon Theme 和 VS Code 自带的图标主题。",
     textEditor: "文本编辑器",
     systemDefault: "系统默认",
     useSystemDefault: "使用系统默认",

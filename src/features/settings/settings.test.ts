@@ -68,6 +68,8 @@ describe("parseSettings", () => {
       shareRecordInput: false,
       diagnosticLog: false,
       diagnosticLogDir: "",
+      fileIconsList: "material",
+      fileIconsTree: "seti",
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -183,6 +185,8 @@ describe("parseSettings", () => {
       shareRecordInput: false,
       diagnosticLog: false,
       diagnosticLogDir: "",
+      fileIconsList: "material",
+      fileIconsTree: "seti",
     });
   });
 
@@ -369,6 +373,8 @@ describe("serializeSettings", () => {
       shareRecordInput: true,
       diagnosticLog: true,
       diagnosticLogDir: "/var/tmp/plexus-logs",
+      fileIconsList: "lines" as const,
+      fileIconsTree: "material" as const,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -414,6 +420,16 @@ describe("local shell settings", () => {
     const parsed = parseSettings(JSON.stringify({ localShell: 7, localShellArgs: "x".repeat(1025) }));
     expect(parsed.localShell).toBe("");
     expect(parsed.localShellArgs).toBe("");
+  });
+});
+
+describe("file icon packs", () => {
+  it("are Material for the plain lists and Seti for DEV mode by default, and keep only a known pack", () => {
+    expect([DEFAULT_SETTINGS.fileIconsList, DEFAULT_SETTINGS.fileIconsTree]).toEqual(["material", "seti"]);
+    const parsed = parseSettings(JSON.stringify({ fileIconsList: "seti", fileIconsTree: "lines" }));
+    expect([parsed.fileIconsList, parsed.fileIconsTree]).toEqual(["seti", "lines"]);
+    const bad = parseSettings(JSON.stringify({ fileIconsList: "fancy", fileIconsTree: 3 }));
+    expect([bad.fileIconsList, bad.fileIconsTree]).toEqual(["material", "seti"]);
   });
 });
 

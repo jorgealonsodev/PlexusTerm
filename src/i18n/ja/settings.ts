@@ -103,6 +103,10 @@ export const settings: Messages<typeof en> = {
       "各 SSH ペインの下に、サーバーの CPU、メモリ、ディスク、ネットワーク、ユーザーを表示するバーです。同じ接続を通じて取得します。［ツール］からも利用できます。",
   },
   files: {
+    iconsList: "ファイル一覧のアイコン",
+    iconsTree: "DEV モードのツリーのアイコン",
+    iconPack: { material: "Material（言語ごとのカラーアイコン）", seti: "Seti（VS Code）", lines: "ライン（シンプルな線のアイコン）" },
+    iconsHelp: "エクスプローラーと SFTP ブラウザーのアイコンパック: 通常の一覧と DEV モードのツリーです。Material と Seti は、VS Code 用 Material Icon Theme と VS Code 自体のアイコンテーマです。",
     textEditor: "テキストエディター",
     systemDefault: "システムの既定",
     useSystemDefault: "システムの既定を使用",
