@@ -123,6 +123,29 @@ async fn git_branch(path: String) -> Option<String> {
         .flatten()
 }
 
+/// The branches the repository of a local folder can switch to (empty outside one).
+#[tauri::command]
+async fn git_branches(path: String) -> git::Branches {
+    tauri::async_runtime::spawn_blocking(move || git::branches_of(std::path::Path::new(&path)))
+        .await
+        .unwrap_or_default()
+}
+
+/// Switches the repository of a local folder to `branch` with `git switch`; git's message when it refuses.
+#[tauri::command]
+async fn git_switch(path: String, branch: String) -> Result<(), String> {
+    diaglog::info(&format!("git switch to {branch} in {path}"));
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        git::switch_branch(std::path::Path::new(&path), &branch)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    if let Err(e) = &result {
+        diaglog::warn(&format!("git switch failed: {e}"));
+    }
+    result
+}
+
 /// The git branch of a folder on the server of SSH session `id`, read with one `git` command over
 /// the existing connection; null outside a repository, without git, or when the command fails.
 #[tauri::command]
@@ -803,6 +826,8 @@ pub fn run() {
             localfs::local_view_text,
             localfs::local_read_image,
             diag::diag_latency_log,
+            git_branches,
+            git_switch,
             diaglog::diag_log_configure,
             diaglog::diag_log_default_dir,
             diaglog::diag_heartbeat,

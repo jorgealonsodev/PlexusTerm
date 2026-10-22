@@ -71,6 +71,7 @@ import { FileViewer } from "./features/viewer/FileViewer";
 import { imageType } from "./features/viewer/markdown";
 import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
+import { BranchSwitcher } from "./features/terminal/BranchSwitcher";
 import { createNotifier } from "./features/notifications/notifier";
 import { showSystemNotification } from "./features/notifications/systemNotification";
 import { useShares, type ShareNotice } from "./features/share/useShares";
@@ -1981,12 +1982,22 @@ function AppContent() {
                                     <span className="pane-footer__folder-name">{basename(folder) || folder}</span>
                                   </span>
                                 )}
-                                {branch && (
-                                  <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
-                                    <GitBranch size={13} aria-hidden="true" />
-                                    <span className="pane-footer__branch-name">{branch}</span>
-                                  </span>
-                                )}
+                                {branch &&
+                                  (tab.target.type === "local" && paneMeta[paneId]?.sessionId != null ? (
+                                    // A local terminal's branch can be switched from here.
+                                    <BranchSwitcher
+                                      branch={branch}
+                                      ptyId={paneMeta[paneId]!.sessionId!}
+                                      cwd={paneMeta[paneId]?.cwd ?? null}
+                                      onSwitched={(to) => updatePane(paneId, { branch: to })}
+                                      onNotice={setNotice}
+                                    />
+                                  ) : (
+                                    <span className="pane-footer__branch" dir="auto" title={t("app.tabs.branch", { branch })}>
+                                      <GitBranch size={13} aria-hidden="true" />
+                                      <span className="pane-footer__branch-name">{branch}</span>
+                                    </span>
+                                  ))}
                                 {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
                                 {devButton && (
                                   <button

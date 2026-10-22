@@ -57,7 +57,7 @@ describe("git branch under the terminal", () => {
     render(<App />);
     await screen.findByTestId("terminal");
     await settle();
-    const branch = screen.getByTitle("Git branch: main");
+    const branch = screen.getByTitle("Git branch: main. Click to switch to another branch");
     expect(branch.closest(".pane-footer")).not.toBeNull();
     expect(branch.closest(".tabbar")).toBeNull();
     expect(document.querySelector(".tabbar .tab__branch")).toBeNull();
@@ -68,7 +68,7 @@ describe("git branch under the terminal", () => {
     render(<App />);
     await screen.findByTestId("terminal");
     await settle();
-    expect(screen.queryByTitle("Git branch: main")).toBeNull();
+    expect(screen.queryByTitle(/^Git branch: main/)).toBeNull();
     expect(vi.mocked(invoke).mock.calls.some(([cmd]) => cmd === "git_branch")).toBe(false);
   });
 });

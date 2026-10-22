@@ -121,7 +121,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(footer.lastElementChild).toBe(devButton());
     expect(devButton().getAttribute("aria-label")).toBe("DEV mode: off");
     expect(devButton().classList.contains("pane-footer__dev--on")).toBe(false);
-    expect(screen.queryByTitle("Git branch: main")).toBeNull();
+    expect(screen.queryByTitle(/^Git branch: main/)).toBeNull();
     expect(vi.mocked(invoke).mock.calls.some(([cmd]) => cmd === "git_branch")).toBe(false);
     // Tabs on top, no DEV mark, flat file lists.
     expect(tabBar().classList.contains("tabbar--column")).toBe(false);
@@ -304,7 +304,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
     await waitFor(() => expect(row.querySelector(".tab__folder")?.textContent).toBe("src"));
     expect(within(row).getByRole("button", { name: /^Close/ })).toBeTruthy();
-    const branch = await screen.findByTitle("Git branch: main");
+    const branch = await screen.findByTitle("Git branch: main. Click to switch to another branch");
     expect(branch.closest(".pane-footer")).not.toBeNull();
     await waitFor(() => expect(document.querySelector("[role=tree]")).not.toBeNull());
   });
@@ -322,7 +322,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(false);
     expect(stub.props.onOutputQuiet).toBeUndefined();
     expect(tabBar().classList.contains("tabbar--column")).toBe(false);
-    expect(screen.queryByTitle("Git branch: main")).toBeNull();
+    expect(screen.queryByTitle(/^Git branch: main/)).toBeNull();
     expect(document.querySelector("[role=tree]")).toBeNull();
   });
 

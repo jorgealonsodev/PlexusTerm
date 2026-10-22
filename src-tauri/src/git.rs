@@ -400,6 +400,87 @@ pub fn remote_status_command(folder: &str) -> Option<String> {
     Some(through_sh(&script))
 }
 
+// ---------------------------------------------------------------------------------------------
+// Switching branches from the bar under a DEV mode terminal.
+// ---------------------------------------------------------------------------------------------
+
+/// The branches a folder's repository can switch to: its local ones, then the remote ones that
+/// have no local branch of the same name (`git switch` creates one that tracks it).
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Branches {
+    pub local: Vec<String>,
+    pub remote: Vec<String>,
+}
+
+/// [`Branches`] from `git for-each-ref --format=%(refname) refs/heads refs/remotes`.
+pub fn parse_branches(text: &str) -> Branches {
+    let mut branches = Branches::default();
+    let mut remote = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if let Some(name) = line.strip_prefix("refs/heads/") {
+            branches.local.push(name.to_string());
+        } else if let Some((_, name)) = line
+            .strip_prefix("refs/remotes/")
+            .and_then(|rest| rest.split_once('/'))
+            && name != "HEAD"
+        {
+            remote.push(name.to_string());
+        }
+    }
+    for name in remote {
+        if !branches.local.contains(&name) && !branches.remote.contains(&name) {
+            branches.remote.push(name);
+        }
+    }
+    branches
+}
+
+/// The branches of the repository of the local `folder`; empty outside one or without git.
+pub fn branches_of(folder: &Path) -> Branches {
+    run_git(
+        folder,
+        &[
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/heads",
+            "refs/remotes",
+        ],
+    )
+    .map(|out| parse_branches(&String::from_utf8_lossy(&out)))
+    .unwrap_or_default()
+}
+
+/// Switches the repository of the local `folder` to `branch`, which must be one [`branches_of`]
+/// lists; git refuses when the change would lose uncommitted work, and its message is the error.
+pub fn switch_branch(folder: &Path, branch: &str) -> Result<(), String> {
+    let known = branches_of(folder);
+    if branch.starts_with('-') || !known.local.iter().chain(&known.remote).any(|b| b == branch) {
+        return Err(format!("{branch}: not a branch of this repository"));
+    }
+    let mut command = std::process::Command::new("git");
+    command
+        .args(["-c", "core.fsmonitor=false", "switch", branch])
+        .current_dir(folder)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let output = command.output().map_err(|e| format!("git: {e}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(if message.is_empty() {
+        format!("git switch {branch} failed")
+    } else {
+        message
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -978,5 +1059,67 @@ mod status_tests {
         for leaked in ["pwned", "pwned2"] {
             assert!(!dir.join(leaked).exists() && !outside.path().join(leaked).exists());
         }
+    }
+
+    #[test]
+    fn parses_local_branches_then_remote_ones_without_a_local_twin() {
+        let text = "refs/heads/feat/x\nrefs/heads/main\nrefs/remotes/origin/HEAD\nrefs/remotes/origin/main\nrefs/remotes/origin/release/1\nrefs/remotes/fork/release/1\n";
+        assert_eq!(
+            parse_branches(text),
+            Branches {
+                local: vec!["feat/x".into(), "main".into()],
+                remote: vec!["release/1".into()],
+            }
+        );
+        assert_eq!(parse_branches(""), Branches::default());
+    }
+
+    #[test]
+    fn switches_to_a_listed_branch_and_reports_why_git_refuses() {
+        if !has_git() {
+            return;
+        }
+        let dir = repo();
+        let root = dir.path();
+        git(root, &["branch", "topic"]);
+        assert_eq!(
+            branches_of(root).local,
+            vec!["main".to_string(), "topic".to_string()]
+        );
+
+        switch_branch(root, "topic").unwrap();
+        assert_eq!(branch_of(root), Some("topic".into()));
+
+        // Unknown names and options never reach git.
+        assert!(
+            switch_branch(root, "nope")
+                .unwrap_err()
+                .contains("not a branch")
+        );
+        assert!(
+            switch_branch(root, "--orphan")
+                .unwrap_err()
+                .contains("not a branch")
+        );
+        assert_eq!(branch_of(root), Some("topic".into()));
+
+        // Work that the switch would overwrite: git refuses and says why; the branch stays.
+        fs::write(root.join("a.txt"), "changed on topic\n").unwrap();
+        git(root, &["commit", "-q", "-am", "topic change"]);
+        fs::write(root.join("a.txt"), "uncommitted\n").unwrap();
+        let error = switch_branch(root, "main").unwrap_err();
+        assert!(error.contains("a.txt"), "{error}");
+        assert_eq!(branch_of(root), Some("topic".into()));
+        assert_eq!(
+            fs::read_to_string(root.join("a.txt")).unwrap(),
+            "uncommitted\n"
+        );
+    }
+
+    #[test]
+    fn a_folder_outside_a_repository_has_no_branches() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(branches_of(dir.path()), Branches::default());
+        assert!(switch_branch(dir.path(), "main").is_err());
     }
 }

@@ -415,6 +415,8 @@ While a tab is in DEV mode:
 
 In [DEV mode](#dev-mode), when a terminal's current folder is inside a git repository, a bar under the terminal shows the branch with a branch icon, for example `main`, like the remote monitor bar; on SSH tabs with the remote monitor on, the branch opens that same bar. With no branch checked out (a detached `HEAD`) it shows the short commit instead, such as `72e8845`; outside a repository nothing is shown. A split tab shows the branch of its focused pane.
 
+On a local terminal, click the branch to list the repository's other branches: its local ones, then the remote ones that have no local branch yet, marked **(remote)**. Choose one and PlexusTerm runs `git switch` with it in the terminal's folder, without typing anything into the terminal, so it also works while an AI command-line tool runs there; a remote branch becomes a local branch that tracks it. When git refuses (uncommitted changes the switch would overwrite, for example) a notice gives git's reason and the branch stays as it was. On SSH tabs the branch is only shown.
+
 - **Local terminals** read the branch from the repository's files, without starting `git`: worktrees and submodules (whose `.git` is a file pointing elsewhere) work too.
 - **SSH terminals** run one read-only command on the server over the same connection (`git -C <folder> symbolic-ref --short -q HEAD`, or `git rev-parse --short HEAD` when detached). A server without git shows no branch.
 - Mosh, Telnet and serial terminals show no branch: PlexusTerm has no separate channel to ask through.
