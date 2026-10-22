@@ -251,6 +251,8 @@ const GRAPHICS_VARS: &[&str] = &[
     "DISPLAY",
     "GDK_BACKEND",
     "WEBKIT_DISABLE_DMABUF_RENDERER",
+    "WEBKIT_FORCE_DMABUF_RENDERER",
+    "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
     "WEBKIT_DISABLE_COMPOSITING_MODE",
     "__NV_DISABLE_EXPLICIT_SYNC",
     "LIBGL_ALWAYS_SOFTWARE",
@@ -354,11 +356,11 @@ mod tests {
     fn names_the_graphics_variables_that_are_set() {
         let line = graphics_environment(|name| match name {
             "XDG_SESSION_TYPE" => Some("wayland".into()),
-            "WEBKIT_DISABLE_DMABUF_RENDERER" => Some("1".into()),
+            "WEBKIT_DMABUF_RENDERER_FORCE_SHM" => Some("1".into()),
             _ => None,
         });
         assert!(
-            line.starts_with("graphics environment: XDG_SESSION_TYPE=wayland WEBKIT_DISABLE_DMABUF_RENDERER=1, NVIDIA driver "),
+            line.starts_with("graphics environment: XDG_SESSION_TYPE=wayland WEBKIT_DMABUF_RENDERER_FORCE_SHM=1, NVIDIA driver "),
             "{line}"
         );
         assert!(graphics_environment(|_| None).starts_with("graphics environment: none set,"));
