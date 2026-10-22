@@ -262,6 +262,7 @@ export const settings: Messages<typeof en> = {
     description:
       "适用于 Linux 和 Windows 的终端与远程会话管理器：在一个窗口中使用本地 Shell、SSH、SFTP、隧道、串口、Telnet 和 Mosh。",
     credits: "配色方案来自 iTerm2-Color-Schemes (MIT) 及其作者；请参阅{notices}。",
+    iconCredits: "文件图标：Material Icon Theme（Philipp Kief 与 Material Extensions，MIT）、Seti UI（Jesse Weed，MIT）和 Lucide（ISC）。",
     notices: "第三方声明",
   },
 };

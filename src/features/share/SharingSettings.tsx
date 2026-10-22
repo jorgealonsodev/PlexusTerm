@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useT } from "../../i18n/i18n";
 import { MAX_SHARE_URL_LENGTH } from "../settings/settings";
 import { deleteRelayToken, relayTokenSaved, saveRelayToken } from "./shareApi";
+import { HelpTip } from "../sidebar/HelpTip";
 
 export interface SharingValues {
   shareRelayUrl: string;
@@ -110,7 +111,9 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
         </a>
       </p>
       <label className="field">
-        {t("share.settings.relayUrl")}
+        <span className="setting-title">
+          {t("share.settings.relayUrl")} <HelpTip text={t("share.settings.relayUrlHelp")} />
+        </span>
         <input
           value={values.shareRelayUrl}
           placeholder="wss://relay.example.com"
@@ -119,9 +122,10 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
           onChange={(e) => onChange({ shareRelayUrl: e.target.value })}
         />
       </label>
-      <p className="muted">{t("share.settings.relayUrlHelp")}</p>
       <label className="field">
-        {t("share.settings.viewerOrigin")}
+        <span className="setting-title">
+          {t("share.settings.viewerOrigin")} <HelpTip text={t("share.settings.viewerOriginHelp")} />
+        </span>
         <input
           value={values.shareViewerOrigin}
           placeholder="https://view.example.com"
@@ -130,7 +134,6 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
           onChange={(e) => onChange({ shareViewerOrigin: e.target.value })}
         />
       </label>
-      <p className="muted">{t("share.settings.viewerOriginHelp")}</p>
       <RelayTokenField />
       <label className="check">
         <input
@@ -138,9 +141,10 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
           checked={values.shareViewNeedsApproval}
           onChange={(e) => onChange({ shareViewNeedsApproval: e.target.checked })}
         />
-        {t("share.settings.viewNeedsApproval")}
+        <span className="setting-title">
+          {t("share.settings.viewNeedsApproval")} <HelpTip text={t("share.settings.viewNeedsApprovalHelp")} />
+        </span>
       </label>
-      <p className="muted">{t("share.settings.viewNeedsApprovalHelp")}</p>
       <label className="check">
         <input type="checkbox" checked={values.shareSudoReset} onChange={(e) => onChange({ shareSudoReset: e.target.checked })} />
         {t("share.settings.sudoReset")}
@@ -157,9 +161,10 @@ export function SharingSettings({ values, onChange, linux, onAuditLog }: Sharing
           checked={values.shareRecordInput}
           onChange={(e) => onChange({ shareRecordInput: e.target.checked })}
         />
-        {t("share.settings.recordInput")}
+        <span className="setting-title">
+          {t("share.settings.recordInput")} <HelpTip text={t("share.settings.recordInputHelp")} />
+        </span>
       </label>
-      <p className="muted">{t("share.settings.recordInputHelp")}</p>
       <div className="form-row">
         <button type="button" className="btn" onClick={onAuditLog}>
           {t("share.settings.auditLog")}

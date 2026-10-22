@@ -265,6 +265,7 @@ export const settings: Messages<typeof en> = {
     description:
       "طرفية ومدير جلسات بعيدة لنظامي Linux وWindows: صدفات محلية وSSH وSFTP وأنفاق واتصال تسلسلي وTelnet وMosh في نافذة واحدة.",
     credits: "أنظمة الألوان من iTerm2-Color-Schemes (MIT) ومؤلفيها؛ راجع {notices}.",
+    iconCredits: "أيقونات الملفات: Material Icon Theme من Philipp Kief وMaterial Extensions ‏(MIT)، وSeti UI من Jesse Weed ‏(MIT)، وLucide ‏(ISC).",
     notices: "إشعارات الجهات الخارجية",
   },
 };

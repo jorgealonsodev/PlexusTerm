@@ -265,6 +265,7 @@ export const settings: Messages<typeof en> = {
     description:
       "Ein Terminal- und Remote-Sitzungsmanager für Linux und Windows: lokale Shells, SSH, SFTP, Tunnel, seriell, Telnet und Mosh in einem Fenster.",
     credits: "Farbschemata aus iTerm2-Color-Schemes (MIT) und von deren Autoren; siehe {notices}.",
+    iconCredits: "Dateisymbole: Material Icon Theme von Philipp Kief und Material Extensions (MIT), Seti UI von Jesse Weed (MIT) und Lucide (ISC).",
     notices: "Hinweise zu Drittanbietern",
   },
 };

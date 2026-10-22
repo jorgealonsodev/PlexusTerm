@@ -12,6 +12,7 @@ import {
 } from "../panes/shortcuts";
 import { DEFAULT_ASSISTANT_SHORTCUT } from "./settings";
 import { isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
+import { HelpTip } from "../sidebar/HelpTip";
 
 interface ShortcutsPanelProps {
   /** The user's changes only (see `TerminalSettings.shortcuts`). */
@@ -189,7 +190,9 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
           disabled={isDefault}
           onClick={onReset}
         >
-          {t("settings.shortcuts.reset")}
+          <span className="setting-title">
+            {t("settings.shortcuts.reset")} <HelpTip text={t("settings.shortcuts.help")} />
+          </span>
         </button>
       </div>
       {resetError?.row === key && <span className="form-error shortcuts__note">{resetError.message}</span>}
@@ -199,7 +202,6 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
   return (
     <>
       <div className="shortcuts__intro">
-        <p className="muted">{t("settings.shortcuts.help")}</p>
         <button type="button" className="btn" onClick={restoreAll}>
           {t("settings.shortcuts.restoreDefaults")}
         </button>

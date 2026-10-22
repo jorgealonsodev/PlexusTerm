@@ -265,6 +265,7 @@ export const settings: Messages<typeof en> = {
     description:
       "Linux और Windows के लिए एक टर्मिनल और रिमोट-सेशन मैनेजर: लोकल शेल, SSH, SFTP, टनल, सीरियल, Telnet और Mosh एक ही विंडो में।",
     credits: "रंग योजनाएँ iTerm2-Color-Schemes (MIT) और उनके लेखकों से; {notices} देखें।",
+    iconCredits: "फ़ाइल आइकन: Material Icon Theme (Philipp Kief और Material Extensions, MIT), Seti UI (Jesse Weed, MIT) और Lucide (ISC)।",
     notices: "तृतीय-पक्ष सूचनाएँ",
   },
 };

@@ -264,6 +264,7 @@ export const settings = {
       "A terminal and remote-session manager for Linux and Windows: local shells, SSH, SFTP, tunnels, serial, Telnet and Mosh in one window.",
     /** `{notices}` is the link to the third-party notices. */
     credits: "Colour schemes from iTerm2-Color-Schemes (MIT) and their authors; see {notices}.",
+    iconCredits: "File icons: Material Icon Theme by Philipp Kief and Material Extensions (MIT), Seti UI by Jesse Weed (MIT), and Lucide (ISC).",
     notices: "third-party notices",
   },
 };

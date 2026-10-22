@@ -265,6 +265,7 @@ export const settings: Messages<typeof en> = {
     description:
       "Linux 및 Windows용 터미널 겸 원격 세션 관리자: 로컬 셸, SSH, SFTP, 터널, 직렬, Telnet, Mosh를 한 창에서 사용합니다.",
     credits: "색 구성표는 iTerm2-Color-Schemes(MIT)와 그 작성자들이 제공했습니다. {notices}를 참조하십시오.",
+    iconCredits: "파일 아이콘: Material Icon Theme(Philipp Kief, Material Extensions, MIT), Seti UI(Jesse Weed, MIT), Lucide(ISC).",
     notices: "타사 고지 사항",
   },
 };

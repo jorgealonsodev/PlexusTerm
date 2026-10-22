@@ -413,7 +413,7 @@ describe("SettingsDialog", () => {
       const height = screen.getByLabelText("Terminal line height") as HTMLSelectElement;
       expect(height.value).toBe("1");
       expect([...height.options].map((o) => o.textContent)).toEqual(["1.0", "1.05", "1.1", "1.15", "1.2", "1.25", "1.3"]);
-      expect(screen.getByText(/above 1\.0 can look blurred with GPU acceleration/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: /above 1\.0 can look blurred with GPU acceleration/ })).toBeTruthy();
       fireEvent.change(height, { target: { value: "1.2" } });
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ lineHeight: 1.2 }));
@@ -827,6 +827,13 @@ describe("File icon packs in Files", () => {
     fireEvent.change(screen.getByLabelText("DEV mode tree icons"), { target: { value: "material" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, fileIconsList: "lines", fileIconsTree: "material" });
+  });
+});
+
+describe("Credits in About", () => {
+  it("names who made the file icons", () => {
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} initialSection="about" />);
+    expect(screen.getByText(/Material Icon Theme by Philipp Kief.*Seti UI by Jesse Weed/)).toBeTruthy();
   });
 });
 

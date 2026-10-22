@@ -265,6 +265,7 @@ export const settings: Messages<typeof en> = {
     description:
       "Linux と Windows 向けのターミナル兼リモートセッションマネージャーです。ローカルシェル、SSH、SFTP、トンネル、シリアル、Telnet、Mosh を 1 つのウィンドウで利用できます。",
     credits: "配色は iTerm2-Color-Schemes (MIT) とその作者によるものです。詳しくは{notices}をご覧ください。",
+    iconCredits: "ファイルアイコン: Material Icon Theme（Philipp Kief、Material Extensions、MIT）、Seti UI（Jesse Weed、MIT）、Lucide（ISC）。",
     notices: "サードパーティに関する通知",
   },
 };

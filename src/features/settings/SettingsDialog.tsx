@@ -59,6 +59,7 @@ import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
 import { SharingSettings, type SharingValues } from "../share/SharingSettings";
 import { AuditLogDialog } from "../share/AuditLogDialog";
+import { HelpTip } from "../sidebar/HelpTip";
 import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 
@@ -622,7 +623,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </select>
             </label>
             <label className="field field--size">
-              {t("settings.appearance.lineHeight")}
+              <span className="setting-title">
+                {t("settings.appearance.lineHeight")} <HelpTip text={t("settings.appearance.lineHeightHelp")} />
+              </span>
               <select value={lineHeight} onChange={(e) => setLineHeight(Number(e.target.value))}>
                 {LINE_HEIGHTS.map((height) => (
                   <option key={height} value={height}>
@@ -631,9 +634,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ))}
               </select>
             </label>
-            <p className="muted">{t("settings.appearance.lineHeightHelp")}</p>
             <label className="field field--size">
-              {t("settings.appearance.fontSize")}
+              <span className="setting-title">
+                {t("settings.appearance.fontSize")} <HelpTip text={fontShortcuts ? t("settings.appearance.fontHelp", { shortcuts: fontShortcuts }) : t("settings.appearance.fontHelpNoShortcut")} />
+              </span>
               <input
                 type="number"
                 min={MIN_FONT_SIZE}
@@ -643,13 +647,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">
-              {fontShortcuts
-                ? t("settings.appearance.fontHelp", { shortcuts: fontShortcuts })
-                : t("settings.appearance.fontHelpNoShortcut")}
-            </p>
             <label className="field field--size">
-              {t("settings.appearance.uiFontSize")}
+              <span className="setting-title">
+                {t("settings.appearance.uiFontSize")} <HelpTip text={t("settings.appearance.uiFontSizeHelp")} />
+              </span>
               <input
                 type="number"
                 min={MIN_UI_FONT_SIZE}
@@ -658,9 +659,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setUiFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">{t("settings.appearance.uiFontSizeHelp")}</p>
             <label className="field field--size">
-              {t("settings.appearance.chatFontSize")}
+              <span className="setting-title">
+                {t("settings.appearance.chatFontSize")} <HelpTip text={fontShortcuts ? t("settings.appearance.chatFontSizeHelp", { shortcuts: fontShortcuts }) : t("settings.appearance.chatFontSizeHelpNoShortcut")} />
+              </span>
               <input
                 type="number"
                 min={MIN_CHAT_FONT_SIZE}
@@ -669,13 +671,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setChatFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">
-              {fontShortcuts
-                ? t("settings.appearance.chatFontSizeHelp", { shortcuts: fontShortcuts })
-                : t("settings.appearance.chatFontSizeHelpNoShortcut")}
-            </p>
             <label className="field field--size">
-              {t("settings.appearance.viewerFontSize")}
+              <span className="setting-title">
+                {t("settings.appearance.viewerFontSize")} <HelpTip text={t("settings.appearance.viewerFontSizeHelp")} />
+              </span>
               <input
                 type="number"
                 min={MIN_VIEWER_FONT_SIZE}
@@ -684,20 +683,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setViewerFontSize(e.target.value)}
               />
             </label>
-            <p className="muted">{t("settings.appearance.viewerFontSizeHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
                 checked={sidebarHideWhenCollapsed}
                 onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
               />
-              {t("settings.appearance.hideSidebar")}
+              <span className="setting-title">
+                {t("settings.appearance.hideSidebar")} <HelpTip text={sidebarShortcut ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut }) : t("settings.appearance.sidebarHelpNoShortcut")} />
+              </span>
             </label>
-            <p className="muted">
-              {sidebarShortcut
-                ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut })
-                : t("settings.appearance.sidebarHelpNoShortcut")}
-            </p>
             <label className="field">
               {t("settings.appearance.sidebarAtStartup")}
               <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
@@ -712,13 +707,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={devColumnHideWhenCollapsed}
                 onChange={(e) => setDevColumnHideWhenCollapsed(e.target.checked)}
               />
-              {t("settings.appearance.hideDevColumn")}
+              <span className="setting-title">
+                {t("settings.appearance.hideDevColumn")} <HelpTip text={devColumnShortcut ? t("settings.appearance.devColumnHelp", { shortcut: devColumnShortcut }) : t("settings.appearance.devColumnHelpNoShortcut")} />
+              </span>
             </label>
-            <p className="muted">
-              {devColumnShortcut
-                ? t("settings.appearance.devColumnHelp", { shortcut: devColumnShortcut })
-                : t("settings.appearance.devColumnHelpNoShortcut")}
-            </p>
             <label className="field">
               {t("settings.appearance.devColumnAtStartup")}
               <select value={devColumnAtStartup} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
@@ -733,6 +725,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             <ShellPicker
               id="settings-local-shell"
               label={t("settings.terminal.shell")}
+              help={t("settings.terminal.shellHelp")}
               program={localShell}
               args={localShellArgs}
               onChange={(program, args) => {
@@ -740,7 +733,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 setLocalShellArgs(args);
               }}
             />
-            <p className="muted">{t("settings.terminal.shellHelp")}</p>
             <div className="field">
               <label htmlFor="settings-local-cwd">{t("settings.terminal.startDir")}</label>
               <div className="form-row field__picker">
@@ -779,39 +771,44 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={confirmMultilinePaste}
                 onChange={(e) => setConfirmMultilinePaste(e.target.checked)}
               />
-              {t("settings.terminal.confirmMultilinePaste")}
+              <span className="setting-title">
+                {t("settings.terminal.confirmMultilinePaste")} <HelpTip text={t("settings.terminal.rightClickHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.rightClickHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={errorHighlight} onChange={(e) => setErrorHighlight(e.target.checked)} />
-              {t("settings.terminal.errorHighlight")}
+              <span className="setting-title">
+                {t("settings.terminal.errorHighlight")} <HelpTip text={t("settings.terminal.errorHighlightHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.errorHighlightHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
                 checked={shiftEnterNewline}
                 onChange={(e) => setShiftEnterNewline(e.target.checked)}
               />
-              {t("settings.terminal.shiftEnterNewline")}
+              <span className="setting-title">
+                {t("settings.terminal.shiftEnterNewline")} <HelpTip text={t("settings.terminal.shiftEnterNewlineHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.shiftEnterNewlineHelp")}</p>
             <label className="check">
               <input
                 type="checkbox"
                 checked={attentionNotifications}
                 onChange={(e) => setAttentionNotifications(e.target.checked)}
               />
-              {t("settings.terminal.attentionNotifications")}
+              <span className="setting-title">
+                {t("settings.terminal.attentionNotifications")} <HelpTip text={t("settings.terminal.attentionNotificationsHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.attentionNotificationsHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />
-              {t("settings.terminal.gpuAcceleration")}
+              <span className="setting-title">
+                {t("settings.terminal.gpuAcceleration")} <HelpTip text={t("settings.terminal.gpuAccelerationHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.gpuAccelerationHelp")}</p>
             <div className="field">
-              <label htmlFor="settings-dev-commands">{t("settings.terminal.devCommands")}</label>
+              <label htmlFor="settings-dev-commands"><span className="setting-title">{t("settings.terminal.devCommands")} <HelpTip text={t("settings.terminal.devCommandsHelp")} /></span></label>
               <input
                 id="settings-dev-commands"
                 value={devCommands}
@@ -820,14 +817,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setDevCommands(e.target.value)}
               />
             </div>
-            <p className="muted">{t("settings.terminal.devCommandsHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={devFolderInFooter} onChange={(e) => setDevFolderInFooter(e.target.checked)} />
-              {t("settings.terminal.devFolderInFooter")}
+              <span className="setting-title">
+                {t("settings.terminal.devFolderInFooter")} <HelpTip text={t("settings.terminal.devFolderInFooterHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.terminal.devFolderInFooterHelp")}</p>
             <label className="field field--size">
-              {t("settings.terminal.recentFolderLimit")}
+              <span className="setting-title">
+                {t("settings.terminal.recentFolderLimit")} <HelpTip text={t("settings.terminal.recentFolderLimitHelp")} />
+              </span>
               <input
                 type="number"
                 min={1}
@@ -836,7 +835,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setRecentFolderLimit(e.target.value)}
               />
             </label>
-            <p className="muted">{t("settings.terminal.recentFolderLimitHelp")}</p>
           </div>
 
           <div {...panel("shortcuts")}>
@@ -851,14 +849,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           <div {...panel("ssh")}>
             <label className="check">
               <input type="checkbox" checked={remoteMonitor} onChange={(e) => setRemoteMonitor(e.target.checked)} />
-              {t("settings.ssh.remoteMonitor")}
+              <span className="setting-title">
+                {t("settings.ssh.remoteMonitor")} <HelpTip text={t("settings.ssh.remoteMonitorHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.ssh.remoteMonitorHelp")}</p>
           </div>
 
           <div {...panel("files")}>
             <div className="field">
-              <label htmlFor="settings-text-editor">{t("settings.files.textEditor")}</label>
+              <label htmlFor="settings-text-editor"><span className="setting-title">{t("settings.files.textEditor")} <HelpTip text={`${editorHelpBefore}code --wait${editorHelpAfter}`} /></span></label>
               <div className="form-row field__picker">
                 <input
                   id="settings-text-editor"
@@ -876,25 +875,22 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
             </div>
-            <p className="muted">
-              {editorHelpBefore}
-              <code>code --wait</code>
-              {editorHelpAfter}
-            </p>
             <label className="check">
               <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
               {t("settings.files.details")}
             </label>
             <label className="check">
               <input type="checkbox" checked={gitFileStatus} onChange={(e) => setGitFileStatus(e.target.checked)} />
-              {t("settings.files.gitStatus")}
+              <span className="setting-title">
+                {t("settings.files.gitStatus")} <HelpTip text={t("settings.files.gitStatusHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.files.gitStatusHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={viewerAutoSave} onChange={(e) => setViewerAutoSave(e.target.checked)} />
-              {t("settings.files.autoSave")}
+              <span className="setting-title">
+                {t("settings.files.autoSave")} <HelpTip text={t("settings.files.autoSaveHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.files.autoSaveHelp")}</p>
             <label className="field">
               {t("settings.files.iconsList")}
               <select value={fileIconsList} onChange={(e) => isIconPack(e.target.value) && setFileIconsList(e.target.value)}>
@@ -906,7 +902,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </select>
             </label>
             <label className="field">
-              {t("settings.files.iconsTree")}
+              <span className="setting-title">
+                {t("settings.files.iconsTree")} <HelpTip text={t("settings.files.iconsHelp")} />
+              </span>
               <select value={fileIconsTree} onChange={(e) => isIconPack(e.target.value) && setFileIconsTree(e.target.value)}>
                 {ICON_PACKS.map((pack) => (
                   <option key={pack} value={pack}>
@@ -915,7 +913,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ))}
               </select>
             </label>
-            <p className="muted">{t("settings.files.iconsHelp")}</p>
             <label className="field">
               {t("settings.files.viewerPosition")}
               <select value={viewerPosition} onChange={(e) => setViewerPosition(e.target.value as ViewerPosition)}>
@@ -930,9 +927,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={terminalFollowsBrowser}
                 onChange={(e) => setTerminalFollowsBrowser(e.target.checked)}
               />
-              {t("settings.files.terminalFollows")}
+              <span className="setting-title">
+                {t("settings.files.terminalFollows")} <HelpTip text={t("settings.files.terminalFollowsHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.files.terminalFollowsHelp")}</p>
           </div>
 
           <div {...panel("ai")}>
@@ -942,25 +940,28 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 checked={inlineSuggestions}
                 onChange={(e) => setInlineSuggestions(e.target.checked)}
               />
-              {t("settings.ai.inlineSuggestions")}
+              <span className="setting-title">
+                {t("settings.ai.inlineSuggestions")} <HelpTip text={t("settings.ai.inlineSuggestionsHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.ai.inlineSuggestionsHelp")}</p>
             <div className="form-row">
               <label className="check">
                 <input type="checkbox" checked={history} onChange={(e) => setHistory(e.target.checked)} />
-                {t("settings.ai.commandHistory")}
+                <span className="setting-title">
+                  {t("settings.ai.commandHistory")} <HelpTip text={t("settings.ai.historyHelp")} />
+                </span>
               </label>
               <button type="button" className="btn" onClick={clearHistory}>
                 {t("settings.ai.clearHistory")}
               </button>
             </div>
             {historyNote && <p className="muted">{historyNote}</p>}
-            <p className="muted">{t("settings.ai.historyHelp")}</p>
             <label className="check">
               <input type="checkbox" checked={aiSuggestions} onChange={(e) => setAiSuggestions(e.target.checked)} />
-              {t("settings.ai.aiSuggestions")}
+              <span className="setting-title">
+                {t("settings.ai.aiSuggestions")} <HelpTip text={t("settings.ai.aiSuggestionsHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.ai.aiSuggestionsHelp")}</p>
             <label className="field">
               {t("settings.ai.provider")}
               <select value={aiProvider} onChange={(e) => changeProvider(e.target.value)}>
@@ -1012,9 +1013,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             </label>
             <label className="check">
               <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />
-              {t("settings.ai.saveChats")}
+              <span className="setting-title">
+                {t("settings.ai.saveChats")} <HelpTip text={t("settings.ai.saveChatsHelp")} />
+              </span>
             </label>
-            <p className="muted">{t("settings.ai.saveChatsHelp")}</p>
           </div>
 
           <div {...panel("sharing")}>
@@ -1058,9 +1060,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               )}
               <label className="check">
                 <input type="checkbox" checked={checkUpdates} onChange={(e) => setCheckUpdates(e.target.checked)} />
-                {t("settings.about.checkAtStartup")}
+                <span className="setting-title">
+                  {t("settings.about.checkAtStartup")} <HelpTip text={t("settings.about.checkHelp")} />
+                </span>
               </label>
-              <p className="muted">{t("settings.about.checkHelp")}</p>
               <div className="settings__updates">
                 <button type="button" className="btn" onClick={(e) => openLink(e, BUG_REPORT_URL)}>
                   {t("settings.about.reportProblem")}
@@ -1068,14 +1071,14 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <button type="button" className="btn" onClick={(e) => openLink(e, FEATURE_REQUEST_URL)}>
                   {t("settings.about.suggestImprovement")}
                 </button>
+                <HelpTip text={t("settings.about.feedbackHelp")} />
               </div>
-              <p className="muted">{t("settings.about.feedbackHelp")}</p>
               <label className="check">
                 <input type="checkbox" checked={diagnosticLog} onChange={(e) => setDiagnosticLog(e.target.checked)} />
                 {t("settings.about.diagnosticLog")}
               </label>
               <div className="field">
-                <label htmlFor="settings-log-dir">{t("settings.about.diagnosticLogDir")}</label>
+                <label htmlFor="settings-log-dir"><span className="setting-title">{t("settings.about.diagnosticLogDir")} <HelpTip text={t("settings.about.diagnosticLogHelp")} /></span></label>
                 <div className="form-row field__picker">
                   <input
                     id="settings-log-dir"
@@ -1100,7 +1103,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                   </button>
                 </div>
               </div>
-              <p className="muted">{t("settings.about.diagnosticLogHelp")}</p>
               {logFile && <p className="settings__log-file">{t("settings.about.diagnosticLogFile", { path: logFile })}</p>}
               <p>
                 <a href={REPO_URL} onClick={(e) => openLink(e, REPO_URL)}>
@@ -1114,6 +1116,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </a>
                 {creditsAfter}
               </p>
+              <p className="muted">{t("settings.about.iconCredits")}</p>
               <p>
                 <button type="button" className="btn" onClick={() => setLicensesOpen(true)}>
                   {t("settings.about.licenses")}

@@ -5,6 +5,7 @@ import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { useShells } from "../platform/useShells";
 import { MAX_LOCAL_SHELL_LENGTH } from "../settings/settings";
+import { HelpTip } from "../sidebar/HelpTip";
 
 /** Value of the "Other…" option: never a program path. */
 const OTHER = "\u0000other";
@@ -13,6 +14,8 @@ interface ShellPickerProps {
   /** Prefix of the field ids. */
   id: string;
   label: string;
+  /** Its explanation, behind a "?" next to the label. */
+  help?: string;
   /** The chosen program; "" runs the system default shell. */
   program: string;
   /** Its arguments as typed. */
@@ -24,7 +27,7 @@ interface ShellPickerProps {
  * Chooses the shell of local terminals: the system default, one of the shells found on this
  * machine, or any other program (typed or chosen with Browse…), with its arguments.
  */
-export function ShellPicker({ id, label, program, args, onChange }: ShellPickerProps) {
+export function ShellPicker({ id, label, help, program, args, onChange }: ShellPickerProps) {
   const t = useT();
   const platform = usePlatform();
   const shells = useShells();
@@ -58,7 +61,9 @@ export function ShellPicker({ id, label, program, args, onChange }: ShellPickerP
   return (
     <>
       <label className="field">
-        {label}
+        <span className="setting-title">
+          {label} {help && <HelpTip text={help} />}
+        </span>
         <select value={other ? OTHER : chosen} onChange={(e) => choose(e.target.value)}>
           <option value="">
             {shells
