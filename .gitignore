@@ -35,3 +35,6 @@ docs/reference/
 
 # A project's PlexusTerm settings (DEV mode tab colour)
 .plexusterm/
+
+# Locally built Debian packages
+*.deb
