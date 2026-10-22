@@ -59,7 +59,7 @@ import {
   cleanHexColor,
   focusBorderCss,
   type AiProvider,
-  type TerminalSettings, type SidebarAtStartup, type ViewerPosition, type AiUsageChoice } from "./settings";
+  type TerminalSettings, type SidebarAtStartup, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutLabel } from "../panes/shortcuts";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
@@ -412,6 +412,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [localShell, setLocalShell] = useState(settings.localShell);
   const [localShellArgs, setLocalShellArgs] = useState(settings.localShellArgs);
   const [localCwd, setLocalCwd] = useState(settings.localCwd);
+  const [newTerminalFolder, setNewTerminalFolder] = useState(settings.newTerminalFolder);
+  const [devNewTerminalFolder, setDevNewTerminalFolder] = useState(settings.devNewTerminalFolder);
   const [inlineSuggestions, setInlineSuggestions] = useState(settings.inlineSuggestions);
   const [history, setHistory] = useState(settings.commandHistory);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
@@ -506,6 +508,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       localShell: cleanLocalShell(localShell),
       localShellArgs: cleanLocalShell(localShell) ? cleanLocalShell(localShellArgs) : "",
       localCwd: cleanLocalShell(localCwd),
+      newTerminalFolder,
+      devNewTerminalFolder,
       sidebarWidth: settings.sidebarWidth,
       tabColumnWidth: settings.tabColumnWidth,
       devColumnCollapsed: settings.devColumnCollapsed,
@@ -875,6 +879,20 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
             </div>
+            <label className="field">
+              {t("settings.terminal.newTerminalFolder")}
+              <select value={newTerminalFolder} onChange={(e) => setNewTerminalFolder(e.target.value as NewTerminalFolder)}>
+                <option value="start">{t("settings.terminal.newTerminalStart")}</option>
+                <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
+              </select>
+            </label>
+            <label className="field">
+              {t("settings.terminal.devNewTerminalFolder")}
+              <select value={devNewTerminalFolder} onChange={(e) => setDevNewTerminalFolder(e.target.value as NewTerminalFolder)}>
+                <option value="start">{t("settings.terminal.newTerminalStart")}</option>
+                <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
+              </select>
+            </label>
             <h3 className="settings__group">{t("settings.groups.input")}</h3>
             <label className="check">
               <input type="checkbox" checked={copyOnSelect} onChange={(e) => setCopyOnSelect(e.target.checked)} />

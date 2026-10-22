@@ -88,6 +88,10 @@ export interface TerminalSettings {
   localShellArgs: string;
   /** Folder new local terminals start in (`~` is the home folder); "" starts in the home folder. */
   localCwd: string;
+  /** Where the + opens a new local terminal: the starting folder, or the active local terminal's folder. */
+  newTerminalFolder: NewTerminalFolder;
+  /** The same for the + of the DEV tab column. */
+  devNewTerminalFolder: NewTerminalFolder;
   /** Width in px dragged by the user; null keeps the default width of each sidebar tab. */
   sidebarWidth: number | null;
   /** Ask GitHub for a newer release when PlexusTerm starts. */
@@ -246,6 +250,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   localShell: "",
   localShellArgs: "",
   localCwd: "",
+  newTerminalFolder: "start",
+  devNewTerminalFolder: "terminal",
   sidebarWidth: null,
   checkUpdates: true,
   aiSaveChats: true,
@@ -397,6 +403,9 @@ export const clampTabColumnWidth = (width: number) =>
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
  */
 export const VIEWER_POSITIONS = ["left", "right", "below"] as const;
+/** Where the + starts a new local terminal: the starting folder, or the folder the active terminal is in. */
+export const NEW_TERMINAL_FOLDERS = ["start", "terminal"] as const;
+export type NewTerminalFolder = (typeof NEW_TERMINAL_FOLDERS)[number];
 /** Whose plan usage the bar under a terminal shows. */
 export const AI_USAGE_CHOICES = ["auto", "claude", "codex", "agy", "opencodeGo", "off"] as const;
 export type AiUsageChoice = (typeof AI_USAGE_CHOICES)[number];
@@ -485,6 +494,12 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),
     localCwd: cleanLocalShell(value.localCwd),
+    newTerminalFolder: (NEW_TERMINAL_FOLDERS as readonly unknown[]).includes(value.newTerminalFolder)
+      ? (value.newTerminalFolder as NewTerminalFolder)
+      : d.newTerminalFolder,
+    devNewTerminalFolder: (NEW_TERMINAL_FOLDERS as readonly unknown[]).includes(value.devNewTerminalFolder)
+      ? (value.devNewTerminalFolder as NewTerminalFolder)
+      : d.devNewTerminalFolder,
     sidebarWidth:
       typeof value.sidebarWidth === "number" && Number.isFinite(value.sidebarWidth)
         ? clampSidebarWidth(value.sidebarWidth)

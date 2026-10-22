@@ -325,16 +325,21 @@ function AppContent() {
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);
   const openWorkspaceFileRef = useRef<(file: string, folders: string[]) => void>(() => {});
+  /** Opens a local terminal in a folder given to PlexusTerm (a file manager's action). */
+  const openFolderRef = useRef<(folder: string) => void>(() => {});
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
-    // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal.
+    // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal; opened with
+    // a folder: the usual terminal, started there.
     void invoke<string | null>("launch_workspace_take")
       .catch(() => null)
       .then(async (file) => ({ file, folders: file ? await workspaceFoldersOf(file) : [] }))
-      .then(({ file, folders }) => {
-        if (file && folders.length > 0) openWorkspaceFileRef.current(file, folders);
-        else dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
+      .then(async ({ file, folders }) => {
+        if (file && folders.length > 0) return openWorkspaceFileRef.current(file, folders);
+        const folder = await invoke<string | null>("launch_folder_take").catch(() => null);
+        const settings = terminalSettings.settings;
+        dispatch({ type: "open", target: localTargetOf(folder ? { ...settings, localCwd: folder } : settings) });
       });
   }, [terminalSettings.loaded, terminalSettings.settings]);
   const shells = useShells();
@@ -828,6 +833,7 @@ function AppContent() {
     openWorkspace(folders);
   };
   openWorkspaceFileRef.current = openWorkspaceFile;
+  openFolderRef.current = (folder) => open(localTargetOf({ localShell, localShellArgs, localCwd: folder }));
   /** A recent workspace file, read again: it may have changed or gone since. */
   const openRecentWorkspace = (file: string) =>
     void workspaceFoldersOf(file).then((folders) =>
@@ -843,7 +849,7 @@ function AppContent() {
     onOpenWorkspace: openRecentWorkspace,
   };
 
-  // A workspace file given to a second launch of PlexusTerm (it then exits) opens here.
+  // A workspace file or folder given to a second launch of PlexusTerm (it then exits) opens here.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let disposed = false;
@@ -852,9 +858,15 @@ function AppContent() {
     })
       .then((stop) => (disposed ? stop() : (unlisten = stop)))
       .catch(() => {});
+    // A folder given to a second launch opens as a new terminal here.
+    let unlistenFolder: (() => void) | undefined;
+    listen<string>("open-folder", ({ payload }) => openFolderRef.current(payload))
+      .then((stop) => (disposed ? stop() : (unlistenFolder = stop)))
+      .catch(() => {});
     return () => {
       disposed = true;
       unlisten?.();
+      unlistenFolder?.();
     };
   }, []);
 
@@ -1794,7 +1806,16 @@ function AppContent() {
             onNew={() => {
               // From the DEV column the new terminal stays in DEV mode, as the column does.
               if (activeDev) devOnStart.current = `tab-${state.nextSeq}`;
-              openLocal();
+              // Settings choose whether it starts in the starting folder or where the active local
+              // terminal is when + is clicked: its program's folder, else its shell's.
+              const where = activeDev ? settings.devNewTerminalFolder : settings.newTerminalFolder;
+              const sessionId = where === "terminal" && activeTab?.target.type === "local" ? activeSession.sessionId : null;
+              if (sessionId === null) return openLocal();
+              const known = activeSession.cwd ?? devAnchor;
+              void local
+                .programCwd(sessionId)
+                .catch(() => null)
+                .then((here) => open(localTargetOf({ localShell, localShellArgs, localCwd: here ?? known ?? localStart })));
             }}
             onDuplicate={(key) => {
               // The copy of a DEV tab is a DEV tab too.

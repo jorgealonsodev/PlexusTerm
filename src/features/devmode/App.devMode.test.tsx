@@ -370,7 +370,7 @@ describe("DEV mode (S10, S13)", () => {
     expect(row.querySelector(".cli-icon--claude")).not.toBeNull();
   });
 
-  it("opens the column's new terminal in DEV mode, in the default folder; the + on top still opens a plain one", async () => {
+  it("opens the column's new terminal in DEV mode, in the terminal's folder; the + on top still opens a plain one", async () => {
     await renderApp({ localCwd: "/srv/default" });
     fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
     await settle();
@@ -381,6 +381,8 @@ describe("DEV mode (S10, S13)", () => {
 
     fireEvent.click(devButton());
     await settle();
+    // The terminal has moved since DEV mode turned on: the new one starts where it is now.
+    act(() => stub.props.onCwd?.("/home/me/repo"));
     fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
     await settle();
     const tabs = within(tabBar()).getAllByRole("tab");
@@ -389,8 +391,26 @@ describe("DEV mode (S10, S13)", () => {
     expect(devOn()).toBe(true);
     expect(tabBar().classList.contains("tabbar--column")).toBe(true);
     expect(within(tabs[2]).getByLabelText("DEV mode")).toBeTruthy();
-    // It starts in the default folder, like any new terminal.
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+  });
+
+  it("opens the + terminal where Settings say: the active terminal's folder out of DEV mode, the starting folder in it", async () => {
+    await renderApp({ localCwd: "/srv/default", newTerminalFolder: "terminal", devNewTerminalFolder: "start" });
+    act(() => stub.props.onCwd?.("/home/me/repo"));
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(2);
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(false);
+
+    fireEvent.click(devButton());
+    await settle();
+    act(() => stub.props.onCwd?.("/home/me/repo"));
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(3);
     expect(stub.props.target.cwd).toBe("/srv/default");
+    expect(devOn()).toBe(true);
   });
 
   it("marks a tab as working while its CLI prints, and only while a CLI runs there", async () => {
@@ -593,6 +613,32 @@ describe("DEV mode (S10, S13)", () => {
     expect(within(tabBar()).getAllByRole("tab")).toHaveLength(1);
     expect(stub.props.target.cwd).toBeUndefined();
     expect(devOn()).toBe(false);
+  });
+
+  it("starts its terminal in the folder PlexusTerm was opened with (a file manager's action)", async () => {
+    withBackend({ localCwd: "/srv/default" });
+    const backend = vi.mocked(invoke).getMockImplementation()!;
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) =>
+      cmd === "launch_folder_take" ? "/home/me/repo" : backend(cmd, args as Parameters<typeof backend>[1]),
+    );
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")).toHaveLength(1);
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
+    expect(devOn()).toBe(false);
+  });
+
+  it("opens a folder given to a second launch as a new terminal of the running window", async () => {
+    await renderApp({ localCwd: "/srv/default" });
+    const handler = vi.mocked(listen).mock.calls.find(([event]) => event === "open-folder")?.[1];
+    expect(handler).toBeTruthy();
+    act(() => handler!({ event: "open-folder", id: 1, payload: "/home/me/repo" }));
+    await settle();
+    const tabs = within(tabBar()).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(stub.props.target.cwd).toBe("/home/me/repo");
   });
 
   it("opens a workspace file given to a second launch as a new DEV tab of the running window", async () => {
