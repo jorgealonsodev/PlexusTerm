@@ -722,6 +722,24 @@ describe("TerminalView", () => {
         expect(webgl.addons.length).toBe(before);
         expect(term()).toBeTruthy();
       });
+
+      it("notes in the diagnostic log when WebGL cannot start or loses its context", () => {
+        const logged = () =>
+          vi.mocked(invoke).mock.calls.filter(([name]) => name === "diag_log").map(([, args]) => args);
+        webgl.failNext = true;
+        const { unmount } = render(view(true));
+        expect(logged()).toContainEqual({
+          level: "warn",
+          message: "terminal WebGL renderer failed to start (Error: WebGL2 not supported); xterm's renderer is used",
+        });
+        unmount();
+        render(view(true));
+        lastWebgl().loseContext();
+        expect(logged()).toContainEqual({
+          level: "warn",
+          message: "terminal lost its WebGL context (GPU reset or sleep); xterm's renderer takes over",
+        });
+      });
     });
 
     describe("attention requests from command-line tools", () => {

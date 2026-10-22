@@ -42,9 +42,15 @@ describe("useDiagnosticLog", () => {
     expect(calls("diag_log_configure").slice(-1)[0]).toEqual(["diag_log_configure", { enabled: false, dir: "" }]);
   });
 
+  it("notes the graphics renderer once the log is on", async () => {
+    renderHook(() => useDiagnosticLog(true, true, "", false));
+    await vi.waitFor(() => expect(calls("diag_log")).toHaveLength(1));
+    expect(calls("diag_log")[0][1]).toEqual({ level: "info", message: expect.stringMatching(/^graphics: .*, GPU acceleration off$/) });
+  });
+
   it("logs uncaught errors while on", () => {
     renderHook(() => useDiagnosticLog(true, true, ""));
     window.dispatchEvent(new ErrorEvent("error", { message: "boom", filename: "app.js", lineno: 3, colno: 7 }));
-    expect(calls("diag_log")).toEqual([["diag_log", { level: "error", message: "boom at app.js:3:7" }]]);
+    expect(calls("diag_log")).toContainEqual(["diag_log", { level: "error", message: "boom at app.js:3:7" }]);
   });
 });

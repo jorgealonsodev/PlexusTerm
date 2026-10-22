@@ -239,8 +239,42 @@ pub fn diag_log_configure(
         d => PathBuf::from(d),
     };
     let path = configure(Some(&dir)).map_err(|e| format!("{}: {e}", dir.display()))?;
+    info(&graphics_environment(|name| std::env::var(name).ok()));
     start_watchdog();
     Ok(path.map(|p| p.to_string_lossy().into_owned()))
+}
+
+/// Variables that decide how WebKit draws (set by the user's session or by PlexusTerm at startup).
+const GRAPHICS_VARS: &[&str] = &[
+    "XDG_SESSION_TYPE",
+    "WAYLAND_DISPLAY",
+    "DISPLAY",
+    "GDK_BACKEND",
+    "WEBKIT_DISABLE_DMABUF_RENDERER",
+    "WEBKIT_DISABLE_COMPOSITING_MODE",
+    "__NV_DISABLE_EXPLICIT_SYNC",
+    "LIBGL_ALWAYS_SOFTWARE",
+];
+
+/// `graphics environment: XDG_SESSION_TYPE=wayland …, NVIDIA driver yes`, for the variables set.
+fn graphics_environment(var: impl Fn(&str) -> Option<String>) -> String {
+    let set: Vec<String> = GRAPHICS_VARS
+        .iter()
+        .filter_map(|name| var(name).map(|value| format!("{name}={value}")))
+        .collect();
+    let nvidia = if Path::new("/proc/driver/nvidia").exists() {
+        "yes"
+    } else {
+        "no"
+    };
+    format!(
+        "graphics environment: {}, NVIDIA driver {nvidia}",
+        if set.is_empty() {
+            "none set".into()
+        } else {
+            set.join(" ")
+        }
+    )
 }
 
 /// The folder the log goes to when none is chosen.
@@ -314,6 +348,20 @@ mod tests {
             )]
         );
         assert!(watch.step(t + 13_000, t + 13_000, t + 13_000).is_empty());
+    }
+
+    #[test]
+    fn names_the_graphics_variables_that_are_set() {
+        let line = graphics_environment(|name| match name {
+            "XDG_SESSION_TYPE" => Some("wayland".into()),
+            "WEBKIT_DISABLE_DMABUF_RENDERER" => Some("1".into()),
+            _ => None,
+        });
+        assert!(
+            line.starts_with("graphics environment: XDG_SESSION_TYPE=wayland WEBKIT_DISABLE_DMABUF_RENDERER=1, NVIDIA driver "),
+            "{line}"
+        );
+        assert!(graphics_environment(|_| None).starts_with("graphics environment: none set,"));
     }
 
     #[test]

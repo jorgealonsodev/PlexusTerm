@@ -9,6 +9,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, type FileLinks } from "./fileLinks";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { diagnosticEntry } from "../diagnostics/useDiagnosticLog";
 import { softwareWebgl } from "./webglProbe";
 import { latencyFrame, latencyMark } from "./latencyLog";
 import "@xterm/xterm/css/xterm.css";
@@ -996,6 +997,7 @@ export function TerminalView({
         addon = new WebglAddon();
         const loaded = addon;
         loaded.onContextLoss(() => {
+          diagnosticEntry("warn", "terminal lost its WebGL context (GPU reset or sleep); xterm's renderer takes over");
           if (webglRef.current === loaded) webglRef.current = null;
           loaded.dispose();
           errorsRef.current?.refresh();
@@ -1003,7 +1005,8 @@ export function TerminalView({
         });
         term.loadAddon(loaded);
         webglRef.current = loaded;
-      } catch {
+      } catch (error) {
+        diagnosticEntry("warn", `terminal WebGL renderer failed to start (${String(error)}); xterm's renderer is used`);
         addon?.dispose();
         webglRef.current = null;
       }

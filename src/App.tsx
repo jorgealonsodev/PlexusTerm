@@ -311,6 +311,7 @@ function AppContent() {
     terminalSettings.loaded,
     terminalSettings.settings.diagnosticLog,
     terminalSettings.settings.diagnosticLogDir,
+    terminalSettings.settings.gpuAcceleration,
   );
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);

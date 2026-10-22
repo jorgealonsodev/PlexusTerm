@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forgetWebglProbe, softwareWebgl } from "./webglProbe";
+import { forgetWebglProbe, softwareWebgl, webglDescription } from "./webglProbe";
 
 const RENDERER = 0x9246;
 const fakeGl = (renderer: string) => {
@@ -42,6 +42,17 @@ describe("softwareWebgl", () => {
     forgetWebglProbe();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     expect(softwareWebgl()).toBe(false);
+  });
+
+  it("describes the renderer it found for the diagnostic log", () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(fakeGl("Mesa Intel(R) UHD 620").gl as never);
+    expect(webglDescription()).toBe('WebGL2 renderer "Mesa Intel(R) UHD 620"');
+    forgetWebglProbe();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(fakeGl("llvmpipe").gl as never);
+    expect(webglDescription()).toBe(`WebGL2 renderer "llvmpipe" (software: xterm's renderer is used)`);
+    forgetWebglProbe();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    expect(webglDescription()).toBe("WebGL2 unavailable");
   });
 
   it("asks once and remembers the answer", () => {
