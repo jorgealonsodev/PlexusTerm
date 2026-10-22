@@ -334,9 +334,9 @@ pub fn diag_log_default_dir(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
-/// A timer this much late means the interface thread was blocked. Less is ignored: WebKit fires the
-/// timers of a hidden or covered window once every two seconds, a second late each time.
-const BLOCKED_AFTER_MS: u64 = 2000;
+/// A timer this much late means the interface thread was blocked. The interface reports no lateness
+/// while the window is hidden, whose timers WebKit fires once every two seconds on purpose.
+const BLOCKED_AFTER_MS: u64 = 1000;
 
 /// The interface is alive; `late_ms` is how much later than due its timer fired (a blocked UI thread).
 #[tauri::command]
