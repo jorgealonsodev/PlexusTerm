@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: '正在移动 {name}…',
+    copying: "正在复制 {name}…",
     fileCount: { other: "{count} 个文件" },
     uploading: "正在上传 {what}…",
     uploaded: "已上传 {what}。",
@@ -70,6 +71,13 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 操作失败。",
   },
   menu: {
+    openToSide: "在侧边打开",
+    openContainingFolder: "打开所在的文件夹",
+    openInIntegratedTerminal: "在集成终端中打开",
+    cut: "剪切",
+    copy: "复制",
+    paste: "粘贴",
+    copyRelativePath: "复制相对路径",
     view: "查看",
     openInTerminal: "在终端中打开",
     openTextEditor: "用默认文本编辑器打开",

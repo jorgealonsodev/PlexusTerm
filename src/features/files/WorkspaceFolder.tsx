@@ -3,7 +3,7 @@ import type { IconPack } from "./iconPacks";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { DirDrop } from "../drop/pathDrag";
 import type { SftpEntry } from "../sftp/sftpClient";
-import { FileTree, isInside, type Reveal } from "./FileTree";
+import { FileTree, isInside, type FileTreeProps, type Reveal } from "./FileTree";
 import { GitBadge, gitNameClass } from "./GitBadge";
 import { indexGitStatus, rootDecoration, type Decoration, type GitStatusEntry } from "./gitStatus";
 import { useGitStatus, type GitStatusOptions } from "./useGitStatus";
@@ -58,6 +58,8 @@ interface WorkspaceFolderProps {
   details: boolean;
   /** The icon pack of its tree (Settings → Files). */
   iconPack?: IconPack;
+  /** The list's shortcuts on a row (see FileTree). */
+  onRowKey?: FileTreeProps["onRowKey"];
   /** The root title's handlers (menu with Remove folder from workspace, drag). */
   titleProps: HTMLAttributes<HTMLDivElement>;
   /** Collapse Folders: changes when every open folder, this root included, should close. */
@@ -134,6 +136,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           onRename={props.onRename}
           details={props.details}
           iconPack={props.iconPack}
+          onRowKey={props.onRowKey}
           gitIndex={gitIndex}
           rowProps={props.rowProps}
           collapse={props.collapse}

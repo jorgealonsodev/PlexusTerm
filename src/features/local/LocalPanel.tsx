@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type LiHTMLAttributes } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type KeyboardEvent, type LiHTMLAttributes } from "react";
 import { DEFAULT_ICON_PACKS, type FileIconPacks } from "../files/iconPacks";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
@@ -325,7 +325,95 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
     if (current.current.path !== null) await navigate(current.current.path);
   };
 
+  /** An entry cut or copied in DEV mode's tree, until it is pasted (a cut one only once). */
+  const [clipboard, setClipboard] = useState<{ mode: "cut" | "copy"; entry: SftpEntry } | null>(null);
+  /** The folder an action on `entry` happens in: the folder itself, or a file's folder. */
+  const folderOf = (entry: SftpEntry) => (entry.kind === "dir" ? entry.path : parentPath(entry.path));
+
+  /** Pastes the cut or copied entry into the folder of `entry`: a cut one moves, a copy is named "… copy" on a clash. */
+  const paste = async (entry: SftpEntry) => {
+    const dir = current.current.path;
+    if (!clipboard || dir === null) return;
+    const target = folderOf(entry);
+    const { mode, entry: from } = clipboard;
+    if (mode === "cut") {
+      setClipboard(null);
+      if (parentPath(from.path) === target) return;
+      if (await act(t("sftp.status.moving", { name: from.name }), () => local.move(from.path, target))) await navigate(dir);
+    } else if (await act(t("sftp.status.copying", { name: from.name }), () => local.copy(from.path, target))) {
+      await navigate(dir);
+    }
+  };
+
+  /** The path of `entry` from the workspace folder it is in (the listed one or an added one). */
+  const relativePath = (entry: SftpEntry) => {
+    const roots = [current.current.path, ...(workspace?.folders ?? [])].filter((r): r is string => r !== null);
+    const root = roots.find((r) => isInside(entry.path, r));
+    return root ? entry.path.slice(root.length).replace(/^[\\/]+/, "") : entry.name;
+  };
+  const copyText = (text: string) =>
+    void act(t("sftp.status.copyingPath"), () => writeText(text), t("sftp.status.copied", { path: text }));
+
+  const openToSide = (entry: SftpEntry) => (entry.kind === "dir" ? undefined : onView?.(entry.path));
+  const openContainingFolder = (entry: SftpEntry) => {
+    const folder = parentPath(entry.path);
+    openWith({ ...entry, kind: "dir", path: folder, name: basename(folder) }, { kind: "default" });
+  };
+
+  /** The Explorer's shortcuts on a selected row in DEV mode, as in VS Code; true when one ran. */
+  const onRowKey = (entry: SftpEntry, e: KeyboardEvent<HTMLLIElement>): boolean => {
+    const ctrl = e.ctrlKey || e.metaKey;
+    const keys = `${ctrl ? "Ctrl+" : ""}${e.shiftKey ? "Shift+" : ""}${e.altKey ? "Alt+" : ""}${e.key.length === 1 ? e.key.toUpperCase() : e.key}`;
+    const actions: Record<string, () => void> = {
+      "Ctrl+Alt+R": () => openContainingFolder(entry),
+      "Ctrl+Shift+Alt+C": () => copyText(relativePath(entry)),
+      "Ctrl+Alt+C": () => copyPath(entry),
+      "Ctrl+X": () => setClipboard({ mode: "cut", entry }),
+      "Ctrl+C": () => setClipboard({ mode: "copy", entry }),
+      "Ctrl+V": () => void paste(entry),
+      Delete: () => void deleteEntry(entry),
+    };
+    if (entry.kind !== "dir" && onView) actions["Ctrl+Enter"] = () => openToSide(entry);
+    const action = actions[keys];
+    action?.();
+    return action !== undefined;
+  };
+
+  /** DEV mode's menu: VS Code's Explorer menu, then PlexusTerm's own items. */
+  const devMenuItems = (entry: SftpEntry, onRemove?: () => void): ContextMenuItem[] => {
+    const isFile = entry.kind !== "dir";
+    return [
+      ...(isFile && onView ? [{ label: t("sftp.menu.openToSide"), shortcut: "Ctrl+Enter", onSelect: () => openToSide(entry) }] : []),
+      { label: t("sftp.menu.openContainingFolder"), shortcut: "Ctrl+Alt+R", onSelect: () => openContainingFolder(entry) },
+      ...(isFile ? [{ label: t("sftp.menu.openWith"), onSelect: () => void openWithProgram(entry) }] : []),
+      {
+        label: t("sftp.menu.openInIntegratedTerminal"),
+        onSelect: () => onOpenInTerminal?.(folderOf(entry)),
+        disabled: !onOpenInTerminal,
+      },
+      { separator: true },
+      { label: t("sftp.menu.cut"), shortcut: "Ctrl+X", onSelect: () => setClipboard({ mode: "cut", entry }) },
+      { label: t("sftp.menu.copy"), shortcut: "Ctrl+C", onSelect: () => setClipboard({ mode: "copy", entry }) },
+      { label: t("sftp.menu.paste"), shortcut: "Ctrl+V", onSelect: () => void paste(entry), disabled: !clipboard },
+      { separator: true },
+      { label: t("sftp.menu.copyPath"), shortcut: "Ctrl+Alt+C", onSelect: () => copyPath(entry) },
+      { label: t("sftp.menu.copyRelativePath"), shortcut: "Ctrl+Shift+Alt+C", onSelect: () => copyText(relativePath(entry)) },
+      { separator: true },
+      { label: t("sftp.menu.rename"), shortcut: "F2", onSelect: () => void renameEntry(entry) },
+      { label: t("common.delete"), shortcut: "Del", onSelect: () => void deleteEntry(entry), danger: true },
+      { separator: true },
+      ...(isFile ? [{ label: t("sftp.menu.openTextEditor"), onSelect: () => openWith(entry, textEditor ? { kind: "textEditor", command: textEditor } : { kind: "textEditor" }) }] : []),
+      { label: t("sftp.menu.copyPathToTerminal"), onSelect: () => pathToTerminal(entry), disabled: !onPathToTerminal },
+      { label: t("sftp.menu.properties"), onSelect: () => setDialog({ kind: "properties", entry }) },
+      ...(platform === "windows"
+        ? []
+        : [{ label: t("sftp.menu.permissions"), onSelect: () => setDialog({ kind: "permissions" as const, entry }) }]),
+      ...(onRemove ? [{ separator: true as const }, { label: t("sftp.panel.workspace.remove"), onSelect: onRemove }] : []),
+    ];
+  };
+
   const menuItems = (entry: SftpEntry, onRemove?: () => void): ContextMenuItem[] => {
+    if (devStyle) return devMenuItems(entry, onRemove);
     const isFile = entry.kind !== "dir";
     const fileItems: ContextMenuItem[] = isFile
       ? [
@@ -574,6 +662,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       onSelect={setSelectedEntry}
       onOpen={(entry) => void openEntry(entry)}
       onRename={(entry, name) => void renameTo(entry, name)}
+      onRowKey={onRowKey}
       details={details}
       iconPack={iconPacks.tree}
       gitIndex={gitIndex}
@@ -704,6 +793,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               onSelect={setSelectedEntry}
               onOpen={(entry) => void openEntry(entry)}
               onRename={(entry, name) => void renameTo(entry, name)}
+              onRowKey={onRowKey}
               details={details}
               iconPack={iconPacks.tree}
               rowProps={rowProps}

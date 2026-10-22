@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: '{name} ले जाया जा रहा है…',
+    copying: "{name} कॉपी हो रहा है…",
     fileCount: { one: "{count} फ़ाइल", other: "{count} फ़ाइलें" },
     uploading: "{what} अपलोड हो रहा है…",
     uploaded: "{what} अपलोड हो गया।",
@@ -70,6 +71,13 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP ऑपरेशन विफल रहा।",
   },
   menu: {
+    openToSide: "बगल में खोलें",
+    openContainingFolder: "युक्त फ़ोल्डर खोलें",
+    openInIntegratedTerminal: "एकीकृत टर्मिनल में खोलें",
+    cut: "काटें",
+    copy: "कॉपी करें",
+    paste: "चिपकाएँ",
+    copyRelativePath: "सापेक्ष पथ कॉपी करें",
     view: "देखें",
     openInTerminal: "टर्मिनल में खोलें",
     openTextEditor: "डिफ़ॉल्ट टेक्स्ट एडिटर से खोलें",

@@ -162,6 +162,71 @@ pub fn move_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
     Ok(to)
 }
 
+/// `name` in `dir`, or the first free "name copy", "name copy 2"... (before the extension), as VS
+/// Code names a pasted copy.
+fn free_name(dir: &Path, name: &std::ffi::OsStr, is_dir: bool) -> PathBuf {
+    let first = dir.join(name);
+    if fs::symlink_metadata(&first).is_err() {
+        return first;
+    }
+    let name = name.to_string_lossy();
+    let (stem, ext) = match name.rfind('.') {
+        Some(dot) if dot > 0 && !is_dir => (&name[..dot], &name[dot..]),
+        _ => (&name[..], ""),
+    };
+    (1..)
+        .map(|n| {
+            let suffix = if n == 1 { " copy".to_string() } else { format!(" copy {n}") };
+            dir.join(format!("{stem}{suffix}{ext}"))
+        })
+        .find(|candidate| fs::symlink_metadata(candidate).is_err())
+        .expect("a free name")
+}
+
+fn copy_entry(from: &Path, to: &Path) -> std::io::Result<()> {
+    let meta = fs::symlink_metadata(from)?;
+    if meta.file_type().is_symlink() {
+        // A link is copied as a link, never as what it points to.
+        #[cfg(unix)]
+        return std::os::unix::fs::symlink(fs::read_link(from)?, to);
+        #[cfg(not(unix))]
+        return fs::copy(from, to).map(|_| ());
+    }
+    if meta.is_dir() {
+        fs::create_dir(to)?;
+        for entry in fs::read_dir(from)? {
+            let entry = entry?;
+            copy_entry(&entry.path(), &to.join(entry.file_name()))?;
+        }
+        return Ok(());
+    }
+    fs::copy(from, to).map(|_| ())
+}
+
+/// Copies `from` (a file, or a folder with everything inside it) into the folder `dir`, and returns
+/// where the copy is. An existing entry is never replaced: the copy takes the name "name copy"
+/// (then "name copy 2"...). A folder cannot be copied into itself.
+pub fn copy_into(from: &Path, dir: &Path) -> Result<PathBuf, String> {
+    let from = without_trailing_separators(from);
+    let dir = without_trailing_separators(dir);
+    let name = from
+        .file_name()
+        .ok_or_else(|| failure("copy", &from, "not a file name"))?;
+    if dir.starts_with(&from) {
+        return Err(failure("copy", &from, "a folder cannot be copied into itself"));
+    }
+    let is_dir = fs::symlink_metadata(&from)
+        .map_err(|err| failure("copy", &from, err))?
+        .is_dir();
+    let to = free_name(&dir, name, is_dir);
+    if let Err(err) = copy_entry(&from, &to) {
+        // A copy that stopped half-way is removed rather than left incomplete.
+        let _ = if is_dir { fs::remove_dir_all(&to) } else { fs::remove_file(&to) };
+        return Err(failure("copy", &from, err));
+    }
+    Ok(to)
+}
+
 /// Replaces the text of the existing file `path` with `content`, but only while it still holds
 /// `expected` (the text that was opened), so changes made by someone else are never lost.
 /// Writes in place, so a symlink, the file's mode and its owner are kept.
@@ -673,6 +738,12 @@ pub async fn local_write_text(
     )
 }
 
+/// Copies a local file or folder into another folder; returns the copy's path.
+#[tauri::command]
+pub async fn local_copy(from: String, dir: String) -> Result<String, String> {
+    copy_into(&native(&from), &native(&dir)).map(|to| to.to_string_lossy().into_owned())
+}
+
 /// Moves a local file or folder into another folder; returns its new path.
 #[tauri::command]
 pub async fn local_move(from: String, dir: String) -> Result<String, String> {
@@ -1160,6 +1231,44 @@ mod tests {
         fs::write(&file, b"a\0b").unwrap();
         let err = write_text(&file, "ab", "mine", Some("utf-16le"), None).unwrap_err();
         assert!(err.contains("changed on disk"), "{err}");
+    }
+
+    #[test]
+    fn copy_into_copies_files_and_folders_and_names_a_clash_like_vs_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("dest");
+        fs::create_dir(&dest).unwrap();
+        fs::write(dir.path().join("f.txt"), "x").unwrap();
+        fs::create_dir_all(dir.path().join("sub").join("deep")).unwrap();
+        fs::write(dir.path().join("sub").join("deep").join("inner"), "y").unwrap();
+
+        let copied = copy_into(&dir.path().join("f.txt"), &dest).unwrap();
+        assert_eq!(copied, dest.join("f.txt"));
+        assert_eq!(fs::read_to_string(&copied).unwrap(), "x");
+        assert!(dir.path().join("f.txt").exists());
+        copy_into(&dir.path().join("sub"), &dest).unwrap();
+        assert_eq!(fs::read_to_string(dest.join("sub/deep/inner")).unwrap(), "y");
+
+        // Into its own folder (or wherever the name is taken): "copy", then "copy 2"; never replaced.
+        assert_eq!(copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(), dir.path().join("f copy.txt"));
+        assert_eq!(copy_into(&dir.path().join("f.txt"), dir.path()).unwrap(), dir.path().join("f copy 2.txt"));
+        assert_eq!(copy_into(&dir.path().join("sub"), &dest).unwrap(), dest.join("sub copy"));
+        assert_eq!(fs::read_to_string(dir.path().join("f.txt")).unwrap(), "x");
+
+        assert!(copy_into(&dir.path().join("sub"), &dir.path().join("sub").join("deep")).is_err());
+        assert!(copy_into(&dir.path().join("missing"), &dest).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_into_copies_a_link_as_a_link() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("target"), "t").unwrap();
+        std::os::unix::fs::symlink("target", dir.path().join("link")).unwrap();
+        let dest = dir.path().join("dest");
+        fs::create_dir(&dest).unwrap();
+        let copied = copy_into(&dir.path().join("link"), &dest).unwrap();
+        assert_eq!(fs::read_link(copied).unwrap(), Path::new("target"));
     }
 
     #[test]

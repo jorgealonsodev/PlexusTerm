@@ -24,6 +24,7 @@ vi.mock("./localClient", async (importOriginal) => {
       createFile: vi.fn(),
       rename: vi.fn(),
       move: vi.fn(),
+      copy: vi.fn(),
       remove: vi.fn(),
       chmod: vi.fn(),
       open: vi.fn(),
@@ -392,6 +393,70 @@ describe("LocalPanel tree", () => {
     fireEvent.keyDown(field, { key: "Enter" });
     await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/src/main.ts", "/home/me/src/app.ts"));
     void nested;
+  });
+
+  describe("DEV mode's menu, as VS Code's Explorer", () => {
+    const items = () => screen.getAllByRole("menuitem").map((item) => [item.getAttribute("aria-label") ?? item.textContent, item.getAttribute("aria-keyshortcuts")]);
+
+    it("lists VS Code's actions with their keys, then PlexusTerm's own", async () => {
+      render(panel({ devStyle: true, onView: vi.fn(), onOpenInTerminal: vi.fn(), onPathToTerminal: vi.fn() }));
+      fireEvent.contextMenu(await screen.findByText("notes.txt"));
+      expect(items()).toEqual([
+        ["Open to the Side", "Ctrl+Enter"],
+        ["Open Containing Folder", "Ctrl+Alt+R"],
+        ["Open with…", null],
+        ["Open in Integrated Terminal", null],
+        ["Cut", "Ctrl+X"],
+        ["Copy", "Ctrl+C"],
+        ["Paste", "Ctrl+V"],
+        ["Copy file path", "Ctrl+Alt+C"],
+        ["Copy Relative Path", "Ctrl+Shift+Alt+C"],
+        ["Rename…", "F2"],
+        ["Delete", "Del"],
+        ["Open with default text editor", null],
+        ["Copy file path to terminal", null],
+        ["Properties", null],
+        ["Permissions…", null],
+      ]);
+      expect(screen.getByRole("menuitem", { name: "Paste" }).hasAttribute("disabled")).toBe(true);
+    });
+
+    it("copies or cuts an entry and pastes it into a folder, a cut one only once", async () => {
+      mocked.copy.mockResolvedValue("/home/me/src/notes.txt");
+      mocked.move.mockResolvedValue("/home/me/src/notes.txt");
+      render(panel({ devStyle: true }));
+      await menu("notes.txt", "Copy");
+      await menu("src", "Paste");
+      await waitFor(() => expect(mocked.copy).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"));
+      // A copy can be pasted again; into its own folder the backend names it "notes copy.txt".
+      await menu("notes.txt", "Paste");
+      await waitFor(() => expect(mocked.copy).toHaveBeenLastCalledWith("/home/me/notes.txt", "/home/me"));
+
+      await menu("notes.txt", "Cut");
+      await menu("src", "Paste");
+      await waitFor(() => expect(mocked.move).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"));
+      fireEvent.contextMenu(await screen.findByText("src"));
+      expect(screen.getByRole("menuitem", { name: "Paste" }).hasAttribute("disabled")).toBe(true);
+    });
+
+    it("runs the same actions with VS Code's keys on the selected entry", async () => {
+      const onView = vi.fn();
+      render(panel({ devStyle: true, onView }));
+      const row = (await screen.findByText("notes.txt")).closest("li")!;
+      fireEvent.keyDown(row, { key: "Enter", ctrlKey: true });
+      expect(onView).toHaveBeenCalledWith("/home/me/notes.txt");
+      fireEvent.keyDown(row, { key: "C", ctrlKey: true, altKey: true, shiftKey: true });
+      await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("notes.txt"));
+      fireEvent.keyDown(row, { key: "c", ctrlKey: true, altKey: true });
+      await waitFor(() => expect(writeText).toHaveBeenLastCalledWith("/home/me/notes.txt"));
+      fireEvent.keyDown(row, { key: "r", ctrlKey: true, altKey: true });
+      await waitFor(() => expect(mocked.open).toHaveBeenCalledWith("/home/me", { kind: "default" }));
+      fireEvent.keyDown(row, { key: "c", ctrlKey: true });
+      fireEvent.keyDown((await screen.findByText("src")).closest("li")!, { key: "v", ctrlKey: true });
+      await waitFor(() => expect(mocked.copy).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/src"));
+      fireEvent.keyDown(row, { key: "Delete" });
+      expect(await screen.findByText('Delete "notes.txt"?')).toBeTruthy();
+    });
   });
 
   describe("renaming in place with F2, as VS Code does", () => {

@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: 'جارٍ نقل {name}…',
+    copying: "جارٍ نسخ {name}…",
     fileCount: {
       zero: "لا توجد ملفات",
       one: "ملف واحد",
@@ -77,6 +78,13 @@ export const sftp: Messages<typeof en> = {
     failed: "فشلت عملية SFTP.",
   },
   menu: {
+    openToSide: "فتح على الجانب",
+    openContainingFolder: "فتح المجلد المحتوي",
+    openInIntegratedTerminal: "فتح في الطرفية المدمجة",
+    cut: "قص",
+    copy: "نسخ",
+    paste: "لصق",
+    copyRelativePath: "نسخ المسار النسبي",
     view: "عرض",
     openInTerminal: "فتح في الطرفية",
     openTextEditor: "فتح باستخدام محرر النصوص الافتراضي",

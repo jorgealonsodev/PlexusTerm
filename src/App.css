@@ -1520,6 +1520,8 @@ body.is-moving-tab {
 }
 
 .context-menu__item {
+  display: flex;
+  align-items: center;
   padding: 6px 10px;
   font: inherit;
   text-align: start;
@@ -1544,6 +1546,14 @@ body.is-moving-tab {
 
 .context-menu__item--danger {
   color: var(--danger);
+}
+
+.context-menu__shortcut {
+  margin-inline-start: auto;
+  padding-inline-start: 24px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9em;
 }
 
 .context-menu__separator {

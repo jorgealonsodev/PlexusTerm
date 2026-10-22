@@ -447,13 +447,13 @@ describe("DEV mode (S10, S13)", () => {
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
   });
 
-  it("opens a folder in a new DEV terminal with Open in terminal while in DEV mode", async () => {
+  it("opens a folder in a new DEV terminal with Open in Integrated Terminal while in DEV mode", async () => {
     await renderApp();
     fireEvent.click(devButton());
     await settle();
     act(() => stub.props.onCwd?.("/home/me"));
     fireEvent.contextMenu(await screen.findByText("repo"), { clientX: 1, clientY: 1 });
-    fireEvent.click(screen.getByRole("menuitem", { name: "Open in terminal" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open in Integrated Terminal" }));
     await settle();
     const tabs = within(tabBar()).getAllByRole("tab");
     expect(tabs).toHaveLength(2);

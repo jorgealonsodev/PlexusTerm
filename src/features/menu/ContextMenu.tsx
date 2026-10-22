@@ -3,9 +3,18 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 export type ContextMenuItem =
   /**
    * `swatch`: a colour shown before the label. `keepOpen`: choosing it does not close the menu's
-   * owner (it shows something in the menu's place, such as a dialog).
+   * owner (it shows something in the menu's place, such as a dialog). `shortcut`: the keys that do
+   * the same, shown at the right.
    */
-  | { label: string; onSelect: () => void; disabled?: boolean; danger?: boolean; swatch?: string; keepOpen?: boolean }
+  | {
+      label: string;
+      onSelect: () => void;
+      disabled?: boolean;
+      danger?: boolean;
+      swatch?: string;
+      keepOpen?: boolean;
+      shortcut?: string;
+    }
   | { separator: true };
 
 interface ContextMenuProps {
@@ -73,6 +82,9 @@ export function ContextMenu({ x, y, items, onClose, keepFocus = false, children 
             role="menuitem"
             className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}`}
             disabled={item.disabled}
+            // Named by its label; its keys are announced apart.
+            aria-label={item.shortcut ? item.label : undefined}
+            aria-keyshortcuts={item.shortcut}
             onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
             onClick={() => {
               if (!item.keepOpen) onClose();
@@ -81,6 +93,7 @@ export function ContextMenu({ x, y, items, onClose, keepFocus = false, children 
           >
             {item.swatch && <span className="context-menu__swatch" style={{ background: item.swatch }} aria-hidden="true" />}
             {item.label}
+            {item.shortcut && <kbd className="context-menu__shortcut">{item.shortcut}</kbd>}
           </button>
         ),
       )}

@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: 'Moviendo {name}…',
+    copying: "Copiando {name}…",
     fileCount: { one: "{count} archivo", many: "{count} archivos", other: "{count} archivos" },
     uploading: "Subiendo {what}…",
     uploaded: "Se subió {what}.",
@@ -70,6 +71,13 @@ export const sftp: Messages<typeof en> = {
     failed: "Error en la operación SFTP.",
   },
   menu: {
+    openToSide: "Abrir al lado",
+    openContainingFolder: "Abrir carpeta contenedora",
+    openInIntegratedTerminal: "Abrir en el terminal integrado",
+    cut: "Cortar",
+    copy: "Copiar",
+    paste: "Pegar",
+    copyRelativePath: "Copiar ruta relativa",
     view: "Ver",
     openInTerminal: "Abrir en terminal",
     openTextEditor: "Abrir con el editor de texto predeterminado",

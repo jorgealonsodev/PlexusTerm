@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: '{name} 이동 중…',
+    copying: "{name} 복사 중…",
     fileCount: { other: "파일 {count}개" },
     uploading: "{what} 업로드 중…",
     uploaded: "{what}을(를) 업로드했습니다.",
@@ -70,6 +71,13 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 작업에 실패했습니다.",
   },
   menu: {
+    openToSide: "측면에서 열기",
+    openContainingFolder: "포함 폴더 열기",
+    openInIntegratedTerminal: "통합 터미널에서 열기",
+    cut: "잘라내기",
+    copy: "복사",
+    paste: "붙여넣기",
+    copyRelativePath: "상대 경로 복사",
     view: "보기",
     openInTerminal: "터미널에서 열기",
     openTextEditor: "기본 텍스트 편집기로 열기",

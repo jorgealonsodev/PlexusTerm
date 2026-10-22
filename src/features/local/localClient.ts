@@ -14,6 +14,7 @@ export const local = {
   rename: (from: string, to: string) => invoke<void>("local_rename", { from, to }),
   /** Moves a file or folder into the folder `dir`; never replaces an entry. Resolves to its new path. */
   move: (from: string, dir: string) => invoke<string>("local_move", { from, dir }),
+  copy: (from: string, dir: string) => invoke<string>("local_copy", { from, dir }),
   /** A folder is removed with everything inside it. */
   remove: (path: string, isDir: boolean) => invoke<void>("local_remove", { path, isDir }),
   chmod: (path: string, mode: number) => invoke<void>("local_chmod", { path, mode }),

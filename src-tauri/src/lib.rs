@@ -834,6 +834,7 @@ pub fn run() {
             diaglog::diag_log,
             localfs::local_write_text,
             localfs::local_move,
+            localfs::local_copy,
             project::project_colors_get,
             project::project_color_set,
             screen_color::screen_color_pick,

@@ -8,7 +8,7 @@ import { EntryIcon, type IconPack } from "./iconPacks";
 import { GitBadge, gitNameClass } from "./GitBadge";
 import { decorationFor, type GitStatusIndex } from "./gitStatus";
 
-interface FileTreeProps {
+export interface FileTreeProps {
   /** The listed folder's entries (its children are listed lazily as folders open). */
   entries: SftpEntry[];
   /** Lists a folder's entries when it is first opened, and again on each `loads` change. */
@@ -41,6 +41,8 @@ interface FileTreeProps {
   onRename?: (entry: SftpEntry, name: string) => void;
   /** The icon pack its rows are drawn with (Settings → Files); VS Code's Seti when missing. */
   iconPack?: IconPack;
+  /** A key pressed on a row before the tree's own (the list's shortcuts); true when it handled it. */
+  onRowKey?: (entry: SftpEntry, e: KeyboardEvent<HTMLLIElement>) => boolean;
 }
 
 
@@ -119,6 +121,7 @@ export function FileTree({
   reveal,
   onRename,
   iconPack = "seti",
+  onRowKey,
 }: FileTreeProps) {
   const t = useT();
   /** The row whose name is being edited in place (F2). */
@@ -241,6 +244,11 @@ export function FileTree({
     const { entry } = row;
     const index = entryRows.indexOf(row);
     const open = entry.kind === "dir" && expanded.has(entry.path);
+    if (onRowKey?.(entry, e)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     switch (e.key) {
       case "ArrowDown":
         focusRow(entryRows[index + 1]?.entry.path);

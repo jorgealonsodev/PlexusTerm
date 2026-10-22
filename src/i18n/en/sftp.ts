@@ -46,6 +46,7 @@ export const sftp = {
   },
   status: {
     moving: 'Moving {name}…',
+    copying: "Copying {name}…",
     fileCount: { one: "{count} file", other: "{count} files" },
     uploading: "Uploading {what}…",
     uploaded: "Uploaded {what}.",
@@ -68,6 +69,13 @@ export const sftp = {
     failed: "SFTP operation failed.",
   },
   menu: {
+    openToSide: "Open to the Side",
+    openContainingFolder: "Open Containing Folder",
+    openInIntegratedTerminal: "Open in Integrated Terminal",
+    cut: "Cut",
+    copy: "Copy",
+    paste: "Paste",
+    copyRelativePath: "Copy Relative Path",
     view: "View",
     openInTerminal: "Open in terminal",
     openTextEditor: "Open with default text editor",

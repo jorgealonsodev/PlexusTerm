@@ -48,6 +48,7 @@ export const sftp: Messages<typeof en> = {
   },
   status: {
     moving: '{name} を移動しています…',
+    copying: "{name} をコピーしています…",
     fileCount: { other: "{count} 個のファイル" },
     uploading: "{what} をアップロードしています…",
     uploaded: "{what} をアップロードしました。",
@@ -70,6 +71,13 @@ export const sftp: Messages<typeof en> = {
     failed: "SFTP 操作に失敗しました。",
   },
   menu: {
+    openToSide: "横に開く",
+    openContainingFolder: "含まれているフォルダーを開く",
+    openInIntegratedTerminal: "統合ターミナルで開く",
+    cut: "切り取り",
+    copy: "コピー",
+    paste: "貼り付け",
+    copyRelativePath: "相対パスのコピー",
     view: "表示",
     openInTerminal: "端末で開く",
     openTextEditor: "既定のテキストエディターで開く",
