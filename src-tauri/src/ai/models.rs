@@ -111,7 +111,7 @@ impl AiClient {
         Ok(ModelList { models, note: None })
     }
 
-    async fn get_json(
+    pub(super) async fn get_json(
         &self,
         provider: Provider,
         url: &str,

@@ -1874,6 +1874,22 @@ body.is-moving-tab {
   display: none;
 }
 
+/* A group of related options inside a settings section (Terminal: Session, Keyboard and clipboard…). */
+.settings__group {
+  margin: 8px 0 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: calc(11px * var(--ui-scale, 1));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings__panel > .settings__group:first-child {
+  margin-top: 0;
+}
+
 /* In a short window the section scrolls; its options never shrink (the colour scheme preview,
    which hides its overflow, would otherwise be squashed to a sliver). */
 .settings__panel > * {
@@ -2454,19 +2470,27 @@ body.is-dragging-path {
 }
 
 /* The bar under a terminal: its git branch and, on SSH tabs, the remote monitor (same look). */
+/* Its height comes from Settings → Appearance (--pane-footer-height); its text and icons grow with
+   it (--pane-footer-scale, 1 at 22 px). */
 .pane-footer {
   display: flex;
   flex: none;
   align-items: center;
   gap: 14px;
-  min-height: 22px;
+  box-sizing: border-box;
+  min-height: var(--pane-footer-height, 22px);
   padding: 2px 10px;
   overflow: hidden;
   border-top: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
-  font-size: calc(11px * var(--ui-scale, 1));
+  font-size: calc(11px * var(--ui-scale, 1) * var(--pane-footer-scale, 1));
   white-space: nowrap;
+}
+
+.pane-footer svg {
+  width: calc(13px * var(--pane-footer-scale, 1));
+  height: calc(13px * var(--pane-footer-scale, 1));
 }
 
 /* Under a terminal with another one below it: only the DEV option, without the bar. */
@@ -2491,7 +2515,7 @@ body.is-dragging-path {
   min-width: 0;
   max-width: 40%;
   color: var(--text);
-  font-size: calc(12px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1) * var(--pane-footer-scale, 1));
 }
 
 .pane-footer__branch--button {
@@ -2529,7 +2553,7 @@ body.is-dragging-path {
   justify-content: center;
   gap: 3px;
   box-sizing: border-box;
-  height: 16px;
+  height: calc(16px * var(--pane-footer-scale, 1));
   margin: 0;
   margin-inline-start: auto;
   padding: 0 5px;
@@ -2538,7 +2562,7 @@ body.is-dragging-path {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: calc(10px * var(--ui-scale, 1));
+  font-size: calc(10px * var(--ui-scale, 1) * var(--pane-footer-scale, 1));
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -2557,7 +2581,7 @@ body.is-dragging-path {
   min-width: 0;
   max-width: 40%;
   color: var(--text);
-  font-size: calc(12px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1) * var(--pane-footer-scale, 1));
 }
 
 .pane-footer__folder svg {
@@ -3363,4 +3387,57 @@ body.is-dragging-path {
   padding: 24px;
   text-align: center;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
+}
+
+/* The plan usage of an AI CLI in the bar under a terminal (src/features/usage/UsageFooter.tsx). */
+.usage-footer {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  gap: 6px;
+  height: calc(16px * var(--pane-footer-scale, 1));
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: calc(11px * var(--ui-scale, 1) * var(--pane-footer-scale, 1));
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .usage-footer:hover {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--text);
+  }
+}
+
+/* The DEV button follows it: the usage takes the free space, the button sits next to it. */
+.usage-footer + .pane-footer__dev {
+  margin-inline-start: 4px;
+}
+
+.usage-footer .cli-icon {
+  flex: none;
+}
+
+.usage-footer__window--high {
+  color: var(--warning, #d29922);
+}
+
+.usage-footer__window--full,
+.usage-footer--error .usage-footer__window--empty {
+  color: var(--danger, #f85149);
+}
+
+/* Turned off from its menu: only a dim "off" icon, to turn it on again. */
+.usage-footer--off {
+  opacity: 0.6;
 }

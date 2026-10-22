@@ -21,6 +21,7 @@ mod terminal;
 mod tools;
 mod tunnels;
 mod updates;
+mod usage;
 
 use mosh::{MoshLauncher, MoshRequest};
 use pty::{PtyError, PtyManager, SpawnRequest};
@@ -791,9 +792,16 @@ pub fn run() {
             ai::ai_key_status,
             ai::ai_key_save,
             ai::ai_key_delete,
+            ai::usage_key_status,
+            ai::usage_key_save,
+            ai::usage_key_delete,
             ai::ai_complete,
             ai::ai_assist,
             ai::ai_opencode_models,
+            ai::ai_opencode_go_usage,
+            usage::usage_claude,
+            usage::usage_codex,
+            usage::usage_agy,
             ai::models::ai_models,
             tools::keygen::keygen_generate,
             tools::keygen::keygen_save,

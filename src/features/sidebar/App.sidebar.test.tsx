@@ -78,11 +78,11 @@ describe("Collapsible sidebar", () => {
     expect(sessionsPanelShown()).toBe(true);
   });
 
-  it("saves the 'hide completely' choice from Settings > Appearance", async () => {
+  it("saves the 'hide completely' choice from Settings > General", async () => {
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByLabelText("Hide the sidebar completely when folded"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     await flush();
     expect(saved().slice(-1)[0]).toMatchObject({ sidebarHideWhenCollapsed: true, sidebarCollapsed: false });
   });

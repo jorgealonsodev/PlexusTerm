@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { SettingsDialog } from "./SettingsDialog";
+import { AUTO_SAVE_DELAY_MS, SettingsDialog } from "./SettingsDialog";
 import packageJson from "../../../package.json";
 import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
 import { ShellsContext } from "../platform/useShells";
@@ -39,11 +39,17 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "ai_key_status") return keys.has(args!.provider!);
     if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
     if (cmd === "ai_key_delete") keys.delete(args!.provider!);
+    if (cmd === "usage_key_status") return keys.has(`usage:${args!.provider!}`);
+    if (cmd === "usage_key_save") keys.set(`usage:${args!.provider!}`, args!.key!);
+    if (cmd === "usage_key_delete") keys.delete(`usage:${args!.provider!}`);
     if (cmd === "history_load") return null;
     if (cmd === "update_check") return updates.check();
     return null;
   }),
 }));
+
+/** The AI key field (the usage key field under Terminal shows the same status texts). */
+const aiKey = () => within(screen.getByLabelText("API key").closest(".field") as HTMLElement);
 
 afterEach(() => {
   cleanup();
@@ -60,13 +66,24 @@ const setup = () => {
 };
 
 describe("SettingsDialog", () => {
-  it("shows one section at a time from the side menu, starting with Appearance", () => {
+  it("shows one section at a time from the side menu, starting with General", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     const sections = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(sections).toEqual(["Appearance", "Terminal", "Shortcuts", "SSH", "Files", "AI", "Sharing", "About"]);
+    expect(sections).toEqual([
+      "General",
+      "Appearance",
+      "Terminal",
+      "DEV mode",
+      "Connections",
+      "Files",
+      "AI",
+      "Sharing",
+      "Shortcuts",
+      "About",
+    ]);
     const visible = () => screen.getAllByRole("tabpanel").filter((p) => !p.hidden).map((p) => p.getAttribute("aria-label"));
-    expect(visible()).toEqual(["Appearance"]);
-    expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");
+    expect(visible()).toEqual(["General"]);
+    expect(screen.getByRole("tab", { name: "General" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "Files" }));
     expect(visible()).toEqual(["Files"]);
     expect(screen.getByRole("tab", { name: "Files" }).getAttribute("aria-selected")).toBe("true");
@@ -78,17 +95,18 @@ describe("SettingsDialog", () => {
     fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "18" } });
     fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
     fireEvent.click(screen.getByLabelText("Copy on select"));
-    fireEvent.click(screen.getByRole("tab", { name: "SSH" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Connections" }));
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fontSize: 18, copyOnSelect: false, remoteMonitor: false }));
   });
 
   it("keeps the dragged sidebar width, which has no field, when saving", () => {
     const onSave = vi.fn();
     render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, sidebarWidth: 400 }} onSave={onSave} onCancel={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidth: 400 }));
+    fireEvent.click(screen.getByLabelText("Copy on select"));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidth: 400, copyOnSelect: false }));
   });
 
   it("shows the logo, the version and the project in About, light for light schemes", async () => {
@@ -128,18 +146,19 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browse…" }));
     await waitFor(() => expect(open).toHaveBeenCalledTimes(2));
     expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("/opt/My Editor/editor");
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, textEditor: "/opt/My Editor/editor" });
 
     fireEvent.click(screen.getByRole("button", { name: "Use system default" }));
     expect((screen.getByLabelText("Text editor") as HTMLInputElement).value).toBe("");
     fireEvent.change(screen.getByLabelText("Text editor"), { target: { value: "  code --wait " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, textEditor: "code --wait" });
   });
 
   it("lists dark and light schemes separately and previews the selected one", () => {
     setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
     const groups = [...screen.getByLabelText("Colour scheme").querySelectorAll("optgroup")].map((g) => g.label);
     expect(groups).toEqual(["Dark", "Light"]);
     expect(screen.getByRole("option", { name: "Catppuccin Latte" }).parentElement?.getAttribute("label")).toBe("Light");
@@ -150,6 +169,7 @@ describe("SettingsDialog", () => {
 
   it("picks the font from the catalogue: default, bundled, installed, or typed by hand", () => {
     const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
     const font = screen.getByLabelText("Font") as HTMLSelectElement;
     const family = screen.getByLabelText("Font family") as HTMLInputElement;
     expect(font.value).toBe(DEFAULT_FONT_FAMILY);
@@ -164,7 +184,7 @@ describe("SettingsDialog", () => {
     fireEvent.change(family, { target: { value: "Hack Nerd Font" } });
     expect(font.value).toBe("");
     fireEvent.change(font, { target: { value: '"Cascadia Code Variable", monospace' } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, fontFamily: '"Cascadia Code Variable", monospace' });
   });
 
@@ -182,7 +202,7 @@ describe("SettingsDialog", () => {
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: " Hack Nerd Font " } });
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({
       ...DEFAULT_SETTINGS,
       fontSize: 32,
@@ -205,30 +225,98 @@ describe("SettingsDialog", () => {
     const field = screen.getByLabelText("Commands that turn DEV mode on") as HTMLInputElement;
     expect(field.value).toBe("claude, codex, agy, opencode, pi, gentle-shell");
     fireEvent.change(field, { target: { value: "claude  aider, codex" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, devCommands: ["claude", "aider", "codex"] });
   });
 
-  it("restores the default font when the font family is left empty", () => {
+  it("keeps an OpenCode Go key for the usage apart from the AI one, and hides it with the usage", async () => {
     const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+    const usageKey = () => screen.getByLabelText("OpenCode Go API key for the usage") as HTMLInputElement;
+    const usageField = () => within(usageKey().closest(".field") as HTMLElement);
+    expect(await usageField().findByText("No key saved")).toBeTruthy();
+    expect(usageField().getByText(/without it, the usage is read with the OpenCode Go key in Settings > AI/)).toBeTruthy();
+    fireEvent.change(usageKey(), { target: { value: "oc-usage" } });
+    fireEvent.click(usageField().getByRole("button", { name: "Save key" }));
+    expect(await usageField().findByText("A key is saved")).toBeTruthy();
+    expect(invoke).toHaveBeenCalledWith("usage_key_save", { provider: "opencode-go", key: "oc-usage" });
+    expect(invoke).not.toHaveBeenCalledWith("ai_key_save", expect.anything());
+    expect(keys.has("opencode-go")).toBe(false);
+    fireEvent.click(usageField().getByRole("button", { name: "Remove key" }));
+    expect(await usageField().findByText("No key saved")).toBeTruthy();
+    expect(invoke).toHaveBeenCalledWith("usage_key_delete", { provider: "opencode-go" });
+    fireEvent.click(screen.getByLabelText("Show AI plan usage in the bar under each terminal"));
+    expect(screen.queryByLabelText("OpenCode Go API key for the usage")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiUsageInFooter: false }));
+  });
+
+  it("sets the height of the bar under the terminals in Appearance, within 18-48 px", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+    const field = screen.getByLabelText(/Height of the bar under the terminals \(px\)/) as HTMLInputElement;
+    expect([field.type, field.value, field.min, field.max]).toEqual(["number", "22", "18", "48"]);
+    fireEvent.change(field, { target: { value: "34" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ paneFooterHeight: 34 }));
+    fireEvent.change(field, { target: { value: "90" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ paneFooterHeight: 48 }));
+  });
+
+
+  it("restores the default font when the font family is left empty", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={{ ...DEFAULT_SETTINGS, fontFamily: "Hack" }} onSave={onSave} onCancel={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: "  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
   });
 
   it("keeps the font size when the field is not a number", () => {
     const { onSave } = setup();
     fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    // Nothing changed: the saved size stays.
+    expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("cancels without saving, also on Escape", () => {
+  it("closes with Close or Escape, saving nothing when nothing changed", () => {
     const { onSave, onCancel } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.keyDown(screen.getByLabelText("Terminal font size"), { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("applies a change by itself a moment after it, without a Save button", () => {
+    vi.useFakeTimers();
+    try {
+      const { onSave, onCancel } = setup();
+      fireEvent.click(screen.getByLabelText("Copy on select"));
+      expect(onSave).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(AUTO_SAVE_DELAY_MS));
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, copyOnSelect: false });
+      // Typing a number: applied once, after the last key.
+      const size = screen.getByLabelText("Terminal font size");
+      fireEvent.change(size, { target: { value: "1" } });
+      act(() => vi.advanceTimersByTime(AUTO_SAVE_DELAY_MS / 2));
+      fireEvent.change(size, { target: { value: "16" } });
+      act(() => vi.advanceTimersByTime(AUTO_SAVE_DELAY_MS));
+      expect(onSave).toHaveBeenCalledTimes(2);
+      expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ fontSize: 16, copyOnSelect: false }));
+      // Closing right after an edit applies it at once.
+      fireEvent.click(screen.getByLabelText("Copy on select"));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onSave).toHaveBeenCalledTimes(3);
+      expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ copyOnSelect: true }));
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   describe("AI section (S4)", () => {
@@ -255,7 +343,7 @@ describe("SettingsDialog", () => {
       expect(field("Model").value).toBe("claude-opus-5-5");
       expect(field("History commands sent as context").value).toBe("5");
       expect(screen.queryByLabelText("Base URL")).toBeNull();
-      expect(await screen.findByText("No key saved")).toBeTruthy();
+      expect(await aiKey().findByText("No key saved")).toBeTruthy();
     });
 
     it("saves the AI settings, clamping the history context", () => {
@@ -267,7 +355,7 @@ describe("SettingsDialog", () => {
       fireEvent.change(field("Base URL"), { target: { value: " http://localhost:11434/v1 " } });
       fireEvent.change(field("Model"), { target: { value: " llama3.1 " } });
       fireEvent.change(field("History commands sent as context"), { target: { value: "40" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith({
         ...DEFAULT_SETTINGS,
         inlineSuggestions: false,
@@ -296,20 +384,20 @@ describe("SettingsDialog", () => {
     it("saves and removes the provider's API key in the keyring, showing only whether one is saved", async () => {
       openAi();
       fireEvent.change(field("Provider"), { target: { value: "gemini" } });
-      expect(await screen.findByText("No key saved")).toBeTruthy();
+      expect(await aiKey().findByText("No key saved")).toBeTruthy();
       fireEvent.change(field("API key"), { target: { value: "AIza-secret" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
-      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      fireEvent.click(aiKey().getByRole("button", { name: "Save key" }));
+      expect(await aiKey().findByText("A key is saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_save", { provider: "gemini", key: "AIza-secret" });
       expect(field("API key").value).toBe("");
       expect(screen.queryByDisplayValue("AIza-secret")).toBeNull();
-      fireEvent.click(screen.getByRole("button", { name: "Remove key" }));
-      expect(await screen.findByText("No key saved")).toBeTruthy();
+      fireEvent.click(aiKey().getByRole("button", { name: "Remove key" }));
+      expect(await aiKey().findByText("No key saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_delete", { provider: "gemini" });
       // Another provider has its own key.
       keys.set("anthropic", "sk-ant");
       fireEvent.change(field("Provider"), { target: { value: "anthropic" } });
-      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      expect(await aiKey().findByText("A key is saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "anthropic" });
     });
 
@@ -327,16 +415,16 @@ describe("SettingsDialog", () => {
       });
       openAi();
       fireEvent.change(field("Provider"), { target: { value: "gemini" } });
-      expect(await screen.findByText("No key saved")).toBeTruthy();
+      expect(await aiKey().findByText("No key saved")).toBeTruthy();
       fireEvent.change(field("API key"), { target: { value: "AIza-secret" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
+      fireEvent.click(aiKey().getByRole("button", { name: "Save key" }));
       expect(
         await screen.findByText(
           "Could not save the key: Could not use the system keyring: the system keyring is not available.",
         ),
       ).toBeTruthy();
       expect(screen.queryByText(/\[object Object\]/)).toBeNull();
-      expect(screen.getByText("No key saved")).toBeTruthy();
+      expect(aiKey().getByText("No key saved")).toBeTruthy();
     });
 
     it("offers OpenCode Go models in a list fetched by the backend, with a refresh and a usage note", async () => {
@@ -365,7 +453,7 @@ describe("SettingsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "Refresh models" }));
       await waitFor(() => expect(invoke).toHaveBeenCalledWith("ai_opencode_models", { refresh: true }));
       expect(field<HTMLSelectElement>("Model").value).toBe("minimax-m3");
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiProvider: "opencode-go", aiModel: "minimax-m3", aiBaseUrl: "" }));
     });
 
@@ -404,18 +492,19 @@ describe("SettingsDialog", () => {
       const details = field("Show size and date in file lists");
       expect(details.checked).toBe(false);
       fireEvent.click(details);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
     it("chooses the terminal line height, 1.0 by default, warns what a taller one does, and saves it", () => {
       const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
       const height = screen.getByLabelText("Terminal line height") as HTMLSelectElement;
       expect(height.value).toBe("1");
       expect([...height.options].map((o) => o.textContent)).toEqual(["1.0", "1.05", "1.1", "1.15", "1.2", "1.25", "1.3"]);
       expect(screen.getByRole("button", { name: /above 1\.0 can look blurred with GPU acceleration/ })).toBeTruthy();
       fireEvent.change(height, { target: { value: "1.2" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ lineHeight: 1.2 }));
     });
 
@@ -425,7 +514,7 @@ describe("SettingsDialog", () => {
       expect(weight.value).toBe("400");
       expect([...weight.options].map((o) => o.textContent)).toEqual(["Light", "Regular", "Medium", "Semibold"]);
       fireEvent.change(weight, { target: { value: "300" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fontWeight: 300 }));
     });
 
@@ -435,7 +524,7 @@ describe("SettingsDialog", () => {
       const git = field("Show git status in file lists");
       expect(git.checked).toBe(true);
       fireEvent.click(git);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ gitFileStatus: false }));
     });
 
@@ -445,7 +534,7 @@ describe("SettingsDialog", () => {
       const auto = field("Save edited files automatically");
       expect(auto.checked).toBe(false);
       fireEvent.click(auto);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ viewerAutoSave: true }));
     });
 
@@ -455,7 +544,7 @@ describe("SettingsDialog", () => {
       const side = screen.getByRole("combobox", { name: "Open the file viewer" }) as HTMLSelectElement;
       expect(side.value).toBe("left");
       fireEvent.change(side, { target: { value: "below" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ viewerPosition: "below" }));
     });
 
@@ -465,7 +554,7 @@ describe("SettingsDialog", () => {
       expect(select.value).toBe("last");
       expect([...select.options].map((o) => o.textContent)).toEqual(["As I left it", "Open", "Folded"]);
       fireEvent.change(select, { target: { value: "collapsed" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarAtStartup: "collapsed" }));
     });
 
@@ -478,7 +567,7 @@ describe("SettingsDialog", () => {
       expect(select.value).toBe("last");
       expect([...select.options].map((o) => o.textContent)).toEqual(["As I left it", "Open", "Folded"]);
       fireEvent.change(select, { target: { value: "expanded" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({ devColumnHideWhenCollapsed: true, devColumnAtStartup: "expanded", devColumnCollapsed: false }),
       );
@@ -493,7 +582,7 @@ describe("SettingsDialog", () => {
       const folder = screen.getByLabelText("Show the terminal's folder in the bar under it in DEV mode") as HTMLInputElement;
       expect(folder.checked).toBe(true);
       fireEvent.click(folder);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ recentFolderLimit: 50, devFolderInFooter: false }));
     });
 
@@ -503,7 +592,7 @@ describe("SettingsDialog", () => {
       const follows = field("Change the terminal's folder when you open a folder in the file browser");
       expect(follows.checked).toBe(true);
       fireEvent.click(follows);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ terminalFollowsBrowser: false }));
     });
 
@@ -512,17 +601,17 @@ describe("SettingsDialog", () => {
       const keep = field("Keep AI conversations after closing PlexusTerm");
       expect(keep.checked).toBe(true);
       fireEvent.click(keep);
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiSaveChats: false }));
     });
 
     it("saves the OpenCode Go key under its own provider", async () => {
       openAi();
       fireEvent.change(field("Provider"), { target: { value: "opencode-go" } });
-      expect(await screen.findByText("No key saved")).toBeTruthy();
+      expect(await aiKey().findByText("No key saved")).toBeTruthy();
       fireEvent.change(field("API key"), { target: { value: "oc-secret" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save key" }));
-      expect(await screen.findByText("A key is saved")).toBeTruthy();
+      fireEvent.click(aiKey().getByRole("button", { name: "Save key" }));
+      expect(await aiKey().findByText("A key is saved")).toBeTruthy();
       expect(invoke).toHaveBeenCalledWith("ai_key_save", { provider: "opencode-go", key: "oc-secret" });
       expect(invoke).toHaveBeenCalledWith("ai_key_status", { provider: "opencode-go" });
     });
@@ -553,7 +642,7 @@ describe("Shortcuts section", () => {
     fireEvent.focus(input);
     fireEvent.keyDown(input, init);
   };
-  const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const save = () => fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
   it("lists the actions by group, with the fixed keys for reference", () => {
     openShortcuts();
@@ -682,7 +771,7 @@ describe("Shell for local terminals", () => {
   };
   const shellSelect = () => screen.getByLabelText("Shell for local terminals") as HTMLSelectElement;
   const optionValue = (text: string) => Array.from(shellSelect().options).find((o) => o.textContent === text)!.value;
-  const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const save = () => fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
   it("lists the system default and the detected shells, and saves the chosen one with its arguments", () => {
     const onSave = renderWith();
@@ -797,7 +886,7 @@ describe("Updates in About", () => {
     const box = screen.getByLabelText("Check for updates at startup") as HTMLInputElement;
     expect(box.checked).toBe(true);
     fireEvent.click(box);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, checkUpdates: false });
   });
 
@@ -808,7 +897,7 @@ describe("Updates in About", () => {
     fireEvent.click(screen.getByLabelText("Write a diagnostic log"));
     expect(dir.disabled).toBe(false);
     fireEvent.change(dir, { target: { value: "  /var/log/plexus  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, diagnosticLog: true, diagnosticLogDir: "/var/log/plexus" });
   });
 
@@ -826,10 +915,10 @@ describe("Focused pane border in Appearance", () => {
     fireEvent.change(screen.getByLabelText("Border colour"), { target: { value: "#FF8800" } });
     fireEvent.change(screen.getByLabelText("Intensity: 55%"), { target: { value: "30" } });
     expect(screen.getByLabelText("Intensity: 30%")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, focusBorderColor: "#ff8800", focusBorderStrength: 30 });
     fireEvent.click(screen.getByRole("button", { name: "Scheme accent" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, focusBorderStrength: 30 });
   });
 });
@@ -840,7 +929,7 @@ describe("File icon packs in Files", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} initialSection="files" />);
     fireEvent.change(screen.getByLabelText("File list icons"), { target: { value: "lines" } });
     fireEvent.change(screen.getByLabelText("DEV mode tree icons"), { target: { value: "material" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, fileIconsList: "lines", fileIconsTree: "material" });
   });
 });
@@ -889,8 +978,10 @@ describe("Open-source licenses in About", () => {
     expect(screen.queryByRole("list", { name: "Libraries" })).toBeNull();
     expect(onCancel).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Open-source licenses" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Close" }));
+    // The licenses' own Close (Settings' Close comes after it).
+    fireEvent.click((await screen.findAllByRole("button", { name: "Close" }))[0]);
     expect(screen.queryByRole("list", { name: "Libraries" })).toBeNull();
+    expect(onCancel).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Open-source licenses" })).toBeTruthy();
   });
 });

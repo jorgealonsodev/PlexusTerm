@@ -73,6 +73,9 @@ import { imageType } from "./features/viewer/markdown";
 import type { AttentionNotice } from "./features/terminal/attention";
 import { branchSourceOf, GitBranchReporter } from "./features/terminal/gitBranch";
 import { BranchSwitcher } from "./features/terminal/BranchSwitcher";
+import { UsageFooter } from "./features/usage/UsageFooter";
+import { applyPaneFooterHeight } from "./features/panes/paneFooter";
+import { providerFor } from "./features/usage/aiUsage";
 import { createNotifier } from "./features/notifications/notifier";
 import { showSystemNotification } from "./features/notifications/systemNotification";
 import { useShares, type ShareNotice } from "./features/share/useShares";
@@ -363,6 +366,9 @@ function AppContent() {
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--focus-border", focusBorderCss(focusBorderColor, focusBorderStrength));
   }, [focusBorderColor, focusBorderStrength]);
+  // The height of the bars under the panes, as Settings → Appearance sets it.
+  const { paneFooterHeight } = terminalSettings.settings;
+  useLayoutEffect(() => applyPaneFooterHeight(paneFooterHeight), [paneFooterHeight]);
   // The interface language (S3): the chosen one, or the system's, English when unsupported.
   const language = terminalSettings.settings.language;
   useLayoutEffect(() => setLocale(resolveLocale(language, systemLanguages())), [language]);
@@ -2011,7 +2017,14 @@ function AppContent() {
                               tabDev && settings.devFolderInFooter
                                 ? (paneMeta[paneId]?.cwd ?? (tabDev.pane === paneId ? tabDev.folder : null))
                                 : null;
-                            if (!branch && !monitor && !devButton) return null;
+                            // The plan usage of the AI CLI running here (or the one chosen), when Settings show it.
+                            const usage =
+                              settings.aiUsageInFooter && !bare
+                                ? providerFor(settings.aiUsageProvider, tabDev?.pane === paneId ? (tabDev.cli ?? null) : null)
+                                : null;
+                            // Turned off from its menu: an "off" icon stays, to turn it on again.
+                            const usageOff = settings.aiUsageInFooter && !bare && settings.aiUsageProvider === "off";
+                            if (!branch && !monitor && !devButton && !usage && !usageOff) return null;
                             const devShortcut = shortcutLabel("toggleDevMode", settings.shortcuts);
                             return (
                               <div className={`pane-footer${bare ? " pane-footer--bare" : ""}`}>
@@ -2038,6 +2051,14 @@ function AppContent() {
                                     </span>
                                   ))}
                                 {monitor && <RemoteMonitorBar sessionId={paneMeta[paneId]?.sessionId ?? null} active={active} />}
+                                {(usage || usageOff) && (
+                                  <UsageFooter
+                                    provider={usage}
+                                    choice={settings.aiUsageProvider}
+                                    active={active}
+                                    onChoose={(aiUsageProvider) => terminalSettings.update({ aiUsageProvider })}
+                                  />
+                                )}
                                 {devButton && (
                                   <button
                                     type="button"
@@ -2172,10 +2193,7 @@ function AppContent() {
           settings={terminalSettings.settings}
           initialSection={modal.section}
           onCancel={() => setModal(null)}
-          onSave={(next) => {
-            terminalSettings.update(next);
-            setModal(null);
-          }}
+          onSave={(next) => terminalSettings.update(next)}
           onLanguageNow={(language) => terminalSettings.update({ language })}
         />
       )}

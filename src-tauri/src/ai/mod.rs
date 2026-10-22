@@ -80,6 +80,12 @@ impl Provider {
     pub fn key_account(self) -> String {
         format!("ai:{}", self.id())
     }
+
+    /// The keyring account of the key saved only for reading the plan usage (the bar under a
+    /// terminal), apart from the one the AI features use.
+    pub fn usage_key_account(self) -> String {
+        format!("usage:{}", self.id())
+    }
 }
 
 /// Provider settings sent by the frontend with every request.
@@ -270,6 +276,8 @@ pub struct Endpoints {
     pub opencode_go: String,
     /// models.dev catalogue, which says which API format each OpenCode Go model uses.
     pub models_dev: String,
+    /// OpenCode Go plan usage (5-hour, weekly and monthly windows).
+    pub opencode_go_usage: String,
 }
 
 impl Default for Endpoints {
@@ -280,6 +288,7 @@ impl Default for Endpoints {
             openai: "https://api.openai.com/v1/chat/completions".into(),
             opencode_go: "https://opencode.ai/inference/go/v1".into(),
             models_dev: "https://models.dev/api.json".into(),
+            opencode_go_usage: "https://opencode.ai/zen/go/v1/usage".into(),
         }
     }
 }
@@ -485,6 +494,42 @@ impl AiClient {
     }
 }
 
+impl AiClient {
+    /// How much of the OpenCode Go plan is spent, read with its saved key.
+    pub async fn opencode_go_usage(
+        &self,
+        secrets: &SharedSecrets,
+    ) -> Result<crate::usage::Usage, AiError> {
+        let provider = Provider::OpenCodeGo;
+        // The usage key when one is saved, else the one the AI features use.
+        let account = provider.usage_key_account();
+        let own = secrets::run(secrets, move |s| {
+            if s.available() {
+                s.get(&account)
+            } else {
+                Ok(None)
+            }
+        })
+        .await
+        .map_err(keyring_error)?
+        .filter(|k| !k.is_empty())
+        .map(ApiKey);
+        let key = match own {
+            Some(key) => key,
+            None => load_key(secrets, provider).await?.ok_or_else(|| {
+                AiError::new(
+                    AiErrorKind::NoKey,
+                    "No OpenCode Go API key is saved. Add one in Settings > Terminal (usage) or Settings > AI.",
+                )
+            })?,
+        };
+        let body = self
+            .get_json(provider, &self.endpoints.opencode_go_usage, Some(&key))
+            .await?;
+        crate::usage::parse_opencode_go(&body).ok_or_else(|| AiError::bad_response(provider))
+    }
+}
+
 /// Reads the provider's key; a missing keyring only matters for providers that need a key.
 async fn load_key(secrets: &SharedSecrets, provider: Provider) -> Result<Option<ApiKey>, AiError> {
     let account = provider.key_account();
@@ -622,6 +667,50 @@ pub async fn ai_key_delete(
     key_delete(secrets.inner(), &provider).await
 }
 
+/// Whether a key is saved for reading `provider`'s plan usage (apart from the AI one).
+#[tauri::command]
+pub async fn usage_key_status(
+    provider: String,
+    secrets: State<'_, SharedSecrets>,
+) -> Result<bool, AiError> {
+    let account = Provider::parse(&provider)?.usage_key_account();
+    secrets::run(secrets.inner(), move |s| {
+        Ok(s.available() && s.get(&account)?.is_some_and(|k| !k.is_empty()))
+    })
+    .await
+    .map_err(keyring_error)
+}
+
+/// Saves the key used only to read `provider`'s plan usage.
+#[tauri::command]
+pub async fn usage_key_save(
+    provider: String,
+    key: String,
+    secrets: State<'_, SharedSecrets>,
+) -> Result<(), AiError> {
+    let provider = Provider::parse(&provider)?;
+    let key = key.trim().to_string();
+    if key.is_empty() {
+        return Err(AiError::config("Enter an API key."));
+    }
+    let account = provider.usage_key_account();
+    let label = format!("PlexusTerm usage key ({})", provider.display_name());
+    secrets::run(secrets.inner(), move |s| s.set(&account, &label, &key))
+        .await
+        .map_err(keyring_error)
+}
+
+#[tauri::command]
+pub async fn usage_key_delete(
+    provider: String,
+    secrets: State<'_, SharedSecrets>,
+) -> Result<(), AiError> {
+    let account = Provider::parse(&provider)?.usage_key_account();
+    secrets::run(secrets.inner(), move |s| s.delete(&account))
+        .await
+        .map_err(keyring_error)
+}
+
 /// Completes the typed line; returns only the text to append.
 #[tauri::command]
 pub async fn ai_complete(
@@ -646,6 +735,15 @@ pub async fn ai_assist(
 ) -> Result<AssistResponse, AiError> {
     ai.set_go_cache(go_cache_path(&app));
     ai.assist(secrets.inner(), &config, &request).await
+}
+
+/// How much of the OpenCode Go plan is spent (for the bar under a terminal).
+#[tauri::command]
+pub async fn ai_opencode_go_usage(
+    secrets: State<'_, SharedSecrets>,
+    ai: State<'_, AiClient>,
+) -> Result<crate::usage::Usage, AiError> {
+    ai.opencode_go_usage(secrets.inner()).await
 }
 
 /// The OpenCode Go models (public list + per-model API format from models.dev), cached 24 h.

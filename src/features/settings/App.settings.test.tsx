@@ -76,7 +76,7 @@ describe("App settings (S15.2, S15.6)", () => {
     fireEvent.change(screen.getByLabelText("Interface text size"), { target: { value: "16" } });
     fireEvent.change(screen.getByLabelText("AI chat text size"), { target: { value: "18" } });
     fireEvent.change(screen.getByLabelText("File viewer text size"), { target: { value: "20" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(String(16 / 13));
     expect(document.documentElement.style.getPropertyValue("--chat-scale")).toBe(String(18 / 13));
     expect(document.documentElement.style.getPropertyValue("--viewer-scale")).toBe(String(20 / 13));
@@ -91,7 +91,7 @@ describe("App settings (S15.2, S15.6)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Terminal font size"), { target: { value: "20" } });
     fireEvent.click(screen.getByLabelText("Right click pastes"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByTestId("terminal").textContent).toBe("font 20");
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(saved().slice(-1)[0]).toMatchObject({ fontSize: 20, rightClickPastes: false });
@@ -105,7 +105,7 @@ describe("App settings (S15.2, S15.6)", () => {
     expect((screen.getByAltText("PlexusTerm") as HTMLImageElement).src).not.toContain("light");
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(root.style.getPropertyValue("--bg")).toBe("#fdf6e3");
     expect(root.style.getPropertyValue("color-scheme")).toBe("light");
     expect(root.dataset.theme).toBe("light");

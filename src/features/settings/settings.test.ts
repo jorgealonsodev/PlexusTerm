@@ -60,6 +60,8 @@ describe("parseSettings", () => {
       devColumnAtStartup: "last",
       recentFolderLimit: 10,
       devFolderInFooter: true,
+      aiUsageInFooter: true,
+      aiUsageProvider: "auto" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,
@@ -72,6 +74,7 @@ describe("parseSettings", () => {
       fileIconsTree: "seti",
       focusBorderColor: "",
       focusBorderStrength: 55,
+      paneFooterHeight: 22,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -105,6 +108,11 @@ describe("parseSettings", () => {
     expect(of(7.6)).toBe(8);
     expect(of("many")).toBe(10);
     expect(parseSettings(JSON.stringify({ devFolderInFooter: false })).devFolderInFooter).toBe(false);
+    expect(parseSettings(JSON.stringify({ aiUsageInFooter: false })).aiUsageInFooter).toBe(false);
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencodeGo" })).aiUsageProvider).toBe("opencodeGo");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "agy" })).aiUsageProvider).toBe("agy");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencode" })).aiUsageProvider).toBe("auto");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "off" })).aiUsageProvider).toBe("off");
   });
 
   it("reads where the file viewer opens, the left when unknown", () => {
@@ -179,6 +187,8 @@ describe("parseSettings", () => {
       devColumnAtStartup: "last",
       recentFolderLimit: 10,
       devFolderInFooter: true,
+      aiUsageInFooter: true,
+      aiUsageProvider: "auto" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,
@@ -191,6 +201,7 @@ describe("parseSettings", () => {
       fileIconsTree: "seti",
       focusBorderColor: "",
       focusBorderStrength: 55,
+      paneFooterHeight: 22,
     });
   });
 
@@ -369,6 +380,8 @@ describe("serializeSettings", () => {
       devColumnAtStartup: "last" as const,
       recentFolderLimit: 25,
       devFolderInFooter: false,
+      aiUsageInFooter: false,
+      aiUsageProvider: "codex" as const,
       shareRelayUrl: "wss://relay.example.com",
       shareViewerOrigin: "https://view.example.com",
       shareViewNeedsApproval: false,
@@ -381,6 +394,7 @@ describe("serializeSettings", () => {
       fileIconsTree: "material" as const,
       focusBorderColor: "#ff8800",
       focusBorderStrength: 30,
+      paneFooterHeight: 30,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -436,6 +450,14 @@ describe("focused pane border", () => {
     expect([parsed.focusBorderColor, parsed.focusBorderStrength]).toEqual(["#ff8800", 10]);
     const bad = parseSettings(JSON.stringify({ focusBorderColor: "red", focusBorderStrength: "x" }));
     expect([bad.focusBorderColor, bad.focusBorderStrength]).toEqual(["", 55]);
+  });
+
+  it("keeps the height of the bar under the terminals within 18-48 px", () => {
+    expect(DEFAULT_SETTINGS.paneFooterHeight).toBe(22);
+    expect(parseSettings(JSON.stringify({ paneFooterHeight: 31.6 })).paneFooterHeight).toBe(32);
+    expect(parseSettings(JSON.stringify({ paneFooterHeight: 4 })).paneFooterHeight).toBe(18);
+    expect(parseSettings(JSON.stringify({ paneFooterHeight: 400 })).paneFooterHeight).toBe(48);
+    expect(parseSettings(JSON.stringify({ paneFooterHeight: "big" })).paneFooterHeight).toBe(22);
     expect(focusBorderCss("", 55)).toBe("color-mix(in srgb, var(--accent) 55%, var(--bg))");
     expect(focusBorderCss("#ff8800", 100)).toBe("color-mix(in srgb, #ff8800 100%, var(--bg))");
   });

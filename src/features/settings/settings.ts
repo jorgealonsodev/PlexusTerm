@@ -141,6 +141,11 @@ export interface TerminalSettings {
   recentFolderLimit: number;
   /** In DEV mode the bar under each terminal names its folder (the last part of the path). */
   devFolderInFooter: boolean;
+  /** The bar under each terminal shows the plan usage of an AI CLI (Claude Code, Codex, Antigravity, OpenCode Go). */
+  aiUsageInFooter: boolean;
+  /** Whose usage that bar shows: the CLI running in the terminal (`auto`), always one provider, or
+   * nobody's (`off`: the bar keeps an "off" icon to turn it on again). */
+  aiUsageProvider: AiUsageChoice;
   /** Terminal sharing: the relay's `wss://` URL ("" until set). The relay token is in the keyring. */
   shareRelayUrl: string;
   /** Terminal sharing: the `https://` origin that serves the viewer page ("" until set). */
@@ -165,12 +170,20 @@ export interface TerminalSettings {
   focusBorderColor: string;
   /** How much of that colour shows over the background, in percent (FOCUS_BORDER_STRENGTHS bounds). */
   focusBorderStrength: number;
+  /** Height of the bar under each terminal and viewer, in px (PANE_FOOTER_HEIGHTS bounds); its text grows with it. */
+  paneFooterHeight: number;
 }
 
 export const MIN_FOCUS_BORDER_STRENGTH = 10;
 export const MAX_FOCUS_BORDER_STRENGTH = 100;
 export const clampFocusBorderStrength = (value: number) =>
   Math.min(MAX_FOCUS_BORDER_STRENGTH, Math.max(MIN_FOCUS_BORDER_STRENGTH, Math.round(value)));
+export const MIN_PANE_FOOTER_HEIGHT = 18;
+export const MAX_PANE_FOOTER_HEIGHT = 48;
+/** The height the bar under a terminal is drawn at (its text is sized for it). */
+export const BASE_PANE_FOOTER_HEIGHT = 22;
+export const clampPaneFooterHeight = (value: number) =>
+  Math.min(MAX_PANE_FOOTER_HEIGHT, Math.max(MIN_PANE_FOOTER_HEIGHT, Math.round(value)));
 /** A #rrggbb colour in lower case, or "" (the scheme's accent). */
 export const cleanHexColor = (value: unknown): string =>
   typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim()) ? value.trim().toLowerCase() : "";
@@ -262,11 +275,14 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   fileIconsTree: DEFAULT_ICON_PACKS.tree,
   focusBorderColor: "",
   focusBorderStrength: 55,
+  paneFooterHeight: 22,
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
   recentFolderLimit: DEFAULT_RECENT_FOLDERS,
   devFolderInFooter: true,
+  aiUsageInFooter: true,
+  aiUsageProvider: "auto",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -381,6 +397,9 @@ export const clampTabColumnWidth = (width: number) =>
  * falls back to its default (the font size is clamped) and unknown keys are ignored.
  */
 export const VIEWER_POSITIONS = ["left", "right", "below"] as const;
+/** Whose plan usage the bar under a terminal shows. */
+export const AI_USAGE_CHOICES = ["auto", "claude", "codex", "agy", "opencodeGo", "off"] as const;
+export type AiUsageChoice = (typeof AI_USAGE_CHOICES)[number];
 export type ViewerPosition = (typeof VIEWER_POSITIONS)[number];
 
 export const SIDEBAR_AT_STARTUP = ["last", "expanded", "collapsed"] as const;
@@ -459,6 +478,10 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     devColumnAtStartup: sidebarAtStartupOf(value.devColumnAtStartup),
     recentFolderLimit: size(value.recentFolderLimit, clampRecentFolderLimit, d.recentFolderLimit),
     devFolderInFooter: bool(value.devFolderInFooter, d.devFolderInFooter),
+    aiUsageInFooter: bool(value.aiUsageInFooter, d.aiUsageInFooter),
+    aiUsageProvider: (AI_USAGE_CHOICES as readonly unknown[]).includes(value.aiUsageProvider)
+      ? (value.aiUsageProvider as AiUsageChoice)
+      : d.aiUsageProvider,
     localShell: cleanLocalShell(value.localShell),
     localShellArgs: cleanLocalShell(value.localShellArgs),
     localCwd: cleanLocalShell(value.localCwd),
@@ -499,6 +522,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     fileIconsTree: isIconPack(value.fileIconsTree) ? value.fileIconsTree : d.fileIconsTree,
     focusBorderColor: cleanHexColor(value.focusBorderColor),
     focusBorderStrength: size(value.focusBorderStrength, clampFocusBorderStrength, d.focusBorderStrength),
+    paneFooterHeight: size(value.paneFooterHeight, clampPaneFooterHeight, d.paneFooterHeight),
   };
 }
 

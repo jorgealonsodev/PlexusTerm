@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { FileText, Globe, Info, KeyRound, Keyboard, Palette, Share2, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { Code, FileText, Globe, Info, KeyRound, Keyboard, Palette, Share2, SlidersHorizontal, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import type { AppKey } from "../../i18n/catalogs";
 import packageJson from "../../../package.json";
@@ -53,10 +53,13 @@ import {
   MIN_FOCUS_BORDER_STRENGTH,
   MAX_FOCUS_BORDER_STRENGTH,
   clampFocusBorderStrength,
+  clampPaneFooterHeight,
+  MAX_PANE_FOOTER_HEIGHT,
+  MIN_PANE_FOOTER_HEIGHT,
   cleanHexColor,
   focusBorderCss,
   type AiProvider,
-  type TerminalSettings, type SidebarAtStartup, type ViewerPosition } from "./settings";
+  type TerminalSettings, type SidebarAtStartup, type ViewerPosition, type AiUsageChoice } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutLabel } from "../panes/shortcuts";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
@@ -70,7 +73,9 @@ import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
+  /** Applies the settings; called by itself a moment after each change, and on closing. */
   onSave: (settings: TerminalSettings) => void;
+  /** Closes the dialog (anything still being edited was applied just before). */
   onCancel: () => void;
   /** Section shown first (Appearance when omitted). */
   initialSection?: SettingsSection;
@@ -110,17 +115,29 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
   );
 }
 
-export type SettingsSection = "appearance" | "terminal" | "shortcuts" | "ssh" | "files" | "ai" | "sharing" | "about";
+export type SettingsSection =
+  | "general"
+  | "appearance"
+  | "terminal"
+  | "dev"
+  | "ssh"
+  | "files"
+  | "ai"
+  | "sharing"
+  | "shortcuts"
+  | "about";
 type Section = SettingsSection;
 
 const SECTIONS: { id: Section; icon: LucideIcon }[] = [
+  { id: "general", icon: SlidersHorizontal },
   { id: "appearance", icon: Palette },
   { id: "terminal", icon: SquareTerminal },
-  { id: "shortcuts", icon: Keyboard },
+  { id: "dev", icon: Code },
   { id: "ssh", icon: KeyRound },
   { id: "files", icon: FileText },
   { id: "ai", icon: Sparkles },
   { id: "sharing", icon: Share2 },
+  { id: "shortcuts", icon: Keyboard },
   { id: "about", icon: Info },
 ];
 
@@ -204,9 +221,12 @@ type KeyStatus = "checking" | "saved" | "none" | "unavailable";
 
 /**
  * The provider's API key in the system keyring: only whether one is saved is ever shown.
- * Saving and removing apply at once, not on Save.
+ * Saving and removing apply at once, not on Save. `usage`: the key kept apart for reading the
+ * plan usage in the bar under a terminal, instead of the AI features' one.
  */
-function ApiKeyField({ provider }: { provider: AiProvider }) {
+function ApiKeyField({ provider, usage = false }: { provider: AiProvider; usage?: boolean }) {
+  const command = usage ? "usage_key" : "ai_key";
+  const inputId = usage ? "settings-usage-key" : "settings-ai-key";
   const t = useT();
   const [status, setStatus] = useState<KeyStatus>("checking");
   const [key, setKey] = useState("");
@@ -218,13 +238,13 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
     setStatus("checking");
     setError(null);
     Promise.resolve()
-      .then(() => invoke<boolean>("ai_key_status", { provider }))
+      .then(() => invoke<boolean>(`${command}_status`, { provider }))
       .then((saved) => current && setStatus(saved ? "saved" : "none"))
       .catch(() => current && setStatus("unavailable"));
     return () => {
       current = false;
     };
-  }, [provider]);
+  }, [provider, command]);
 
   const run = (action: () => Promise<unknown>, after: KeyStatus, failure: "saveKeyFailed" | "removeKeyFailed") => {
     setBusy(true);
@@ -247,10 +267,10 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
   };
   return (
     <div className="field">
-      <label htmlFor="settings-ai-key">{t("settings.ai.apiKey")}</label>
+      <label htmlFor={inputId}>{usage ? t("settings.terminal.aiUsageKey") : t("settings.ai.apiKey")}</label>
       <div className="form-row field__picker">
         <input
-          id="settings-ai-key"
+          id={inputId}
           type="password"
           autoComplete="off"
           value={key}
@@ -261,7 +281,7 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
           type="button"
           className="btn"
           disabled={busy || !key.trim()}
-          onClick={() => run(() => invoke("ai_key_save", { provider, key: key.trim() }), "saved", "saveKeyFailed")}
+          onClick={() => run(() => invoke(`${command}_save`, { provider, key: key.trim() }), "saved", "saveKeyFailed")}
         >
           {t("settings.ai.saveKey")}
         </button>
@@ -269,18 +289,21 @@ function ApiKeyField({ provider }: { provider: AiProvider }) {
           type="button"
           className="btn"
           disabled={busy || status !== "saved"}
-          onClick={() => run(() => invoke("ai_key_delete", { provider }), "none", "removeKeyFailed")}
+          onClick={() => run(() => invoke(`${command}_delete`, { provider }), "none", "removeKeyFailed")}
         >
           {t("settings.ai.removeKey")}
         </button>
       </div>
       <span className="muted">{label[status]}</span>
+      {usage && status !== "saved" && <span className="muted">{t("settings.terminal.aiUsageKeyHelp")}</span>}
       {error && <span className="form-error">{error}</span>}
     </div>
   );
 }
 
 const APP_VERSION = packageJson.version;
+/** A change is applied this long after the last edit (or at once when the dialog closes). */
+export const AUTO_SAVE_DELAY_MS = 500;
 const REPO_URL = "https://github.com/jorgealonsodev/PlexusTerm";
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD_PARTY_NOTICES.md`;
 /** The repository's issue forms (.github/ISSUE_TEMPLATE); `version` is the bug form's field id. */
@@ -319,6 +342,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
   const [focusBorderColor, setFocusBorderColor] = useState(settings.focusBorderColor);
   const [focusBorderStrength, setFocusBorderStrength] = useState(settings.focusBorderStrength);
+  const [paneFooterHeight, setPaneFooterHeight] = useState(String(settings.paneFooterHeight));
   const [copyOnSelect, setCopyOnSelect] = useState(settings.copyOnSelect);
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
@@ -329,6 +353,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
   const [devFolderInFooter, setDevFolderInFooter] = useState(settings.devFolderInFooter);
+  const [aiUsageInFooter, setAiUsageInFooter] = useState(settings.aiUsageInFooter);
+  const [aiUsageProvider, setAiUsageProvider] = useState(settings.aiUsageProvider);
   const [sharing, setSharing] = useState<SharingValues>({
     shareRelayUrl: settings.shareRelayUrl,
     shareViewerOrigin: settings.shareViewerOrigin,
@@ -396,7 +422,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [shortcuts, setShortcuts] = useState(settings.shortcuts);
-  const [section, setSection] = useState<Section>(initialSection ?? "appearance");
+  const [section, setSection] = useState<Section>(initialSection ?? "general");
   const dark = TERMINAL_THEMES.filter((scheme) => scheme.dark);
   const light = TERMINAL_THEMES.filter((scheme) => !scheme.dark);
 
@@ -429,15 +455,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       .catch((err) => setHistoryNote(t("settings.ai.historyClearFailed", { error: String(err) })));
   };
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  /** The settings as the fields show them now (an unreadable number keeps the saved value). */
+  const draft = (): TerminalSettings => {
     const size = Number.parseFloat(fontSize);
     const uiSize = Number.parseFloat(uiFontSize);
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
     const recentLimit = Number.parseFloat(recentFolderLimit);
     const context = Number.parseFloat(aiHistoryContext);
-    onSave({
+    return {
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
       fontWeight,
@@ -446,6 +472,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
       focusBorderColor: cleanHexColor(focusBorderColor),
       focusBorderStrength: clampFocusBorderStrength(focusBorderStrength),
+      paneFooterHeight: Number.isFinite(Number.parseFloat(paneFooterHeight))
+        ? clampPaneFooterHeight(Number.parseFloat(paneFooterHeight))
+        : settings.paneFooterHeight,
       copyOnSelect,
       rightClickPastes,
       confirmMultilinePaste,
@@ -494,10 +523,47 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       devCommands: parseDevCommands(devCommands),
       recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
       devFolderInFooter,
+      aiUsageInFooter,
+      aiUsageProvider,
       ...sharing,
       shareRelayUrl: cleanShareUrl(sharing.shareRelayUrl, ["wss", "ws"]),
       shareViewerOrigin: cleanShareUrl(sharing.shareViewerOrigin, ["https", "http"]),
-    });
+    };
+  };
+
+  // Every change is applied by itself, without a Save button: a moment after the last edit (so a
+  // number or a path being typed is not applied at each key), and at once when the dialog closes.
+  const next = draft();
+  const nextKey = JSON.stringify(next);
+  // What the fields showed when the dialog opened counts as saved: opening it changes nothing.
+  const saved = useRef<string | null>(null);
+  if (saved.current === null) saved.current = nextKey;
+  const pending = useRef<{ key: string; value: TerminalSettings } | null>(null);
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const flush = () => {
+    const change = pending.current;
+    pending.current = null;
+    if (!change || change.key === saved.current) return;
+    saved.current = change.key;
+    onSaveRef.current(change.value);
+  };
+  useEffect(() => {
+    if (nextKey === saved.current) {
+      pending.current = null;
+      return;
+    }
+    pending.current = { key: nextKey, value: next };
+    const timer = setTimeout(flush, AUTO_SAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+    // `next` is described by `nextKey`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextKey]);
+  // Closed some other way (the app closing it): what was edited is still applied.
+  useEffect(() => () => flush(), []);
+  const close = () => {
+    flush();
+    onCancel();
   };
 
   // Sentences with markup inside: the placeholder marks where the code or the link goes.
@@ -521,8 +587,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   });
 
   return (
-    <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
-      <form className="dialog settings" onSubmit={submit} aria-labelledby="settings-title" noValidate>
+    <div className="overlay" onKeyDown={(e) => e.key === "Escape" && close()}>
+      <form className="dialog settings" onSubmit={(e) => e.preventDefault()} aria-labelledby="settings-title" noValidate>
         <h2 id="settings-title">{t("settings.dialog.title")}</h2>
         <div className="settings__body">
           <nav className="settings__nav" role="tablist" aria-orientation="vertical" aria-label={t("settings.dialog.sections")}>
@@ -542,7 +608,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             ))}
           </nav>
 
-          <div {...panel("appearance")}>
+          <div {...panel("general")}>
             <div className="field">
               <label htmlFor="settings-language">{t("settings.language.label")}</label>
               <div className="form-row">
@@ -569,6 +635,34 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
             </div>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={sidebarHideWhenCollapsed}
+                onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
+              />
+              <span className="setting-title">
+                {t("settings.appearance.hideSidebar")} <HelpTip text={sidebarShortcut ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut }) : t("settings.appearance.sidebarHelpNoShortcut")} />
+              </span>
+            </label>
+            <label className="field">
+              {t("settings.appearance.sidebarAtStartup")}
+              <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
+                <option value="last">{t("settings.appearance.sidebarLast")}</option>
+                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
+                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
+              </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={checkUpdates} onChange={(e) => setCheckUpdates(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.about.checkAtStartup")} <HelpTip text={t("settings.about.checkHelp")} />
+              </span>
+            </label>
+          </div>
+
+          <div {...panel("appearance")}>
+            <h3 className="settings__group">{t("settings.groups.colours")}</h3>
             <label className="field">
               {t("settings.appearance.colourScheme")}
               <select value={theme} onChange={(e) => setTheme(e.target.value)}>
@@ -589,6 +683,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </select>
             </label>
             <ThemePreview entry={themeById(theme)} fontFamily={cleanFontFamily(fontFamily)} />
+            <h3 className="settings__group">{t("settings.groups.fonts")}</h3>
             <label className="field">
               {t("settings.appearance.font")}
               <select value={catalogChoice(fontFamily, installedFonts)} onChange={(e) => e.target.value && setFontFamily(e.target.value)}>
@@ -694,6 +789,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setViewerFontSize(e.target.value)}
               />
             </label>
+            <h3 className="settings__group">{t("settings.groups.panes")}</h3>
             <div className="field">
               <span className="setting-title">
                 {t("settings.appearance.focusBorder")} <HelpTip text={t("settings.appearance.focusBorderHelp")} />
@@ -727,45 +823,23 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 />
               </label>
             </div>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={sidebarHideWhenCollapsed}
-                onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
-              />
+            <label className="field field--size">
               <span className="setting-title">
-                {t("settings.appearance.hideSidebar")} <HelpTip text={sidebarShortcut ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut }) : t("settings.appearance.sidebarHelpNoShortcut")} />
+                {t("settings.appearance.paneFooterHeight")} <HelpTip text={t("settings.appearance.paneFooterHeightHelp")} />
               </span>
-            </label>
-            <label className="field">
-              {t("settings.appearance.sidebarAtStartup")}
-              <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
-                <option value="last">{t("settings.appearance.sidebarLast")}</option>
-                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
-                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
-              </select>
-            </label>
-            <label className="check">
               <input
-                type="checkbox"
-                checked={devColumnHideWhenCollapsed}
-                onChange={(e) => setDevColumnHideWhenCollapsed(e.target.checked)}
+                type="number"
+                min={MIN_PANE_FOOTER_HEIGHT}
+                max={MAX_PANE_FOOTER_HEIGHT}
+                step={1}
+                value={paneFooterHeight}
+                onChange={(e) => setPaneFooterHeight(e.target.value)}
               />
-              <span className="setting-title">
-                {t("settings.appearance.hideDevColumn")} <HelpTip text={devColumnShortcut ? t("settings.appearance.devColumnHelp", { shortcut: devColumnShortcut }) : t("settings.appearance.devColumnHelpNoShortcut")} />
-              </span>
-            </label>
-            <label className="field">
-              {t("settings.appearance.devColumnAtStartup")}
-              <select value={devColumnAtStartup} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
-                <option value="last">{t("settings.appearance.sidebarLast")}</option>
-                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
-                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
-              </select>
             </label>
           </div>
 
           <div {...panel("terminal")}>
+            <h3 className="settings__group">{t("settings.groups.session")}</h3>
             <ShellPicker
               id="settings-local-shell"
               label={t("settings.terminal.shell")}
@@ -801,6 +875,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
             </div>
+            <h3 className="settings__group">{t("settings.groups.input")}</h3>
             <label className="check">
               <input type="checkbox" checked={copyOnSelect} onChange={(e) => setCopyOnSelect(e.target.checked)} />
               {t("settings.terminal.copyOnSelect")}
@@ -820,12 +895,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </span>
             </label>
             <label className="check">
-              <input type="checkbox" checked={errorHighlight} onChange={(e) => setErrorHighlight(e.target.checked)} />
-              <span className="setting-title">
-                {t("settings.terminal.errorHighlight")} <HelpTip text={t("settings.terminal.errorHighlightHelp")} />
-              </span>
-            </label>
-            <label className="check">
               <input
                 type="checkbox"
                 checked={shiftEnterNewline}
@@ -833,6 +902,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
               <span className="setting-title">
                 {t("settings.terminal.shiftEnterNewline")} <HelpTip text={t("settings.terminal.shiftEnterNewlineHelp")} />
+              </span>
+            </label>
+            <h3 className="settings__group">{t("settings.groups.display")}</h3>
+            <label className="check">
+              <input type="checkbox" checked={errorHighlight} onChange={(e) => setErrorHighlight(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.errorHighlight")} <HelpTip text={t("settings.terminal.errorHighlightHelp")} />
               </span>
             </label>
             <label className="check">
@@ -851,6 +927,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.terminal.gpuAcceleration")} <HelpTip text={t("settings.terminal.gpuAccelerationHelp")} />
               </span>
             </label>
+          </div>
+
+          <div {...panel("dev")}>
             <div className="field">
               <label htmlFor="settings-dev-commands"><span className="setting-title">{t("settings.terminal.devCommands")} <HelpTip text={t("settings.terminal.devCommandsHelp")} /></span></label>
               <input
@@ -879,15 +958,46 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setRecentFolderLimit(e.target.value)}
               />
             </label>
-          </div>
-
-          <div {...panel("shortcuts")}>
-            <ShortcutsPanel
-              overrides={shortcuts}
-              assistantShortcut={assistantShortcut}
-              onChange={setShortcuts}
-              onAssistantChange={setAssistantShortcut}
-            />
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={devColumnHideWhenCollapsed}
+                onChange={(e) => setDevColumnHideWhenCollapsed(e.target.checked)}
+              />
+              <span className="setting-title">
+                {t("settings.appearance.hideDevColumn")} <HelpTip text={devColumnShortcut ? t("settings.appearance.devColumnHelp", { shortcut: devColumnShortcut }) : t("settings.appearance.devColumnHelpNoShortcut")} />
+              </span>
+            </label>
+            <label className="field">
+              {t("settings.appearance.devColumnAtStartup")}
+              <select value={devColumnAtStartup} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
+                <option value="last">{t("settings.appearance.sidebarLast")}</option>
+                <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
+                <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
+              </select>
+            </label>
+            <h3 className="settings__group">{t("settings.groups.aiUsage")}</h3>
+            <label className="check">
+              <input type="checkbox" checked={aiUsageInFooter} onChange={(e) => setAiUsageInFooter(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.aiUsageInFooter")} <HelpTip text={t("settings.terminal.aiUsageInFooterHelp")} />
+              </span>
+            </label>
+            <label className="field">
+              {t("settings.terminal.aiUsageProvider")}
+              <select
+                value={aiUsageProvider}
+                disabled={!aiUsageInFooter}
+                onChange={(e) => setAiUsageProvider(e.target.value as AiUsageChoice)}
+              >
+                <option value="auto">{t("settings.terminal.aiUsageAuto")}</option>
+                <option value="claude">Claude Code</option>
+                <option value="codex">Codex</option>
+                <option value="agy">Antigravity</option>
+                <option value="opencodeGo">OpenCode Go</option>
+                <option value="off">{t("app.usage.off")}</option>
+              </select>
+            </label>
           </div>
 
           <div {...panel("ssh")}>
@@ -1045,6 +1155,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </label>
             )}
             <ApiKeyField provider={aiProvider} />
+            {aiUsageInFooter && (
+              <>
+                <h3 className="settings__group">{t("settings.groups.planUsage")}</h3>
+                <ApiKeyField provider="opencode-go" usage />
+              </>
+            )}
             <label className="field field--number">
               {t("settings.ai.historyContext")}
               <input
@@ -1069,6 +1185,15 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               onChange={(change) => setSharing((current) => ({ ...current, ...change }))}
               linux={platform === "linux"}
               onAuditLog={() => setAuditOpen(true)}
+            />
+          </div>
+
+          <div {...panel("shortcuts")}>
+            <ShortcutsPanel
+              overrides={shortcuts}
+              assistantShortcut={assistantShortcut}
+              onChange={setShortcuts}
+              onAssistantChange={setAssistantShortcut}
             />
           </div>
 
@@ -1102,12 +1227,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                         : t("settings.about.checkFailed", { error: updateState.error })}
                 </p>
               )}
-              <label className="check">
-                <input type="checkbox" checked={checkUpdates} onChange={(e) => setCheckUpdates(e.target.checked)} />
-                <span className="setting-title">
-                  {t("settings.about.checkAtStartup")} <HelpTip text={t("settings.about.checkHelp")} />
-                </span>
-              </label>
               <div className="settings__updates">
                 <button type="button" className="btn" onClick={(e) => openLink(e, BUG_REPORT_URL)}>
                   {t("settings.about.reportProblem")}
@@ -1173,11 +1292,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
         </div>
         <div className="dialog__actions">
-          <button type="button" className="btn" onClick={onCancel}>
-            {t("common.cancel")}
-          </button>
-          <button type="submit" className="btn btn--primary">
-            {t("common.save")}
+          <button type="button" className="btn btn--primary" onClick={close}>
+            {t("common.close")}
           </button>
         </div>
       </form>

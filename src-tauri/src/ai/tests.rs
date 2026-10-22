@@ -139,6 +139,7 @@ fn endpoints(base: &str) -> Endpoints {
         openai: format!("{base}/v1/chat/completions"),
         opencode_go: format!("{base}/inference/go/v1"),
         models_dev: format!("{base}/api.json"),
+        opencode_go_usage: format!("{base}/zen/go/v1/usage"),
     }
 }
 
@@ -2019,5 +2020,65 @@ async fn a_rejected_key_message_names_each_provider_once() {
     assert_eq!(
         status_error(Provider::OpenAi, 403, "{}", None).message,
         "The OpenAI API key was rejected. Check it in Settings > AI."
+    );
+}
+
+#[tokio::test]
+async fn opencode_go_usage_is_read_with_the_saved_key() {
+    let reply = json!({"usage": {
+        "rolling": {"status": "ok", "percent": 42, "resetsAt": "2026-10-22T19:30:00.000Z"},
+        "weekly": {"status": "ok", "percent": 18, "resetsAt": "2026-10-26T00:00:00.000Z"},
+        "monthly": {"status": "rate-limited", "percent": 100, "resetsAt": "2026-11-01T00:00:00.000Z"}}});
+    let (base, seen) = mock(200, reply, Duration::ZERO).await;
+    let store = store_with(Provider::OpenCodeGo, Some(KEY));
+    let usage = client(&base).opencode_go_usage(&store).await.unwrap();
+    assert_eq!(usage.windows.len(), 3);
+    assert_eq!(usage.windows[0].percent, 42.0);
+    assert!(usage.windows[2].limited);
+    let seen = seen.await.unwrap();
+    assert_eq!(seen.method, "GET");
+    assert_eq!(seen.path, "/zen/go/v1/usage");
+    assert_eq!(
+        seen.headers.get("authorization").map(String::as_str),
+        Some(format!("Bearer {KEY}").as_str())
+    );
+}
+
+#[tokio::test]
+async fn opencode_go_usage_without_a_key_asks_for_one() {
+    let store = store_with(Provider::OpenCodeGo, None);
+    let err = client("http://127.0.0.1:9")
+        .opencode_go_usage(&store)
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::NoKey);
+}
+
+#[tokio::test]
+async fn opencode_go_usage_with_a_rejected_key_is_an_auth_error() {
+    let reply = json!({"type": "error", "error": {"type": "AuthError", "message": "Unauthorized"}});
+    let (base, _seen) = mock(401, reply, Duration::ZERO).await;
+    let store = store_with(Provider::OpenCodeGo, Some(KEY));
+    let err = client(&base).opencode_go_usage(&store).await.unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Auth);
+}
+
+#[tokio::test]
+async fn opencode_go_usage_prefers_the_key_saved_for_the_usage() {
+    let reply = json!({"usage": {"rolling": {"status": "ok", "percent": 1, "resetsAt": "2026-10-22T19:30:00.000Z"}}});
+    let (base, seen) = mock(200, reply, Duration::ZERO).await;
+    let store = store_with(Provider::OpenCodeGo, Some(KEY));
+    store
+        .set(
+            &Provider::OpenCodeGo.usage_key_account(),
+            "label",
+            "usage-key",
+        )
+        .unwrap();
+    client(&base).opencode_go_usage(&store).await.unwrap();
+    let seen = seen.await.unwrap();
+    assert_eq!(
+        seen.headers.get("authorization").map(String::as_str),
+        Some("Bearer usage-key")
     );
 }
