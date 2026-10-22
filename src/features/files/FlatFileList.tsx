@@ -1,8 +1,7 @@
 import type { LiHTMLAttributes } from "react";
 import type { SftpEntry } from "../sftp/sftpClient";
 import { formatDate, formatSize } from "../sftp/format";
-
-const ICONS: Record<SftpEntry["kind"], string> = { dir: "📁", file: "📄", symlink: "🔗" };
+import { FlatFileIcon } from "./FlatFileIcon";
 
 interface FlatFileListProps {
   entries: SftpEntry[];
@@ -30,7 +29,9 @@ export function FlatFileList({ entries, selected, onSelect, onOpen, rowProps, de
           onKeyDown={(e) => e.key === "Enter" && onOpen(entry)}
           {...rowProps(entry)}
         >
-          <span className="sftp-row__icon">{ICONS[entry.kind]}</span>
+          <span className="sftp-row__icon">
+            <FlatFileIcon entry={entry} />
+          </span>
           <span className="sftp-row__name">{entry.name}</span>
           {details && (
             <>

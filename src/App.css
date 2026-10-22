@@ -692,6 +692,46 @@ textarea::placeholder {
   font-weight: 500;
 }
 
+/* Icons of the plain file lists (outside DEV mode): line icons, folders tinted, files by kind. */
+.flat-icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.flat-icon--folder {
+  color: var(--warning);
+  fill: color-mix(in srgb, var(--warning) 22%, transparent);
+}
+
+.flat-icon--link,
+.flat-icon--data {
+  color: var(--accent);
+}
+
+.flat-icon--code {
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+}
+
+.flat-icon--config,
+.flat-icon--key {
+  color: color-mix(in srgb, var(--warning) 70%, var(--muted));
+}
+
+.flat-icon--script,
+.flat-icon--sheet {
+  color: var(--success);
+}
+
+.flat-icon--image,
+.flat-icon--video,
+.flat-icon--audio {
+  color: color-mix(in srgb, var(--danger) 60%, var(--accent));
+}
+
+.flat-icon--archive {
+  color: var(--danger);
+}
+
 .tree-row__chevron {
   width: 10px;
   color: var(--muted);

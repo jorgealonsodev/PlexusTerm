@@ -559,8 +559,8 @@ describe("SftpPanel outside DEV mode", () => {
     const { container } = render(panel({ git: { enabled: true, visible: true, prompt: 0 } }));
     const folder = await screen.findByText("src");
     const row = folder.closest("li")!;
-    expect(row.querySelector(".sftp-row__icon")!.textContent).toBe("📁");
-    expect(screen.getByText("notes.txt").closest("li")!.querySelector(".sftp-row__icon")!.textContent).toBe("📄");
+    expect(row.querySelector(".sftp-row__icon [data-kind]")!.getAttribute("data-kind")).toBe("folder");
+    expect(screen.getByText("notes.txt").closest("li")!.querySelector(".sftp-row__icon [data-kind]")!.getAttribute("data-kind")).toBe("text");
     expect(container.querySelector("[role=tree], .tree-chevron, [data-icon], .sftp-row__git")).toBeNull();
     fireEvent.click(folder);
     expect(row.getAttribute("aria-expanded")).toBeNull();
