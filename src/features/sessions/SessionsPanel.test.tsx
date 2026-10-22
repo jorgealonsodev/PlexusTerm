@@ -194,7 +194,7 @@ describe("SessionsPanel", () => {
     const ini = "[Bookmarks]\r\nSubRep=Prod\r\nrdp=#1#0%10.0.0.1%3389%\r\nnew=#109#0%10.0.0.2%%root%\r\n";
     vi.mocked(open).mockResolvedValue("/home/u/sessions.ini");
     vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(ini)));
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     expect(await screen.findByText("1 session to import.")).toBeTruthy();
     fireEvent.click(screen.getByText("Import 1 session"));
@@ -209,7 +209,7 @@ describe("SessionsPanel", () => {
     renderPanel();
     vi.mocked(save).mockResolvedValue("/home/u/plexusterm-sessions.json");
     vi.mocked(invoke).mockResolvedValue(null);
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export sessions" }));
     expect(await screen.findByText("1 session exported to /home/u/plexusterm-sessions.json.")).toBeTruthy();
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "plexusterm-sessions.json" }));
     const [, args] = vi.mocked(invoke).mock.calls.find(([cmd]) => cmd === "save_text_file")!;
@@ -222,11 +222,11 @@ describe("SessionsPanel", () => {
     renderPanel();
     vi.mocked(save).mockResolvedValue("/root/x.json");
     vi.mocked(invoke).mockRejectedValue("permission denied");
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export sessions" }));
     expect(await screen.findByText("Could not export the sessions: permission denied")).toBeTruthy();
     cleanup();
     renderPanel({ library: emptyLibrary });
-    expect(screen.getByRole("button", { name: "Export" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Export sessions" })).toHaveProperty("disabled", true);
   });
 
   it("imports a PlexusTerm export after the preview", async () => {
@@ -234,7 +234,7 @@ describe("SessionsPanel", () => {
     const exported = JSON.stringify({ version: 1, folders: [], sessions: [web] });
     vi.mocked(open).mockResolvedValue("/home/u/plexusterm-sessions.json");
     vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(exported)));
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From a PlexusTerm export (.json)…" }));
     expect(await screen.findByText("1 session to import.")).toBeTruthy();
     fireEvent.click(screen.getByText("Import 1 session"));
@@ -247,7 +247,7 @@ describe("SessionsPanel", () => {
     renderPanel();
     vi.mocked(open).mockResolvedValue("/home/u/sessions.ini");
     vi.mocked(invoke).mockResolvedValue([]);
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     expect(await screen.findByText("No sessions to import.")).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/sessions.ini" });
@@ -259,7 +259,7 @@ describe("SessionsPanel", () => {
     vi.mocked(invoke).mockImplementation(async (cmd) =>
       cmd === "local_home" ? "/home/u" : Array.from(new TextEncoder().encode(config)),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From ~/.ssh/config" }));
     expect(await screen.findByText("2 sessions to import.")).toBeTruthy();
     expect(invoke).toHaveBeenCalledWith("import_read_file", { path: "/home/u/.ssh/config" });
@@ -281,7 +281,7 @@ describe("SessionsPanel", () => {
       if (cmd === "local_home") return "/home/u";
       throw "/home/u/.ssh/config: No such file or directory (os error 2)";
     });
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From ~/.ssh/config" }));
     expect(await screen.findByRole("alert")).toHaveProperty(
       "textContent",
@@ -293,7 +293,7 @@ describe("SessionsPanel", () => {
     renderPanel();
     vi.mocked(open).mockResolvedValue(null);
     vi.mocked(invoke).mockClear();
-    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import sessions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "From an .ini file…" }));
     await Promise.resolve();
     expect(invoke).not.toHaveBeenCalled();
@@ -303,8 +303,8 @@ describe("SessionsPanel", () => {
   it("disables editing and explains why when the file could not be read", () => {
     renderPanel({ status: { state: "error", message: "bad json" } });
     expect(screen.getByText(/Editing is disabled/)).toBeTruthy();
-    expect(screen.queryByText("New")).toBeNull();
-    expect(screen.queryByText("Import")).toBeNull();
+    expect(screen.queryByRole("button", { name: "New session" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import sessions" })).toBeNull();
     expect(screen.queryByTitle("Edit")).toBeNull();
   });
 });

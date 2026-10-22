@@ -114,10 +114,10 @@ describe("App confirmations use the in-app dialogs (S1)", () => {
 
   it("creates a folder with the typed name, and nothing when cancelled", async () => {
     await mount();
-    fireEvent.click(screen.getByRole("button", { name: "Folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     await press("New folder", "Cancel");
     expect(saves("sessions_save")).toEqual([]);
-    fireEvent.click(screen.getByRole("button", { name: "Folder" }));
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
     const field = screen.getByRole("textbox", { name: "New folder" });
     fireEvent.change(field, { target: { value: "lab" } });
     await act(async () => void fireEvent.keyDown(field, { key: "Enter" }));

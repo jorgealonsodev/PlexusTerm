@@ -82,7 +82,7 @@ The toolbar **More** menu opens **Telnet…** and **Mosh…** quick-connect dial
 Confirmations and questions (deleting sessions, folders, tunnels and macros, naming a new folder, the SFTP actions) open in PlexusTerm's own dialogs: Enter submits a typed name and presses the focused button of a confirmation, Escape cancels, and Cancel has the focus when the action deletes something. Cancelling never performs the action.
 
 The **Sessions** panel on the left keeps SSH, serial, Telnet, Mosh and local terminal sessions in folders (`Prod/DB` style paths).
-Use **New** / **Folder** or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host, serial device or shell.
+The icons at the top of the Sessions panel are, in order, **New session** (+), **New folder**, **Import sessions** and **Export sessions**; hover one for its name. Use them or the hover actions on a folder; double-click a session (or press Enter) to connect, and the search box filters by name, host, serial device or shell.
 Right-click a session for **Connect**, **Copy SSH command** (SSH sessions: `ssh -p <port> [-i <key>] user@host`, quoted for a shell, without jump hosts), **Edit…**, **Duplicate** (a copy named "<name> (copy)" next to it; a saved keyring password is not copied) and **Delete**. Right-click a folder for **New session here…**, **New folder here…**, **Connect all** (every session in it and its subfolders, each in its own tab) and **Delete folder**. While the sessions file cannot be read, the menus only offer connecting and copying the SSH command.
 The edit dialog has a **Session type** selector (SSH, Serial, Telnet, Mosh or Local terminal) that shows the matching fields. Serial sessions keep the device path and line settings and Telnet sessions the host and port; both open directly, without any password. Mosh sessions name the saved SSH session they log in with and an optional server command. Local terminal sessions keep a shell (the system default, a detected one or any program, as in [Terminal settings](#terminal-settings)), its arguments and a **Starting directory** (`~` is your home directory; empty starts there too), so a PowerShell, a WSL distribution or a project folder is one double-click away; their tabs are titled with the shell's name.
 
@@ -118,7 +118,7 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ### Import sessions from an .ini file
 
-**Import → From an .ini file…** in the Sessions panel reads a sessions `.ini` file with `[Bookmarks]` sections (UTF-8, or the Windows-1252 code page these files are often written in) and shows a preview before anything is saved:
+**Import sessions → From an .ini file…** in the Sessions panel reads a sessions `.ini` file with `[Bookmarks]` sections (UTF-8, or the Windows-1252 code page these files are often written in) and shows a preview before anything is saved:
 
 - SSH sessions from the `[Bookmarks]` / `[Bookmarks_N]` sections are imported with their host, port (22 when missing or invalid) and username, and Telnet sessions with their host and port (23 when missing or invalid), under an **Imported** folder that keeps the folder path saved in the file.
 - Imported SSH sessions use password authentication; change it later with **Edit**. Private key paths are not imported.
@@ -128,7 +128,7 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ### Import hosts from ~/.ssh/config
 
-**Import → From ~/.ssh/config** reads the OpenSSH client config of your home folder (`~/.ssh/config`, also on Windows) and shows the same preview:
+**Import sessions → From ~/.ssh/config** reads the OpenSSH client config of your home folder (`~/.ssh/config`, also on Windows) and shows the same preview:
 
 - Each concrete `Host` alias becomes an SSH session named after it, under **Imported/SSH config**. Wildcard (`*`, `?`) and negated (`!`) patterns are not imported as sessions, but their options apply to the hosts they match, as do options before the first `Host`; like ssh, the first value of each option wins.
 - `HostName` (the alias when missing; `%h` is replaced by the alias), `User` (empty when missing), `Port` (22 when missing or invalid) and the first `IdentityFile` are read. A host with an `IdentityFile` uses that private key (`%d` becomes `~`); one without uses password authentication.
@@ -138,9 +138,9 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 ### Export sessions
 
-**Export**, next to **Import**, saves every saved session and folder to one file (`plexusterm-sessions.json` by default), to back them up or to take them to another computer. It is the format of PlexusTerm's own sessions file: SSH, Telnet, Mosh, serial and local sessions with their folders, jump hosts and key paths. Passwords are not in it (saved ones stay in the system keyring), nor are the private keys themselves, only their paths.
+**Export sessions**, the icon after **Import sessions**, saves every saved session and folder to one file (`plexusterm-sessions.json` by default), to back them up or to take them to another computer. It is the format of PlexusTerm's own sessions file: SSH, Telnet, Mosh, serial and local sessions with their folders, jump hosts and key paths. Passwords are not in it (saved ones stay in the system keyring), nor are the private keys themselves, only their paths.
 
-**Import → From a PlexusTerm export (.json)** reads such a file and shows the same preview. Its sessions go under **Imported**, keeping their own folders below it, and their jump hosts and Mosh logins point to the imported sessions; sessions already imported the same way are skipped, so importing the file again adds nothing.
+**Import sessions → From a PlexusTerm export (.json)** reads such a file and shows the same preview. Its sessions go under **Imported**, keeping their own folders below it, and their jump hosts and Mosh logins point to the imported sessions; sessions already imported the same way are skipped, so importing the file again adds nothing.
 
 ## SFTP browser
 

@@ -1,4 +1,5 @@
-import { Folder, FolderOpen, Globe, KeyRound, SquareTerminal, Usb, Waypoints } from "lucide-react";
+import { Download, Folder, FolderOpen, FolderPlus, Globe, KeyRound, Plus, SquareTerminal, Upload, Usb, Waypoints } from "lucide-react";
+import { ToolButton } from "../files/ToolButton";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
@@ -275,26 +276,22 @@ export function SessionsPanel(props: SessionsPanelProps) {
         <span>{t("sessions.panel.title")}</span>
         {editable && (
           <span className="sidebar__actions">
-            <button className="btn btn--small" onClick={() => props.onNewSession("")}>{t("sessions.panel.new")}</button>
-            <button className="btn btn--small" onClick={() => props.onNewFolder("")}>{t("sessions.panel.folder")}</button>
-            <button
-              className="btn btn--small"
-              aria-haspopup="menu"
+            <ToolButton icon={Plus} label={t("sessions.edit.newTitle")} onClick={() => props.onNewSession("")} />
+            <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} onClick={() => props.onNewFolder("")} />
+            <ToolButton
+              icon={Download}
+              label={t("sessions.import.title")}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 setImportMenu({ x: rect.left, y: rect.bottom });
               }}
-            >
-              {t("sessions.panel.import")}
-            </button>
-            <button
-              className="btn btn--small"
+            />
+            <ToolButton
+              icon={Upload}
+              label={t("sessions.panel.exportTitle")}
               disabled={status.state !== "ready" || library.sessions.length === 0}
-              title={t("sessions.panel.exportHint")}
               onClick={() => void exportSessions()}
-            >
-              {t("sessions.panel.export")}
-            </button>
+            />
           </span>
         )}
       </div>
