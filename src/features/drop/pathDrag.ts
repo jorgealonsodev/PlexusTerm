@@ -64,6 +64,20 @@ export function dropTargetAt(x: number, y: number): Element | null {
  * A small label follows the pointer; the drop target under it is highlighted.
  */
 export function startPathDrag(e: ReactPointerEvent, drag: PathDrag, label: string) {
+  startPointerDrag(e, label, dropTargetAt, (target) => deliverDrop(drag, target));
+}
+
+/**
+ * Follows a press that may become a drag (once the pointer moves DRAG_THRESHOLD pixels): `label`
+ * follows the pointer, the target `targetAt` finds under it is highlighted, and `onDrop` gets the
+ * target under the pointer when the button is released there (not after Escape or a cancel).
+ */
+export function startPointerDrag(
+  e: ReactPointerEvent,
+  label: string,
+  targetAt: (x: number, y: number) => Element | null,
+  onDrop: (target: Element | null) => void,
+) {
   if (e.button !== 0) return;
   const startX = e.clientX;
   const startY = e.clientY;
@@ -87,7 +101,7 @@ export function startPathDrag(e: ReactPointerEvent, drag: PathDrag, label: strin
     }
     ghost.style.left = `${ev.clientX + 12}px`;
     ghost.style.top = `${ev.clientY + 12}px`;
-    highlight(dropTargetAt(ev.clientX, ev.clientY));
+    highlight(targetAt(ev.clientX, ev.clientY));
   };
   const end = (ev: PointerEvent, dropped: boolean) => {
     window.removeEventListener("pointermove", move);
@@ -98,7 +112,7 @@ export function startPathDrag(e: ReactPointerEvent, drag: PathDrag, label: strin
     const started = ghost !== null;
     ghost?.remove();
     document.body.classList.remove("is-dragging-path");
-    if (started && dropped) deliverDrop(drag, dropTargetAt(ev.clientX, ev.clientY));
+    if (started && dropped) onDrop(targetAt(ev.clientX, ev.clientY));
   };
   const up = (ev: PointerEvent) => end(ev, true);
   const cancel = (ev: PointerEvent) => end(ev, false);

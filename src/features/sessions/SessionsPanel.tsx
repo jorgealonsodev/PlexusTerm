@@ -1,5 +1,6 @@
 import { Download, Folder, FolderOpen, FolderPlus, Globe, KeyRound, Plus, SquareTerminal, Upload, Usb, Waypoints } from "lucide-react";
 import { ToolButton } from "../files/ToolButton";
+import { startPointerDrag } from "../drop/pathDrag";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
@@ -39,6 +40,14 @@ interface SessionsPanelProps {
   onImport: (sessions: LibrarySession[]) => void;
   /** Saves a copy of the session next to it. */
   onDuplicate: (session: LibrarySession) => void;
+  /** Moves a session to another folder ("" is the root), dragged onto it. */
+  onMove: (session: LibrarySession, folder: string) => void;
+}
+
+/** The folder (`data-session-folder`, "" for the root) under a point while a session is dragged. */
+export function sessionFolderAt(x: number, y: number): Element | null {
+  const hit = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+  return hit?.closest("[data-session-folder]") ?? null;
 }
 
 type Menu =
@@ -219,7 +228,8 @@ export function SessionsPanel(props: SessionsPanelProps) {
       // While filtering, every matching folder is shown expanded.
       const open = filter.trim() !== "" || !collapsed.has(node.path);
       return (
-        <li key={`f:${node.path}`}>
+        // Dropping a session anywhere on a folder (its row or the sessions in it) moves it there.
+        <li key={`f:${node.path}`} data-session-folder={node.path}>
           <div
             className="tree-row tree-row--folder"
             style={indent}
@@ -254,6 +264,13 @@ export function SessionsPanel(props: SessionsPanelProps) {
           tabIndex={0}
           title={sessionTooltip(session, props.library)}
           onDoubleClick={() => props.onOpen(session)}
+          onPointerDown={(e) => {
+            if (!editable || (e.target as Element).closest(".tree-row__actions")) return;
+            startPointerDrag(e, session.name, sessionFolderAt, (target) => {
+              const folder = target?.getAttribute("data-session-folder");
+              if (folder != null && folder !== session.folder) props.onMove(session, folder);
+            });
+          }}
           onKeyDown={(e) => e.key === "Enter" && props.onOpen(session)}
           onContextMenu={(e) => openMenu(e, { kind: "session", session })}
         >
@@ -316,7 +333,9 @@ export function SessionsPanel(props: SessionsPanelProps) {
       {status.state === "ready" && tree.length === 0 && (
         <p className="sidebar__note">{filter ? t("sessions.panel.noMatches") : t("sessions.panel.empty")}</p>
       )}
-      <ul className="tree">{tree.map((node) => renderNode(node, 0))}</ul>
+      <ul className="tree tree--sessions" data-session-folder="">
+        {tree.map((node) => renderNode(node, 0))}
+      </ul>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu)} onClose={() => setMenu(null)} />}
       {importMenu && (
         <ContextMenu

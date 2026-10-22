@@ -35,6 +35,7 @@ function renderPanel(overrides: Partial<Parameters<typeof SessionsPanel>[0]> = {
     onDeleteFolder: vi.fn(),
     onImport: vi.fn(),
     onDuplicate: vi.fn(),
+    onMove: vi.fn(),
     ...overrides,
   };
   render(<SessionsPanel {...props} />);
@@ -94,6 +95,7 @@ describe("SessionsPanel", () => {
         onDeleteFolder={vi.fn()}
         onImport={vi.fn()}
         onDuplicate={vi.fn()}
+        onMove={vi.fn()}
       />,
     );
     const iconOf = (name: string) =>
@@ -298,6 +300,44 @@ describe("SessionsPanel", () => {
     await Promise.resolve();
     expect(invoke).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  describe("dragging a session", () => {
+    const other: SavedSession = { ...web, id: "2", name: "db", folder: "", host: "10.0.0.2" };
+    const two = libraryReducer(library, { type: "saveSession", session: other });
+
+    /** Presses on `from`, moves the pointer over `over`, and releases it there. */
+    function drag(from: Element, over: Element | null, release = true) {
+      document.elementFromPoint = () => over;
+      fireEvent.pointerDown(from, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { clientX: 10, clientY: 40 });
+      if (release) fireEvent.pointerUp(window, { clientX: 10, clientY: 40 });
+      else fireEvent.keyDown(window, { key: "Escape" });
+    }
+    const folderRow = (name: string) => screen.getByText(name).closest("li")!;
+
+    it("moves it into the folder it is dropped on, or onto a session inside it", () => {
+      const props = renderPanel({ library: two });
+      drag(screen.getByTitle("u@10.0.0.2:22"), folderRow("Prod"));
+      expect(props.onMove).toHaveBeenCalledWith(expect.objectContaining({ id: "2" }), "Prod");
+      drag(screen.getByTitle("u@10.0.0.2:22"), screen.getByTitle("u@10.0.0.1:22"));
+      expect(props.onMove).toHaveBeenLastCalledWith(expect.objectContaining({ id: "2" }), "Prod");
+    });
+
+    it("moves it to the root when dropped outside any folder", () => {
+      const props = renderPanel({ library: two });
+      drag(screen.getByTitle("u@10.0.0.1:22"), document.querySelector(".tree--sessions"));
+      expect(props.onMove).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }), "");
+    });
+
+    it("does nothing in its own folder, after Escape, or on a plain click", () => {
+      const props = renderPanel({ library: two });
+      drag(screen.getByTitle("u@10.0.0.1:22"), folderRow("Prod"));
+      drag(screen.getByTitle("u@10.0.0.2:22"), folderRow("Prod"), false);
+      fireEvent.pointerDown(screen.getByTitle("u@10.0.0.2:22"), { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.pointerUp(window, { clientX: 11, clientY: 10 });
+      expect(props.onMove).not.toHaveBeenCalled();
+    });
   });
 
   it("disables editing and explains why when the file could not be read", () => {

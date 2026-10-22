@@ -659,6 +659,17 @@ textarea::placeholder {
   list-style: none;
 }
 
+/* The sessions tree reaches the bottom of the panel: a session dropped below the list goes to the root. */
+.tree--sessions {
+  flex: 1 0 auto;
+  min-height: 32px;
+}
+
+.tree--sessions li.drop-target--over > .tree-row--folder,
+.tree--sessions.drop-target--over {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .tree-row {
   display: flex;
   align-items: center;

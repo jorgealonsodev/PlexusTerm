@@ -1718,6 +1718,7 @@ function AppContent() {
                 }
                 onNewFolder={(parent) => void newFolder(parent)}
                 onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
+                onMove={(session, folder) => sessions.dispatch({ type: "saveSession", session: { ...session, folder } })}
                 onDuplicate={(session) =>
                   sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
                 }
