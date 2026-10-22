@@ -36,6 +36,8 @@ export const terminal: Messages<typeof en> = {
     textFiles: "टेक्स्ट",
     connecting: "{target} से कनेक्ट हो रहा है...",
     connectingVia: "{jumps} के माध्यम से {target} से कनेक्ट हो रहा है...",
+    stillConnecting: "होस्ट की प्रतीक्षा… {seconds} से. (Ctrl+C रद्द करता है)",
+    connectCancelled: "कनेक्शन रद्द किया गया",
     startingMosh: "SSH पर {target} पर mosh-server शुरू हो रहा है...",
     startingMoshVia: "SSH पर {jumps} के माध्यम से {target} पर mosh-server शुरू हो रहा है...",
     opening: "{target} खोला जा रहा है...",

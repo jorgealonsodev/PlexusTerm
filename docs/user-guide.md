@@ -28,6 +28,8 @@ How each feature works, its limits and where its data is stored. For installing,
 Open **SSH** (or Ctrl+Shift+S) and enter a host; the field also accepts `user@host:port`.
 Authentication: password, private key file (`~/` is expanded, optional passphrase) or the running SSH agent (`SSH_AUTH_SOCK`).
 
+While a host takes time to answer (switched off, unreachable, behind a VPN that is down), the tab says **Waiting for the host… N s (Ctrl+C cancels)** after 3 seconds, counting up; **Ctrl+C** cancels the connection there and then, and the tab stays open with **[Connection cancelled]**. Telnet and Mosh tabs do the same. A connection that would open after it was cancelled is closed at once.
+
 Password logins (terminal tabs, SFTP, tunnels, jump hosts and the Mosh login) first try your keys, like OpenSSH: the keys of the SSH agent, then the default files `~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa` and `~/.ssh/id_rsa`, at most 5 keys in all. Only unencrypted files are tried; a passphrase-protected one is skipped without asking unless the agent holds it. The password is sent only when the server rejects every key. If the server closes the connection after too many rejected keys, PlexusTerm reconnects once and tries only the password. When a key logs in, a typed password is never checked, so it is not saved in the keyring.
 
 Host keys are verified against `~/.ssh/known_hosts`, like OpenSSH:
@@ -557,7 +559,7 @@ Settings → About has **Report a problem** and **Suggest an improvement**. Each
 
 ### Diagnostic log
 
-If PlexusTerm sometimes stops responding, turn on **Write a diagnostic log** in Settings → About. It writes `plexusterm.log` in **Log folder**; leave the field empty to use the folder it shows (on Linux `~/.local/share/dev.plexusterm.app/logs`). The log records the version, the sessions opened and closed, errors and panics, graphics problems (the GPU WebGL uses, the graphics variables of the session, a terminal's WebGL renderer failing to start or losing its context after a driver reset or sleep), and when the window or the backend stops responding and for how long (`interface (window) not responding for 6.0 s`, `backend async runtime not responding …`). It never records what you type or what the terminals show; SSH entries name the user, host and port. At 5 MB the file moves to `plexusterm.log.1` and a new one starts. Attach it, after checking the host names, to a problem report.
+If PlexusTerm sometimes stops responding, turn on **Write a diagnostic log** in Settings → About. It writes `plexusterm.log` in **Log folder**; leave the field empty to use the folder it shows (on Linux `~/.local/share/dev.plexusterm.app/logs`). The log records the version, the graphics cards (with their driver), the sessions opened and closed, errors and panics, graphics problems (the GPU WebGL uses, the graphics variables of the session, a terminal's WebGL renderer failing to start or losing its context after a driver reset or sleep), and when the window or the backend stops responding and for how long (or the window's thread was blocked for 2 seconds or more; a hidden window, whose timers the system slows down, is never counted) (`interface (window) not responding for 6.0 s`, `backend async runtime not responding …`). It never records what you type or what the terminals show; SSH entries name the user, host and port. At 5 MB the file moves to `plexusterm.log.1` and a new one starts. Attach it, after checking the host names, to a problem report.
 
 ## Windows
 

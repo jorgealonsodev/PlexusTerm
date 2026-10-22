@@ -230,7 +230,7 @@ vi.mock("@xterm/addon-search", () => ({
 
 import { invoke } from "@tauri-apps/api/core";
 import { forgetWebglProbe } from "./webglProbe";
-import { ACTIVITY_QUIET_MS, FONT_WAIT_MS, TITLE_MS, TerminalView } from "./TerminalView";
+import { ACTIVITY_QUIET_MS, CONNECT_WAIT_SHOWN_S, FONT_WAIT_MS, TITLE_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
 import { createHistoryStore } from "../history/historyStore";
 import { PlatformContext } from "../platform/usePlatform";
@@ -1149,6 +1149,43 @@ describe("TerminalView", () => {
       expect(onExit).toHaveBeenCalledWith(0);
       backend.start.mockReset();
       backend.start.mockImplementation(() => new Promise<number>(() => {}));
+    });
+  });
+
+  describe("while a host does not answer", () => {
+    const target = { type: "ssh" as const, host: "10.9.9.9", port: 22, username: "u", auth: { method: "agent" as const } };
+
+    it("counts the seconds after a moment, and Ctrl+C cancels the connection, closing it if it opens later", async () => {
+      vi.useFakeTimers();
+      try {
+        let open: (id: number) => void = () => {};
+        backend.start.mockImplementationOnce(() => new Promise<number>((resolve) => (open = resolve)));
+        const onSession = vi.fn();
+        render(<TerminalView target={target} active onTitle={() => {}} onExit={() => {}} onSession={onSession} />);
+        await act(async () => void vi.advanceTimersByTime(FONT_WAIT_MS + 10));
+        expect(backend.start).toHaveBeenCalledTimes(1);
+        const text = () => lastTerm().written.join("");
+        await act(async () => void vi.advanceTimersByTime(2000));
+        expect(text()).not.toContain("Waiting for the host");
+        await act(async () => void vi.advanceTimersByTime((CONNECT_WAIT_SHOWN_S - 1) * 1000));
+        expect(text()).toContain(`Waiting for the host… ${CONNECT_WAIT_SHOWN_S} s (Ctrl+C cancels)`);
+
+        // Other keys are not sent anywhere; Ctrl+C cancels.
+        act(() => lastTerm().type("ls"));
+        expect(backend.write).not.toHaveBeenCalled();
+        act(() => lastTerm().type("\x03"));
+        expect(text()).toContain("[Connection cancelled]");
+        const before = text();
+        await act(async () => void vi.advanceTimersByTime(5000));
+        expect(text()).toBe(before);
+
+        // The connection opening after all is closed at once and never becomes the pane's session.
+        await act(async () => open(42));
+        expect(backend.close).toHaveBeenCalledWith(42);
+        expect(onSession).not.toHaveBeenCalledWith(42);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

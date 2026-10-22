@@ -243,6 +243,9 @@ const cancelFrame = (id: number) =>
 /** Title changes reach the tab at most this often. */
 export const TITLE_MS = 250;
 
+/** Seconds a connection waits before the tab counts them and offers Ctrl+C to cancel. */
+export const CONNECT_WAIT_SHOWN_S = 3;
+
 /** The longest a new terminal waits for the fonts before starting its session. */
 export const FONT_WAIT_MS = 1500;
 
@@ -423,6 +426,8 @@ export function TerminalView({
     let disposed = false;
     /** Set when the session ended but its pane stays open (serial device gone, mosh-client failed). */
     let ended = false;
+    /** While a network session is being opened: shows how long it has waited, and Ctrl+C cancels it. */
+    let cancelConnect: (() => void) | null = null;
     /** The session's share tap, and the number of the last output written while it is shared. */
     let tap: number | null = null;
     let outputSeq = 0;
@@ -491,6 +496,32 @@ export function TerminalView({
         term.write(`\x1b[33m${t("terminal.view.telnetUnencrypted")}\x1b[0m\r\n`);
         term.write(`${t("terminal.view.connecting", { target: `${target.host}:${target.port}` })}\r\n`);
       }
+      // A host that does not answer keeps the tab waiting: after a moment a line under the message
+      // counts the seconds and says Ctrl+C cancels, so the wait never looks like a frozen window.
+      let waitLine = false;
+      const since = performance.now();
+      const ticker =
+        target.type === "serial"
+          ? null
+          : setInterval(() => {
+              if (disposed || ended) return;
+              const seconds = Math.round((performance.now() - since) / 1000);
+              if (seconds < CONNECT_WAIT_SHOWN_S) return;
+              waitLine = true;
+              term.write(`\x1b[2K\r\x1b[2m${t("terminal.view.stillConnecting", { seconds })}\x1b[0m`);
+            }, 1000);
+      const stopWaiting = () => {
+        if (ticker) clearInterval(ticker);
+        if (waitLine) term.write("\x1b[2K\r");
+        waitLine = false;
+        cancelConnect = null;
+      };
+      if (ticker) {
+        cancelConnect = () => {
+          stopWaiting();
+          endKeepingPane(t("terminal.view.connectCancelled"));
+        };
+      }
       backend
         .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (event) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
@@ -535,6 +566,7 @@ export function TerminalView({
           }
         })
         .then((id) => {
+          stopWaiting();
           if (disposed || ended) void backend.close(id).catch(() => {});
           else {
             sessionId = id;
@@ -542,7 +574,9 @@ export function TerminalView({
           }
         })
         .catch((raw) => {
-          if (disposed) return;
+          stopWaiting();
+          // Cancelled with Ctrl+C: the pane already says so.
+          if (disposed || ended) return;
           // Serial and Telnet errors are `{ kind, message }`.
           if (target.type === "serial" || target.type === "telnet") {
             term.write(red(describeSerialError(raw)));
@@ -738,6 +772,10 @@ export function TerminalView({
     });
     /** The normal input path: typing, pastes and macros all go through it (multi-execution included). */
     const typed = (data: string) => {
+      if (cancelConnect) {
+        if (data.includes("\x03")) cancelConnect();
+        return;
+      }
       latencyMark("D", data.length);
       lastTyped = performance.now();
       write(data);

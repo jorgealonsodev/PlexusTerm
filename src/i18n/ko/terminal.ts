@@ -36,6 +36,8 @@ export const terminal: Messages<typeof en> = {
     textFiles: "텍스트",
     connecting: "{target}에 연결하는 중...",
     connectingVia: "{jumps}을(를) 거쳐 {target}에 연결하는 중...",
+    stillConnecting: "호스트를 기다리는 중… {seconds}초 (Ctrl+C로 취소)",
+    connectCancelled: "연결이 취소되었습니다",
     startingMosh: "SSH를 통해 {target}에서 mosh-server를 시작하는 중...",
     startingMoshVia: "SSH로 {jumps}을(를) 거쳐 {target}에서 mosh-server를 시작하는 중...",
     opening: "{target}을(를) 여는 중...",

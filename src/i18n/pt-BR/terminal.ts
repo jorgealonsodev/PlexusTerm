@@ -40,6 +40,8 @@ export const terminal: Messages<typeof en> = {
     textFiles: "Texto",
     connecting: "Conectando a {target}...",
     connectingVia: "Conectando a {target} via {jumps}...",
+    stillConnecting: "Aguardando o host… {seconds} s (Ctrl+C cancela)",
+    connectCancelled: "Conexão cancelada",
     startingMosh: "Iniciando mosh-server em {target} por SSH...",
     startingMoshVia: "Iniciando mosh-server em {target} via {jumps} por SSH...",
     opening: "Abrindo {target}...",

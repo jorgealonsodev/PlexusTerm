@@ -36,6 +36,8 @@ export const terminal: Messages<typeof en> = {
     textFiles: "文本",
     connecting: "正在连接到 {target}...",
     connectingVia: "正在通过 {jumps} 连接到 {target}...",
+    stillConnecting: "正在等待主机… {seconds} 秒（Ctrl+C 取消）",
+    connectCancelled: "连接已取消",
     startingMosh: "正在通过 SSH 在 {target} 上启动 mosh-server...",
     startingMoshVia: "正在经由 {jumps} 通过 SSH 在 {target} 上启动 mosh-server...",
     opening: "正在打开 {target}...",

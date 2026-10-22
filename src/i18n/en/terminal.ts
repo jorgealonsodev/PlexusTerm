@@ -34,6 +34,8 @@ export const terminal = {
     textFiles: "Text",
     connecting: "Connecting to {target}...",
     connectingVia: "Connecting to {target} via {jumps}...",
+    stillConnecting: "Waiting for the host… {seconds} s (Ctrl+C cancels)",
+    connectCancelled: "Connection cancelled",
     startingMosh: "Starting mosh-server on {target} over SSH...",
     startingMoshVia: "Starting mosh-server on {target} via {jumps} over SSH...",
     opening: "Opening {target}...",
