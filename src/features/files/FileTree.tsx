@@ -35,18 +35,12 @@ interface FileTreeProps {
   /** A file to show: each change opens the folders down to it and scrolls its row into view. */
   reveal?: Reveal;
   /**
-   * Renames an entry in place, as VS Code does: a slow second click on the selected row, or F2,
-   * turns its name into a field; Enter or leaving it renames, Escape cancels. Without it, neither.
+   * Renames an entry in place, as VS Code does: F2 turns the selected row's name into a field;
+   * Enter or leaving it renames, Escape cancels. Without it, F2 does nothing.
    */
   onRename?: (entry: SftpEntry, name: string) => void;
 }
 
-/**
- * A slow double-click renames: a second click on the same row at least this long after the first
- * (quicker, it is a double-click and opens) and at most RENAME_WINDOW_MS after it.
- */
-export const RENAME_DELAY_MS = 500;
-export const RENAME_WINDOW_MS = 1500;
 
 /** The name being edited in place; the file's name before its extension is selected first, as VS Code does. */
 function RenameField({ entry, onDone }: { entry: SftpEntry; onDone: (name: string | null) => void }) {
@@ -124,16 +118,8 @@ export function FileTree({
   onRename,
 }: FileTreeProps) {
   const t = useT();
-  /** The row whose name is being edited, and the pending slow click that would start it. */
+  /** The row whose name is being edited in place (F2). */
   const [editing, setEditing] = useState<string | null>(null);
-  const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** The last click on a row, to tell a slow double-click from two separate clicks. */
-  const lastClick = useRef<{ path: string; at: number } | null>(null);
-  const cancelRenameTimer = () => {
-    if (renameTimer.current) clearTimeout(renameTimer.current);
-    renameTimer.current = null;
-  };
-  useEffect(() => cancelRenameTimer, []);
   const endRename = (entry: SftpEntry, name: string | null) => {
     setEditing(null);
     rowRefs.current.get(entry.path)?.focus();
@@ -274,7 +260,6 @@ export function FileTree({
         break;
       case "F2":
         if (!onRename) return;
-        cancelRenameTimer();
         setEditing(entry.path);
         break;
       default:
@@ -328,28 +313,10 @@ export function FileTree({
             data-drop-dir={dropDir === undefined ? undefined : isDir ? entry.path : (parent ?? dropDir)}
             {...rowProps(entry)}
             onClick={() => {
-              const now = performance.now();
-              const previous = lastClick.current;
-              const since = previous?.path === entry.path ? now - previous.at : Infinity;
-              // A slow double-click on the selected row renames it; a third click starts over.
-              const slow = onRename !== undefined && entry.path === selected && since >= RENAME_DELAY_MS && since <= RENAME_WINDOW_MS;
-              lastClick.current = slow ? null : { path: entry.path, at: now };
-              cancelRenameTimer();
               onSelect(entry);
-              if (slow) {
-                // A double-click the system counts more slowly still cancels it.
-                renameTimer.current = setTimeout(() => {
-                  renameTimer.current = null;
-                  setEditing(entry.path);
-                }, 250);
-                return;
-              }
               if (isDir) toggle(entry);
             }}
-            onDoubleClick={() => {
-              cancelRenameTimer();
-              onOpen(entry);
-            }}
+            onDoubleClick={() => onOpen(entry)}
             onKeyDown={(e) => onKeyDown(e, row)}
           >
             {guides(depth)}

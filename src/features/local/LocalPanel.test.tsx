@@ -7,7 +7,6 @@ import { writeText } from "../terminal/clipboard";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { deliverDrop, setDropHandler } from "../drop/pathDrag";
 import { FILE_LIST_REFRESH_MS, LocalPanel } from "./LocalPanel";
-import { RENAME_DELAY_MS, RENAME_WINDOW_MS } from "../files/FileTree";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
 
@@ -395,50 +394,20 @@ describe("LocalPanel tree", () => {
     void nested;
   });
 
-  describe("renaming in place, as VS Code does", () => {
+  describe("renaming in place with F2, as VS Code does", () => {
     const field = () => screen.queryByRole("textbox", { name: 'Rename "notes.txt" to' }) as HTMLInputElement | null;
     const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
-    /** Clicks `el` with performance.now() reading `at` ms. */
-    const clickAt = (el: Element, at: number) => {
-      vi.spyOn(performance, "now").mockReturnValue(at);
-      fireEvent.click(el);
-    };
-
-    it("turns the name into a field on a slow double-click, with the name before the extension selected", async () => {
+    it("does not rename on clicks: a click selects, and folders open and close as before", async () => {
       render(panel({ devStyle: true }));
       const name = await screen.findByText("notes.txt");
-      clickAt(name, 1000);
-      clickAt(name, 1000 + RENAME_DELAY_MS + 200);
-      await waitFor(() => expect(field()).not.toBeNull());
-      expect([field()!.selectionStart, field()!.selectionEnd]).toEqual([0, "notes".length]);
-
-      fireEvent.change(field()!, { target: { value: " todo.txt " } });
-      fireEvent.keyDown(field()!, { key: "Enter" });
-      await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/todo.txt"));
-      expect(field()).toBeNull();
-      expect(mocked.rename).toHaveBeenCalledTimes(1);
-    });
-
-    it("does not rename on a click on the selected entry long after the last one, nor on a double-click", async () => {
-      render(panel({ devStyle: true }));
-      const name = await screen.findByText("notes.txt");
-      clickAt(name, 1000);
-      clickAt(name, 1000 + RENAME_WINDOW_MS + 500);
-      clickAt(name, 9000);
-      clickAt(name, 9100);
-      fireEvent.doubleClick(name);
-      await wait(400);
-      expect(field()).toBeNull();
-    });
-
-    it("keeps a folder open on the slow second click that renames it", async () => {
-      render(panel({ devStyle: true }));
+      fireEvent.click(name);
+      fireEvent.click(name);
       const src = await screen.findByText("src");
-      clickAt(src, 1000);
-      expect(src.closest("li")!.getAttribute("aria-expanded")).toBe("true");
-      clickAt(src, 1000 + RENAME_DELAY_MS + 200);
-      expect(src.closest("li")!.getAttribute("aria-expanded")).toBe("true");
-      expect(await screen.findByRole("textbox", { name: 'Rename "src" to' })).toBeTruthy();
+      fireEvent.click(src);
+      fireEvent.click(src);
+      expect(src.closest("li")!.getAttribute("aria-expanded")).toBe("false");
+      await wait(800);
+      expect(document.querySelector(".sftp-row__rename")).toBeNull();
     });
 
     it("starts with F2; Escape or the same name renames nothing, leaving the field renames", async () => {
