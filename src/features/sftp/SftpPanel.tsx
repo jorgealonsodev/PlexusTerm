@@ -214,7 +214,13 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
         confirmLabel: t("common.rename"),
       })
     )?.trim();
-    if (!name || name === entry.name) return;
+    if (name) await renameTo(entry, name);
+  };
+
+  /** Renames an entry (from the dialog, or typed in place in the tree) in its own folder. */
+  const renameTo = async (entry: SftpEntry, name: string) => {
+    const dir = current.current.path;
+    if (dir === null || name === entry.name) return;
     if (!validName(name)) return setError(t("sftp.error.invalidName", { name }));
     // A nested entry (an open folder of the tree) is renamed in its own folder.
     const target = joinPath(parentPath(entry.path), name);
@@ -474,6 +480,7 @@ export function SftpPanel({ sessionId, cwd, follow, onFollowChange, onPathToTerm
           selected={selected}
           onSelect={setSelectedEntry}
           onOpen={(entry) => void openEntry(entry)}
+          onRename={(entry, name) => void renameTo(entry, name)}
           details={details}
           gitIndex={gitIndex}
           rowProps={rowProps}

@@ -51,6 +51,8 @@ interface WorkspaceFolderProps {
   selected: string | null;
   onSelect: (entry: SftpEntry) => void;
   onOpen: (entry: SftpEntry) => void;
+  /** Renames an entry in place (see FileTree). */
+  onRename?: (entry: SftpEntry, name: string) => void;
   rowProps: (entry: SftpEntry) => LiHTMLAttributes<HTMLLIElement>;
   details: boolean;
   /** The root title's handlers (menu with Remove folder from workspace, drag). */
@@ -126,6 +128,7 @@ export function WorkspaceFolder(props: WorkspaceFolderProps) {
           selected={props.selected}
           onSelect={props.onSelect}
           onOpen={props.onOpen}
+          onRename={props.onRename}
           details={props.details}
           gitIndex={gitIndex}
           rowProps={props.rowProps}

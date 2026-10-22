@@ -1025,6 +1025,19 @@ body.is-moving-tab {
   color: var(--icon-light, var(--text));
 }
 
+.sftp-row__rename {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  line-height: inherit;
+}
+
 .sftp-row__name {
   flex: 1;
   min-width: 0;

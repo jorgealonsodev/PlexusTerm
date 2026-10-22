@@ -249,7 +249,13 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
         confirmLabel: t("common.rename"),
       })
     )?.trim();
-    if (!name || name === entry.name) return;
+    if (name) await renameTo(entry, name);
+  };
+
+  /** Renames an entry (from the dialog, or typed in place in the tree) in its own folder. */
+  const renameTo = async (entry: SftpEntry, name: string) => {
+    const dir = current.current.path;
+    if (dir === null || name === entry.name) return;
     if (!validName(name)) return setError(t("sftp.error.invalidName", { name }));
     if (await act(t("sftp.status.renaming", { name: entry.name }), () => local.rename(entry.path, joinPath(parentPath(entry.path), name)))) {
       await navigate(dir);
@@ -564,6 +570,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
       selected={selected}
       onSelect={setSelectedEntry}
       onOpen={(entry) => void openEntry(entry)}
+      onRename={(entry, name) => void renameTo(entry, name)}
       details={details}
       gitIndex={gitIndex}
       rowProps={rowProps}
@@ -691,6 +698,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
               selected={selected}
               onSelect={setSelectedEntry}
               onOpen={(entry) => void openEntry(entry)}
+              onRename={(entry, name) => void renameTo(entry, name)}
               details={details}
               rowProps={rowProps}
               titleProps={rootProps(folder, () => workspace.onRemove(folder))}

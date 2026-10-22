@@ -34,6 +34,50 @@ interface FileTreeProps {
   onDirDrop?: (drop: DirDrop) => void;
   /** A file to show: each change opens the folders down to it and scrolls its row into view. */
   reveal?: Reveal;
+  /**
+   * Renames an entry in place, as VS Code does: a slow second click on the selected row, or F2,
+   * turns its name into a field; Enter or leaving it renames, Escape cancels. Without it, neither.
+   */
+  onRename?: (entry: SftpEntry, name: string) => void;
+}
+
+/** A click on the selected row starts renaming after this long, unless it turns into a double-click. */
+export const RENAME_DELAY_MS = 500;
+
+/** The name being edited in place; the file's name before its extension is selected first, as VS Code does. */
+function RenameField({ entry, onDone }: { entry: SftpEntry; onDone: (name: string | null) => void }) {
+  const t = useT();
+  const done = useRef(false);
+  const finish = (name: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(name);
+  };
+  return (
+    <input
+      className="sftp-row__rename"
+      aria-label={t("sftp.dialog.renameTo", { name: entry.name })}
+      defaultValue={entry.name}
+      spellCheck={false}
+      autoFocus
+      ref={(el) => {
+        if (!el || done.current || el.dataset.selected) return;
+        el.dataset.selected = "1";
+        const dot = entry.kind === "dir" ? -1 : entry.name.lastIndexOf(".");
+        el.setSelectionRange(0, dot > 0 ? dot : entry.name.length);
+      }}
+      // The row's own handlers (open, drag, arrow keys) stay out of the field.
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") finish(e.currentTarget.value);
+        else if (e.key === "Escape") finish(null);
+      }}
+      onBlur={(e) => finish(e.currentTarget.value)}
+    />
+  );
 }
 
 /** A file to show in a list; `id` changes for each request, even for the same file. */
@@ -73,8 +117,23 @@ export function FileTree({
   dropDir,
   onDirDrop,
   reveal,
+  onRename,
 }: FileTreeProps) {
   const t = useT();
+  /** The row whose name is being edited, and the pending slow click that would start it. */
+  const [editing, setEditing] = useState<string | null>(null);
+  const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelRenameTimer = () => {
+    if (renameTimer.current) clearTimeout(renameTimer.current);
+    renameTimer.current = null;
+  };
+  useEffect(() => cancelRenameTimer, []);
+  const endRename = (entry: SftpEntry, name: string | null) => {
+    setEditing(null);
+    rowRefs.current.get(entry.path)?.focus();
+    const trimmed = name?.trim();
+    if (onRename && trimmed && trimmed !== entry.name) onRename(entry, trimmed);
+  };
   const treeRef = useRef<HTMLUListElement>(null);
   const onDirDropRef = useRef(onDirDrop);
   onDirDropRef.current = onDirDrop;
@@ -207,6 +266,11 @@ export function FileTree({
         if (entry.kind === "dir") toggle(entry);
         else onOpen(entry);
         break;
+      case "F2":
+        if (!onRename) return;
+        cancelRenameTimer();
+        setEditing(entry.path);
+        break;
       default:
         return;
     }
@@ -258,10 +322,22 @@ export function FileTree({
             data-drop-dir={dropDir === undefined ? undefined : isDir ? entry.path : (parent ?? dropDir)}
             {...rowProps(entry)}
             onClick={() => {
+              const again = entry.path === selected;
               onSelect(entry);
               if (isDir) toggle(entry);
+              // A slow second click on the selected row renames it (a double-click cancels this).
+              cancelRenameTimer();
+              if (onRename && again) {
+                renameTimer.current = setTimeout(() => {
+                  renameTimer.current = null;
+                  setEditing(entry.path);
+                }, RENAME_DELAY_MS);
+              }
             }}
-            onDoubleClick={() => onOpen(entry)}
+            onDoubleClick={() => {
+              cancelRenameTimer();
+              onOpen(entry);
+            }}
             onKeyDown={(e) => onKeyDown(e, row)}
           >
             {guides(depth)}
@@ -269,7 +345,11 @@ export function FileTree({
               {isDir && (open ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
             </span>
             <FileTypeIcon name={entry.name} kind={entry.kind} open={open} />
-            <span className={`sftp-row__name${gitNameClass(decoration)}`}>{entry.name}</span>
+            {editing === entry.path ? (
+              <RenameField entry={entry} onDone={(name) => endRename(entry, name)} />
+            ) : (
+              <span className={`sftp-row__name${gitNameClass(decoration)}`}>{entry.name}</span>
+            )}
             {decoration && <GitBadge decoration={decoration} />}
             {details && (
               <>

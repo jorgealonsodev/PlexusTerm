@@ -7,6 +7,7 @@ import { writeText } from "../terminal/clipboard";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { deliverDrop, setDropHandler } from "../drop/pathDrag";
 import { FILE_LIST_REFRESH_MS, LocalPanel } from "./LocalPanel";
+import { RENAME_DELAY_MS } from "../files/FileTree";
 import { local } from "./localClient";
 import { SHELL_CWD_POLL_MS, useShellCwd } from "./useShellCwd";
 
@@ -392,6 +393,55 @@ describe("LocalPanel tree", () => {
     fireEvent.keyDown(field, { key: "Enter" });
     await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/src/main.ts", "/home/me/src/app.ts"));
     void nested;
+  });
+
+  describe("renaming in place, as VS Code does", () => {
+    const field = () => screen.queryByRole("textbox", { name: 'Rename "notes.txt" to' }) as HTMLInputElement | null;
+    const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
+
+    it("turns the name into a field on a slow second click, with the name before the extension selected", async () => {
+      render(panel({ devStyle: true }));
+      const name = await screen.findByText("notes.txt");
+      fireEvent.click(name);
+      await wait(RENAME_DELAY_MS + 100);
+      expect(field()).toBeNull();
+      fireEvent.click(name);
+      expect(field()).toBeNull();
+      await waitFor(() => expect(field()).not.toBeNull(), { timeout: RENAME_DELAY_MS * 3 });
+      expect([field()!.selectionStart, field()!.selectionEnd]).toEqual([0, "notes".length]);
+
+      fireEvent.change(field()!, { target: { value: " todo.txt " } });
+      fireEvent.keyDown(field()!, { key: "Enter" });
+      await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/todo.txt"));
+      expect(field()).toBeNull();
+      expect(mocked.rename).toHaveBeenCalledTimes(1);
+    });
+
+    it("opens with a double-click, not renaming", async () => {
+      render(panel({ devStyle: true }));
+      const name = await screen.findByText("notes.txt");
+      fireEvent.click(name);
+      fireEvent.click(name);
+      fireEvent.doubleClick(name);
+      await wait(RENAME_DELAY_MS + 100);
+      expect(field()).toBeNull();
+    });
+
+    it("starts with F2; Escape or the same name renames nothing, leaving the field renames", async () => {
+      render(panel({ devStyle: true }));
+      const row = (await screen.findByText("notes.txt")).closest("li")!;
+      fireEvent.keyDown(row, { key: "F2" });
+      fireEvent.change(field()!, { target: { value: "other.txt" } });
+      fireEvent.keyDown(field()!, { key: "Escape" });
+      expect(field()).toBeNull();
+      fireEvent.keyDown(row, { key: "F2" });
+      fireEvent.keyDown(field()!, { key: "Enter" });
+      fireEvent.keyDown(row, { key: "F2" });
+      fireEvent.change(field()!, { target: { value: "blurred.txt" } });
+      fireEvent.blur(field()!);
+      await waitFor(() => expect(mocked.rename).toHaveBeenCalledWith("/home/me/notes.txt", "/home/me/blurred.txt"));
+      expect(mocked.rename).toHaveBeenCalledTimes(1);
+    });
   });
 });
 
