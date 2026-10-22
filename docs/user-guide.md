@@ -136,6 +136,12 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 - `Include` lines and `Match` blocks are not followed and are counted in the preview. Every other option is ignored.
 - Hosts already imported the same way are skipped as duplicates, so importing again only adds new hosts.
 
+### Export sessions
+
+**Export**, next to **Import**, saves every saved session and folder to one file (`plexusterm-sessions.json` by default), to back them up or to take them to another computer. It is the format of PlexusTerm's own sessions file: SSH, Telnet, Mosh, serial and local sessions with their folders, jump hosts and key paths. Passwords are not in it (saved ones stay in the system keyring), nor are the private keys themselves, only their paths.
+
+**Import → From a PlexusTerm export (.json)** reads such a file and shows the same preview. Its sessions go under **Imported**, keeping their own folders below it, and their jump hosts and Mosh logins point to the imported sessions; sessions already imported the same way are skipped, so importing the file again adds nothing.
+
 ## SFTP browser
 
 The sidebar has five tabs, **Explorer**, **Sessions**, **SFTP**, **Tunnels** and **Macros**. **Ctrl+Shift+B** or the sidebar button at the left of the toolbar folds it to a strip of the tab icons (click an icon to open the sidebar on that tab) and opens it again; PlexusTerm remembers it. With Settings → Appearance → **Hide the sidebar completely when folded**, folding hides it entirely. Settings → Appearance → **Sidebar when PlexusTerm opens** chooses how it starts: **As I left it** (the default), **Open** or **Folded**. Drag the sidebar's edge to change its width (between 160 and 640 px) and double-click the edge to go back to the default width; PlexusTerm remembers the width too. When the sidebar is too narrow for every icon of a file list's toolbar (SFTP or Explorer), the ones that do not fit go to a second row. SFTP browses the remote files of the active SSH tab (its focused pane) over the same connection (it is disabled for local terminals) and opens automatically when an SSH session connects.

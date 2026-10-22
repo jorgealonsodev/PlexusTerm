@@ -2,11 +2,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { emptyLibrary, libraryReducer, type SavedSession } from "./library";
 import { SessionsPanel } from "./SessionsPanel";
 
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const clipboard = vi.hoisted(() => ({ writeText: vi.fn(async () => {}) }));
 vi.mock("../terminal/clipboard", () => clipboard);
@@ -203,6 +203,44 @@ describe("SessionsPanel", () => {
       { name: "new", folder: "Imported/Prod", host: "10.0.0.2", port: 22, username: "root", auth: { method: "password" } },
     ]);
     expect(screen.queryByText("Import 1 session")).toBeNull();
+  });
+
+  it("exports every session to the file picked, without passwords, and says where", async () => {
+    renderPanel();
+    vi.mocked(save).mockResolvedValue("/home/u/plexusterm-sessions.json");
+    vi.mocked(invoke).mockResolvedValue(null);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(await screen.findByText("1 session exported to /home/u/plexusterm-sessions.json.")).toBeTruthy();
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "plexusterm-sessions.json" }));
+    const [, args] = vi.mocked(invoke).mock.calls.find(([cmd]) => cmd === "save_text_file")!;
+    const { path, contents } = args as { path: string; contents: string };
+    expect(path).toBe("/home/u/plexusterm-sessions.json");
+    expect(JSON.parse(contents)).toEqual({ version: 1, folders: library.folders, sessions: [{ ...web, kind: "ssh" }] });
+  });
+
+  it("shows why the export failed, and offers no export without sessions", async () => {
+    renderPanel();
+    vi.mocked(save).mockResolvedValue("/root/x.json");
+    vi.mocked(invoke).mockRejectedValue("permission denied");
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(await screen.findByText("Could not export the sessions: permission denied")).toBeTruthy();
+    cleanup();
+    renderPanel({ library: emptyLibrary });
+    expect(screen.getByRole("button", { name: "Export" })).toHaveProperty("disabled", true);
+  });
+
+  it("imports a PlexusTerm export after the preview", async () => {
+    const props = renderPanel({ library: emptyLibrary });
+    const exported = JSON.stringify({ version: 1, folders: [], sessions: [web] });
+    vi.mocked(open).mockResolvedValue("/home/u/plexusterm-sessions.json");
+    vi.mocked(invoke).mockResolvedValue(Array.from(new TextEncoder().encode(exported)));
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "From a PlexusTerm export (.json)…" }));
+    expect(await screen.findByText("1 session to import.")).toBeTruthy();
+    fireEvent.click(screen.getByText("Import 1 session"));
+    expect(vi.mocked(props.onImport).mock.calls[0][0]).toMatchObject([
+      { name: "web", folder: "Imported/Prod", host: "10.0.0.1", username: "u", auth: { method: "agent" } },
+    ]);
   });
 
   it("reads the file picked in the native dialog through the backend", async () => {

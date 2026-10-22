@@ -3,6 +3,7 @@ import {
   isSshSession,
   isTelnetSession,
   normalizeFolder,
+  type LibrarySession,
   type SavedAuth,
   type SavedSession,
   type SavedTelnetSession,
@@ -33,7 +34,7 @@ export interface ParsedImport {
 }
 
 export interface ImportPlan {
-  toAdd: (SavedSession | SavedTelnetSession)[];
+  toAdd: LibrarySession[];
   duplicates: number;
   skipped: Record<string, number>;
 }

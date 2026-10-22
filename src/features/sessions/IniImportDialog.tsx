@@ -1,4 +1,4 @@
-import type { SavedSession, SavedTelnetSession } from "./library";
+import type { LibrarySession } from "./library";
 import { skippedLabel, type ImportPlan } from "./iniImport";
 import { useT } from "../../i18n/i18n";
 
@@ -6,7 +6,7 @@ export type ImportResult = { ok: true; plan: ImportPlan } | { ok: false; error: 
 
 interface IniImportDialogProps {
   result: ImportResult;
-  onConfirm: (sessions: (SavedSession | SavedTelnetSession)[]) => void;
+  onConfirm: (sessions: LibrarySession[]) => void;
   onClose: () => void;
 }
 

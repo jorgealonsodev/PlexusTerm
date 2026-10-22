@@ -1,6 +1,6 @@
 import { Folder, FolderOpen, Globe, KeyRound, SquareTerminal, Usb, Waypoints } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   buildTree,
@@ -18,6 +18,7 @@ import { IniImportDialog, type ImportResult } from "./IniImportDialog";
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { decodeIni, parseSessionsIni, planImport, type ParsedImport } from "./iniImport";
 import { parseSshConfig } from "./sshConfigImport";
+import { EXPORT_FILE_NAME, exportLibrary, planLibraryImport } from "./sessionsExport";
 import type { LibraryStatus } from "./useSessionLibrary";
 import { t, useT } from "../../i18n/i18n";
 import { HelpTip } from "../sidebar/HelpTip";
@@ -93,6 +94,8 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [importMenu, setImportMenu] = useState<{ x: number; y: number } | null>(null);
+  /** The result of the last export, shown under the search box. */
+  const [exportNote, setExportNote] = useState<{ error: boolean; text: string } | null>(null);
   const openMenu = (
     e: ReactMouseEvent,
     target: { kind: "session"; session: LibrarySession } | { kind: "folder"; path: string },
@@ -159,6 +162,40 @@ export function SessionsPanel(props: SessionsPanelProps) {
       if (typeof path !== "string") return null;
       return parseSessionsIni(decodeIni(await readBytes(path)));
     });
+
+  /** A file written by Export: its sessions are previewed like any other import. */
+  const importExport = async () => {
+    const path = await open({
+      title: t("sessions.panel.importJsonTitle"),
+      multiple: false,
+      directory: false,
+      filters: [{ name: t("sessions.panel.exportFilter"), extensions: ["json"] }],
+    }).catch(() => null);
+    if (typeof path !== "string") return;
+    try {
+      const json = new TextDecoder().decode(await readBytes(path));
+      setImportResult({ ok: true, plan: planLibraryImport(library, json, () => crypto.randomUUID()) });
+    } catch (err) {
+      setImportResult({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  };
+
+  /** Saves every session and folder to a file the user picks; no passwords are in it. */
+  const exportSessions = async () => {
+    setExportNote(null);
+    const path = await save({
+      title: t("sessions.panel.exportTitle"),
+      defaultPath: EXPORT_FILE_NAME,
+      filters: [{ name: t("sessions.panel.exportFilter"), extensions: ["json"] }],
+    }).catch(() => null);
+    if (!path) return;
+    try {
+      await invoke("save_text_file", { path, contents: exportLibrary(library) });
+      setExportNote({ error: false, text: t("sessions.panel.exported", { count: library.sessions.length, file: path }) });
+    } catch (err) {
+      setExportNote({ error: true, text: t("sessions.panel.exportError", { error: String(err) }) });
+    }
+  };
 
   const importSshConfig = () =>
     previewImport(async () => {
@@ -250,6 +287,14 @@ export function SessionsPanel(props: SessionsPanelProps) {
             >
               {t("sessions.panel.import")}
             </button>
+            <button
+              className="btn btn--small"
+              disabled={status.state !== "ready" || library.sessions.length === 0}
+              title={t("sessions.panel.exportHint")}
+              onClick={() => void exportSessions()}
+            >
+              {t("sessions.panel.export")}
+            </button>
           </span>
         )}
       </div>
@@ -266,6 +311,11 @@ export function SessionsPanel(props: SessionsPanelProps) {
         </p>
       )}
       {saveError && <p className="sidebar__note form-error">{t("sessions.panel.saveError", { error: saveError })}</p>}
+      {exportNote && (
+        <p className={`sidebar__note${exportNote.error ? " form-error" : ""}`} role="status">
+          {exportNote.text}
+        </p>
+      )}
       {status.state === "ready" && tree.length === 0 && (
         <p className="sidebar__note">{filter ? t("sessions.panel.noMatches") : t("sessions.panel.empty")}</p>
       )}
@@ -278,6 +328,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
           items={[
             { label: t("sessions.panel.importIni"), onSelect: () => void importIniFile() },
             { label: t("sessions.panel.importSshConfig"), onSelect: () => void importSshConfig() },
+            { label: t("sessions.panel.importJson"), onSelect: () => void importExport() },
           ]}
           onClose={() => setImportMenu(null)}
         />
