@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { themeById } from "../terminal/themes";
-import { mix, uiColors } from "./uiTheme";
+import { contrastRatio, highestContrastOn, mix, toolbarColors, uiColors } from "./uiTheme";
 
 describe("uiColors", () => {
   it("builds the interface colours from the scheme", () => {
@@ -85,5 +85,25 @@ describe("mix", () => {
     expect(colors["--syntax-tag"]).toBe(nord.theme.red);
     expect(colors["--syntax-property"]).toBe(nord.theme.brightBlue);
     expect(colors["--syntax-comment"]).toBe(colors["--muted"]);
+  });
+});
+
+describe("toolbar colours", () => {
+  it("keep the toolbar's and its buttons' text readable (WCAG AA, 4.5:1) on any colour", () => {
+    const samples = ["#c0392b", "#e74c3c", "#808080", "#777777", "#1e88e5", "#2ecc71", "#f1c40f", "#ffffff", "#000000", "#8e44ad", "#ff6600", "#00bcd4"];
+    for (let i = 0; i < 64; i++) samples.push(`#${((i * 2654435761) >>> 8).toString(16).padStart(6, "0").slice(0, 6)}`);
+    for (const colour of samples) {
+      const c = toolbarColors(colour);
+      expect(contrastRatio(c["--toolbar-bg"], c["--toolbar-fg"]), colour).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c["--toolbar-btn-bg"], c["--toolbar-btn-fg"]), colour).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c["--toolbar-btn-hover"], c["--toolbar-btn-hover-fg"]), colour).toBeGreaterThanOrEqual(4.5);
+      expect(c["--toolbar-btn-bg"], colour).not.toBe(colour);
+    }
+  });
+
+  it("picks black on mid tones where white would be hard to read", () => {
+    expect(highestContrastOn("#808080")).toBe("#000000");
+    expect(highestContrastOn("#c0392b")).toBe("#ffffff");
+    expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21);
   });
 });

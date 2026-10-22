@@ -376,7 +376,7 @@ Logging appends everything the pane receives from then on to the chosen file, wi
 
 Colours tell windows, tabs and projects apart at a glance, as VS Code's Peacock extension does.
 
-To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour…** for any other, **No colour** to go back); its text turns dark or light to stay readable. Each window keeps its own colour while it is open, a reload included; a new window starts without one.
+To tell PlexusTerm windows apart, right-click an empty part of the toolbar and pick a colour for this window's toolbar (or **Custom colour…** for any other, **No colour** to go back); its buttons take a shade of the same colour, and the text of the toolbar and of each button turns black or white, whichever contrasts more, so it stays readable (at least 4.5:1, WCAG AA). Each window keeps its own colour while it is open, a reload included; a new window starts without one.
 
 Tabs take colours too: right-click a tab (on top or in DEV mode's column) and choose **Tab colour…** for the same colours; the tab is tinted and gets a bar of its colour (on top, or on the left in the column). **Duplicate tab** keeps the colour.
 

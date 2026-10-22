@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pipette } from "lucide-react";
 import { useT } from "../../i18n/i18n";
-import { readableOn } from "../settings/uiTheme";
+import { highestContrastOn } from "../settings/uiTheme";
 
 const VALID = /^#[0-9a-f]{6}$/i;
 
@@ -86,7 +86,7 @@ export function CustomColorDialog({ initial, pickFromScreen, onAccept, onCancel 
             type="submit"
             className="btn custom-color__accept"
             disabled={!color}
-            style={color ? { background: color, color: readableOn(color), borderColor: color } : undefined}
+            style={color ? { background: color, color: highestContrastOn(color), borderColor: color } : undefined}
           >
             {t("app.toolbarColor.accept")}
           </button>

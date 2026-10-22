@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ColorMenu } from "./features/toolbar/ColorMenu";
 import { ContextMenu } from "./features/menu/ContextMenu";
 import { loadToolbarColor, saveToolbarColor } from "./features/toolbar/toolbarColor";
-import { readableOn } from "./features/settings/uiTheme";
+import { toolbarColors } from "./features/settings/uiTheme";
 import { MacroProgress, NameMacroDialog, RecordingIndicator } from "./features/macros/MacroBars";
 import { MacroEditDialog } from "./features/macros/MacroEditDialog";
 import { MacrosPanel } from "./features/macros/MacrosPanel";
@@ -1440,7 +1440,7 @@ function AppContent() {
         ref={toolbarRef}
         style={
           shownToolbarColor
-            ? ({ "--toolbar-bg": shownToolbarColor, "--toolbar-fg": readableOn(shownToolbarColor) } as CSSProperties)
+            ? (toolbarColors(shownToolbarColor) as CSSProperties)
             : undefined
         }
         onContextMenu={(e) => {

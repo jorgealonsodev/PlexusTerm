@@ -48,6 +48,10 @@ describe("toolbar colour of this window", () => {
     fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("#123456");
     expect(toolbar().style.getPropertyValue("--toolbar-fg")).toBe("#ffffff");
+    // Its buttons take a shade of it, with readable text.
+    expect(toolbar().style.getPropertyValue("--toolbar-btn-bg")).toMatch(/^#[0-9a-f]{6}$/);
+    expect(toolbar().style.getPropertyValue("--toolbar-btn-bg")).not.toBe("#123456");
+    expect(toolbar().style.getPropertyValue("--toolbar-btn-fg")).toBe("#ffffff");
     unmount();
     render(<App />);
     await waitFor(() => expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("#123456"));

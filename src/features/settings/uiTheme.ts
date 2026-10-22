@@ -19,6 +19,44 @@ const luminance = (hex: string) => {
 /** Black or white, whichever reads better on `background`. */
 export const readableOn = (background: string) => (luminance(background) > 0.4 ? "#000000" : "#ffffff");
 
+/** WCAG relative luminance of a #rrggbb colour. */
+const relativeLuminance = (hex: string) => {
+  const [r, g, b] = channels(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/** WCAG contrast ratio of two #rrggbb colours, from 1 to 21. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** Black or white, whichever has the higher contrast ratio on `background`. */
+export const highestContrastOn = (background: string) =>
+  contrastRatio(background, "#000000") >= contrastRatio(background, "#ffffff") ? "#000000" : "#ffffff";
+
+/**
+ * The colours of a toolbar painted `background`: its text, and its buttons as a shade of the same
+ * colour (towards the text colour), each with the text, black or white, that contrasts most on it.
+ */
+export function toolbarColors(background: string): Record<string, string> {
+  const fg = highestContrastOn(background);
+  const button = mix(background, fg, 0.16);
+  const hover = mix(background, fg, 0.26);
+  return {
+    "--toolbar-bg": background,
+    "--toolbar-fg": fg,
+    "--toolbar-btn-bg": button,
+    "--toolbar-btn-fg": highestContrastOn(button),
+    "--toolbar-btn-hover": hover,
+    "--toolbar-btn-hover-fg": highestContrastOn(hover),
+    "--toolbar-btn-border": mix(background, fg, 0.34),
+  };
+}
+
 /**
  * VS Code's `gitDecoration.*ResourceForeground` defaults (dark, light), for the git status of the
  * file lists (`--git-<name>`).

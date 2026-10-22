@@ -3044,6 +3044,21 @@ body.is-dragging-path {
   color: var(--toolbar-fg);
 }
 
+/* Its buttons take a shade of the same colour, with the text that contrasts most on it. */
+.toolbar--coloured .btn {
+  border-color: var(--toolbar-btn-border);
+  background: var(--toolbar-btn-bg);
+  color: var(--toolbar-btn-fg);
+}
+
+.toolbar--coloured .btn:hover,
+.toolbar--coloured .btn[aria-expanded="true"],
+.toolbar--coloured .btn[aria-pressed="true"] {
+  border-color: var(--toolbar-btn-fg);
+  background: var(--toolbar-btn-hover);
+  color: var(--toolbar-btn-hover-fg);
+}
+
 .context-menu__swatch {
   display: inline-block;
   width: 12px;
