@@ -179,10 +179,17 @@ describe("SessionsPanel", () => {
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect", "Copy SSH command"]);
   });
 
-  it("collapses a folder when its row is clicked", () => {
+  it("collapses a folder when its row is clicked, and keeps it folded the next time it opens", () => {
     renderPanel();
     fireEvent.click(screen.getByText("Prod"));
     expect(screen.queryByText("web")).toBeNull();
+    cleanup();
+    renderPanel();
+    expect(screen.queryByText("web")).toBeNull();
+    fireEvent.click(screen.getByText("Prod"));
+    cleanup();
+    renderPanel();
+    expect(screen.getByText("web")).toBeTruthy();
   });
 
   it("filters sessions by host", () => {

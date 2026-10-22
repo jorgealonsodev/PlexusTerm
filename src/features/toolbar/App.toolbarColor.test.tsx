@@ -51,7 +51,9 @@ describe("toolbar colour of this window", () => {
     unmount();
     render(<App />);
     await waitFor(() => expect(toolbar().style.getPropertyValue("--toolbar-bg")).toBe("#123456"));
-    expect(localStorage.length).toBe(0);
+    // Not in local storage, which every window shares.
+    const shared = Object.keys(localStorage).map((key) => localStorage.getItem(key) ?? "");
+    expect(shared.some((value) => value.includes("123456"))).toBe(false);
   });
 
   it("does not open the colour menu from the toolbar's buttons", async () => {

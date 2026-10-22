@@ -61,7 +61,8 @@ import { forgetSecrets } from "./features/sessions/secrets";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
-import { Sidebar, type SidebarView } from "./features/sidebar/Sidebar";
+import { Sidebar, SIDEBAR_VIEWS, type SidebarView } from "./features/sidebar/Sidebar";
+import { loadSidebarView, saveSidebarView } from "./features/sidebar/uiMemory";
 import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
@@ -414,7 +415,11 @@ function AppContent() {
     tunnels.list.tunnels,
   );
   const [paneMeta, setPaneMeta] = useState<Record<string, PaneMeta>>({});
-  const [sidebarView, setSidebarView] = useState<SidebarView>("sessions");
+  // The sidebar opens on the tab it was left on; the first launch shows Sessions.
+  const [sidebarView, setSidebarView] = useState<SidebarView>(() => loadSidebarView(SIDEBAR_VIEWS) ?? "sessions");
+  useEffect(() => saveSidebarView(sidebarView), [sidebarView]);
+  /** A tab chosen in an earlier run: the terminal PlexusTerm starts with does not replace it. */
+  const keepStartupView = useRef(loadSidebarView(SIDEBAR_VIEWS) !== null);
   const [followCwd, setFollowCwd] = useState(true);
   const [followLocalCwd, setFollowLocalCwd] = useState(true);
   // Multi-execution is off at start and never persisted (S11.4).
@@ -1884,7 +1889,8 @@ function AppContent() {
                               // shows the Explorer instead of Sessions, leaving any other tab chosen (L18).
                               if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
                               if (sessionId !== null && tab.target.type === "local") {
-                                setSidebarView((view) => (view === "sessions" ? "explorer" : view));
+                                if (keepStartupView.current) keepStartupView.current = false;
+                                else setSidebarView((view) => (view === "sessions" ? "explorer" : view));
                               }
                             }}
                             onInput={(data) => {

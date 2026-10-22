@@ -210,4 +210,25 @@ describe("Explorer tab", () => {
     await waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(2));
     expect(screen.getByRole("tab", { name: "Macros" }).getAttribute("aria-selected")).toBe("true");
   });
+
+  it("opens on the sidebar tab it was left on, even Sessions; later local terminals still bring the Explorer", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "local_list") return [];
+      return null;
+    });
+    const { unmount } = render(<App />);
+    await screen.findByTestId("terminal");
+    fireEvent.click(await screen.findByRole("tab", { name: "Sessions" }));
+    unmount();
+
+    render(<App />);
+    await screen.findByTestId("terminal");
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.getByRole("tab", { name: "Sessions" }).getAttribute("aria-selected")).toBe("true");
+    act(() => void fireEvent.keyDown(window, { key: "T", ctrlKey: true, shiftKey: true }));
+    await waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(2));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Explorer" }).getAttribute("aria-selected")).toBe("true"));
+  });
 });

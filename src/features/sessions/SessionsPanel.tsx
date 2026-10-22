@@ -1,6 +1,7 @@
 import { Download, Folder, FolderOpen, FolderPlus, Globe, KeyRound, Plus, SquareTerminal, Upload, Usb, Waypoints } from "lucide-react";
 import { ToolButton } from "../files/ToolButton";
 import { startPointerDrag } from "../drop/pathDrag";
+import { loadFoldedSessionFolders, saveFoldedSessionFolders } from "../sidebar/uiMemory";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
@@ -98,7 +99,8 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const { library, status, saveError } = props;
   const t = useT();
   const [filter, setFilter] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Folders stay folded as they were left, across restarts.
+  const [collapsed, setCollapsed] = useState<Set<string>>(loadFoldedSessionFolders);
   const tree = useMemo(() => buildTree(library, filter), [library, filter]);
   const editable = status.state === "ready";
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -219,6 +221,7 @@ export function SessionsPanel(props: SessionsPanelProps) {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
       else next.add(path);
+      saveFoldedSessionFolders(next);
       return next;
     });
 

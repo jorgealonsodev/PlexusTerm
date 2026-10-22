@@ -172,7 +172,7 @@ Paths containing special characters may need percent-encoding; many distribution
 
 ## File explorer
 
-The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). A new local terminal brings it to the front when the sidebar shows **Sessions** (any other tab you chose stays), and switching between a local and an SSH tab swaps the Explorer and the SFTP browser. It works like the [SFTP browser](#sftp-browser) on this computer's files:
+The **Explorer** tab of the sidebar browses the local disk while the active tab is a local terminal (it is disabled for other tabs). A new local terminal brings it to the front when the sidebar shows **Sessions** (any other tab you chose stays); PlexusTerm opens on the sidebar tab it was closed on, Sessions included, without the terminal it starts with changing it. In Sessions, the folders you folded stay folded the next time. Switching between a local and an SSH tab swaps the Explorer and the SFTP browser. It works like the [SFTP browser](#sftp-browser) on this computer's files:
 
 - Edit the path bar and press Enter, or use **↑** (parent), **⌂** (home folder) and **⟳** (refresh).
 - Outside DEV mode the list shows line icons: folders tinted (the `.git` folder with its own icon), links with a link, and files by what they hold: code, data (JSON, XML, CSV), configuration, scripts, text and documents, images, audio, video, archives and packages, spreadsheets and keys or certificates. The SFTP browser uses the same icons. DEV mode shows VS Code's icons instead (see [DEV mode file lists](#dev-mode-file-lists)).

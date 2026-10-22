@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { useT } from "../../i18n/i18n";
 import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, clampSidebarWidth } from "../settings/settings";
 
-export type SidebarView = "sessions" | "sftp" | "explorer" | "tunnels" | "macros";
+export const SIDEBAR_VIEWS = ["sessions", "sftp", "explorer", "tunnels", "macros"] as const;
+export type SidebarView = (typeof SIDEBAR_VIEWS)[number];
 
 interface SidebarProps {
   view: SidebarView;
