@@ -884,6 +884,20 @@ function AppContent() {
   };
 
   /** Asks before deleting, naming the sessions that use the deleted ones as jump hosts (S14.5). */
+  /** A session dragged onto a folder; one of the same name already there is announced first. */
+  const moveSession = async (session: LibrarySession, folder: string) => {
+    const clash = sessions.library.sessions.some(
+      (s) => s.id !== session.id && s.folder === folder && s.name.trim().toLowerCase() === session.name.trim().toLowerCase(),
+    );
+    if (clash) {
+      const message = folder
+        ? t("app.confirm.sameNameInFolder", { name: session.name, folder })
+        : t("app.confirm.sameNameAtRoot", { name: session.name });
+      if (!(await dialogs.confirm({ message, confirmLabel: t("app.confirm.moveAnyway") }))) return;
+    }
+    sessions.dispatch({ type: "saveSession", session: { ...session, folder } });
+  };
+
   const confirmDelete = async (question: string, action: LibraryAction) => {
     const ids = removedSshSessions(sessions.library, action).map((s) => s.id);
     const users = jumpUsers(sessions.library, ids).map((s) => `"${s.name}"`);
@@ -1718,7 +1732,7 @@ function AppContent() {
                 }
                 onNewFolder={(parent) => void newFolder(parent)}
                 onImport={(imported) => sessions.dispatch({ type: "saveSessions", sessions: imported })}
-                onMove={(session, folder) => sessions.dispatch({ type: "saveSession", session: { ...session, folder } })}
+                onMove={(session, folder) => void moveSession(session, folder)}
                 onDuplicate={(session) =>
                   sessions.dispatch({ type: "duplicateSession", id: session.id, newId: crypto.randomUUID() })
                 }

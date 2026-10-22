@@ -112,6 +112,37 @@ describe("App confirmations use the in-app dialogs (S1)", () => {
     expect(saves("sessions_save")[0].folders).toEqual([]);
   });
 
+  it("asks before moving a session into a folder that has one of the same name", async () => {
+    const library = { version: 1, folders: ["prod"], sessions: [ssh("db", "db", "prod"), ssh("db2", "DB"), ssh("app", "app")] };
+    vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+      if (cmd === "sessions_load") return JSON.stringify(library);
+      if (cmd in FILES) return JSON.stringify(FILES[cmd]);
+      return cmd === "tunnel_statuses" ? [] : null;
+    });
+    await mount();
+    const prod = screen.getByText("prod").closest("li")!;
+    const dragOnto = async (name: string) => {
+      document.elementFromPoint = () => prod;
+      const row = screen.getAllByText(name).map((el) => el.closest(".tree-row")!).find((r) => !prod.contains(r))!;
+      fireEvent.pointerDown(row, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { clientX: 10, clientY: 40 });
+      await act(async () => void fireEvent.pointerUp(window, { clientX: 10, clientY: 40 }));
+    };
+
+    await dragOnto("DB");
+    await press('Folder "prod" already has a session called "DB". Move it there anyway?', "Cancel");
+    expect(saves("sessions_save")).toEqual([]);
+    await dragOnto("DB");
+    await press('Folder "prod" already has a session called "DB"', "Move anyway");
+    await waitFor(() => expect(saves("sessions_save")).toHaveLength(1));
+    expect(saves("sessions_save")[0].sessions.find((s: { id: string }) => s.id === "db2").folder).toBe("prod");
+
+    // Without a clash it moves at once.
+    await dragOnto("app");
+    await waitFor(() => expect(saves("sessions_save")).toHaveLength(2));
+    expect(dialogNamed("Folder")).toBeUndefined();
+  });
+
   it("creates a folder with the typed name, and nothing when cancelled", async () => {
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "New folder" }));
