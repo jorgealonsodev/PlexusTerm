@@ -34,7 +34,7 @@ describe("file icon packs", () => {
   });
 
   it("draws an entry with the pack chosen", () => {
-    const iconOf = (pack: "material" | "seti" | "lines") => {
+    const iconOf = (pack: "material" | "seti" | "lines" | "classic") => {
       const { container } = render(<EntryIcon pack={pack} name="main.ts" kind="file" />);
       const icon = container.querySelector(".sftp-row__icon")!;
       cleanup();
@@ -43,5 +43,6 @@ describe("file icon packs", () => {
     expect(iconOf("material").querySelector("img")).not.toBeNull();
     expect(iconOf("seti").classList.contains("file-icon")).toBe(true);
     expect(iconOf("lines").querySelector("svg")!.getAttribute("data-kind")).toBe("code");
+    expect(iconOf("classic").textContent).toBe("📄");
   });
 });

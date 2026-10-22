@@ -105,7 +105,7 @@ export const settings: Messages<typeof en> = {
   files: {
     iconsList: "文件列表图标",
     iconsTree: "DEV 模式树图标",
-    iconPack: { material: "Material（按语言着色的图标）", seti: "Seti（VS Code）", lines: "线条（简洁的线条图标）" },
+    iconPack: { material: "Material（按语言着色的图标）", seti: "Seti（VS Code）", lines: "线条（简洁的线条图标）", classic: "经典 (📁 📄)" },
     iconsHelp: "资源管理器和 SFTP 浏览器的图标包：普通列表和 DEV 模式的树。Material 和 Seti 分别是 VS Code 的 Material Icon Theme 和 VS Code 自带的图标主题。",
     textEditor: "文本编辑器",
     systemDefault: "系统默认",

@@ -105,7 +105,7 @@ export const settings: Messages<typeof en> = {
   files: {
     iconsList: "أيقونات قوائم الملفات",
     iconsTree: "أيقونات شجرة وضع DEV",
-    iconPack: { material: "Material (أيقونات ملوّنة حسب اللغة)", seti: "Seti (VS Code)", lines: "خطوط (أيقونات خطية بسيطة)" },
+    iconPack: { material: "Material (أيقونات ملوّنة حسب اللغة)", seti: "Seti (VS Code)", lines: "خطوط (أيقونات خطية بسيطة)", classic: "كلاسيكية (📁 📄)" },
     iconsHelp: "حزم أيقونات المستكشف ومتصفح SFTP: القوائم العادية وأشجار وضع DEV. ‏Material وSeti هما سمتا الأيقونات Material Icon Theme لـ VS Code وسمة VS Code نفسه.",
     textEditor: "محرر النصوص",
     systemDefault: "افتراضي النظام",

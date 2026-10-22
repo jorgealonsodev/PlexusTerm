@@ -102,7 +102,7 @@ export const settings = {
   files: {
     iconsList: "File list icons",
     iconsTree: "DEV mode tree icons",
-    iconPack: { material: "Material (colourful icons by language)", seti: "Seti (VS Code)", lines: "Lines (simple line icons)" },
+    iconPack: { material: "Material (colourful icons by language)", seti: "Seti (VS Code)", lines: "Lines (simple line icons)", classic: "Classic (📁 📄)" },
     iconsHelp: "The icon packs of the Explorer and the SFTP browser: the plain lists, and DEV mode's trees. Material and Seti are the icon themes of VS Code's Material Icon Theme and VS Code itself.",
     textEditor: "Text editor",
     systemDefault: "System default",

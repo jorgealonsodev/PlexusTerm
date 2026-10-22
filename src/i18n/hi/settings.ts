@@ -105,7 +105,7 @@ export const settings: Messages<typeof en> = {
   files: {
     iconsList: "फ़ाइल सूची के आइकन",
     iconsTree: "DEV मोड ट्री के आइकन",
-    iconPack: { material: "Material (भाषा के अनुसार रंगीन आइकन)", seti: "Seti (VS Code)", lines: "रेखाएँ (सरल रेखा आइकन)" },
+    iconPack: { material: "Material (भाषा के अनुसार रंगीन आइकन)", seti: "Seti (VS Code)", lines: "रेखाएँ (सरल रेखा आइकन)", classic: "क्लासिक (📁 📄)" },
     iconsHelp: "एक्सप्लोरर और SFTP ब्राउज़र के आइकन पैक: सामान्य सूचियाँ और DEV मोड के ट्री। Material और Seti, VS Code के Material Icon Theme और स्वयं VS Code की आइकन थीम हैं।",
     textEditor: "टेक्स्ट एडिटर",
     systemDefault: "सिस्टम डिफ़ॉल्ट",

@@ -105,7 +105,7 @@ export const settings: Messages<typeof en> = {
   files: {
     iconsList: "ファイル一覧のアイコン",
     iconsTree: "DEV モードのツリーのアイコン",
-    iconPack: { material: "Material（言語ごとのカラーアイコン）", seti: "Seti（VS Code）", lines: "ライン（シンプルな線のアイコン）" },
+    iconPack: { material: "Material（言語ごとのカラーアイコン）", seti: "Seti（VS Code）", lines: "ライン（シンプルな線のアイコン）", classic: "クラシック (📁 📄)" },
     iconsHelp: "エクスプローラーと SFTP ブラウザーのアイコンパック: 通常の一覧と DEV モードのツリーです。Material と Seti は、VS Code 用 Material Icon Theme と VS Code 自体のアイコンテーマです。",
     textEditor: "テキストエディター",
     systemDefault: "システムの既定",
