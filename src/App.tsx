@@ -1604,6 +1604,8 @@ function AppContent() {
                       })),
                     // A workspace file opens a new DEV tab in its first folder, with the others added.
                     onOpenFolders: openWorkspace,
+                    // Add Folder opens where the terminal is: its OSC 7 folder, else its shell's.
+                    terminalDir: () => (activeSession.cwd ? Promise.resolve(activeSession.cwd) : local.shellCwd(localPtyId)),
                     onFile: rememberWorkspace,
                   }}
                   recent={recent}

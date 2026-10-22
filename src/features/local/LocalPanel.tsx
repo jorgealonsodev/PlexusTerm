@@ -91,6 +91,8 @@ export interface Workspace {
   onOpenFolders: (folders: string[]) => void;
   /** A workspace file opened or saved here, for the recent ones. */
   onFile?: (file: string) => void;
+  /** The terminal's folder right now, where Add Folder's dialog opens; null when unknown. */
+  terminalDir?: () => Promise<string | null>;
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
@@ -407,7 +409,14 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
   /** Adds a folder chosen in the system dialog to the workspace, once. */
   const addFolder = async () => {
     if (!workspace) return;
-    const dir = await open({ title: t("sftp.panel.workspace.choose"), multiple: false, directory: true }).catch(() => null);
+    // The dialog opens where the terminal is now, else at the folder listed here.
+    const here = (await workspace.terminalDir?.().catch(() => null)) ?? cwd ?? path;
+    const dir = await open({
+      title: t("sftp.panel.workspace.choose"),
+      multiple: false,
+      directory: true,
+      ...(here ? { defaultPath: here } : {}),
+    }).catch(() => null);
     if (typeof dir !== "string" || workspace.folders.includes(dir)) return;
     workspace.onAdd(dir);
   };

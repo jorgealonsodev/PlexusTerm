@@ -465,6 +465,22 @@ describe("workspace folders in DEV mode", () => {
     expect(await within(root).findByText("server.ts")).toBeTruthy();
   });
 
+  it("opens Add Folder's dialog where the terminal is now, else at the listed folder", async () => {
+    const workspace = { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} };
+    vi.mocked(open).mockResolvedValue(null);
+    const { unmount } = render(
+      panel({ devStyle: true, workspace: { ...workspace, terminalDir: () => Promise.resolve("/work/api/src") } }),
+    );
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    await waitFor(() => expect(open).toHaveBeenLastCalledWith(expect.objectContaining({ defaultPath: "/work/api/src" })));
+    unmount();
+    render(panel({ devStyle: true, workspace: { ...workspace, terminalDir: () => Promise.resolve(null) } }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    await waitFor(() => expect(open).toHaveBeenLastCalledWith(expect.objectContaining({ defaultPath: "/home/me" })));
+  });
+
   it("does not add a folder when the dialog is cancelled or it is already there", async () => {
     const onAdd = vi.fn();
     render(panel({ devStyle: true, workspace: { folders: ["/work/api"], onAdd, onRemove: () => {}, onOpenFolders: () => {} } }));
