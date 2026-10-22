@@ -897,6 +897,7 @@ pub fn run() {
             project::project_color_set,
             screen_color::screen_color_pick,
             launch::launch_workspace_take,
+            launch::launch_folder_take,
             share::commands::share_start,
             share::commands::share_command,
             share::commands::share_quit,

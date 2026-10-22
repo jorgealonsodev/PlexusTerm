@@ -4,6 +4,10 @@
 //! user's runtime folder: a later launch with a workspace file hands the file to it and ends, so
 //! the workspace opens as a tab of the open window. A launch without one is a PlexusTerm of its
 //! own, as always.
+//!
+//! A folder given the same way (`plexusterm ~/src`, `plexusterm --working-directory ~/src`, or
+//! `PLEXUSTERM_START_DIR` set by a launcher) opens a local terminal there, handed over the same
+//! way. The variable is removed from PlexusTerm's environment, so its terminals do not inherit it.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -12,34 +16,74 @@ use tauri::{AppHandle, State};
 
 /// Event with the path of a workspace file a later launch was given.
 pub const OPEN_WORKSPACE_EVENT: &str = "open-workspace";
+/// Event with the folder a later launch was given.
+pub const OPEN_FOLDER_EVENT: &str = "open-folder";
+/// The variable a launcher may set to the folder to start in.
+const START_DIR_VAR: &str = "PLEXUSTERM_START_DIR";
+/// The option that names the folder to start in, as in other terminals.
+const WORKING_DIRECTORY: &str = "--working-directory";
 
 const WORKSPACE_EXTENSION: &str = "code-workspace";
 
-/// The first `.code-workspace` file among the arguments (the program's own name excluded),
-/// absolute: a relative one is taken from `cwd`, the folder the launch ran in.
-pub fn workspace_file_in<I, S>(args: I, cwd: &Path) -> Option<PathBuf>
+/// `arg` as an absolute path: a `file://` URI is unwrapped, a relative path is taken from `cwd`.
+fn absolute(arg: &str, cwd: &Path) -> PathBuf {
+    let path = Path::new(arg.strip_prefix("file://").unwrap_or(arg));
+    if path.is_absolute() { path.to_path_buf() } else { cwd.join(path) }
+}
+
+/// What a launch opens, from its arguments (the program's own name excluded): the first
+/// `.code-workspace` file, the folder of `--working-directory DIR` (or `=DIR`), or a folder given
+/// as is (`is_dir` tells); absolute, a relative one taken from `cwd`, the folder the launch ran in.
+pub fn launch_path_in<I, S>(args: I, cwd: &Path, is_dir: impl Fn(&Path) -> bool) -> Option<PathBuf>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
-    args.into_iter().skip(1).find_map(|arg| {
+    let mut args = args.into_iter().skip(1);
+    while let Some(arg) = args.next() {
         let arg = arg.as_ref();
-        let path = Path::new(arg.strip_prefix("file://").unwrap_or(arg));
+        let dir = if arg == WORKING_DIRECTORY {
+            args.next().map(|dir| dir.as_ref().to_string())
+        } else {
+            arg.strip_prefix(WORKING_DIRECTORY)
+                .and_then(|rest| rest.strip_prefix('='))
+                .map(str::to_string)
+        };
+        if let Some(dir) = dir {
+            let dir = absolute(&dir, cwd);
+            if is_dir(&dir) {
+                return Some(dir);
+            }
+            continue;
+        }
+        let path = absolute(arg, cwd);
         let is_workspace = path
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case(WORKSPACE_EXTENSION));
-        is_workspace.then(|| if path.is_absolute() { path.to_path_buf() } else { cwd.join(path) })
-    })
+        if is_workspace || is_dir(&path) {
+            return Some(path);
+        }
+    }
+    None
 }
 
-/// The workspace file this launch was given, until the frontend takes it.
+/// The workspace file or folder this launch was given, until the frontend takes it.
 #[derive(Default)]
 pub struct LaunchWorkspace(Mutex<Option<PathBuf>>);
 
 impl LaunchWorkspace {
+    /// Reads the arguments, else `PLEXUSTERM_START_DIR`, and removes that variable from the
+    /// environment. Called before any thread starts.
     pub fn from_args() -> Self {
         let cwd = std::env::current_dir().unwrap_or_default();
-        Self(Mutex::new(workspace_file_in(std::env::args(), &cwd)))
+        let start_dir = std::env::var_os(START_DIR_VAR)
+            .filter(|dir| !dir.is_empty())
+            .map(|dir| absolute(&dir.to_string_lossy(), &cwd))
+            .filter(|dir| dir.is_dir());
+        // SAFETY: no other thread exists yet to read or write the environment.
+        unsafe { std::env::remove_var(START_DIR_VAR) };
+        let path = launch_path_in(std::env::args(), &cwd, Path::is_dir).or(start_dir);
+        Self(Mutex::new(path))
     }
 
     /// Whether this launch's workspace file went to an open PlexusTerm (false without one).
@@ -52,11 +96,25 @@ impl LaunchWorkspace {
     }
 }
 
+/// The path given at start when `wanted` accepts it, once: later calls return None.
+fn take_if(launch: &LaunchWorkspace, wanted: impl Fn(&Path) -> bool) -> Option<String> {
+    let mut path = launch.0.lock().ok()?;
+    if !path.as_deref().is_some_and(wanted) {
+        return None;
+    }
+    path.take().map(|path| path.to_string_lossy().into_owned())
+}
+
 /// The workspace file given at start, once: later calls return None.
 #[tauri::command]
 pub fn launch_workspace_take(launch: State<'_, LaunchWorkspace>) -> Option<String> {
-    let mut file = launch.0.lock().ok()?;
-    file.take().map(|path| path.to_string_lossy().into_owned())
+    take_if(&launch, |path| !path.is_dir())
+}
+
+/// The folder given at start, once: later calls return None.
+#[tauri::command]
+pub fn launch_folder_take(launch: State<'_, LaunchWorkspace>) -> Option<String> {
+    take_if(&launch, Path::is_dir)
 }
 
 /// The socket in the user's private runtime folder; None without one (no hand-over then).
@@ -72,10 +130,12 @@ pub fn listen(app: AppHandle) {
     }
 }
 
-/// A later launch's workspace file: a new DEV tab, in the window brought to the front.
+/// A later launch's workspace file (a new DEV tab) or folder (a new terminal there), in the
+/// window brought to the front.
 fn on_forwarded(app: &AppHandle, file: PathBuf) {
     use tauri::{Emitter, Manager};
-    let _ = app.emit(OPEN_WORKSPACE_EVENT, file.to_string_lossy().into_owned());
+    let event = if file.is_dir() { OPEN_FOLDER_EVENT } else { OPEN_WORKSPACE_EVENT };
+    let _ = app.emit(event, file.to_string_lossy().into_owned());
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -138,7 +198,52 @@ mod tests {
     const CWD: &str = "/home/me/work";
 
     fn found(args: &[&str]) -> Option<PathBuf> {
-        workspace_file_in(args, Path::new(CWD))
+        launch_path_in(args, Path::new(CWD), |_| false)
+    }
+
+    /// With `/home/me/src` and `/home/me/work/docs` as the only folders.
+    fn found_with_folders(args: &[&str]) -> Option<PathBuf> {
+        launch_path_in(args, Path::new(CWD), |path| {
+            path == Path::new("/home/me/src") || path == Path::new("/home/me/work/docs")
+        })
+    }
+
+    #[test]
+    fn finds_a_folder_given_as_is_or_with_working_directory() {
+        let src = Some(PathBuf::from("/home/me/src"));
+        assert_eq!(found_with_folders(&["plexusterm", "/home/me/src"]), src);
+        assert_eq!(found_with_folders(&["plexusterm", "file:///home/me/src"]), src);
+        assert_eq!(found_with_folders(&["plexusterm", "--working-directory", "/home/me/src"]), src);
+        assert_eq!(found_with_folders(&["plexusterm", "--working-directory=/home/me/src"]), src);
+        assert_eq!(
+            found_with_folders(&["plexusterm", "docs"]),
+            Some(PathBuf::from("/home/me/work/docs"))
+        );
+    }
+
+    #[test]
+    fn ignores_a_missing_folder_and_files_that_are_not_workspaces() {
+        assert_eq!(found_with_folders(&["plexusterm", "/home/me/gone"]), None);
+        assert_eq!(found_with_folders(&["plexusterm", "--working-directory", "/home/me/gone"]), None);
+        assert_eq!(found_with_folders(&["plexusterm", "--working-directory"]), None);
+        assert_eq!(found_with_folders(&["plexusterm", "notes.txt"]), None);
+        // The first thing a launch can open wins.
+        assert_eq!(
+            found_with_folders(&["plexusterm", "/home/me/gone", "/home/me/src", "/a/b.code-workspace"]),
+            Some(PathBuf::from("/home/me/src"))
+        );
+    }
+
+    #[test]
+    fn hands_a_folder_or_a_workspace_file_out_to_its_own_command_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = LaunchWorkspace(Mutex::new(Some(dir.path().to_path_buf())));
+        assert_eq!(take_if(&folder, |path| !path.is_dir()), None);
+        assert_eq!(take_if(&folder, Path::is_dir), Some(dir.path().to_string_lossy().into_owned()));
+        assert_eq!(take_if(&folder, Path::is_dir), None);
+        let file = LaunchWorkspace(Mutex::new(Some(dir.path().join("app.code-workspace"))));
+        assert_eq!(take_if(&file, Path::is_dir), None);
+        assert!(take_if(&file, |path| !path.is_dir()).is_some());
     }
 
     #[test]
