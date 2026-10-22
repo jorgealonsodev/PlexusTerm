@@ -141,6 +141,8 @@ export const app: Messages<typeof en> = {
     preview: "पूर्वावलोकन",
     save: "सहेजें",
     saveHint: "सहेजें (Ctrl+S)",
+    reload: "डिस्क से फिर से लोड करें",
+    reloadQuestion: "\"{name}\" को डिस्क से फिर से लोड करें? बिना सहेजे बदलाव खो जाएँगे।",
     changedLines: "बदली गई पंक्तियाँ दिखाएँ",
     changedLinesHint: "पिछले कमिट (git) के बाद बदली गई पंक्तियों को VS Code की तरह चिह्नित करें",
     status: "फ़ाइल स्थिति",

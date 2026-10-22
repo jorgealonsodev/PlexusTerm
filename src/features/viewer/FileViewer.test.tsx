@@ -248,6 +248,38 @@ describe("FileViewer editing (S1, S4, S5)", () => {
     await waitFor(() => expect(save).toHaveBeenLastCalledWith("one two", "one two!", "utf-8", "utf-8"));
   });
 
+  it("reloads the file from disk with its button, asking first when there are unsaved edits", async () => {
+    let content = "one";
+    const load = vi.fn(async () => ({ path: "/p/x", content, truncated: false }));
+    const confirmDiscard = vi.fn(async () => false);
+    render(<FileViewer path="/p/notes.txt" load={load} onClose={() => {}} save={vi.fn(async () => {})} confirmDiscard={confirmDiscard} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("one"));
+    const reload = () => screen.getByRole("button", { name: "Reload from disk" });
+
+    content = "changed on disk";
+    fireEvent.click(reload());
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("changed on disk"));
+    expect(confirmDiscard).not.toHaveBeenCalled();
+
+    type(" + mine");
+    content = "newer";
+    fireEvent.click(reload());
+    await waitFor(() => expect(confirmDiscard).toHaveBeenCalledTimes(1));
+    expect(document.querySelector(".cm-content")?.textContent).toBe("changed on disk + mine");
+    confirmDiscard.mockResolvedValue(true);
+    fireEvent.click(reload());
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("newer"));
+    expect(screen.queryByLabelText("Unsaved changes")).toBeNull();
+  });
+
+  it("offers no reload over unsaved edits without a way to confirm", async () => {
+    render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} save={vi.fn(async () => {})} />);
+    await waitFor(() => expect(document.querySelector(".cm-content")?.textContent).toBe("a"));
+    expect(screen.getByRole("button", { name: "Reload from disk" }).hasAttribute("disabled")).toBe(false);
+    type("b");
+    expect(screen.getByRole("button", { name: "Reload from disk" }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("saves with Ctrl+S", async () => {
     const save = vi.fn(async () => {});
     render(<FileViewer path="/p/notes.txt" load={file("a")} onClose={() => {}} save={save} />);

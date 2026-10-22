@@ -145,6 +145,8 @@ export const app: Messages<typeof en> = {
     preview: "معاينة",
     save: "حفظ",
     saveHint: "حفظ (Ctrl+S)",
+    reload: "إعادة التحميل من القرص",
+    reloadQuestion: "هل تريد إعادة تحميل \"{name}\" من القرص؟ ستُفقد التغييرات غير المحفوظة.",
     changedLines: "إظهار الأسطر المعدّلة",
     changedLinesHint: "يميّز الأسطر التي تغيّرت منذ آخر إيداع (git)، كما يفعل VS Code",
     status: "حالة الملف",

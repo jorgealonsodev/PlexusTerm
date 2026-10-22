@@ -143,6 +143,8 @@ export const app: Messages<typeof en> = {
     preview: "Vista previa",
     save: "Guardar",
     saveHint: "Guardar (Ctrl+S)",
+    reload: "Recargar desde el disco",
+    reloadQuestion: "¿Recargar \"{name}\" desde el disco? Se perderán los cambios sin guardar.",
     changedLines: "Mostrar líneas modificadas",
     changedLinesHint: "Marca las líneas cambiadas desde el último commit (git), como VS Code",
     status: "Estado del archivo",

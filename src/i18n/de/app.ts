@@ -142,6 +142,8 @@ export const app: Messages<typeof en> = {
     preview: "Vorschau",
     save: "Speichern",
     saveHint: "Speichern (Strg+S)",
+    reload: "Vom Datenträger neu laden",
+    reloadQuestion: "„{name}“ vom Datenträger neu laden? Nicht gespeicherte Änderungen gehen verloren.",
     changedLines: "Geänderte Zeilen anzeigen",
     changedLinesHint: "Markiert die seit dem letzten Commit (git) geänderten Zeilen, wie VS Code",
     status: "Dateistatus",

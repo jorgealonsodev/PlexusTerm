@@ -143,6 +143,8 @@ export const app: Messages<typeof en> = {
     preview: "Aperçu",
     save: "Enregistrer",
     saveHint: "Enregistrer (Ctrl+S)",
+    reload: "Recharger depuis le disque",
+    reloadQuestion: "Recharger « {name} » depuis le disque ? Vos modifications non enregistrées seront perdues.",
     changedLines: "Afficher les lignes modifiées",
     changedLinesHint: "Marque les lignes modifiées depuis le dernier commit (git), comme VS Code",
     status: "État du fichier",

@@ -140,6 +140,8 @@ export const app: Messages<typeof en> = {
     preview: "预览",
     save: "保存",
     saveHint: "保存 (Ctrl+S)",
+    reload: "从磁盘重新加载",
+    reloadQuestion: "从磁盘重新加载“{name}”？未保存的更改将会丢失。",
     changedLines: "显示已更改的行",
     changedLinesHint: "像 VS Code 一样标记自上次提交 (git) 以来更改的行",
     status: "文件状态",

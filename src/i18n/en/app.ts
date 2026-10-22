@@ -140,6 +140,8 @@ export const app = {
     preview: "Preview",
     save: "Save",
     saveHint: "Save (Ctrl+S)",
+    reload: "Reload from disk",
+    reloadQuestion: "Reload \"{name}\" from disk? Your unsaved changes will be lost.",
     changedLines: "Show changed lines",
     changedLinesHint: "Mark the lines changed since the last commit (git), as VS Code does",
     status: "File status",

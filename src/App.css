@@ -283,7 +283,8 @@ textarea::placeholder {
 }
 
 .pane--focused {
-  border-color: var(--accent);
+  /* The accent toned down towards the background: it marks the pane without glaring. */
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--bg));
 }
 
 .pane-divider {
@@ -2741,6 +2742,7 @@ body.is-dragging-path {
 }
 
 .viewer__changes,
+.viewer__reload,
 .viewer__save,
 .viewer__close {
   display: grid;
@@ -2755,12 +2757,14 @@ body.is-dragging-path {
   cursor: pointer;
 }
 
+.viewer__reload:disabled,
 .viewer__save:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
 .viewer__changes:hover,
+.viewer__reload:not(:disabled):hover,
 .viewer__save:not(:disabled):hover,
 .viewer__close:hover {
   background: color-mix(in srgb, var(--text) 10%, transparent);

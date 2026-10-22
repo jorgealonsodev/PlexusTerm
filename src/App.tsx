@@ -1826,6 +1826,13 @@ function AppContent() {
                             save={(expected, content, encoding, readAs) => saveViewedFile(viewer, expected, content, encoding, readAs)}
                             autoSave={terminalSettings.settings.viewerAutoSave}
                             onDirtyChange={(dirty) => markUnsaved(tab.key, paneId, dirty)}
+                            confirmDiscard={() =>
+                              dialogs.confirm({
+                                message: t("app.viewer.reloadQuestion", { name: basename(viewer.path) }),
+                                confirmLabel: t("app.viewer.discard"),
+                                danger: true,
+                              })
+                            }
                             // Changed lines against the last commit, for local files (git on this machine).
                             loadCommitted={viewer.origin.kind === "local" ? () => local.committedText(viewer.path) : undefined}
                             showChanges={terminalSettings.settings.viewerChangedLines}

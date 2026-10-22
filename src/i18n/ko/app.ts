@@ -140,6 +140,8 @@ export const app: Messages<typeof en> = {
     preview: "미리 보기",
     save: "저장",
     saveHint: "저장 (Ctrl+S)",
+    reload: "디스크에서 다시 불러오기",
+    reloadQuestion: "\"{name}\"을(를) 디스크에서 다시 불러올까요? 저장하지 않은 변경 사항은 사라집니다.",
     changedLines: "변경된 줄 표시",
     changedLinesHint: "마지막 커밋(git) 이후 변경된 줄을 VS Code처럼 표시합니다",
     status: "파일 상태",

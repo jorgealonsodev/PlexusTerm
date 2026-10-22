@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Diff, Save, X } from "lucide-react";
+import { Diff, RotateCw, Save, X } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { describeAttachError, fileName } from "../ai/attachments";
 import {
@@ -35,6 +35,8 @@ export interface ViewedText {
 
 interface FileViewerProps {
   path: string;
+  /** Asked before Reload drops unsaved edits; without it Reload is not offered while there are some. */
+  confirmDiscard?: () => Promise<boolean>;
   /**
    * Reads the file, with `encoding` when one was chosen (otherwise the backend finds it); called
    * again when `path` changes.
@@ -239,6 +241,7 @@ export function FileViewer({
   loadCommitted,
   showChanges: changesShown = false,
   onShowChangesChange,
+  confirmDiscard,
 }: FileViewerProps) {
   const t = useT();
   const name = fileName(path);
@@ -514,6 +517,21 @@ export function FileViewer({
             ))}
           </div>
         )}
+        <button
+          type="button"
+          className="viewer__reload"
+          aria-label={t("app.viewer.reload")}
+          title={t("app.viewer.reload")}
+          disabled={saving || (dirty && !confirmDiscard)}
+          onClick={async () => {
+            // Unsaved edits are dropped only once the user agrees.
+            if (dirtyRef.current && !(await confirmDiscard?.())) return;
+            read();
+            readCommitted();
+          }}
+        >
+          <RotateCw size={14} aria-hidden="true" />
+        </button>
         {loadCommitted && (
           <button
             type="button"

@@ -141,6 +141,8 @@ export const app: Messages<typeof en> = {
     preview: "プレビュー",
     save: "保存",
     saveHint: "保存 (Ctrl+S)",
+    reload: "ディスクから再読み込み",
+    reloadQuestion: "「{name}」をディスクから再読み込みしますか？保存していない変更は失われます。",
     changedLines: "変更された行を表示",
     changedLinesHint: "最後のコミット (git) 以降に変更された行を VS Code のようにマークします",
     status: "ファイルの状態",
