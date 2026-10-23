@@ -43,29 +43,90 @@ const WEBKIT_DMABUF_VARS: [&str; 3] = [
     "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
 ];
 
+/// The variables that pick which EGL driver (glvnd vendor) a program loads.
+#[cfg(any(target_os = "linux", test))]
+const EGL_VENDOR_VARS: [&str; 2] = [
+    "__EGL_VENDOR_LIBRARY_FILENAMES",
+    "__EGL_VENDOR_LIBRARY_DIRS",
+];
+
+/// Mesa's EGL vendor file, where the glvnd packages of the main distributions install it.
+#[cfg(any(target_os = "linux", test))]
+const MESA_EGL_VENDOR: &str = "/usr/share/glvnd/egl_vendor.d/50_mesa.json";
+
 /// The WebKitGTK variables to set on Linux. With NVIDIA's own driver, frames handed over as GPU
 /// buffers (GBM) reach the window several frames late, so the terminal lags behind typing; through
 /// shared memory they do not. Other drivers keep WebKitGTK's own, faster choice, and so does a
 /// user who set any of these variables.
+///
+/// NVIDIA's EGL driver can also hang WebKit's compositor for good, spinning while it waits for a
+/// frame (seen with driver 580 and GPU acceleration on). When another GPU runs a Mesa driver
+/// (`mesa_gpu`), WebKit draws there instead: the frames reach the window through shared memory
+/// whichever card shows it. An EGL vendor the user chose is kept.
 #[cfg(any(target_os = "linux", test))]
-pub fn webkit_env_in(nvidia_driver: bool, env: EnvLookup) -> Vec<(&'static str, &'static str)> {
-    if !nvidia_driver || WEBKIT_DMABUF_VARS.iter().any(|name| env(name).is_some()) {
-        return Vec::new();
+pub fn webkit_env_in(
+    nvidia_driver: bool,
+    mesa_gpu: bool,
+    env: EnvLookup,
+) -> Vec<(&'static str, &'static str)> {
+    let mut vars = Vec::new();
+    if !nvidia_driver {
+        return vars;
     }
-    vec![
-        ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
-        ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
-    ]
+    if !WEBKIT_DMABUF_VARS.iter().any(|name| env(name).is_some()) {
+        vars.push(("WEBKIT_FORCE_DMABUF_RENDERER", "1"));
+        vars.push(("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"));
+    }
+    if mesa_gpu && !EGL_VENDOR_VARS.iter().any(|name| env(name).is_some()) {
+        vars.push(("__EGL_VENDOR_LIBRARY_FILENAMES", MESA_EGL_VENDOR));
+    }
+    vars
 }
+
+/// Whether `drm` (`/sys/class/drm`) lists a render node of a card that Mesa drives: Intel or AMD.
+#[cfg(any(target_os = "linux", test))]
+fn mesa_render_gpu(drm: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(drm) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        e.file_name().to_string_lossy().starts_with("renderD")
+            && std::fs::read_link(e.path().join("device").join("driver")).is_ok_and(|driver| {
+                driver.file_name().is_some_and(|n| {
+                    ["i915", "xe", "amdgpu", "radeon"].contains(&&*n.to_string_lossy())
+                })
+            })
+    })
+}
+
+/// The variables [`tune_webkit`] set only for WebKit, which the shells must not inherit.
+static WEBKIT_ONLY_VARS: std::sync::OnceLock<Vec<&'static str>> = std::sync::OnceLock::new();
 
 /// Sets [`webkit_env_in`]'s variables for this machine. Called first thing, before any thread
 /// starts and before WebKitGTK reads them.
 pub fn tune_webkit() {
     #[cfg(target_os = "linux")]
-    for (name, value) in webkit_env_in(Path::new("/proc/driver/nvidia").exists(), &env) {
-        // SAFETY: no other thread exists yet to read or write the environment.
-        unsafe { std::env::set_var(name, value) };
+    {
+        let nvidia = Path::new("/proc/driver/nvidia").exists();
+        let mesa = nvidia
+            && Path::new(MESA_EGL_VENDOR).exists()
+            && mesa_render_gpu(Path::new("/sys/class/drm"));
+        let mut webkit_only = Vec::new();
+        for (name, value) in webkit_env_in(nvidia, mesa, &env) {
+            // SAFETY: no other thread exists yet to read or write the environment.
+            unsafe { std::env::set_var(name, value) };
+            if EGL_VENDOR_VARS.contains(&name) {
+                webkit_only.push(name);
+            }
+        }
+        let _ = WEBKIT_ONLY_VARS.set(webkit_only);
     }
+}
+
+/// The variables to remove from a shell's environment: the EGL driver PlexusTerm picked for
+/// WebKit, so programs started in a terminal still use the system's default (NVIDIA's).
+pub fn webkit_only_vars() -> &'static [&'static str] {
+    WEBKIT_ONLY_VARS.get().map_or(&[], Vec::as_slice)
 }
 
 /// The user's home directory: `$HOME` on Unix, `%USERPROFILE%` on Windows.
@@ -384,22 +445,86 @@ mod tests {
     fn webkit_frames_go_through_shared_memory_only_with_nvidias_driver() {
         let none = vars(&[]);
         assert_eq!(
-            webkit_env_in(true, &none),
+            webkit_env_in(true, false, &none),
             vec![
                 ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
                 ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
             ]
         );
         // Intel, AMD and the open drivers keep WebKitGTK's own choice.
-        assert_eq!(webkit_env_in(false, &none), vec![]);
+        assert_eq!(webkit_env_in(false, false, &none), vec![]);
+        assert_eq!(webkit_env_in(false, true, &none), vec![]);
         // A choice the user made is kept.
         for name in [
             "WEBKIT_DISABLE_DMABUF_RENDERER",
             "WEBKIT_FORCE_DMABUF_RENDERER",
             "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
         ] {
-            assert_eq!(webkit_env_in(true, &vars(&[(name, "0")])), vec![], "{name}");
+            assert_eq!(
+                webkit_env_in(true, false, &vars(&[(name, "0")])),
+                vec![],
+                "{name}"
+            );
         }
+    }
+
+    #[test]
+    fn with_nvidias_driver_webkit_draws_on_another_gpu_through_mesa() {
+        let none = vars(&[]);
+        assert_eq!(
+            webkit_env_in(true, true, &none),
+            vec![
+                ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
+                ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
+                ("__EGL_VENDOR_LIBRARY_FILENAMES", MESA_EGL_VENDOR),
+            ]
+        );
+        // The EGL choice is its own: a DMA-BUF variable set by the user does not stop it.
+        assert_eq!(
+            webkit_env_in(
+                true,
+                true,
+                &vars(&[("WEBKIT_DISABLE_DMABUF_RENDERER", "1")])
+            ),
+            vec![("__EGL_VENDOR_LIBRARY_FILENAMES", MESA_EGL_VENDOR)]
+        );
+        // An EGL vendor the user chose is kept.
+        for name in [
+            "__EGL_VENDOR_LIBRARY_FILENAMES",
+            "__EGL_VENDOR_LIBRARY_DIRS",
+        ] {
+            assert_eq!(
+                webkit_env_in(true, true, &vars(&[(name, "/x")])),
+                vec![
+                    ("WEBKIT_FORCE_DMABUF_RENDERER", "1"),
+                    ("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1"),
+                ],
+                "{name}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_mesa_gpu_is_a_render_node_of_an_intel_or_amd_driver() {
+        fn node(drm: &Path, name: &str, driver: &str) {
+            let device = drm.join(name).join("device");
+            std::fs::create_dir_all(&device).unwrap();
+            let target = format!("../../bus/pci/drivers/{driver}");
+            std::os::unix::fs::symlink(target, device.join("driver")).unwrap();
+        }
+        let drm = tempfile::tempdir().unwrap();
+        assert!(!mesa_render_gpu(drm.path()));
+        node(drm.path(), "renderD129", "nvidia");
+        // A display connector of an Intel card is not a render node.
+        node(drm.path(), "card1", "i915");
+        assert!(!mesa_render_gpu(drm.path()));
+        for driver in ["i915", "xe", "amdgpu", "radeon"] {
+            let drm = tempfile::tempdir().unwrap();
+            node(drm.path(), "renderD128", driver);
+            assert!(mesa_render_gpu(drm.path()), "{driver}");
+        }
+        assert!(!mesa_render_gpu(Path::new("/no/such/drm")));
     }
 
     fn vars(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {

@@ -99,6 +99,13 @@ fn cwd_of(req: &SpawnRequest) -> Option<PathBuf> {
     }
 }
 
+/// Removes from the shell's environment the variables PlexusTerm set only for its own WebKit.
+fn hide_webkit_only_vars(cmd: &mut CommandBuilder, names: &[&str]) {
+    for name in names {
+        cmd.env_remove(name);
+    }
+}
+
 struct Session {
     master: Box<dyn MasterPty + Send>,
     /// Input for the session's writer thread: a write may block until the process reads (a large
@@ -126,6 +133,7 @@ impl PtyManager {
 
         let program = program_of(&req);
         let mut cmd = CommandBuilder::new(&program);
+        hide_webkit_only_vars(&mut cmd, platform::webkit_only_vars());
         // Windows has no way to read PowerShell's folder: the shells report it with each prompt.
         let integration = if cfg!(windows) {
             let prompt = std::env::var("PROMPT").ok();
@@ -350,6 +358,16 @@ mod tests {
         mgr.spawn(request, s).unwrap();
         let (out, _) = wait_for(&rx, "value=abc123");
         assert!(out.contains("value=abc123"), "output was {out:?}");
+    }
+
+    #[test]
+    fn variables_set_only_for_webkit_are_removed_from_the_shell() {
+        let mut cmd = CommandBuilder::new("/bin/sh");
+        cmd.env("__EGL_VENDOR_LIBRARY_FILENAMES", "/mesa.json");
+        cmd.env("KEPT", "1");
+        hide_webkit_only_vars(&mut cmd, &["__EGL_VENDOR_LIBRARY_FILENAMES"]);
+        assert_eq!(cmd.get_env("__EGL_VENDOR_LIBRARY_FILENAMES"), None);
+        assert_eq!(cmd.get_env("KEPT"), Some(std::ffi::OsStr::new("1")));
     }
 
     #[test]
