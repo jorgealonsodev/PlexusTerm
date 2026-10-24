@@ -676,6 +676,14 @@ mod tests {
         let uninstaller = dir.path().join("uninstall.exe");
         std::fs::write(&exe, b"test exe").unwrap();
         std::fs::write(&uninstaller, b"test uninstaller").unwrap();
+        // Match windows::detect: canonicalize the running executable, not registry strings.
+        // Windows canonical paths may include the extended-length prefix.
+        let exe = exe.canonicalize().unwrap();
+        let other = dir.path().join("other");
+        std::fs::create_dir(&other).unwrap();
+        let other_uninstaller = other.join("uninstall.exe");
+        std::fs::write(&other_uninstaller, b"unrelated uninstaller").unwrap();
+        std::fs::write(other.join("plexusterm.exe"), b"unrelated exe").unwrap();
         assert_eq!(
             windows_proof(&exe, dir.path(), true, None),
             Some(Format::Msi)
@@ -685,12 +693,22 @@ mod tests {
             Some(Format::Nsis)
         );
         assert_eq!(windows_proof(&exe, dir.path(), false, None), None);
+        assert_eq!(windows_proof(&exe, &other, true, None), None);
+        assert_eq!(windows_proof(&exe, dir.path(), false, Some(&exe)), None);
         assert_eq!(
-            windows_proof(&exe, &dir.path().join("other"), true, None),
+            windows_proof(&exe, dir.path(), false, Some(&other_uninstaller)),
             None
         );
-        assert_eq!(windows_proof(&exe, dir.path(), false, Some(&exe)), None);
         assert_eq!(std::fs::read(&exe).unwrap(), b"test exe");
+        assert_eq!(std::fs::read(&uninstaller).unwrap(), b"test uninstaller");
+        assert_eq!(
+            std::fs::read(&other_uninstaller).unwrap(),
+            b"unrelated uninstaller"
+        );
+        assert_eq!(
+            std::fs::read(other.join("plexusterm.exe")).unwrap(),
+            b"unrelated exe"
+        );
     }
     #[cfg(target_os = "linux")]
     #[test]

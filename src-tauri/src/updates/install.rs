@@ -547,19 +547,106 @@ mod tests {
         bad.browser_download_url = "https://evil/package.deb".into();
         assert!(select_asset(&[bad], "package.deb", 100).is_err());
     }
-    async fn response(headers: &str, body: &str) -> reqwest::Response {
+    // Drain complete GET headers before replying: closing with unread request bytes can
+    // reset the connection on Windows. Bound both memory and time for broken fixtures.
+    async fn request_headers(socket: &mut tokio::net::TcpStream) -> std::io::Result<()> {
+        use std::io::{Error, ErrorKind};
+        use tokio::io::AsyncReadExt;
+        tokio::time::timeout(Duration::from_secs(2), async {
+            let mut request = Vec::new();
+            let mut chunk = [0; 1024];
+            while request.len() < 16 * 1024 {
+                let remaining = (16 * 1024 - request.len()).min(chunk.len());
+                let n = socket.read(&mut chunk[..remaining]).await?;
+                if n == 0 {
+                    return Err(Error::new(
+                        ErrorKind::UnexpectedEof,
+                        "Incomplete HTTP headers",
+                    ));
+                }
+                request.extend_from_slice(&chunk[..n]);
+                if request.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+                    return Ok(());
+                }
+            }
+            Err(Error::new(ErrorKind::InvalidData, "HTTP headers too large"))
+        })
+        .await
+        .map_err(|_| Error::new(ErrorKind::TimedOut, "HTTP headers timed out"))?
+    }
+
+    async fn reply(socket: &mut tokio::net::TcpStream, answer: &[u8]) -> std::io::Result<()> {
+        use tokio::io::AsyncWriteExt;
+        request_headers(socket).await?;
+        socket.write_all(answer).await
+    }
+
+    #[tokio::test]
+    async fn http_fixture_waits_for_split_headers_and_bounds_incomplete_requests() {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let answer = b"HTTP/1.1 200 OK\r\ncontent-length: 3\r\nconnection: close\r\n\r\nabc";
+        for case in ["split", "eof", "oversized", "timeout"] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let mut socket = tokio::net::TcpStream::connect(listener.local_addr().unwrap())
+                .await
+                .unwrap();
+            let server = tokio::spawn(async move {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                reply(&mut socket, answer).await
+            });
+            socket
+                .write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n")
+                .await
+                .unwrap();
+            if case == "split" {
+                let mut byte = [0];
+                assert!(
+                    tokio::time::timeout(Duration::from_millis(100), socket.read(&mut byte))
+                        .await
+                        .is_err(),
+                    "fixture replied before receiving complete request headers"
+                );
+                socket.write_all(b"X-Split: yes\r\n\r").await.unwrap();
+                assert!(
+                    tokio::time::timeout(Duration::from_millis(100), socket.read(&mut byte))
+                        .await
+                        .is_err()
+                );
+                socket.write_all(b"\n").await.unwrap();
+                let mut received = Vec::new();
+                socket.read_to_end(&mut received).await.unwrap();
+                assert_eq!(received, answer);
+                server.await.unwrap().unwrap();
+            } else {
+                if case == "eof" {
+                    socket.shutdown().await.unwrap();
+                } else if case == "oversized" {
+                    socket.write_all(&vec![b'x'; 16 * 1024]).await.unwrap();
+                }
+                let err = server.await.unwrap().unwrap_err();
+                assert_eq!(
+                    err.kind(),
+                    match case {
+                        "eof" => std::io::ErrorKind::UnexpectedEof,
+                        "oversized" => std::io::ErrorKind::InvalidData,
+                        _ => std::io::ErrorKind::TimedOut,
+                    }
+                );
+            }
+        }
+    }
+
+    async fn response(headers: &str, body: &str) -> reqwest::Response {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = format!("http://{}", listener.local_addr().unwrap());
         let answer = format!("HTTP/1.1 200 OK\r\n{headers}\r\nconnection: close\r\n\r\n{body}");
         tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            // Only wait for request arrival; these fixtures do not parse HTTP headers.
-            let mut request = [0; 1];
-            socket.read_exact(&mut request).await.unwrap();
-            socket.write_all(answer.as_bytes()).await.unwrap();
+            reply(&mut socket, answer.as_bytes()).await.unwrap();
         });
-        reqwest::Client::new().get(url).send().await.unwrap()
+        let response = reqwest::Client::new().get(url).send().await.unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        response
     }
     #[tokio::test]
     async fn downloads_are_bounded_complete_and_report_bytes_without_changing_target() {
@@ -588,17 +675,21 @@ mod tests {
         .unwrap();
         assert_eq!(std::fs::read(&package).unwrap(), b"abc");
         assert_eq!(*events.lock().unwrap(), [("downloading", Some(3), Some(3))]);
-        assert!(
+        events.lock().unwrap().clear();
+        assert_eq!(
             consume(
                 response("content-length: 3", "abc").await,
                 2,
                 None,
-                None,
-                None
+                Some(&mut file),
+                Some(&report)
             )
-            .await
-            .is_err()
+            .await,
+            Err("Invalid update response size".into())
         );
+        assert!(events.lock().unwrap().is_empty());
+        assert_eq!(std::fs::read(&package).unwrap(), b"abc");
+        assert_eq!(std::fs::read(&target).unwrap(), b"original");
         assert!(
             consume(
                 response("content-length: 3", "abc").await,
@@ -659,15 +750,13 @@ mod tests {
     }
     #[tokio::test]
     async fn redirect_policy_and_request_timeout_are_enforced() {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::io::AsyncWriteExt;
         for redirect in [false, true] {
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
             let url = format!("http://{}", listener.local_addr().unwrap());
             let server = tokio::spawn(async move {
                 let (mut socket, _) = listener.accept().await.unwrap();
-                // Only wait for request arrival, without assuming a complete socket read.
-                let mut request = [0; 1];
-                socket.read_exact(&mut request).await.unwrap();
+                request_headers(&mut socket).await.unwrap();
                 if redirect {
                     socket.write_all(b"HTTP/1.1 302 Found\r\nlocation: http://127.0.0.1:1/untrusted\r\ncontent-length: 0\r\nconnection: close\r\n\r\n").await.unwrap();
                 } else {
