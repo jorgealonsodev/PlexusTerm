@@ -285,10 +285,23 @@ fn shells() -> platform::Shells {
     platform::shells()
 }
 
-/// Whether a newer PlexusTerm release is published on GitHub (the app only links to it).
+/// Whether a newer PlexusTerm release is published on GitHub.
 #[tauri::command]
 async fn update_check() -> Result<updates::UpdateCheck, String> {
     updates::check().await
+}
+
+/// Installs only the official asset matching this running installation.
+#[tauri::command]
+async fn update_install(
+    on_progress: Channel<updates::install::Progress>,
+) -> Result<updates::install::Outcome, String> {
+    updates::install::install(move |progress| {
+        on_progress
+            .send(progress)
+            .map_err(|_| "Update progress channel closed; update cancelled".into())
+    })
+    .await
 }
 
 /// `"linux"`, `"windows"` or `"macos"`, so the frontend can adapt platform-specific texts.
@@ -785,6 +798,7 @@ pub fn run() {
             platform,
             shells,
             update_check,
+            update_install,
             serial_open,
             serial_write,
             serial_close,

@@ -1,5 +1,7 @@
-//! Checking GitHub for a newer PlexusTerm release. The app only tells the user and opens the
-//! release page; it never downloads or installs anything itself.
+//! Checking GitHub for a newer PlexusTerm release. Installation is isolated in `install`;
+//! the existing release-check API also serves the manual release-page action.
+
+pub mod install;
 
 use std::time::Duration;
 

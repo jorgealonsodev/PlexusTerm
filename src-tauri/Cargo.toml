@@ -47,6 +47,10 @@ tempfile = "3.27.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
 # Legacy text encodings (Windows-1252, Shift_JIS...) the file viewer reads and saves.
 encoding_rs = "0.8.42"
+# Verified update payloads and safe, non-extracting portable archive reads.
+sha2 = "0.11"
+flate2 = "1"
+tar = "0.4"
 # Terminal sharing through plexusterm-relay: the sans-IO sharer engine and its wire types,
 # over a TLS WebSocket (the relay is only reachable over wss://).
 plexusterm-share-client = { git = "https://github.com/jorgealonsodev/plexusterm-relay", rev = "5b330608fbfa3b4625826f6f3c0b42f0aec583eb" }
@@ -73,7 +77,18 @@ strip = true
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = "0.13.2"
 zbus = "5.19.0"
+libc = "0.2"
 
 # Keeping the system awake while a tab is shared.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_Power"] }
+windows-sys = { version = "0.61", features = [
+  "Win32_System_Power",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_Threading",
+  "Win32_System_SystemInformation",
+  "Win32_System_Registry",
+  "Win32_System_Com",
+  "Win32_Foundation",
+] }
+winreg = "0.56"
