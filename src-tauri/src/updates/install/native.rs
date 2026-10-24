@@ -9,13 +9,53 @@ fn choose(proofs: &[Format]) -> Result<Format, String> {
     }
 }
 
+#[cfg(all(test, target_os = "linux"))]
+thread_local! {
+    // Only ownership query output is faked; the public install path still runs detection.
+    static TEST_QUERY: std::cell::Cell<Option<fn(&str, &[&str], &Path) -> Option<Vec<u8>>>> = const { std::cell::Cell::new(None) };
+}
+
 #[cfg(target_os = "linux")]
 pub(super) fn detect() -> Result<Installation, String> {
     let exe = std::env::current_exe().map_err(error)?;
     let appimage = std::env::var_os("APPIMAGE").map(PathBuf::from);
     let appdir = std::env::var_os("APPDIR").map(PathBuf::from);
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    detect_linux(
+        &exe,
+        appimage.as_deref(),
+        appdir.as_deref(),
+        home.as_deref(),
+        |command, args, exe| {
+            #[cfg(test)]
+            if let Some(query) = TEST_QUERY.with(|query| query.get()) {
+                return query(command, args, exe);
+            }
+            let output = std::process::Command::new(command)
+                .args(args)
+                .arg(exe)
+                .output()
+                .ok()?;
+            output.status.success().then_some(output.stdout)
+        },
+    )
+}
+
+#[cfg(target_os = "linux")]
+fn detect_linux(
+    exe: &Path,
+    appimage: Option<&Path>,
+    appdir: Option<&Path>,
+    home: Option<&Path>,
+    mut query: impl FnMut(&str, &[&str], &Path) -> Option<Vec<u8>>,
+) -> Result<Installation, String> {
+    // Query ownership of this exact executable, never infer it from manager availability.
+    // AUR package names may vary; any positive pacman owner must retain control.
+    if query("/usr/bin/pacman", &["-Qqo", "--"], exe).is_some_and(|owner| !owner.is_empty()) {
+        return Err("This installation is managed by pacman/AUR; update PlexusTerm with your package manager or AUR helper instead".into());
+    }
     if appimage.is_some() || appdir.is_some() {
-        let target = appimage_target(&exe, appimage.as_deref(), appdir.as_deref())?;
+        let target = appimage_target(exe, appimage, appdir)?;
         writable_target(&target)?;
         return Ok(Installation {
             format: Format::AppImage,
@@ -24,35 +64,27 @@ pub(super) fn detect() -> Result<Installation, String> {
     }
     let mut proofs = Vec::new();
     // Presence of a package manager is NOT provenance. Its database must own this exact file.
-    if let Ok(output) = std::process::Command::new("/usr/bin/dpkg-query")
-        .args(["-S", "--"])
-        .arg(&exe)
-        .output()
-    {
-        if output.status.success() && deb_owner(&String::from_utf8_lossy(&output.stdout), &exe) {
+    if let Some(output) = query("/usr/bin/dpkg-query", &["-S", "--"], exe) {
+        if deb_owner(&String::from_utf8_lossy(&output), exe) {
             proofs.push(Format::Deb);
         }
     }
-    if let Ok(output) = std::process::Command::new("/usr/bin/rpm")
-        .args(["-qf", "--qf", "%{NAME}", "--"])
-        .arg(&exe)
-        .output()
-    {
-        if output.status.success() && output.stdout == b"plexusterm" {
+    if let Some(output) = query("/usr/bin/rpm", &["-qf", "--qf", "%{NAME}", "--"], exe) {
+        if output == b"plexusterm" {
             proofs.push(Format::Rpm);
         }
     }
     if proofs.is_empty() {
-        if let Some(home) = std::env::var_os("HOME") {
-            let known = PathBuf::from(home).join(".local/bin/plexusterm");
-            if known == exe && writable_target(&exe).is_ok() {
+        if let Some(home) = home {
+            let known = home.join(".local/bin/plexusterm");
+            if known == exe && writable_target(exe).is_ok() {
                 proofs.push(Format::Tar);
             }
         }
     }
     Ok(Installation {
         format: choose(&proofs)?,
-        target: exe,
+        target: exe.to_path_buf(),
     })
 }
 
@@ -316,6 +348,149 @@ pub(super) fn apply(_: &Installation, _: &Path, _: &str) -> Result<Outcome, Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
+    #[tokio::test(flavor = "current_thread")]
+    async fn public_install_returns_manager_guidance_without_downloading_or_launching() {
+        use std::sync::{Arc, Mutex};
+        struct ResetQuery;
+        impl Drop for ResetQuery {
+            fn drop(&mut self) {
+                TEST_QUERY.with(|query| query.set(None));
+            }
+        }
+        let exe = std::env::current_exe().unwrap();
+        let before = std::fs::read(&exe).unwrap();
+        let _reset = ResetQuery;
+        TEST_QUERY.with(|query| {
+            query.set(Some(|command, args, path| {
+                assert_eq!(command, "/usr/bin/pacman");
+                assert_eq!(args, ["-Qqo", "--"]);
+                assert_eq!(path, std::env::current_exe().unwrap());
+                Some(b"plexusterm-bin\n".to_vec())
+            }))
+        });
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let reported = events.clone();
+        let result = super::super::install(move |progress| {
+            reported.lock().unwrap().push(progress.phase);
+            Ok(())
+        })
+        .await;
+        assert_eq!(result, Err("This installation is managed by pacman/AUR; update PlexusTerm with your package manager or AUR helper instead".into()));
+        assert_eq!(*events.lock().unwrap(), ["checking"]);
+        assert_eq!(std::fs::read(&exe).unwrap(), before);
+        assert!(!BUSY.load(Ordering::Acquire));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn pacman_owned_executable_is_rejected_before_any_update_work() {
+        use std::cell::Cell;
+        use std::os::unix::fs::PermissionsExt;
+        let dir = private_dir().unwrap();
+        let bin = dir.path().join(".local/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let exe = bin.join("plexusterm");
+        std::fs::write(&exe, b"original executable").unwrap();
+        std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(writable_target(&exe).is_ok());
+        // Ownership wins even over an otherwise valid portable or native-package proof.
+        for owner in [
+            b"plexusterm\n".as_slice(),
+            b"plexusterm-bin\n",
+            b"custom-package\n",
+        ] {
+            for deb in [false, true] {
+                let queried = Cell::new(false);
+                let mut update_work = 0;
+                let result =
+                    detect_linux(&exe, None, None, Some(dir.path()), |command, args, path| {
+                        assert_eq!(path, exe);
+                        match command {
+                            "/usr/bin/pacman" => {
+                                assert_eq!(args, ["-Qqo", "--"]);
+                                queried.set(true);
+                                Some(owner.to_vec())
+                            }
+                            "/usr/bin/dpkg-query" if deb => {
+                                Some(format!("plexusterm: {}\n", exe.display()).into_bytes())
+                            }
+                            _ => None,
+                        }
+                    })
+                    .and_then(|_| {
+                        update_work += 1;
+                        Err::<Outcome, _>("must not download, replace or launch".into())
+                    });
+                assert_eq!(result, Err("This installation is managed by pacman/AUR; update PlexusTerm with your package manager or AUR helper instead".into()));
+                assert!(queried.get());
+                assert_eq!(update_work, 0);
+                assert_eq!(std::fs::read(&exe).unwrap(), b"original executable");
+                assert_eq!(std::fs::read_dir(&bin).unwrap().count(), 1);
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_detection_preserves_native_portable_and_unknown_decisions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = private_dir().unwrap();
+        let bin = dir.path().join(".local/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let exe = bin.join("plexusterm");
+        std::fs::write(&exe, b"original").unwrap();
+        std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(writable_target(&exe).is_ok());
+        for (deb, rpm, home, expected) in [
+            (true, false, None, Ok(Format::Deb)),
+            (false, true, None, Ok(Format::Rpm)),
+            (false, false, Some(dir.path()), Ok(Format::Tar)),
+            (
+                false,
+                false,
+                None,
+                Err(
+                    "Unknown or ambiguous installation; use the release page to update manually"
+                        .to_string(),
+                ),
+            ),
+            (
+                true,
+                true,
+                None,
+                Err(
+                    "Unknown or ambiguous installation; use the release page to update manually"
+                        .to_string(),
+                ),
+            ),
+        ] {
+            for pacman in [None, Some(Vec::new())] {
+                let result = detect_linux(&exe, None, None, home, |command, _, path| {
+                    assert_eq!(path, exe);
+                    match command {
+                        "/usr/bin/pacman" => pacman.clone(),
+                        "/usr/bin/dpkg-query" if deb => {
+                            Some(format!("plexusterm: {}\n", exe.display()).into_bytes())
+                        }
+                        "/usr/bin/rpm" if rpm => Some(b"plexusterm".to_vec()),
+                        _ => None,
+                    }
+                });
+                assert_eq!(
+                    result.map(|installation| {
+                        assert_eq!(installation.target, exe);
+                        installation.format
+                    }),
+                    expected
+                );
+                assert_eq!(std::fs::read(&exe).unwrap(), b"original");
+            }
+        }
+    }
+
     #[test]
     fn unknown_and_ambiguous_provenance_fail_closed() {
         assert!(choose(&[]).is_err());
@@ -393,6 +568,25 @@ mod tests {
         std::fs::write(&exe, b"mounted exe").unwrap();
         let original = dir.path().join("original.AppImage");
         std::fs::write(&original, b"\x7fELF0000AI\x02original").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&original, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let detected = detect_linux(
+            &exe,
+            Some(&original),
+            Some(&mount),
+            None,
+            |command, args, path| {
+                assert_eq!(command, "/usr/bin/pacman");
+                assert_eq!(args, ["-Qqo", "--"]);
+                assert_eq!(path, exe);
+                None
+            },
+        )
+        .unwrap();
+        assert_eq!(detected.format, Format::AppImage);
+        assert_eq!(detected.target, original);
         assert_eq!(
             appimage_target(&exe, Some(&original), Some(&mount)).unwrap(),
             original

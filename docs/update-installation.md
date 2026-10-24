@@ -22,6 +22,7 @@ Only one installation runs at a time. A closed progress channel cancels before i
 
 | Running installation | Detection and action |
 |---|---|
+| pacman / AUR | A successful read-only `/usr/bin/pacman -Qqo -- <current-executable>` ownership query stops automatic updating with guidance to use your package manager or AUR helper. Manager presence alone is not ownership. PlexusTerm never runs a pacman installation or downloads a substitute format. |
 | Linux `.deb` | `dpkg-query` must report that `plexusterm` owns the current executable. `/usr/bin/pkexec /usr/bin/apt-get install --no-remove -- <verified-package>` requests desktop OS authorization. |
 | Linux `.rpm` | `rpm` must report that `plexusterm` owns the current executable. `/usr/bin/pkexec /usr/bin/rpm -U -- <verified-package>` requests desktop OS authorization. Missing dependencies or authorization fail visibly. |
 | Portable `.tar.gz` | Only the known user installation at `$HOME/.local/bin/plexusterm`, owned by the user in a non-group/world-writable directory. Read only the expected regular binary from the archive; never extract paths or run `install.sh`. Stage, sync and atomically replace the binary. Existing desktop entries/icons remain unchanged. |
@@ -29,6 +30,8 @@ Only one installation runs at a time. A closed progress channel cancels before i
 | Windows MSI / NSIS | An unambiguous PlexusTerm uninstall registration must match the current canonical installation directory. MSI requires `WindowsInstaller=1`; NSIS requires its existing `uninstall.exe` in that directory. Launch the matching verified installer through native UAC, not a shell; retain the private download directory until its process completes. Missing/ambiguous registration fails closed. |
 
 Linux x86_64 and aarch64 map to published amd64/arm64 assets (RPM uses x86_64/aarch64). Windows supports the published x86_64 MSI and NSIS assets. Unsupported architectures and unknown installation formats fail instead of silently changing formats. New releases publish `plexusterm_<version>_linux_amd64.AppImage` and `plexusterm_<version>_linux_arm64.AppImage` alongside the other Linux formats, covered by the same `checksums.txt`. Older releases may lack a matching AppImage; a missing asset produces a visible error and requires the release-page action, never a switch to another format.
+
+For pacman/AUR-owned installations, update through the same package manager or AUR helper you used to install PlexusTerm; **Retry download** will not bypass ownership. Windows MSI registration does not establish winget ownership: matching MSI/NSIS behavior is unchanged, and package-manager integration on Windows remains unverified.
 
 ## Download safety and limits
 
@@ -41,4 +44,4 @@ Linux x86_64 and aarch64 map to published amd64/arm64 assets (RPM uses x86_64/aa
 
 ## Verification boundary
 
-Tests use temporary files, local HTTP fixtures, and fake command seams. They never invoke privilege tools or install packages. Native Windows registry/UAC behavior and actual package-manager installation still require platform acceptance testing; Linux tests cover the shared format/path decision rules, not native Windows execution. The existing `update_check` JSON and startup failure behavior are unchanged.
+Tests use temporary files, local HTTP fixtures, and fake command seams. They never invoke privilege tools or install packages. Native Windows registry/UAC behavior and actual package-manager installation still require platform acceptance testing; Linux tests cover the shared format/path decision rules, not native Windows execution. Real Windows/UAC, AppImage replacement, and ARM acceptance remain unavailable; packaging contracts and isolated tests are not platform acceptance. The existing `update_check` JSON and startup failure behavior are unchanged.
