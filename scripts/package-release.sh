@@ -4,6 +4,7 @@
 #   plexusterm_<version>_linux_<arch>.deb
 #   plexusterm_<version>_linux_<rpmarch>.rpm
 #   plexusterm_<version>_linux_<arch>.tar.gz
+#   plexusterm_<version>_linux_<arch>.AppImage
 # The build is native: <arch> must match the machine running the script.
 # Usage: scripts/package-release.sh <version> <amd64|arm64>
 set -euo pipefail
@@ -63,9 +64,9 @@ command -v dpkg-deb >/dev/null || die "dpkg-deb is required"
 
 BUNDLE="src-tauri/target/release/bundle"
 # Remove previous bundles so only this build's packages are picked up.
-rm -rf "$BUNDLE/deb" "$BUNDLE/rpm"
+rm -rf "$BUNDLE/deb" "$BUNDLE/rpm" "$BUNDLE/appimage"
 
-pnpm tauri build --bundles deb,rpm
+pnpm tauri build --bundles deb,rpm,appimage
 
 # Returns the single file matching a glob, or fails.
 single() {
@@ -80,13 +81,15 @@ single() {
 
 DEB_SRC="$(single "$BUNDLE"/deb/*_"$VERSION"_"$ARCH".deb)"
 RPM_SRC="$(single "$BUNDLE"/rpm/*-"$VERSION"-*."$RPM_ARCH".rpm)"
+APPIMAGE_SRC="$(single "$BUNDLE"/appimage/*.AppImage)"
 
 OUT="$ROOT/dist-release"
 NAME="plexusterm_${VERSION}_linux_${ARCH}"
 mkdir -p "$OUT"
-rm -f "$OUT/$NAME.deb" "$OUT/plexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"
+rm -f "$OUT/$NAME.deb" "$OUT/plexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz" "$OUT/$NAME.AppImage"
 cp "$DEB_SRC" "$OUT/$NAME.deb"
 cp "$RPM_SRC" "$OUT/plexusterm_${VERSION}_linux_${RPM_ARCH}.rpm"
+cp "$APPIMAGE_SRC" "$OUT/$NAME.AppImage"
 
 # Portable tarball: binary and desktop entry taken from the .deb so all three
 # assets ship identical files.
@@ -171,4 +174,4 @@ chmod 0755 "$STAGE/install.sh"
 tar -C "$WORK" --owner=0 --group=0 --numeric-owner -czf "$OUT/$NAME.tar.gz" "$NAME"
 
 echo "Release assets in $OUT:"
-ls -l "$OUT/$NAME.deb" "$OUT/plexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz"
+ls -l "$OUT/$NAME.deb" "$OUT/plexusterm_${VERSION}_linux_${RPM_ARCH}.rpm" "$OUT/$NAME.tar.gz" "$OUT/$NAME.AppImage"

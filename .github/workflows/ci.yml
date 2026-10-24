@@ -33,11 +33,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Release packaging script tests
+        if: runner.os == 'Linux'
+        run: |
+          bash scripts/package-release.test.sh
+          bash -n scripts/package-release.sh scripts/package-release.test.sh
+
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libssl-dev build-essential nasm
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libssl-dev build-essential nasm libfuse2t64
 
       - uses: pnpm/action-setup@v4
         with:
