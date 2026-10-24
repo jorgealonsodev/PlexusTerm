@@ -569,9 +569,18 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 
 ## Updates
 
-When PlexusTerm starts it asks GitHub for the latest published release, once. If it is newer than the version you run, a bar under the toolbar says so: **Download** opens the release page in your browser, where you pick the package for your system, and the close button hides the bar until the next start. PlexusTerm never downloads or installs anything by itself, and a failed check (no network, GitHub unavailable) shows nothing.
+When PlexusTerm starts it asks GitHub for the latest published release, once. A newer release appears in a bar under the toolbar. The close button hides the bar until the next start, and a failed startup check (no network, GitHub unavailable) shows nothing. Nothing downloads until you choose **Download**.
 
-Settings → About has **Check for updates** to ask at any time; it says whether PlexusTerm is up to date, offers **Download** for a newer release or shows why the check failed. Turn off **Check for updates at startup** there to stop the startup check; the only data sent is a request for the latest release of the public repository, with PlexusTerm's version as the user agent.
+The notice and **Settings → About** offer two independent actions:
+
+- **Download** downloads, verifies and installs the package matching your current installation. Linux `.deb` and `.rpm` updates request administrator authorization through the system; Windows installers use UAC. Unknown formats or missing matching packages fail visibly rather than switching formats.
+- **Visit download page** opens that release in your browser for manual installation. It stays available during installation and after an error.
+
+Supported matching formats are Linux `.deb`, `.rpm`, user-owned portable `.tar.gz` and AppImage, plus Windows MSI and NSIS. **pacman/AUR installations stay with their package manager**: when pacman owns the running executable, Download stops with guidance to update using your package manager or AUR helper, without downloading a substitute package or running an installation. Retrying does not bypass this protection. Windows package-manager ownership (including winget) is not inferred from MSI registration. Real Windows, AppImage and ARM acceptance testing remains unavailable.
+
+Both entrypoints show shared progress and prevent duplicate installations. Closing either UI does not cancel the operation; reopen About to see its progress or result. A failure shows its reason and **Retry download**. After an installed update or a completed Windows installer, **restart PlexusTerm manually when ready**. PlexusTerm never restarts itself, closes the app, or terminates your sessions. See [installation matching and safety](update-installation.md) for supported formats and limits.
+
+**Check for updates** in About still checks manually and reports up-to-date versions or check failures. Turn off **Check for updates at startup** in Settings → General to disable only the startup check; manual checking still works. The check requests the latest release of the public repository, with PlexusTerm's version as the user agent; choosing Download then requests the matching official release assets.
 
 ## Reporting a problem
 

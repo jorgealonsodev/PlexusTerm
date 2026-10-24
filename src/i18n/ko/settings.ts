@@ -281,7 +281,7 @@ export const settings: Messages<typeof en> = {
     download: "다운로드",
     checkFailed: "업데이트를 확인할 수 없습니다: {error}",
     checkAtStartup: "시작할 때 업데이트 확인",
-    checkHelp: "PlexusTerm을 시작할 때 GitHub에서 최신 공개 릴리스를 확인합니다. 아무것도 다운로드하거나 설치하지 않으며, 다운로드는 릴리스 페이지를 엽니다.",
+    checkHelp: "시작할 때 다운로드 없이 GitHub를 확인합니다. 다운로드는 설치 형식에 맞는 패키지를 설치하며 시스템 관리자 인증을 요청할 수 있습니다. 다운로드 페이지 방문은 브라우저에서 릴리스를 엽니다. 준비되면 수동으로 다시 시작하세요.",
     diagnosticLog: "진단 로그 기록",
     diagnosticLogDir: "로그 폴더",
     chooseLogDir: "로그 폴더 선택",

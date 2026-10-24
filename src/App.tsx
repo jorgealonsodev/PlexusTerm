@@ -16,6 +16,7 @@ import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
 import { ShellsProvider, useShells } from "./features/platform/useShells";
 import { localTargetOf, runningShellOf } from "./features/terminal/localShell";
 import { UpdateNotice } from "./features/updates/UpdateNotice";
+import { UpdateInstallationProvider } from "./features/updates/UpdateInstallation";
 import { checkForUpdate, type Release } from "./features/updates/updates";
 import { MultiExecBanner } from "./features/panes/MultiExecBanner";
 import { resolveLocale, setLocale, systemLanguages, useT } from "./i18n/i18n";
@@ -2298,7 +2299,9 @@ export default function App() {
     <PlatformProvider>
       <ShellsProvider>
         <DialogProvider>
-          <AppContent />
+          <UpdateInstallationProvider>
+            <AppContent />
+          </UpdateInstallationProvider>
         </DialogProvider>
       </ShellsProvider>
     </PlatformProvider>

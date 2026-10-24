@@ -16,6 +16,7 @@ import { programsDir } from "../platform/programsDir";
 import { usePlatform } from "../platform/usePlatform";
 import { ShellPicker } from "../terminal/ShellPicker";
 import { checkForUpdate, type Release } from "../updates/updates";
+import { UpdateActions } from "../updates/UpdateActions";
 import { TERMINAL_THEMES, themeById, type TerminalThemeEntry } from "../terminal/themes";
 import {
   cleanLocalShell,
@@ -1228,11 +1229,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <button type="button" className="btn" disabled={updateState.state === "checking"} onClick={checkNow}>
                   {t("settings.about.checkUpdates")}
                 </button>
-                {updateState.state === "available" && (
-                  <button type="button" className="btn btn--primary" onClick={(e) => openLink(e, updateState.release.url)}>
-                    {t("settings.about.download")}
-                  </button>
-                )}
+                <UpdateActions release={updateState.state === "available" ? updateState.release : undefined} />
               </div>
               {updateState.state !== "idle" && (
                 <p role="status">

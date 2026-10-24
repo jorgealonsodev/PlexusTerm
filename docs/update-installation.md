@@ -1,6 +1,8 @@
 # Install the matching update
 
-The backend `update_install` command updates the running installation using the matching official GitHub release asset. The release-page action remains available for manual installation. UI wiring is a separate work unit.
+Choose **Download** in the startup notice or **Settings → About** to download, verify and install the matching official GitHub release asset. **Visit download page** independently opens the displayed release URL for manual installation, even while installation is busy or after an error.
+
+Both entrypoints share one app-scoped installation controller, including its progress channel, busy guard, result and error. Closing the notice or Settings does not cancel an active operation; reopen About to see its state without another check. Errors are visible and offer **Retry download**; browser-opening errors are visible too. Success distinguishes an installed update from a completed Windows installer. Restart PlexusTerm manually when ready: neither action closes the app or terminates terminal sessions. System authorization prompts, not app password fields, handle administrator access.
 
 ## Command contract
 

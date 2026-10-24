@@ -281,7 +281,7 @@ export const settings: Messages<typeof en> = {
     download: "Télécharger",
     checkFailed: "Impossible de rechercher des mises à jour : {error}",
     checkAtStartup: "Rechercher des mises à jour au démarrage",
-    checkHelp: "Demande à GitHub la dernière version publiée au démarrage de PlexusTerm. Rien n'est téléchargé ni installé : Télécharger ouvre la page de la version.",
+    checkHelp: "Consulte GitHub au démarrage sans téléchargement. Télécharger installe le paquet correspondant et peut demander une autorisation administrateur du système. Visiter la page de téléchargement ouvre la version dans le navigateur. Redémarrez manuellement quand vous le souhaitez.",
     diagnosticLog: "Écrire un journal de diagnostic",
     diagnosticLogDir: "Dossier du journal",
     chooseLogDir: "Choisir le dossier du journal",

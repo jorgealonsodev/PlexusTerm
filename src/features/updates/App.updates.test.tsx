@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import App from "../../App";
 import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(async () => null),
+  Channel: class { onmessage = (_message: unknown) => {}; },
+}));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: vi.fn() }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
@@ -27,10 +30,14 @@ const NEWER = {
 
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-async function renderApp(settings: Partial<TerminalSettings>, check: () => Promise<unknown>) {
+async function renderApp(
+  settings: Partial<TerminalSettings>, check: () => Promise<unknown>,
+  install: () => Promise<unknown> = async () => "installed",
+) {
   vi.mocked(invoke).mockImplementation(async (cmd: string) => {
     if (cmd === "settings_load") return JSON.stringify({ ...DEFAULT_SETTINGS, ...settings });
     if (cmd === "update_check") return check();
+    if (cmd === "update_install") return install();
     return null;
   });
   render(<App />);
@@ -38,17 +45,81 @@ async function renderApp(settings: Partial<TerminalSettings>, check: () => Promi
   await settle();
 }
 
+const installs = () => vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "update_install");
+const progress = (message: unknown) => act(() => {
+  const calls = installs();
+  const channel = (calls[calls.length - 1][1] as { onProgress: Channel<unknown> }).onProgress;
+  channel.onmessage(message);
+});
+
 const checks = () => vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "update_check").length;
 
 describe("Update notice at startup", () => {
-  it("tells about a newer release once and opens its page from Download", async () => {
+  it("offers independent installation and exact release-page actions, and dismisses the notice", async () => {
     await renderApp({}, async () => NEWER);
     expect(screen.getByText("PlexusTerm 0.2.0 is available.")).toBeTruthy();
     expect(checks()).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
     expect(opener.openUrl).toHaveBeenCalledWith(NEWER.latest.url);
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    await settle();
+    expect(installs()).toHaveLength(1);
+    expect(installs()[0]).toEqual(["update_install", { onProgress: expect.any(Channel) }]);
+    expect(screen.getByText("Update installed. Restart PlexusTerm manually when ready.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Close the update notice" }));
     expect(screen.queryByText("PlexusTerm 0.2.0 is available.")).toBeNull();
+  });
+
+  it("shares progress and single-flight ownership with About, even after notice dismissal and dialog reopening", async () => {
+    let finish!: (result: string) => void;
+    await renderApp({}, async () => NEWER, () => new Promise((resolve) => { finish = resolve; }));
+    const download = screen.getByRole("button", { name: "Download" });
+    fireEvent.click(download);
+    fireEvent.click(download);
+    expect((download as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Checking installation…")).toBeTruthy();
+    progress({ phase: "downloading", downloaded: 25, total: 100 });
+    expect(screen.getByText("Downloading… 25 / 100 bytes")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("tab", { name: "About" }));
+    expect(screen.getAllByRole("button", { name: "Download" }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Close the update notice" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    progress({ phase: "verifying" });
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("tab", { name: "About" }));
+    expect(screen.getByText("Verifying download…")).toBeTruthy();
+    progress({ phase: "installing" });
+    expect(screen.getByText("Installing… Follow any system authorization prompt.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
+    expect(opener.openUrl).toHaveBeenCalledWith(NEWER.latest.url);
+    await act(async () => finish("installerOpened"));
+    expect(screen.getByText("Installer completed. Restart PlexusTerm manually when ready.")).toBeTruthy();
+    expect(installs()).toHaveLength(1);
+    expect(checks()).toBe(1);
+  });
+
+  it("shows installation failures with retry and keeps the page usable, including visible opener errors", async () => {
+    let attempts = 0;
+    await renderApp({}, async () => NEWER, async () => {
+      if (++attempts === 1) throw "Authorization cancelled";
+      return "installed";
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    await settle();
+    expect(screen.getByRole("alert").textContent).toBe("Could not install update: Authorization cancelled");
+    opener.openUrl.mockRejectedValueOnce(new Error("Browser unavailable"));
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
+    await settle();
+    expect(screen.getAllByRole("alert").map((el) => el.textContent)).toContain("Could not open download page: Browser unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
+    await settle();
+    expect(screen.queryByText(/Could not open download page/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry download" }));
+    await settle();
+    expect(installs()).toHaveLength(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Update installed. Restart PlexusTerm manually when ready.")).toBeTruthy();
   });
 
   it("says nothing when PlexusTerm is up to date or the check fails", async () => {

@@ -278,7 +278,7 @@ export const settings: Messages<typeof en> = {
     download: "下载",
     checkFailed: "无法检查更新：{error}",
     checkAtStartup: "启动时检查更新",
-    checkHelp: "PlexusTerm 启动时向 GitHub 查询最新发布的版本。不会下载或安装任何内容：“下载”会打开发布页面。",
+    checkHelp: "启动时查询 GitHub，不会下载。“下载”会安装与当前安装方式匹配的软件包，可能请求系统管理员授权。“访问下载页面”会在浏览器中打开发布页面。准备好后请手动重启。",
     diagnosticLog: "写入诊断日志",
     diagnosticLogDir: "日志文件夹",
     chooseLogDir: "选择日志文件夹",

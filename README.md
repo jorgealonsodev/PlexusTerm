@@ -73,7 +73,7 @@ Details: [Command suggestions and AI](docs/user-guide.md#command-suggestions-and
 | Multi-execution | Type into every open terminal at once, with per-pane exclusion | [Multi-execution](docs/user-guide.md#split-panes-and-multi-execution) |
 | Tools | SSH key generator (Ed25519, RSA, ECDSA, PuTTY `.ppk`), port and network scanners, Wake On LAN, remote monitor bar | [Tools](docs/user-guide.md#tools) |
 | Macros | Record, edit and replay keystrokes, with waits and hotkeys | [Macros](docs/user-guide.md#macros) |
-| Updates | A notice when a new release is published, with a link to download it | [Updates](docs/user-guide.md#updates) |
+| Updates | Download and install the matching package, or visit the release page; restart manually | [Updates](docs/user-guide.md#updates) |
 | Colour schemes | 57 terminal schemes (Catppuccin, Tokyo Night, Gruvbox, Nord, Dracula, Solarized, Rosé Pine, ...) with a live preview, a catalogue of programming fonts (JetBrains Mono, Fira Code, Cascadia Code, Source Code Pro and Hack included) or any installed one | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Terminal comfort | Error lines in red, Shift+Enter for new lines in AI tools, find, font size, copy on select, paste confirmation, save and log output, foldable sidebar (**Ctrl+Shift+B**), every shortcut configurable | [Terminal settings](docs/user-guide.md#terminal-settings) |
 | Languages | English, Spanish, German, French, Japanese, Portuguese (Brazil), Simplified Chinese, Korean, Arabic (right to left) and Hindi; follows the system language | [Interface language](docs/user-guide.md#interface-language) |

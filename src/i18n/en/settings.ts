@@ -279,7 +279,7 @@ export const settings = {
     download: "Download",
     checkFailed: "Could not check for updates: {error}",
     checkAtStartup: "Check for updates at startup",
-    checkHelp: "Asks GitHub for the latest published release when PlexusTerm starts. Nothing is downloaded or installed: Download opens the release page.",
+    checkHelp: "Checks GitHub at startup without downloading. Download installs the matching package and may request system administrator authorization. Visit download page opens the release in your browser. Restart manually when ready.",
     diagnosticLog: "Write a diagnostic log",
     diagnosticLogDir: "Log folder",
     chooseLogDir: "Choose the log folder",

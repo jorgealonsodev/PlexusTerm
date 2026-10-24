@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderUi, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { AUTO_SAVE_DELAY_MS, SettingsDialog } from "./SettingsDialog";
 import packageJson from "../../../package.json";
 import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, type TerminalSettings } from "./settings";
 import { ShellsContext } from "../platform/useShells";
+import { UpdateInstallationProvider } from "../updates/UpdateInstallation";
+import type { ReactNode } from "react";
+
+const render = (ui: ReactNode) => renderUi(<UpdateInstallationProvider>{ui}</UpdateInstallationProvider>);
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
 // jsdom cannot draw text: the dialog sees one installed font.
@@ -17,7 +21,10 @@ vi.mock("./fontCatalog", async (importOriginal) => ({
 const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-opener", () => opener);
 /** What `update_check` answers (a function so a test can make it fail). */
-const updates = vi.hoisted(() => ({ check: async (): Promise<unknown> => ({ current: "0.1.2", latest: null }) }));
+const updates = vi.hoisted(() => ({
+  check: async (): Promise<unknown> => ({ current: "0.1.2", latest: null }),
+  install: async (): Promise<unknown> => "installed",
+}));
 /** The keyring of the AI key commands, by provider. */
 const keys = vi.hoisted(() => new Map<string, string>());
 /** What `ai_opencode_models` answers (a function so a test can make it fail). */
@@ -34,6 +41,7 @@ const go = vi.hoisted(() => {
   return { models, initial: models };
 });
 vi.mock("@tauri-apps/api/core", () => ({
+  Channel: class { onmessage = (_message: unknown) => {}; },
   invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string; refresh?: boolean }) => {
     if (cmd === "ai_opencode_models") return go.models(args!.refresh!);
     if (cmd === "ai_key_status") return keys.has(args!.provider!);
@@ -44,6 +52,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "usage_key_delete") keys.delete(`usage:${args!.provider!}`);
     if (cmd === "history_load") return null;
     if (cmd === "update_check") return updates.check();
+    if (cmd === "update_install") return updates.install();
     return null;
   }),
 }));
@@ -853,7 +862,7 @@ describe("Updates in About", () => {
     expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
   });
 
-  it("offers the download page of a newer release", async () => {
+  it("offers installation with only a channel and an independent release-page action", async () => {
     updates.check = async () => ({
       current: "0.1.2",
       latest: { version: "0.2.0", notes: "Fixes.", url: "https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0" },
@@ -865,8 +874,52 @@ describe("Updates in About", () => {
     renderAbout();
     checkNow();
     expect(await screen.findByText("PlexusTerm 0.2.0 is available.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
     expect(opener.openUrl).toHaveBeenCalledWith("https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    expect(await screen.findByText("Update installed. Restart PlexusTerm manually when ready.")).toBeTruthy();
+    const installs = vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "update_install");
+    expect(installs).toEqual([["update_install", { onProgress: expect.any(Channel) }]]);
+  });
+
+  it("keeps manual checks independent of startup settings and shows busy progress, errors and retry", async () => {
+    updates.check = async () => ({
+      current: "0.1.2",
+      latest: { version: "0.2.0", notes: "Fixes.", url: "https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0" },
+    });
+    let reject!: (error: string) => void;
+    updates.install = () => new Promise((_resolve, fail) => { reject = fail; });
+    onTestFinished(() => {
+      updates.check = async () => ({ current: "0.1.2", latest: null });
+      updates.install = async () => "installed";
+      opener.openUrl.mockReset();
+    });
+    const onSave = renderAbout({ checkUpdates: false });
+    expect(invoke).not.toHaveBeenCalledWith("update_check");
+    checkNow();
+    await screen.findByText("PlexusTerm 0.2.0 is available.");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    const installs = () => vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "update_install");
+    expect(installs()).toEqual([["update_install", { onProgress: expect.any(Channel) }]]);
+    const channel = (installs()[0][1] as { onProgress: Channel<unknown> }).onProgress;
+    expect(screen.getByText("Checking installation…").getAttribute("role")).toBe("status");
+    act(() => channel.onmessage({ phase: "downloading" }));
+    expect(screen.getByText("Downloading…")).toBeTruthy();
+    act(() => channel.onmessage({ phase: "downloading", downloaded: 50 }));
+    expect(screen.getByText("Downloading… 50 bytes")).toBeTruthy();
+    await act(async () => reject("Checksum mismatch"));
+    expect(screen.getByRole("alert").textContent).toBe("Could not install update: Checksum mismatch");
+    opener.openUrl.mockRejectedValueOnce("No browser");
+    fireEvent.click(screen.getByRole("button", { name: "Visit download page" }));
+    await screen.findByText("Could not open download page: No browser");
+    expect(opener.openUrl).toHaveBeenCalledWith("https://github.com/jorgealonsodev/PlexusTerm/releases/tag/v0.2.0");
+    updates.install = async () => "installerOpened";
+    fireEvent.click(screen.getByRole("button", { name: "Retry download" }));
+    expect(await screen.findByText("Installer completed. Restart PlexusTerm manually when ready.")).toBeTruthy();
+    expect(installs()).toHaveLength(2);
+    expect(screen.queryByText(/Could not install update/)).toBeNull();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("shows why a check failed", async () => {
