@@ -554,8 +554,9 @@ mod tests {
         let answer = format!("HTTP/1.1 200 OK\r\n{headers}\r\nconnection: close\r\n\r\n{body}");
         tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            socket.read(&mut request).await.unwrap();
+            // Only wait for request arrival; these fixtures do not parse HTTP headers.
+            let mut request = [0; 1];
+            socket.read_exact(&mut request).await.unwrap();
             socket.write_all(answer.as_bytes()).await.unwrap();
         });
         reqwest::Client::new().get(url).send().await.unwrap()
@@ -664,8 +665,9 @@ mod tests {
             let url = format!("http://{}", listener.local_addr().unwrap());
             let server = tokio::spawn(async move {
                 let (mut socket, _) = listener.accept().await.unwrap();
-                let mut request = [0; 4096];
-                socket.read(&mut request).await.unwrap();
+                // Only wait for request arrival, without assuming a complete socket read.
+                let mut request = [0; 1];
+                socket.read_exact(&mut request).await.unwrap();
                 if redirect {
                     socket.write_all(b"HTTP/1.1 302 Found\r\nlocation: http://127.0.0.1:1/untrusted\r\ncontent-length: 0\r\nconnection: close\r\n\r\n").await.unwrap();
                 } else {

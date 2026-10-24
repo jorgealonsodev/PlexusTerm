@@ -11,16 +11,19 @@ describe("native update packaging contract", () => {
     expect(config.bundle.linux.rpm?.depends).toEqual(["polkit"]);
   });
 
-  it("preserves the existing product, executable, identifier and version", () => {
+  it("preserves product identity and keeps release versions synchronized", () => {
     expect(config.productName).toBe("PlexusTerm");
     expect(config.identifier).toBe("dev.plexusterm.app");
-    expect(config.version).toBe("0.2.18");
+    expect(config.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(config.mainBinaryName).toBeUndefined();
     expect(config.bundle.linux.deb.section).toBe("net");
     expect(config.bundle.linux.deb.desktopTemplate).toBe("linux/plexusterm.desktop");
     const manifest = readFileSync("src-tauri/Cargo.toml", "utf8");
     expect(manifest).toMatch(/name = "plexusterm"/);
-    expect(manifest).toMatch(/version = "0\.2\.18"/);
+    expect(manifest.match(/^version = "([^"]+)"/m)?.[1]).toBe(config.version);
     expect(JSON.parse(readFileSync("package.json", "utf8")).version).toBe(config.version);
+    const lockfile = readFileSync("src-tauri/Cargo.lock", "utf8");
+    expect(lockfile.match(/\[\[package\]\]\r?\nname = "plexusterm"\r?\nversion = "([^"]+)"/)?.[1]).toBe(config.version);
+    expect(readFileSync("packaging/README.md", "utf8")).toContain(`V=${config.version} `);
   });
 });
