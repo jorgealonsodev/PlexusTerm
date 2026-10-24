@@ -70,7 +70,7 @@ fn detect_linux(
         }
     }
     if let Some(output) = query("/usr/bin/rpm", &["-qf", "--qf", "%{NAME}", "--"], exe) {
-        if output == b"plexusterm" {
+        if matches!(output.as_slice(), b"plexus-term" | b"plexusterm") {
             proofs.push(Format::Rpm);
         }
     }
@@ -94,7 +94,10 @@ fn deb_owner(output: &str, exe: &Path) -> bool {
         return false;
     };
     let lines: Vec<_> = output.lines().collect();
-    matches!(lines.as_slice(), [line] if *line == format!("plexusterm: {path}") || *line == format!("plexusterm:amd64: {path}") || *line == format!("plexusterm:arm64: {path}"))
+    // Tauri's product-name packaging uses plexus-term; retain the legacy alias.
+    matches!(lines.as_slice(), [line] if ["plexus-term", "plexusterm"].iter().any(|name| {
+        ["", ":amd64", ":arm64"].iter().any(|arch| *line == format!("{name}{arch}: {path}"))
+    }))
 }
 
 #[cfg(any(windows, test))]
@@ -380,6 +383,50 @@ mod tests {
         assert_eq!(*events.lock().unwrap(), ["checking"]);
         assert_eq!(std::fs::read(&exe).unwrap(), before);
         assert!(!BUSY.load(Ordering::Acquire));
+
+        // Rejected native ownership must stop at the public command before network,
+        // file staging, replacement or installer launch, just like manager ownership.
+        let queries: [fn(&str, &[&str], &Path) -> Option<Vec<u8>>; 4] = [
+            |command, _, path| {
+                (command == "/usr/bin/dpkg-query")
+                    .then(|| format!("plexus-term-other: {}\n", path.display()).into_bytes())
+            },
+            |command, _, _| {
+                (command == "/usr/bin/dpkg-query")
+                    .then(|| b"plexus-term: /other/plexusterm\n".to_vec())
+            },
+            |command, _, path| {
+                (command == "/usr/bin/dpkg-query").then(|| {
+                    format!(
+                        "plexus-term: {}\nplexusterm: {}\n",
+                        path.display(),
+                        path.display()
+                    )
+                    .into_bytes()
+                })
+            },
+            |command, _, _| (command == "/usr/bin/rpm").then(|| b"plexus-term-other".to_vec()),
+        ];
+        for query in queries {
+            TEST_QUERY.with(|slot| slot.set(Some(query)));
+            events.lock().unwrap().clear();
+            let reported = events.clone();
+            let result = super::super::install(move |progress| {
+                reported.lock().unwrap().push(progress.phase);
+                Ok(())
+            })
+            .await;
+            assert_eq!(
+                result,
+                Err(
+                    "Unknown or ambiguous installation; use the release page to update manually"
+                        .into()
+                )
+            );
+            assert_eq!(*events.lock().unwrap(), ["checking"]);
+            assert_eq!(std::fs::read(&exe).unwrap(), before);
+            assert!(!BUSY.load(Ordering::Acquire));
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -488,6 +535,112 @@ mod tests {
                 );
                 assert_eq!(std::fs::read(&exe).unwrap(), b"original");
             }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn artifact_package_names_and_legacy_aliases_require_exact_ownership() {
+        let exe = Path::new("/usr/bin/plexusterm");
+        for name in ["plexus-term", "plexusterm"] {
+            for arch in ["", ":amd64", ":arm64"] {
+                let owner = format!("{name}{arch}: /usr/bin/plexusterm\n");
+                let detected = detect_linux(exe, None, None, None, |command, args, path| {
+                    assert_eq!(path, exe);
+                    match command {
+                        "/usr/bin/dpkg-query" => {
+                            assert_eq!(args, ["-S", "--"]);
+                            Some(owner.as_bytes().to_vec())
+                        }
+                        _ => None,
+                    }
+                })
+                .unwrap();
+                assert_eq!(detected.format, Format::Deb);
+                assert_eq!(detected.target, exe);
+            }
+            let detected = detect_linux(exe, None, None, None, |command, args, path| {
+                assert_eq!(path, exe);
+                match command {
+                    "/usr/bin/rpm" => {
+                        assert_eq!(args, ["-qf", "--qf", "%{NAME}", "--"]);
+                        Some(name.as_bytes().to_vec())
+                    }
+                    _ => None,
+                }
+            })
+            .unwrap();
+            assert_eq!(detected.format, Format::Rpm);
+            assert_eq!(detected.target, exe);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn rejected_ownership_never_reaches_file_or_launch_work() {
+        let dir = private_dir().unwrap();
+        let exe = dir.path().join("plexusterm");
+        std::fs::write(&exe, b"original executable").unwrap();
+        for name in ["plexus-term", "plexusterm"] {
+            let path = exe.display();
+            let valid = format!("{name}: {path}\n");
+            let invalid = [
+                format!("other: {path}\n"),
+                format!("{name}-other: {path}\n"),
+                format!("other-{name}: {path}\n"),
+                format!("{name}: /other/plexusterm\n"),
+                format!("{name}: {path}.other\n"),
+                format!("{name}:i386: {path}\n"),
+                format!("{name}, other: {path}\n"),
+                format!("{valid}{valid}"),
+                format!("{valid}other: {path}\n"),
+            ];
+            for deb in invalid {
+                let mut work = 0;
+                let result = detect_linux(&exe, None, None, None, |command, _, target| {
+                    assert_eq!(target, exe);
+                    (command == "/usr/bin/dpkg-query").then(|| deb.as_bytes().to_vec())
+                })
+                .map(|_| work += 1);
+                assert_eq!(result, Err("Unknown or ambiguous installation; use the release page to update manually".into()), "{deb}");
+                assert_eq!(work, 0);
+                assert_eq!(std::fs::read(&exe).unwrap(), b"original executable");
+                assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+            }
+            for rpm in [
+                format!("{name}-other"),
+                format!("other-{name}"),
+                format!("{name}\n"),
+                format!("{name}{name}"),
+                "other".into(),
+            ] {
+                let mut work = 0;
+                let result = detect_linux(&exe, None, None, None, |command, _, target| {
+                    assert_eq!(target, exe);
+                    (command == "/usr/bin/rpm").then(|| rpm.as_bytes().to_vec())
+                })
+                .map(|_| work += 1);
+                assert_eq!(result, Err("Unknown or ambiguous installation; use the release page to update manually".into()), "{rpm}");
+                assert_eq!(work, 0);
+                assert_eq!(std::fs::read(&exe).unwrap(), b"original executable");
+                assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+            }
+            assert!(
+                detect_linux(&exe, None, None, None, |command, _, _| match command {
+                    "/usr/bin/dpkg-query" => Some(valid.as_bytes().to_vec()),
+                    "/usr/bin/rpm" => Some(name.as_bytes().to_vec()),
+                    _ => None,
+                })
+                .is_err()
+            );
+            assert_eq!(
+                detect_linux(&exe, None, None, None, |command, _, _| match command {
+                    "/usr/bin/pacman" => Some(b"custom-package\n".to_vec()),
+                    _ => panic!("pacman ownership must take precedence"),
+                })
+                .unwrap_err(),
+                "This installation is managed by pacman/AUR; update PlexusTerm with your package manager or AUR helper instead"
+            );
         }
     }
 

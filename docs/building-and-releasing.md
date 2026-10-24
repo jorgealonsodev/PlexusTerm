@@ -22,7 +22,9 @@ scripts/openssh-interop.sh         # SSH/SFTP against a real OpenSSH server (nee
 pnpm tauri build    # produces .deb and AppImage under src-tauri/target/release/bundle/
 ```
 
-Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`, `libssl-dev`, `build-essential` and `nasm`. Ubuntu 24.04 CI also installs `libfuse2t64` for the AppImage packaging helpers (older distributions call it `libfuse2`). The `.deb` depends only on `libwebkit2gtk-4.1-0` and `libgtk-3-0`; AppImages bundle application libraries but still require a compatible Linux host.
+Build dependencies on Debian/Ubuntu: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`, `libssl-dev`, `build-essential` and `nasm`. Ubuntu 24.04 CI also installs `libfuse2t64` for the AppImage packaging helpers (older distributions call it `libfuse2`). Tauri infers the `.deb` GTK/WebKit runtime dependencies (`libwebkit2gtk-4.1-0` and `libgtk-3-0`); `bundle.linux.deb.depends` adds `pkexec` for native update authorization. The RPM configuration adds `polkit`, which supplies `/usr/bin/pkexec` on the target RPM distributions, alongside Tauri's inferred runtime dependencies. Native updates also need a running desktop polkit authentication agent; PlexusTerm never installs one itself. AppImages bundle application libraries but still require a compatible Linux host.
+
+Package identity is distinct from asset and executable names: Tauri packages `PlexusTerm` as `plexus-term`, while the executable remains `/usr/bin/plexusterm` and release assets retain the `plexusterm_` prefix. The updater accepts that exact package name and the legacy `plexusterm` alias, not arbitrary prefix or substring matches. Before delivery, inspect rebuilt package metadata to confirm the helper and inferred GUI dependencies remain present; static packaging contracts do not replace artifact inspection.
 
 ### Windows builds
 

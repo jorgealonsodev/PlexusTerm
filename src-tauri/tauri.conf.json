@@ -44,8 +44,12 @@
     "copyright": "\u00a9 2026 Jorge Alonso",
     "linux": {
       "deb": {
+        "depends": ["pkexec"],
         "section": "net",
         "desktopTemplate": "linux/plexusterm.desktop"
+      },
+      "rpm": {
+        "depends": ["polkit"]
       }
     },
     "fileAssociations": [
