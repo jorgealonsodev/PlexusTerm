@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "परिचय",
   },
   appearance: {
+    toolbarIconsOnly: "टूलबार में केवल आइकन दिखाएँ",
     colourScheme: "रंग योजना",
     dark: "गहरा",
     light: "हल्का",

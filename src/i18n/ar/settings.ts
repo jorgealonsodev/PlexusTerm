@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "حول",
   },
   appearance: {
+    toolbarIconsOnly: "إظهار الأيقونات فقط في شريط الأدوات",
     colourScheme: "نظام الألوان",
     dark: "داكن",
     light: "فاتح",

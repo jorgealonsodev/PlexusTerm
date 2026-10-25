@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "Info",
   },
   appearance: {
+    toolbarIconsOnly: "Nur Symbole in der Symbolleiste anzeigen",
     colourScheme: "Farbschema",
     dark: "Dunkel",
     light: "Hell",

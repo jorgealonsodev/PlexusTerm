@@ -1460,7 +1460,7 @@ function AppContent() {
   return (
     <div className="app">
       <header
-        className={`toolbar${compactToolbar ? " toolbar--compact" : ""}${shownToolbarColor ? " toolbar--coloured" : ""}`}
+        className={`toolbar${settings.toolbarIconsOnly ? " toolbar--icons-only" : ""}${compactToolbar ? " toolbar--compact" : ""}${shownToolbarColor ? " toolbar--coloured" : ""}`}
         ref={toolbarRef}
         style={
           shownToolbarColor

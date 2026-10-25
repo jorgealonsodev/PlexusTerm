@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "정보",
   },
   appearance: {
+    toolbarIconsOnly: "도구 모음에 아이콘만 표시",
     colourScheme: "색 구성표",
     dark: "어둡게",
     light: "밝게",

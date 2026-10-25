@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "バージョン情報",
   },
   appearance: {
+    toolbarIconsOnly: "ツールバーにアイコンのみを表示",
     colourScheme: "配色",
     dark: "ダーク",
     light: "ライト",

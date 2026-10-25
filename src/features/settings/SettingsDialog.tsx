@@ -336,6 +336,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     onLanguageNow?.(next);
   };
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
+  const [toolbarIconsOnly, setToolbarIconsOnly] = useState(settings.toolbarIconsOnly);
   const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
   const [fontWeight, setFontWeight] = useState(settings.fontWeight);
   const [lineHeight, setLineHeight] = useState(settings.lineHeight);
@@ -469,6 +470,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     return {
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
+      toolbarIconsOnly,
       fontWeight,
       lineHeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
@@ -667,6 +669,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("appearance")}>
+            <label className="check">
+              <input type="checkbox" checked={toolbarIconsOnly} onChange={(e) => setToolbarIconsOnly(e.target.checked)} />
+              <span>{t("settings.appearance.toolbarIconsOnly")}</span>
+            </label>
             <h3 className="settings__group">{t("settings.groups.colours")}</h3>
             <label className="field">
               {t("settings.appearance.colourScheme")}

@@ -125,6 +125,8 @@ export interface TerminalSettings {
   viewerPosition: ViewerPosition;
   /** The file viewer marks the lines changed since the file's last commit, like VS Code (its own button). */
   viewerChangedLines: boolean;
+  /** Hide toolbar labels visually, keeping tooltips and accessible names. */
+  toolbarIconsOnly: boolean;
   /** Text size of the interface (bars, lists, dialogs) in pixels, 10..20; the terminal has its own. */
   uiFontSize: number;
   /** Text size of the AI chat in pixels, 10..24. */
@@ -264,6 +266,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   viewerAutoSave: false,
   viewerPosition: "left",
   viewerChangedLines: true,
+  toolbarIconsOnly: false,
   uiFontSize: 13,
   chatFontSize: 13,
   viewerFontSize: 13,
@@ -517,6 +520,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
       ? (value.viewerPosition as ViewerPosition)
       : d.viewerPosition,
     viewerChangedLines: bool(value.viewerChangedLines, d.viewerChangedLines),
+    toolbarIconsOnly: bool(value.toolbarIconsOnly, d.toolbarIconsOnly),
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
     chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
     viewerFontSize: size(value.viewerFontSize, clampViewerFontSize, d.viewerFontSize),

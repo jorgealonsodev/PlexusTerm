@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "À propos",
   },
   appearance: {
+    toolbarIconsOnly: "Afficher uniquement les icônes dans la barre d’outils",
     colourScheme: "Jeu de couleurs",
     dark: "Sombre",
     light: "Clair",

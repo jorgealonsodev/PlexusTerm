@@ -150,7 +150,8 @@ textarea::placeholder {
 }
 
 /* Hidden visually only: the label still names the button for screen readers. */
-.toolbar--compact .btn__label {
+.toolbar--compact .btn__label,
+.toolbar--icons-only .btn__label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -159,7 +160,8 @@ textarea::placeholder {
   clip-path: inset(50%);
 }
 
-.toolbar--compact .btn--icon {
+.toolbar--compact .btn--icon,
+.toolbar--icons-only .btn--icon {
   gap: 2px;
   min-width: 0;
 }

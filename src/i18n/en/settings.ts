@@ -30,6 +30,7 @@ export const settings = {
     about: "About",
   },
   appearance: {
+    toolbarIconsOnly: "Show only icons in the toolbar",
     colourScheme: "Colour scheme",
     dark: "Dark",
     light: "Light",

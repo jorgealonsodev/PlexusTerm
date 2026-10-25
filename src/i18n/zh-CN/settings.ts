@@ -33,6 +33,7 @@ export const settings: Messages<typeof en> = {
     about: "关于",
   },
   appearance: {
+    toolbarIconsOnly: "工具栏仅显示图标",
     colourScheme: "配色方案",
     dark: "深色",
     light: "浅色",

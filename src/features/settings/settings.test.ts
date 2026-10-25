@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
+  it("persists icon-only toolbars and keeps labels for old or invalid settings", () => {
+    expect(parseSettings(null).toolbarIconsOnly).toBe(false);
+    expect(parseSettings('{}').toolbarIconsOnly).toBe(false);
+    expect(parseSettings('{"toolbarIconsOnly":"true"}').toolbarIconsOnly).toBe(false);
+    const settings = parseSettings('{"toolbarIconsOnly":true}');
+    expect(settings.toolbarIconsOnly).toBe(true);
+    expect(parseSettings(serializeSettings(settings)).toolbarIconsOnly).toBe(true);
+  });
+
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
     const json = JSON.stringify({ aiProvider: "opencode-go", aiModel: "opencode-go/glm-5.3-flash" });
     expect(parseSettings(json).aiModel).toBe("glm-5.3-flash");
@@ -52,6 +61,7 @@ describe("parseSettings", () => {
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1,
+      toolbarIconsOnly: false,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -181,6 +191,7 @@ describe("parseSettings", () => {
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1,
+      toolbarIconsOnly: false,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -376,6 +387,7 @@ describe("serializeSettings", () => {
       viewerChangedLines: false,
       fontWeight: 500,
       lineHeight: 1,
+      toolbarIconsOnly: false,
       uiFontSize: 15,
       chatFontSize: 17,
       viewerFontSize: 13,

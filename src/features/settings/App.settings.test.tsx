@@ -130,6 +130,26 @@ describe("App settings (S15.2, S15.6)", () => {
     for (const tab of sidebarTabs) expect(tab.querySelector("svg"), tab.textContent!).not.toBeNull();
   });
 
+  it("saves the icon-only toolbar preference and restores labels when disabled", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    const toolbar = document.querySelector(".toolbar")!;
+    expect(toolbar.classList.contains("toolbar--icons-only")).toBe(false);
+    for (const enabled of [true, false]) {
+      fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+      fireEvent.click(screen.getByLabelText("Show only icons in the toolbar"));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(toolbar.classList.contains("toolbar--icons-only")).toBe(enabled);
+      for (const name of ["Terminal", "SSH", "Serial", "More", "Tools", "Split right", "Split down", "Multi-exec", "Record macro"]) {
+        const button = screen.getByRole("button", { name });
+        expect(button.querySelector("svg")).not.toBeNull();
+        expect(button.title).toContain(name);
+      }
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(saved().slice(-1)[0]).toMatchObject({ toolbarIconsOnly: enabled });
+    }
+  });
+
   it("opens Wake On LAN from the Tools menu", async () => {
     render(<App />);
     await act(() => Promise.resolve());
