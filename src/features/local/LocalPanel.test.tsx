@@ -146,6 +146,35 @@ describe("LocalPanel", () => {
     expect(mocked.list).not.toHaveBeenCalledWith("/var");
   });
 
+  it("shows DEV mode's Follow and Pin options as chips in one row, each a checkbox lit while on", async () => {
+    const onFollowChange = vi.fn();
+    const onPinnedChange = vi.fn();
+    render(panel({ devStyle: true, follow: true, onFollowChange, pinned: false, onPinnedChange }));
+    await screen.findByText("notes.txt");
+    const follow = screen.getByRole("checkbox", { name: "Follow terminal folder" }) as HTMLInputElement;
+    const pin = screen.getByRole("checkbox", { name: "Pin Explorer view" }) as HTMLInputElement;
+    const chips = [follow.closest(".sftp__chip"), pin.closest(".sftp__chip")];
+    expect(chips[0]?.textContent).toBe("Follow terminal");
+    expect(chips[1]?.textContent).toBe("Pin view");
+    expect(chips[0]?.parentElement).toBe(chips[1]?.parentElement);
+    expect(chips[0]?.parentElement?.classList.contains("sftp__chips")).toBe(true);
+    expect(follow.checked).toBe(true);
+    expect(pin.checked).toBe(false);
+    fireEvent.click(pin);
+    expect(onPinnedChange).toHaveBeenCalledWith(true);
+    fireEvent.click(follow);
+    expect(onFollowChange).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the plain Follow terminal folder checkbox, and no Pin option, outside DEV mode", async () => {
+    render(panel({ onPinnedChange: () => {} }));
+    await screen.findByText("notes.txt");
+    const follow = screen.getByRole("checkbox", { name: "Follow terminal folder" });
+    expect(follow.closest(".sftp__chip")).toBeNull();
+    expect(follow.closest("label")?.textContent).toBe("Follow terminal folder");
+    expect(screen.queryByRole("checkbox", { name: "Pin Explorer view" })).toBeNull();
+  });
+
   it("creates, renames and deletes entries, then lists the folder again", async () => {
     render(panel());
     await screen.findByText("notes.txt");

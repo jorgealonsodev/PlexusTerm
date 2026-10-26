@@ -1056,6 +1056,60 @@ body.is-moving-tab {
   color: var(--muted);
 }
 
+/* DEV mode's on/off options: chips in one row, lit with the accent colour while on. */
+.sftp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sftp__chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: calc(11.5px * var(--ui-scale, 1));
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+
+.sftp__chip:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.sftp__chip:has(.sftp__chip-box:checked) {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.sftp__chip:has(.sftp__chip-box:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The real checkbox stays for the keyboard and screen readers, out of sight. */
+.sftp__chip-box {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sftp__chip {
+    transition: none;
+  }
+}
+
 .sftp__list {
   margin: 0;
   padding: 0;

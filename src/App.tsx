@@ -627,10 +627,26 @@ function AppContent() {
   const activeDev = activeTab ? dev.state[activeTab.key] : undefined;
   const devAnchor = activeDev ? (activeDev.root ?? activeDev.folder) : null;
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
+  /**
+   * The DEV tab whose Explorer view is pinned (Pin Explorer view): the Explorer keeps showing its
+   * folders while other terminals open or are active; null shows the active tab's.
+   */
+  const [pinnedExplorer, setPinnedExplorer] = useState<string | null>(null);
+  const pinnedTab =
+    pinnedExplorer !== null && dev.state[pinnedExplorer] ? (state.tabs.find((t) => t.key === pinnedExplorer) ?? null) : null;
+  // A pinned tab closed or out of DEV mode unpins, so it never comes back pinned on its own.
+  useEffect(() => {
+    if (pinnedExplorer !== null && pinnedTab === null) setPinnedExplorer(null);
+  }, [pinnedExplorer, pinnedTab]);
+  const explorerTab = pinnedTab ?? activeTab;
+  const explorerPane = explorerTab ? terminalPaneOf(explorerTab) : null;
+  const explorerSession = (explorerPane && paneMeta[explorerPane]) || NO_SESSION;
+  const explorerDev = explorerTab ? dev.state[explorerTab.key] : undefined;
+  const explorerAnchor = explorerDev ? (explorerDev.root ?? explorerDev.folder) : null;
   // The Explorer tab belongs to a local terminal; its pty id lets the backend read the shell's folder.
-  const localPtyId = activeTab?.target.type === "local" ? activeSession.sessionId : null;
+  const localPtyId = explorerTab?.target.type === "local" ? explorerSession.sessionId : null;
   const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
-  const localCwd = useShellCwd(localPtyId, activeSession.cwd, localShown && followLocalCwd);
+  const localCwd = useShellCwd(localPtyId, explorerSession.cwd, localShown && followLocalCwd);
   // SFTP follows a remote shell without OSC 7 by reading its folder on the server; the sidebar
   // shows SFTP for an SSH tab on either file tab.
   const sftpShown =
@@ -644,6 +660,13 @@ function AppContent() {
       (activePane !== null && activeSessionId !== null ? macroTargets.get(activePane)?.subscribe(listener) : undefined) ??
       (() => {}),
     [activePane, activeSessionId, macroTargets],
+  );
+  const explorerSessionId = explorerSession.sessionId;
+  const explorerPaneOutput = useCallback(
+    (listener: (text: string) => void) =>
+      (explorerPane !== null && explorerSessionId !== null ? macroTargets.get(explorerPane)?.subscribe(listener) : undefined) ??
+      (() => {}),
+    [explorerPane, explorerSessionId, macroTargets],
   );
   const canSplit =
     activeTab !== null && activeTab.target.type !== "shared" && paneIds(activeTab.layout).length < MAX_PANES;
@@ -1632,34 +1655,37 @@ function AppContent() {
             localAvailable={localPtyId !== null}
             local={
               activeTab &&
+              explorerTab &&
               localPtyId !== null && (
                 <LocalPanel
                   // DEV mode lists from the project root (S10) and starts over when it ends.
-                  key={`${activePane}:${localPtyId}${activeDev ? `:dev:${devAnchor ?? ""}` : ""}`}
+                  key={`${explorerPane}:${localPtyId}${explorerDev ? `:dev:${explorerAnchor ?? ""}` : ""}`}
                   // DEV mode opens at the folder the tool was opened in, then follows the terminal if asked.
-                  cwd={activeDev && (!followLocalCwd || localCwd === null) ? devAnchor : localCwd}
+                  cwd={explorerDev && (!followLocalCwd || localCwd === null) ? explorerAnchor : localCwd}
                   follow={followLocalCwd}
-                  startAt={activeDev ? devAnchor : null}
+                  startAt={explorerDev ? explorerAnchor : null}
                   onFollowChange={setFollowLocalCwd}
+                  pinned={pinnedTab !== null}
+                  onPinnedChange={(pin) => setPinnedExplorer(pin ? explorerTab.key : null)}
                   workspace={{
-                    folders: workspaceFolders[activeTab.key] ?? [],
+                    folders: workspaceFolders[explorerTab.key] ?? [],
                     onAdd: (folder) =>
-                      setWorkspaceFolders((prev) => ({ ...prev, [activeTab.key]: [...(prev[activeTab.key] ?? []), folder] })),
+                      setWorkspaceFolders((prev) => ({ ...prev, [explorerTab.key]: [...(prev[explorerTab.key] ?? []), folder] })),
                     onRemove: (folder) =>
                       setWorkspaceFolders((prev) => ({
                         ...prev,
-                        [activeTab.key]: (prev[activeTab.key] ?? []).filter((f) => f !== folder),
+                        [explorerTab.key]: (prev[explorerTab.key] ?? []).filter((f) => f !== folder),
                       })),
                     // A workspace file opens a new DEV tab in its first folder, with the others added.
                     onOpenFolders: openWorkspace,
                     // Add Folder opens where the terminal is: its OSC 7 folder, else its shell's.
-                    terminalDir: () => (activeSession.cwd ? Promise.resolve(activeSession.cwd) : local.shellCwd(localPtyId)),
+                    terminalDir: () => (explorerSession.cwd ? Promise.resolve(explorerSession.cwd) : local.shellCwd(localPtyId)),
                     onFile: rememberWorkspace,
                   }}
                   recent={recent}
                   reveal={reveal ?? undefined}
                   // The terminal runs an AI CLI in DEV mode: no cd is typed into it.
-                  onUserNavigate={(path) => !activeDev && cdFromBrowser(activePane, { kind: "local" }, path, followLocalCwd)}
+                  onUserNavigate={(path) => !explorerDev && cdFromBrowser(explorerPane, { kind: "local" }, path, followLocalCwd)}
                   onPathToTerminal={(path) => {
                     const flavor = shellFlavor(platform, activeTab.target.type, runningShellOf(activeTab.target, shells));
                     const text = quotePath(path, flavor);
@@ -1671,12 +1697,12 @@ function AppContent() {
                   onOpenInTerminal={openInTerminal}
                   onView={(path) => viewInTab({ kind: "local" }, path)}
                   // DEV mode's tree, icons and git status (S10).
-                  devStyle={activeDev !== undefined}
+                  devStyle={explorerDev !== undefined}
                   git={{
                     enabled: terminalSettings.settings.gitFileStatus,
                     visible: localShown,
-                    prompt: activeSession.prompts,
-                    subscribeOutput: activePaneOutput,
+                    prompt: explorerSession.prompts,
+                    subscribeOutput: explorerPaneOutput,
                   }}
                 />
               )

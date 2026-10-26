@@ -467,6 +467,41 @@ describe("DEV mode (S10, S13)", () => {
     expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
   });
 
+  it("keeps the Explorer on its workspace while Pin Explorer view is on, when another terminal opens", async () => {
+    await renderApp();
+    await run("claude");
+    vi.mocked(open).mockResolvedValueOnce("/tmp");
+    fireEvent.click(await screen.findByRole("button", { name: "Add folder" }));
+    expect(await screen.findByRole("group", { name: "tmp" })).toBeTruthy();
+    const pin = screen.getByRole("checkbox", { name: "Pin Explorer view" }) as HTMLInputElement;
+    expect(pin.checked).toBe(false);
+    fireEvent.click(pin);
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    expect(within(tabBar()).getAllByRole("tab")[1].getAttribute("aria-selected")).toBe("true");
+    // The new terminal is active, the Explorer still shows the pinned tab's workspace.
+    expect(screen.getByRole("group", { name: "tmp" })).toBeTruthy();
+    expect((screen.getByRole("checkbox", { name: "Pin Explorer view" }) as HTMLInputElement).checked).toBe(true);
+    // Unpinned, it shows the active tab again.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Explorer view" }));
+    await settle();
+    expect(screen.queryByRole("group", { name: "tmp" })).toBeNull();
+  });
+
+  it("shows the active tab's Explorer again once the pinned tab is closed", async () => {
+    await renderApp();
+    await run("claude");
+    vi.mocked(open).mockResolvedValueOnce("/tmp");
+    fireEvent.click(await screen.findByRole("button", { name: "Add folder" }));
+    await screen.findByRole("group", { name: "tmp" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pin Explorer view" }));
+    fireEvent.click(within(tabBar()).getByRole("button", { name: "New local terminal" }));
+    await settle();
+    fireEvent.click(within(within(tabBar()).getAllByRole("tab")[0]).getByRole("button", { name: /Close/ }));
+    await settle();
+    expect(screen.queryByRole("group", { name: "tmp" })).toBeNull();
+  });
+
   it("opens a folder in a new DEV terminal with Open in Integrated Terminal while in DEV mode", async () => {
     await renderApp();
     fireEvent.click(devButton());

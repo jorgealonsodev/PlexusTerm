@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes,
 import { DEFAULT_ICON_PACKS, type FileIconPacks } from "../files/iconPacks";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
-import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw } from "lucide-react";
+import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw, LocateFixed, Pin, type LucideIcon } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
@@ -30,6 +30,12 @@ interface LocalPanelProps {
   cwd: string | null;
   follow: boolean;
   onFollowChange: (follow: boolean) => void;
+  /**
+   * DEV mode's Pin Explorer view: on, the Explorer keeps this tab's folders while other terminals
+   * open or are active. Without `onPinnedChange` there is no option.
+   */
+  pinned?: boolean;
+  onPinnedChange?: (pinned: boolean) => void;
   /** Types a path into the focused terminal pane, quoted for its shell; without it the item is disabled. */
   onPathToTerminal?: (path: string) => void;
   /** Text editor chosen in Settings; empty or missing uses the system's default one. */
@@ -98,8 +104,27 @@ export interface Workspace {
   terminalDir?: () => Promise<string | null>;
 }
 
+/** One of DEV mode's on/off options: a compact chip around a real checkbox, lit while it is on. */
+function OptionChip({ icon: Icon, label, short, help, checked, onChange }: {
+  icon: LucideIcon;
+  /** The checkbox's name; the chip shows `short`. */
+  label: string;
+  short: string;
+  help?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="sftp__chip" title={help ?? label}>
+      <input type="checkbox" className="sftp__chip-box" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <Icon size={13} aria-hidden="true" />
+      <span aria-hidden="true">{short}</span>
+    </label>
+  );
+}
+
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinnedChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -739,10 +764,26 @@ export function LocalPanel({ cwd, follow, onFollowChange, onPathToTerminal, text
             </>
           )}
         </div>
-        <label className="sftp__follow">
-          <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-          {t("sftp.panel.follow")}
-        </label>
+        {devStyle ? (
+          <div className="sftp__chips">
+            <OptionChip icon={LocateFixed} label={t("sftp.panel.follow")} short={t("sftp.panel.followShort")} checked={follow} onChange={onFollowChange} />
+            {onPinnedChange && (
+              <OptionChip
+                icon={Pin}
+                label={t("sftp.panel.pin")}
+                short={t("sftp.panel.pinShort")}
+                help={t("sftp.panel.pinHelp")}
+                checked={pinned}
+                onChange={onPinnedChange}
+              />
+            )}
+          </div>
+        ) : (
+          <label className="sftp__follow">
+            <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
+            {t("sftp.panel.follow")}
+          </label>
+        )}
       </div>
       <div className="sftp__body">
         {error && (
