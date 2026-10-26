@@ -49,7 +49,7 @@ import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
-import { commandLineAt, parseOsc133, type CommandLine, type ScreenRows } from "./shellMarks";
+import { parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
@@ -656,11 +656,16 @@ export function TerminalView({
     const fullScreen = () => term.buffer.active.type === "alternate";
     /** Where the command line starts (OSC 133 B) while it is typed; null when the shell gives no marks. */
     let inputStart: { marker: IMarker; col: number } | null = null;
+    /**
+     * The shell's prompt is up (A seen, no command running): only then does a B mark start the
+     * command line, so one printed by a program or a file shown with `cat` is ignored.
+     */
+    let atPrompt = false;
     /** The command line as the shell's marks place it on screen, exact after Tab, arrows or Ctrl+R. */
     const markedLine = (): CommandLine | null => {
       if (!inputStart || inputStart.marker.isDisposed || fullScreen()) return null;
       const buffer = term.buffer.active;
-      return commandLineAt(
+      return typedLineAt(
         rowsOf(buffer),
         { row: inputStart.marker.line, col: inputStart.col },
         { row: buffer.baseY + buffer.cursorY, col: buffer.cursorX },
@@ -997,7 +1002,8 @@ export function TerminalView({
         if (!mark) return true;
         inputStart?.marker.dispose();
         inputStart = null;
-        if (mark.kind === "B") {
+        if (mark.kind !== "B") atPrompt = mark.kind === "A";
+        else if (atPrompt) {
           const marker = term.registerMarker(0);
           if (marker) inputStart = { marker, col: term.buffer.active.cursorX };
         }

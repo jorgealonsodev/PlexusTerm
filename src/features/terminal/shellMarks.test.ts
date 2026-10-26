@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commandLineAt, parseOsc133, type ScreenRows } from "./shellMarks";
+import { commandLineAt, parseOsc133, typedLineAt, type ScreenRows } from "./shellMarks";
 
 /** Rows of a 10-column screen; `wrapped` rows continue the row above. */
 const screen = (...rows: (string | { text: string; wrapped: true })[]): ScreenRows => ({
@@ -61,5 +61,19 @@ describe("commandLineAt", () => {
     expect(commandLineAt(rows, { row: 0, col: 2 }, { row: 0, col: 2 })).toEqual({ text: "", beforeCursor: "" });
     expect(commandLineAt(rows, { row: 0, col: 2 }, { row: 0, col: 1 })).toBeNull();
     expect(commandLineAt(screen("$ ls", "out"), { row: 1, col: 0 }, { row: 0, col: 4 })).toBeNull();
+  });
+});
+
+describe("typedLineAt", () => {
+  it("is the command line while it fits one row or wraps", () => {
+    const rows = screen("$ echo abc", { text: "def", wrapped: true });
+    expect(typedLineAt(rows, { row: 0, col: 2 }, { row: 1, col: 3 })?.text).toBe("echo abcdef");
+  });
+
+  it("is unknown for a multi-line command or output below the mark (no C mark from an old bash)", () => {
+    // A continuation prompt: each Enter would save a longer, prompt-polluted entry.
+    expect(typedLineAt(screen("$ for x in", "> do"), { row: 0, col: 2 }, { row: 1, col: 4 })).toBeNull();
+    // A program's output after the mark, its own prompt on the cursor's row.
+    expect(typedLineAt(screen("$ python3", "Python 3.12", ">>> 1+1"), { row: 0, col: 2 }, { row: 2, col: 7 })).toBeNull();
   });
 });

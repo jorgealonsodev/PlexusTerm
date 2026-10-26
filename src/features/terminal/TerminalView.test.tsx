@@ -1481,12 +1481,31 @@ describe("TerminalView", () => {
     });
 
     describe("with the shell's marks (OSC 133)", () => {
-      /** A prompt the screen-reading guesses do not recognise, then the shell's B mark after it. */
+      /** A prompt the screen-reading guesses do not recognise, between the shell's A and B marks. */
       const promptWithMark = (prompt: string) =>
         act(() => {
+          term().osc(133, "A");
           term().line = prompt;
           term().osc(133, "B");
         });
+
+      it("ignores a B mark that no prompt mark came before, or that comes while a command runs", async () => {
+        const history = historyWith();
+        await renderView({ history });
+        for (const before of [[], ["A", "C"]]) {
+          act(() => before.forEach((mark) => term().osc(133, mark)));
+          act(() => {
+            term().line = "~/src main ";
+            term().osc(133, "B");
+          });
+          act(() => {
+            term().line = "~/src main git checkout";
+            term().type("\t");
+          });
+          act(() => term().type("\r"));
+        }
+        expect(history.recent("local", 5)).toEqual([]);
+      });
 
       it("records the exact line on screen after Tab completed it", async () => {
         const history = historyWith();

@@ -160,7 +160,7 @@ impl PtyManager {
                     prompt: prompt.as_deref(),
                     prompt_command: prompt_command.as_deref(),
                     zdotdir: zdotdir.as_deref(),
-                    scripts: scripts.as_deref(),
+                    scripts: shell_integration::ready_scripts(scripts.as_deref()),
                 },
             )
         } else {

@@ -71,6 +71,13 @@ pub fn install_scripts(dir: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// The scripts folder for a shell starting now: the files are checked (and written again when
+/// something removed or changed them) so bash and zsh never point at missing startup files, which
+/// would leave out the user's own. None when they cannot be written: the shell starts plain.
+pub fn ready_scripts(dir: Option<&Path>) -> Option<&Path> {
+    dir.filter(|dir| install_scripts(dir).is_ok())
+}
+
 /// The variables the shell would otherwise get, read when it starts.
 #[derive(Default)]
 pub struct Inherited<'a> {
@@ -274,6 +281,25 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn scripts_removed_while_the_app_runs_are_written_again_or_left_out_of_the_shell() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("shell-integration");
+        install_scripts(&dir).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(ready_scripts(Some(&dir)), Some(dir.as_path()));
+        assert_eq!(
+            std::fs::read_to_string(dir.join("zsh/.zshrc")).unwrap(),
+            ZSH_RC
+        );
+        // A file where the folder should be: the shell starts with its own startup files only.
+        let blocked = tmp.path().join("blocked");
+        std::fs::write(&blocked, "").unwrap();
+        assert_eq!(ready_scripts(Some(&blocked)), None);
+        assert_eq!(ready_scripts(None), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn the_scripts_are_written_to_their_folder_and_rewritten_when_they_change() {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("shell-integration");
@@ -335,9 +361,17 @@ mod tests {
         let mut reader = pair.master.try_clone_reader().unwrap();
         let mut writer = pair.master.take_writer().unwrap();
         writer.write_all(b"false\rexit\r").unwrap();
-        let mut out = Vec::new();
-        let _ = reader.read_to_end(&mut out);
+        // A shell that never exits (a startup file waiting for input) fails the test, never hangs it.
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut out = Vec::new();
+            let _ = reader.read_to_end(&mut out);
+            let _ = tx.send(out);
+        });
+        let out = rx.recv_timeout(std::time::Duration::from_secs(20));
+        let _ = child.kill();
         let _ = child.wait();
+        let out = out.unwrap_or_else(|_| panic!("{shell} did not exit"));
         Some(String::from_utf8_lossy(&out).into_owned())
     }
 

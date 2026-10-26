@@ -57,3 +57,13 @@ export function commandLineAt(screen: ScreenRows, start: Cell, cursor: Cell): Co
   }
   return { text: text.trimEnd(), beforeCursor };
 }
+
+/**
+ * The command line being typed on one row (or rows that wrap from it); null when it spans lines:
+ * a multi-line command at its continuation prompt, or a command's output when the shell gave no
+ * C mark (bash before 4.4), where the screen no longer shows what is typed.
+ */
+export function typedLineAt(screen: ScreenRows, start: Cell, cursor: Cell): CommandLine | null {
+  const line = commandLineAt(screen, start, cursor);
+  return line && !line.text.includes("\n") ? line : null;
+}

@@ -11,10 +11,14 @@ if [[ $- == *i* && -z ${__plexus_integration-} ]]; then
     printf '\e]133;D;%s\a\e]133;A\a' "$status"
     return "$status"
   }
-  # Last at every prompt: B ends the prompt, also one a prompt theme rewrote just before.
+  # Last at every prompt: B ends the prompt, also one a prompt theme rewrote just before. Only
+  # with PS0 (bash 4.4 and later), which gives C: without it the terminal could not tell the
+  # command line from the command's output (macOS's /bin/bash is 3.2).
   __plexus_prompt_end() {
     local status=$?
-    [[ $PS1 == *'133;B'* ]] || PS1="$PS1"'\[\e]133;B\a\]'
+    if ((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4))); then
+      [[ $PS1 == *'133;B'* ]] || PS1="$PS1"'\[\e]133;B\a\]'
+    fi
     return "$status"
   }
   if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == 'declare -a'* ]]; then
