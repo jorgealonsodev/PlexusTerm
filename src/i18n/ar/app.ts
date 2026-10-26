@@ -91,6 +91,7 @@ export const app: Messages<typeof en> = {
     terminalN: "الطرفية {n}",
     copyHost: "نسخ عنوان المضيف ({host})",
     duplicate: "تكرار علامة التبويب",
+    showInExplorer: "عرض المجلد في المستكشف",
     colour: "لون علامة التبويب…",
     close: "إغلاق علامة التبويب",
     closeOthers: "إغلاق علامات التبويب الأخرى",

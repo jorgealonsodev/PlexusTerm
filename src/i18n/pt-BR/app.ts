@@ -89,6 +89,7 @@ export const app: Messages<typeof en> = {
     terminalN: "Terminal {n}",
     copyHost: "Copiar endereço do host ({host})",
     duplicate: "Duplicar aba",
+    showInExplorer: "Ver pasta no Explorador",
     colour: "Cor da aba…",
     close: "Fechar aba",
     closeOthers: "Fechar as outras abas",

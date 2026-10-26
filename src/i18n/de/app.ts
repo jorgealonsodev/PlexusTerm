@@ -88,6 +88,7 @@ export const app: Messages<typeof en> = {
     terminalN: "Terminal {n}",
     copyHost: "Hostadresse kopieren ({host})",
     duplicate: "Tab duplizieren",
+    showInExplorer: "Ordner im Explorer anzeigen",
     colour: "Tab-Farbe …",
     close: "Tab schließen",
     closeOthers: "Andere Tabs schließen",

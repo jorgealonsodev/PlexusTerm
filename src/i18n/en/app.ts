@@ -85,6 +85,7 @@ export const app = {
     terminalN: "Terminal {n}",
     copyHost: "Copy host address ({host})",
     duplicate: "Duplicate tab",
+    showInExplorer: "Show folder in Explorer",
     colour: "Tab colour…",
     close: "Close tab",
     closeOthers: "Close other tabs",

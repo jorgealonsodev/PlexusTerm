@@ -89,6 +89,7 @@ export const app: Messages<typeof en> = {
     terminalN: "Terminal {n}",
     copyHost: "Copiar dirección del host ({host})",
     duplicate: "Duplicar pestaña",
+    showInExplorer: "Ver carpeta en el Explorador",
     colour: "Color de la pestaña…",
     close: "Cerrar pestaña",
     closeOthers: "Cerrar las demás pestañas",

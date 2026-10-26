@@ -89,6 +89,7 @@ export const app: Messages<typeof en> = {
     terminalN: "Terminal {n}",
     copyHost: "Copier l'adresse de l'hôte ({host})",
     duplicate: "Dupliquer l'onglet",
+    showInExplorer: "Afficher le dossier dans l'Explorateur",
     colour: "Couleur de l’onglet…",
     close: "Fermer l'onglet",
     closeOthers: "Fermer les autres onglets",

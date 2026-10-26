@@ -86,6 +86,7 @@ export const app: Messages<typeof en> = {
     terminalN: "终端 {n}",
     copyHost: "复制主机地址 ({host})",
     duplicate: "复制标签页",
+    showInExplorer: "在资源管理器中显示文件夹",
     colour: "标签页颜色…",
     close: "关闭标签页",
     closeOthers: "关闭其他标签页",

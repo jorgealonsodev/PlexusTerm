@@ -55,6 +55,8 @@ interface TabBarProps {
   onCloseOthers?: (key: string) => void;
   onCloseRight?: (key: string) => void;
   onCloseAll?: () => void;
+  /** Shows the folder of a tab's terminal in the sidebar's Explorer (local and SSH tabs). */
+  onShowInExplorer?: (key: string) => void;
   /** Copies a tab's host address (SSH, Telnet and Mosh tabs). */
   onCopyHost?: (host: string) => void;
   /** Gives a tab a colour (null: none); without it the menu has no colour item. */
@@ -228,6 +230,11 @@ export function TabBar(props: TabBarProps) {
           onSelect: () => props.onShare!(key),
         },
       props.onCopyHost && host && { label: t("app.tabs.copyHost", { host }), onSelect: () => props.onCopyHost!(host) },
+      props.onShowInExplorer &&
+        (tab.target.type === "local" || tab.target.type === "ssh") && {
+          label: t("app.tabs.showInExplorer"),
+          onSelect: () => props.onShowInExplorer!(key),
+        },
       props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
       props.onColor && menu && { label: t("app.tabs.colour"), onSelect: () => setColorMenu({ key, x: menu.x, y: menu.y }) },
       { label: t("app.tabs.close"), onSelect: () => onClose(key) },

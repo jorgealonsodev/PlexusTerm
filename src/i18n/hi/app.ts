@@ -87,6 +87,7 @@ export const app: Messages<typeof en> = {
     terminalN: "टर्मिनल {n}",
     copyHost: "होस्ट पता कॉपी करें ({host})",
     duplicate: "टैब की प्रतिलिपि बनाएँ",
+    showInExplorer: "एक्सप्लोरर में फ़ोल्डर दिखाएँ",
     colour: "टैब का रंग…",
     close: "टैब बंद करें",
     closeOthers: "अन्य टैब बंद करें",

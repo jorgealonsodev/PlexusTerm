@@ -87,6 +87,7 @@ export const app: Messages<typeof en> = {
     terminalN: "ターミナル {n}",
     copyHost: "ホストアドレスをコピー ({host})",
     duplicate: "タブを複製",
+    showInExplorer: "エクスプローラーでフォルダーを表示",
     colour: "タブの色…",
     close: "タブを閉じる",
     closeOthers: "他のタブを閉じる",

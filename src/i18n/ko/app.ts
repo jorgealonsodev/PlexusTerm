@@ -86,6 +86,7 @@ export const app: Messages<typeof en> = {
     terminalN: "터미널 {n}",
     copyHost: "호스트 주소 복사({host})",
     duplicate: "탭 복제",
+    showInExplorer: "탐색기에서 폴더 보기",
     colour: "탭 색…",
     close: "탭 닫기",
     closeOthers: "다른 탭 닫기",

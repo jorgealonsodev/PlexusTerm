@@ -1853,6 +1853,16 @@ function AppContent() {
             onCloseOthers={(key) => void dispatchKeepingEdits({ type: "closeOthers", key })}
             onCloseRight={(key) => void dispatchKeepingEdits({ type: "closeRight", key })}
             onCloseAll={() => void dispatchKeepingEdits({ type: "closeAll" })}
+            onShowInExplorer={(key) => {
+              // The Explorer shows the active tab's folder, following its terminal: the tab becomes
+              // active, a pin on another tab's view is lifted, and the folder followed again.
+              dispatch({ type: "activate", key });
+              if (pinnedExplorer !== key) setPinnedExplorer(null);
+              if (state.tabs.find((t) => t.key === key)?.target.type === "ssh") setFollowCwd(true);
+              else setFollowLocalCwd(true);
+              setSidebarView("explorer");
+              if (terminalSettings.settings.sidebarCollapsed) terminalSettings.update({ sidebarCollapsed: false });
+            }}
             onCopyHost={(host) =>
               void writeText(host).catch(() => setNotice(t("app.notice.copyFailed")))
             }

@@ -182,6 +182,8 @@ The **Explorer** tab of the sidebar browses the local disk while the active tab 
 - The toolbar's icons (hover one for its name) are **New folder**, **New file** (an empty file; an existing one is never replaced), **Rename** (an existing name is never replaced) and **Delete**, which act on the selected entry. Deleting a folder deletes everything in it, after a confirmation.
 - Right-click an entry for **Open**, **View** (files: see [Viewing files](#viewing-files)), **Open with default text editor** (the **Text editor** of [Settings](#terminal-settings)), **Open with…**, **Rename…**, **Delete**, **Copy file path**, **Copy file path to terminal** (also a middle click; quoted for the terminal's shell), **Properties** and, on Linux and macOS, **Permissions…**. Files open in place: there is no temporary copy. On folders, **Open in terminal** (right after **Open**) opens a new local terminal tab, with the same shell as the active one, that starts in that folder.
 
+**Show folder in Explorer**, in the right-click menu of a local or SSH tab, makes that tab active and opens the sidebar on the Explorer (the SFTP browser for SSH) at its terminal's folder: the sidebar unfolds, **Follow terminal folder** turns on and a pinned DEV Explorer view of another tab is unpinned.
+
 With **Follow terminal folder** on (the default), the Explorer shows the folder the terminal's shell is in. Shells that report it with OSC 7 (fish, zsh or bash with `vte.sh`), or with OSC 9;9 as the Windows shells below, are followed at once. For other shells PlexusTerm reads the shell's working folder every second while the tab is shown, on Linux and macOS; it is the shell's own folder, not that of a program it runs. On Windows PlexusTerm makes PowerShell, cmd and Git Bash report their folder by themselves at every prompt (OSC 9;9, as Windows Terminal reads it): PowerShell's prompt, including one set by oh-my-posh or Starship in your profile, is wrapped when it starts without arguments of yours; cmd gets the report in front of its `PROMPT`; Git Bash gets it through `PROMPT_COMMAND` (a `PROMPT_COMMAND` set in your `.bashrc` replaces it). WSL is not followed.
 
 ### DEV mode file lists
@@ -634,7 +636,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Shift+Enter | New line in AI command-line tools (sends a line feed, like Ctrl+J; see [AI command-line tools](#ai-command-line-tools)) |
 | Middle click on a tab | Close that tab |
 | Drag a tab | Put it in another place, on top or in DEV mode's column; a line shows where it lands |
-| Right click on a tab | Share… (Sharing… while shared), Copy host address (SSH, Telnet and Mosh tabs), Duplicate tab, Tab colour…, Close tab, Close other tabs, Close tabs to the right (Close tabs below in DEV mode's column), Close all tabs |
+| Right click on a tab | Share… (Sharing… while shared), Copy host address (SSH, Telnet and Mosh tabs), Show folder in Explorer (local and SSH tabs), Duplicate tab, Tab colour…, Close tab, Close other tabs, Close tabs to the right (Close tabs below in DEV mode's column), Close all tabs |
 
 These are the defaults. Shortcuts handled by the app never reach the shell.
 

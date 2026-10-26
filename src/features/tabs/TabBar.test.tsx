@@ -130,6 +130,31 @@ describe("TabBar", () => {
     expect(handlers.onCloseAll).toHaveBeenCalledTimes(1);
   });
 
+  it("shows the folder of local and SSH tabs in the Explorer, and offers nothing for others", () => {
+    const onShowInExplorer = vi.fn();
+    const ssh = { ...tab("t1", "web"), target: { type: "ssh" as const, host: "10.244.208.224", port: 22, username: "u", auth: { method: "agent" as const } } };
+    const telnet = { ...tab("t2", "router"), target: { type: "telnet" as const, host: "192.168.1.1", port: 23 } };
+    render(
+      <TabBar
+        tabs={[ssh, telnet, tab("t3", "local")]}
+        activeKey="t1"
+        onActivate={() => {}}
+        onClose={() => {}}
+        onNew={() => {}}
+        onShowInExplorer={onShowInExplorer}
+      />,
+    );
+    const menuOn = (title: string) => fireEvent.contextMenu(screen.getByTitle(title), { clientX: 5, clientY: 5 });
+    menuOn("local");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Show folder in Explorer" }));
+    expect(onShowInExplorer).toHaveBeenCalledWith("t3");
+    menuOn("web");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Show folder in Explorer" }));
+    expect(onShowInExplorer).toHaveBeenCalledWith("t1");
+    menuOn("router");
+    expect(screen.queryByRole("menuitem", { name: "Show folder in Explorer" })).toBeNull();
+  });
+
   it("copies the host address of SSH, Telnet and Mosh tabs, and offers nothing to copy for others", () => {
     const onCopyHost = vi.fn();
     const ssh = { ...tab("t1", "web"), target: { type: "ssh" as const, host: "10.244.208.224", port: 22, username: "u", auth: { method: "agent" as const } } };
