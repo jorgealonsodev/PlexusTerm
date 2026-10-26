@@ -56,17 +56,22 @@ const SCRIPTS: [(&str, &str); 4] = [
 ];
 
 /// Writes the startup scripts to `dir` (in the app's config folder, which only the user can
-/// change), replacing any that differ from this version's.
+/// change), replacing any that differ from this version's. Each is written aside and renamed into
+/// place, so a shell starting meanwhile never reads half a script.
 pub fn install_scripts(dir: &Path) -> std::io::Result<()> {
+    use std::io::Write;
     for (name, contents) in SCRIPTS {
         let path = dir.join(name);
         if std::fs::read_to_string(&path).is_ok_and(|current| current == contents) {
             continue;
         }
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        crate::platform::write_private(&path, contents.as_bytes())?;
+        let parent = path.parent().unwrap_or(dir);
+        std::fs::create_dir_all(parent)?;
+        // Readable only by the user (0600 on Unix), like the files of `write_private`.
+        let mut file = tempfile::NamedTempFile::new_in(parent)?;
+        file.write_all(contents.as_bytes())?;
+        file.as_file().sync_all()?;
+        file.persist(&path).map_err(|e| e.error)?;
     }
     Ok(())
 }
@@ -320,10 +325,11 @@ mod tests {
         );
     }
 
-    /// Runs `false` in a real shell started as PlexusTerm starts it, with an empty home, and
-    /// returns what it printed. None when the shell is not installed.
+    /// Runs `false` in a real shell started as PlexusTerm starts it, with a home holding only
+    /// `rc` as the shell's startup file, and returns what it printed. None when the shell is not
+    /// installed.
     #[cfg(unix)]
-    fn run_marked(shell: &str) -> Option<String> {
+    fn run_marked(shell: &str, rc: &str) -> Option<String> {
         use portable_pty::{CommandBuilder, PtySize, native_pty_system};
         use std::io::{Read, Write};
         let program = crate::platform::find_program(shell, &std::env::var_os("PATH")?)?;
@@ -332,6 +338,7 @@ mod tests {
         install_scripts(&scripts).unwrap();
         let home = tmp.path().join("home");
         std::fs::create_dir(&home).unwrap();
+        std::fs::write(home.join(format!(".{shell}rc")), rc).unwrap();
         let program = program.to_string_lossy().into_owned();
         let it = integration(
             &program,
@@ -377,9 +384,24 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn zsh_without_prompt_percent_keeps_its_prompt_and_still_marks_prompts_and_exit_codes() {
+        let Some(out) = run_marked("zsh", "setopt no_prompt_percent\nPS1='> '\n") else {
+            eprintln!("zsh is not installed: not checked");
+            return;
+        };
+        assert!(!out.contains("%{"), "{out:?}");
+        assert!(!out.contains("\x1b]133;B"), "{out:?}");
+        assert!(
+            out.contains("\x1b]133;A\x07") && out.contains("\x1b]133;D;1\x07"),
+            "{out:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn bash_and_zsh_mark_the_prompt_the_command_line_and_how_the_command_ended() {
         for shell in ["bash", "zsh"] {
-            let Some(out) = run_marked(shell) else {
+            let Some(out) = run_marked(shell, "") else {
                 eprintln!("{shell} is not installed: not checked");
                 continue;
             };
