@@ -6,6 +6,7 @@ import { Terminal, type FontWeight } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, type FileLinks } from "./fileLinks";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -370,6 +371,10 @@ export function TerminalView({
         openFile: () => fileLinksRef.current?.open,
       }),
     });
+    // xterm measures with Unicode 6 by default, where emoji take one cell; programs use the newer
+    // tables (two cells), so every emoji shifted the rest of its line one column left.
+    term.loadAddon(new Unicode11Addon());
+    term.unicode.activeVersion = "11";
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon(webLinkHandler((url) => void openUrl(url).catch(() => {}))));

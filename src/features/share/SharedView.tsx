@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Terminal, type FontWeight } from "@xterm/xterm";
 import { SearchAddon } from "@xterm/addon-search";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { Eye, Keyboard, ShieldAlert } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { useT } from "../../i18n/i18n";
@@ -87,6 +88,9 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
       scrollback: 10000,
       theme: themeById(settings.theme).theme,
     });
+    // Same character widths as the sharer's terminal, or emoji lines would be laid out differently.
+    term.loadAddon(new Unicode11Addon());
+    term.unicode.activeVersion = "11";
     const search = new SearchAddon();
     term.loadAddon(search);
     // Remote output must not make this terminal answer back (the answer would be typed into the

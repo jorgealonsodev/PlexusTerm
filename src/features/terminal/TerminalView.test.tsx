@@ -26,6 +26,7 @@ vi.mock("./clipboard", () => clipboard);
 // Only the keyring commands reach `invoke` here (the backend is mocked): a keyring is available.
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => true) }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
+vi.mock("@xterm/addon-unicode11", () => ({ Unicode11Addon: class {} }));
 // Error colouring is tested on its own (errorHighlight.test.ts); here only its wiring is checked.
 const errors = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -49,6 +50,7 @@ interface FakeTerminal {
   linkProviders: import("@xterm/xterm").ILinkProvider[];
   resize(cols: number, rows: number): void;
   options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
+  unicode: { activeVersion: string };
   keyHandler: (e: Partial<KeyboardEvent>) => boolean;
   paste: ReturnType<typeof vi.fn>;
   modes: { bracketedPasteMode: boolean };
@@ -74,6 +76,7 @@ vi.mock("@xterm/xterm", () => ({
     rows = 24;
     options: { fontSize?: number; fontFamily?: string; theme?: { background?: string } };
     oscHandlers = new Map<number, (data: string) => boolean>();
+    unicode = { activeVersion: "6" };
     parser = {
       registerOscHandler: (ident: number, handler: (data: string) => boolean) => {
         this.oscHandlers.set(ident, handler);
@@ -401,6 +404,11 @@ describe("TerminalView", () => {
       fireEvent.mouseDown(host, { button: 2, ...mods });
       fireEvent.contextMenu(host, { clientX: 5, clientY: 6, ...mods });
     };
+
+    it("measures emoji as two cells, as the programs that draw them do", () => {
+      renderView();
+      expect(term().unicode.activeVersion).toBe("11");
+    });
 
     it("draws a thin bar cursor, not a block", () => {
       renderView();

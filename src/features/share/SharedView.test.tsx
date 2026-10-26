@@ -20,6 +20,7 @@ vi.mock("./viewApi", () => ({
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 vi.mock("@xterm/addon-search", () => ({ SearchAddon: class {} }));
+vi.mock("@xterm/addon-unicode11", () => ({ Unicode11Addon: class {} }));
 
 /** The handlers the pane registers on the fake terminal. */
 const term = vi.hoisted(() => ({
@@ -30,10 +31,12 @@ const term = vi.hoisted(() => ({
   size: { cols: 0, rows: 0 },
   written: [] as string[],
   resets: 0,
+  unicode: { activeVersion: "6" },
 }));
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     options: Record<string, unknown> = {};
+    unicode = term.unicode;
     parser = {
       registerCsiHandler: (id: { final: string }) => (term.csi.push(id), { dispose() {} }),
       registerOscHandler: (ident: number) => (term.osc.push(ident), { dispose() {} }),
@@ -91,6 +94,7 @@ describe("SharedView (P3)", () => {
     expect(screen.getByText("Waiting for the sharer to let you in")).toBeTruthy();
     await emit({ event: "joined", data: { access: "view", cols: 120, rows: 40 } });
     expect(term.size).toEqual({ cols: 120, rows: 40 });
+    expect(term.unicode.activeVersion).toBe("11");
     await emit({ event: "output", data: "hello" });
     expect(term.written).toEqual(["hello"]);
     const untrusted = screen.getByText("Terminal of another computer");
