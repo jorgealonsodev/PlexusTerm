@@ -150,8 +150,9 @@ impl PtyManager {
         let prompt_command = std::env::var("PROMPT_COMMAND").ok();
         let zdotdir = std::env::var("ZDOTDIR").ok();
         let scripts = self.scripts.lock().unwrap().clone();
-        // Elsewhere the folder of any shell can be read: only bash and zsh get anything.
-        let integrated = cfg!(windows) || matches!(platform::shell_name(&program), "bash" | "zsh");
+        // Elsewhere the folder of any shell can be read: only bash, zsh and fish get anything.
+        let integrated =
+            cfg!(windows) || matches!(platform::shell_name(&program), "bash" | "zsh" | "fish");
         let integration = if integrated {
             shell_integration::integration(
                 &program,

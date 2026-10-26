@@ -46,10 +46,13 @@ pub const BASH_SCRIPT: &str = include_str!("scripts/bash.sh");
 pub const ZSH_ENV: &str = include_str!("scripts/zsh/.zshenv");
 pub const ZSH_PROFILE: &str = include_str!("scripts/zsh/.zprofile");
 pub const ZSH_RC: &str = include_str!("scripts/zsh/.zshrc");
+/// fish's, sourced after its config.fish (`--init-command`).
+pub const FISH_SCRIPT: &str = include_str!("scripts/fish.fish");
 
 /// The files of [`install_scripts`], relative to its folder.
-const SCRIPTS: [(&str, &str); 4] = [
+const SCRIPTS: [(&str, &str); 5] = [
     ("bash.sh", BASH_SCRIPT),
+    ("fish.fish", FISH_SCRIPT),
     ("zsh/.zshenv", ZSH_ENV),
     ("zsh/.zprofile", ZSH_PROFILE),
     ("zsh/.zshrc", ZSH_RC),
@@ -121,6 +124,20 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
                     dir.join("bash.sh").to_string_lossy().into_owned(),
                 ]),
                 env: vec![],
+            },
+            None => Integration::default(),
+        },
+        // The path goes through a variable: fish never splits it, whatever characters it has.
+        "fish" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+            Some(dir) => Integration {
+                args: Some(vec![
+                    "--init-command".into(),
+                    "source $PLEXUS_FISH_INIT".into(),
+                ]),
+                env: vec![(
+                    "PLEXUS_FISH_INIT".into(),
+                    dir.join("fish.fish").to_string_lossy().into_owned(),
+                )],
             },
             None => Integration::default(),
         },
@@ -269,8 +286,21 @@ mod tests {
                 ("PLEXUS_ZDOTDIR_WAS_SET".to_string(), "1".to_string()),
             ]
         );
+        assert_eq!(
+            integration("/usr/bin/fish", &[], with(None)),
+            Integration {
+                args: Some(vec![
+                    "--init-command".to_string(),
+                    "source $PLEXUS_FISH_INIT".to_string()
+                ]),
+                env: vec![(
+                    "PLEXUS_FISH_INIT".to_string(),
+                    format!("{}/fish.fish", dir.display())
+                )],
+            }
+        );
         let theirs = vec!["-l".to_string()];
-        for program in ["/bin/bash", "/bin/zsh"] {
+        for program in ["/bin/bash", "/bin/zsh", "/usr/bin/fish"] {
             assert_eq!(
                 integration(program, &theirs, with(None)),
                 Integration::default(),
@@ -338,7 +368,12 @@ mod tests {
         install_scripts(&scripts).unwrap();
         let home = tmp.path().join("home");
         std::fs::create_dir(&home).unwrap();
-        std::fs::write(home.join(format!(".{shell}rc")), rc).unwrap();
+        let rc_file = match shell {
+            "fish" => home.join(".config/fish/config.fish"),
+            _ => home.join(format!(".{shell}rc")),
+        };
+        std::fs::create_dir_all(rc_file.parent().unwrap()).unwrap();
+        std::fs::write(rc_file, rc).unwrap();
         let program = program.to_string_lossy().into_owned();
         let it = integration(
             &program,
@@ -399,8 +434,20 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn bash_and_zsh_mark_the_prompt_the_command_line_and_how_the_command_ended() {
-        for shell in ["bash", "zsh"] {
+    fn a_fish_prompt_theme_still_sees_how_the_last_command_ended() {
+        let theme = "function fish_prompt; echo -n \"[$status]> \"; end\n";
+        let Some(out) = run_marked("fish", theme) else {
+            eprintln!("fish is not installed: not checked");
+            return;
+        };
+        assert!(out.contains("[1]> "), "{out:?}");
+        assert!(out.contains("\x1b]133;A\x07[1]> \x1b]133;B\x07"), "{out:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bash_zsh_and_fish_mark_the_prompt_the_command_line_and_how_the_command_ended() {
+        for shell in ["bash", "zsh", "fish"] {
             let Some(out) = run_marked(shell, "") else {
                 eprintln!("{shell} is not installed: not checked");
                 continue;
