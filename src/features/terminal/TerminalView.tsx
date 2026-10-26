@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Terminal, type FontWeight } from "@xterm/xterm";
+import { Terminal, type FontWeight, type IBuffer, type IMarker } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -49,6 +49,7 @@ import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
+import { commandLineAt, parseOsc133, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
@@ -164,6 +165,14 @@ export const PROMPT_QUIET_MS = 500;
 export const ACTIVITY_QUIET_MS = 1500;
 /** Output this soon after a key is taken as its echo. */
 const ECHO_MS = 150;
+
+/** xterm's buffer as the shell marks read it. */
+const rowsOf = (buffer: IBuffer): ScreenRows => ({
+  row: (y) => {
+    const line = buffer.getLine(y);
+    return line ? { wrapped: line.isWrapped, text: (start, end, trimRight = false) => line.translateToString(trimRight, start, end) } : null;
+  },
+});
 /** After a resize, error lines are coloured again once the size has not changed for this long. */
 const ERROR_REFRESH_DELAY_MS = 150;
 
@@ -645,8 +654,32 @@ export function TerminalView({
     };
     const atSecretPrompt = () => isSecretPrompt(promptBefore(cursorRow().toCursor, line.text));
     const fullScreen = () => term.buffer.active.type === "alternate";
+    /** Where the command line starts (OSC 133 B) while it is typed; null when the shell gives no marks. */
+    let inputStart: { marker: IMarker; col: number } | null = null;
+    /** The command line as the shell's marks place it on screen, exact after Tab, arrows or Ctrl+R. */
+    const markedLine = (): CommandLine | null => {
+      if (!inputStart || inputStart.marker.isDisposed || fullScreen()) return null;
+      const buffer = term.buffer.active;
+      return commandLineAt(
+        rowsOf(buffer),
+        { row: inputStart.marker.line, col: inputStart.col },
+        { row: buffer.baseY + buffer.cursorY, col: buffer.cursorX },
+      );
+    };
+    /**
+     * Takes the typed line from the screen when the marks place it: always while the keys left it
+     * uncertain, otherwise once the echo of the last key had time to arrive.
+     */
+    const syncMarkedLine = () => {
+      if (!line.uncertain && performance.now() - lastTyped < ECHO_MS) return;
+      const marked = markedLine();
+      if (!marked || (!line.uncertain && marked.beforeCursor === line.text)) return;
+      line = { text: marked.beforeCursor, uncertain: false };
+      updateSuggestion();
+    };
 
     const refreshGhost = () => {
+      syncMarkedLine();
       const buffer = term.buffer.active;
       let rest: string | null = null;
       if (
@@ -760,8 +793,11 @@ export function TerminalView({
         const enter = data.includes("\r") || data.includes("\n");
         const prompt = enter ? promptBefore(cursorRow().toCursor, line.text) : "";
         // A line recalled from history or completed with Tab is only known from the screen.
-        const recalled = line.uncertain && data.includes("\r") ? onScreenCommand() : null;
-        const result = feedInput(line, data);
+        // With the shell's marks, Enter sends exactly the line on screen.
+        const marked = data === "\r" ? markedLine() : null;
+        const recalled = !marked && line.uncertain && data.includes("\r") ? onScreenCommand() : null;
+        const fed = feedInput(line, data);
+        const result = marked ? { state: EMPTY_LINE, commits: [marked.text] } : fed;
         const secret = (result.commits.length > 0 || recalled !== null) && atSecretPrompt();
         if (result.commits.length > 0) awaitingPrompt = true;
         line = result.state;
@@ -839,6 +875,8 @@ export function TerminalView({
       },
       lineEmpty: () => {
         if (fullScreen() || atSecretPrompt()) return false;
+        const marked = markedLine();
+        if (marked) return marked.text === "";
         const row = cursorRow();
         const empty = line.uncertain ? promptOnlyOnScreen(row.toCursor) : line.text === "";
         return empty && !row.textAfter;
@@ -873,6 +911,8 @@ export function TerminalView({
       },
       lineEmpty: () => {
         if (fullScreen() || atSecretPrompt()) return false;
+        const marked = markedLine();
+        if (marked) return marked.text === "";
         const row = cursorRow();
         // After Ctrl+L, arrows or Tab the typed line is uncertain: the screen tells whether only
         // the prompt is there.
@@ -950,9 +990,18 @@ export function TerminalView({
         else promptCame(true);
         return true;
       }),
-      // Shell integration marks: A = prompt start, D = command finished.
+      // Shell integration marks: A = prompt start, B = command line start, C = command runs,
+      // D = command finished.
       term.parser.registerOscHandler(133, (data) => {
-        if (/^[AD](;|$)/.test(data)) promptCame(true);
+        const mark = parseOsc133(data);
+        if (!mark) return true;
+        inputStart?.marker.dispose();
+        inputStart = null;
+        if (mark.kind === "B") {
+          const marker = term.registerMarker(0);
+          if (marker) inputStart = { marker, col: term.buffer.active.cursorX };
+        }
+        if (mark.kind === "A" || mark.kind === "D") promptCame(true);
         return true;
       }),
     ];

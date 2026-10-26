@@ -122,6 +122,11 @@ vi.mock("@xterm/xterm", () => ({
         },
       };
     }
+    /** Markers (OSC 133 B) on the only row there is. */
+    registerMarker() {
+      const marker = { line: 0, isDisposed: false, dispose: () => void (marker.isDisposed = true) };
+      return marker;
+    }
     dataHandlers: ((data: string) => void)[] = [];
     type(data: string) {
       this.dataHandlers.forEach((handler) => handler(data));
@@ -1473,6 +1478,63 @@ describe("TerminalView", () => {
       expect(ghost(container)).toBeNull();
       // Right Arrow without a suggestion reaches the shell.
       expect(key("ArrowRight")).toBe(true);
+    });
+
+    describe("with the shell's marks (OSC 133)", () => {
+      /** A prompt the screen-reading guesses do not recognise, then the shell's B mark after it. */
+      const promptWithMark = (prompt: string) =>
+        act(() => {
+          term().line = prompt;
+          term().osc(133, "B");
+        });
+
+      it("records the exact line on screen after Tab completed it", async () => {
+        const history = historyWith();
+        await renderView({ history });
+        promptWithMark("~/src main ");
+        typeAt("~/src main ", "git ch");
+        act(() => {
+          term().line = "~/src main git checkout";
+          term().type("\t");
+        });
+        act(() => term().type("\r"));
+        expect(history.recent("local", 5)).toEqual(["git checkout"]);
+      });
+
+      it("keeps suggesting after Tab, from the line on screen", async () => {
+        const { container } = await renderView({ history: historyWith("git checkout main") });
+        promptWithMark("~/src main ");
+        typeAt("~/src main ", "git ch");
+        act(() => {
+          term().line = "~/src main git checkout";
+          term().type("\t");
+        });
+        nextFrame();
+        nextFrame();
+        expect(ghost(container)).toBe(" main");
+      });
+
+      it("tells an empty line from the marks, whatever the prompt looks like", async () => {
+        let assist: { lineEmpty?: () => boolean } | null = null;
+        await renderView({ registerAssistTarget: (target) => ((assist = target), () => {}) });
+        promptWithMark("~/src main ");
+        expect(assist!.lineEmpty!()).toBe(true);
+        act(() => {
+          term().line = "~/src main git status";
+          term().type("\x1b[A");
+        });
+        expect(assist!.lineEmpty!()).toBe(false);
+        // Ctrl+U empties the recalled line: without a prompt sign only the marks can tell.
+        act(() => {
+          term().line = "~/src main ";
+          term().type("\x15");
+        });
+        expect(assist!.lineEmpty!()).toBe(true);
+        // The command runs: the line is no longer the one typed at the prompt.
+        act(() => term().osc(133, "C"));
+        act(() => void (term().line = "~/src main "));
+        expect(assist!.lineEmpty!()).toBe(false);
+      });
     });
 
     it("hides suggestions when they are turned off or the cursor is not at the end of the typed text", async () => {
