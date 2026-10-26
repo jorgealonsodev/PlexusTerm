@@ -1982,6 +1982,66 @@ body.is-moving-tab {
   display: none;
 }
 
+.settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings__search {
+  display: flex;
+  flex: 0 1 280px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.settings__search:focus-within {
+  border-color: var(--accent);
+}
+
+.settings__search input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+/* While searching, the options found in every section are listed one section after another,
+   each under its name, and the section list steps aside. */
+.settings__body--searching {
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.settings__body--searching > .settings__nav,
+.settings__body [data-search-hidden] {
+  display: none;
+}
+
+.settings__body--searching > .settings__panel {
+  flex: none;
+  overflow: visible;
+}
+
+.settings__body--searching > .settings__panel::before {
+  content: attr(aria-label);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings__no-results {
+  margin: 0;
+}
+
 /* A group of related options inside a settings section (Terminal: Session, Keyboard and clipboard…). */
 .settings__group {
   margin: 8px 0 0;

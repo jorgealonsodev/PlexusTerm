@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "Paramètres",
     sections: "Sections des paramètres",
   },
+  search: {
+    label: "Rechercher dans les paramètres",
+    placeholder: "Rechercher un paramètre…",
+    noResults: "Aucun paramètre ne correspond à « {query} ».",
+  },
   groups: {
     colours: "Couleurs",
     fonts: "Polices et taille du texte",

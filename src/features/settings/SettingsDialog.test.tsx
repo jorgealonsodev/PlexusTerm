@@ -75,6 +75,30 @@ const setup = () => {
 };
 
 describe("SettingsDialog", () => {
+  it("finds any setting from the search box, in every section, and Escape empties it before closing", () => {
+    const { onCancel } = setup();
+    /** Shown when neither it nor a section or option around it is left out. */
+    const shown = (el: Element) => !el.closest("[hidden], [data-search-hidden]");
+    const search = screen.getByRole("searchbox", { name: "Search settings" });
+    expect(document.activeElement).toBe(search);
+    // An Appearance option, found while General is the open section; accents and case do not matter.
+    fireEvent.change(search, { target: { value: "ÍCONS ONLY" } });
+    expect(shown(screen.getByLabelText("Show only icons in the toolbar"))).toBe(true);
+    expect(shown(screen.getByLabelText("Hide the sidebar completely when folded"))).toBe(false);
+    // Found by the help of its (?) tip too.
+    fireEvent.change(search, { target: { value: "folds the sidebar" } });
+    expect(shown(screen.getByLabelText("Hide the sidebar completely when folded"))).toBe(true);
+    fireEvent.change(search, { target: { value: "zzzz-nothing" } });
+    expect(screen.getByText("No setting matches “zzzz-nothing”.")).toBeTruthy();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(shown(screen.getByLabelText("Hide the sidebar completely when folded"))).toBe(true);
+    expect(shown(screen.getByLabelText("Show only icons in the toolbar"))).toBe(false);
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it("shows one section at a time from the side menu, starting with General", () => {
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     const sections = screen.getAllByRole("tab").map((t) => t.textContent);

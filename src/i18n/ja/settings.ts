@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "設定",
     sections: "設定のセクション",
   },
+  search: {
+    label: "設定を検索",
+    placeholder: "設定を検索…",
+    noResults: "「{query}」に一致する設定はありません。",
+  },
   groups: {
     colours: "配色",
     fonts: "フォントと文字サイズ",

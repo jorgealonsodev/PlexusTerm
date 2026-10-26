@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "Ajustes",
     sections: "Secciones de ajustes",
   },
+  search: {
+    label: "Buscar en los ajustes",
+    placeholder: "Buscar ajustes…",
+    noResults: "Ningún ajuste coincide con «{query}».",
+  },
   groups: {
     colours: "Colores",
     fonts: "Fuentes y tamaño del texto",

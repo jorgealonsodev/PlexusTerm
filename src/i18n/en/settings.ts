@@ -7,6 +7,11 @@ export const settings = {
     title: "Settings",
     sections: "Settings sections",
   },
+  search: {
+    label: "Search settings",
+    placeholder: "Search settings…",
+    noResults: "No setting matches “{query}”.",
+  },
   groups: {
     colours: "Colours",
     fonts: "Fonts and text size",

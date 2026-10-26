@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "الإعدادات",
     sections: "أقسام الإعدادات",
   },
+  search: {
+    label: "البحث في الإعدادات",
+    placeholder: "ابحث في الإعدادات…",
+    noResults: "لا يوجد إعداد يطابق «{query}».",
+  },
   groups: {
     colours: "الألوان",
     fonts: "الخطوط وحجم النص",

@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "सेटिंग्स",
     sections: "सेटिंग्स अनुभाग",
   },
+  search: {
+    label: "सेटिंग्स खोजें",
+    placeholder: "सेटिंग्स खोजें…",
+    noResults: "“{query}” से मेल खाने वाली कोई सेटिंग नहीं है।",
+  },
   groups: {
     colours: "रंग",
     fonts: "फ़ॉन्ट और टेक्स्ट का आकार",

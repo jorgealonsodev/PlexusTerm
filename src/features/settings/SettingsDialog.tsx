@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Code, FileText, Globe, Info, KeyRound, Keyboard, Palette, Share2, SlidersHorizontal, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { Code, FileText, Globe, Info, KeyRound, Keyboard, Palette, Search, Share2, SlidersHorizontal, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { filterSettings } from "./settingsSearch";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import type { AppKey } from "../../i18n/catalogs";
 import packageJson from "../../../package.json";
@@ -427,6 +428,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [shortcuts, setShortcuts] = useState(settings.shortcuts);
   const [section, setSection] = useState<Section>(initialSection ?? "general");
+  /** The search box's text: while it has some, every section shows the options it finds. */
+  const [query, setQuery] = useState("");
+  const searching = query.trim() !== "";
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [found, setFound] = useState(true);
+  // After every render, as options come and go with the values chosen (AI provider, ...).
+  useLayoutEffect(() => {
+    const panels = Array.from(bodyRef.current?.querySelectorAll<HTMLElement>(":scope > .settings__panel") ?? []);
+    setFound(filterSettings(panels, query) > 0);
+  });
   const dark = TERMINAL_THEMES.filter((scheme) => scheme.dark);
   const light = TERMINAL_THEMES.filter((scheme) => !scheme.dark);
 
@@ -589,15 +600,36 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     role: "tabpanel" as const,
     id: `settings-panel-${id}`,
     "aria-label": sectionLabel(id),
-    hidden: section !== id,
+    hidden: !searching && section !== id,
     className: "settings__panel",
   });
 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && close()}>
       <form className="dialog settings" onSubmit={(e) => e.preventDefault()} aria-labelledby="settings-title" noValidate>
-        <h2 id="settings-title">{t("settings.dialog.title")}</h2>
-        <div className="settings__body">
+        <div className="settings__head">
+          <h2 id="settings-title">{t("settings.dialog.title")}</h2>
+          <label className="settings__search">
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              autoFocus
+              value={query}
+              placeholder={t("settings.search.placeholder")}
+              aria-label={t("settings.search.label")}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // Escape empties the search first; with nothing to empty it closes the dialog.
+                if (e.key === "Escape" && query) {
+                  e.stopPropagation();
+                  setQuery("");
+                }
+              }}
+            />
+          </label>
+        </div>
+        <div ref={bodyRef} className={`settings__body${searching ? " settings__body--searching" : ""}`}>
+          {searching && !found && <p className="muted settings__no-results">{t("settings.search.noResults", { query: query.trim() })}</p>}
           <nav className="settings__nav" role="tablist" aria-orientation="vertical" aria-label={t("settings.dialog.sections")}>
             {SECTIONS.map(({ id, icon: Icon }) => (
               <button

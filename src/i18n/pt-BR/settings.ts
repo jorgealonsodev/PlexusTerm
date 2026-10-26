@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "Configurações",
     sections: "Seções das configurações",
   },
+  search: {
+    label: "Pesquisar nas configurações",
+    placeholder: "Pesquisar configurações…",
+    noResults: "Nenhuma configuração corresponde a “{query}”.",
+  },
   groups: {
     colours: "Cores",
     fonts: "Fontes e tamanho do texto",

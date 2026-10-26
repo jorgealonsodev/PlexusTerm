@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "설정",
     sections: "설정 섹션",
   },
+  search: {
+    label: "설정 검색",
+    placeholder: "설정 검색…",
+    noResults: "“{query}”와 일치하는 설정이 없습니다.",
+  },
   groups: {
     colours: "색상",
     fonts: "글꼴 및 글자 크기",

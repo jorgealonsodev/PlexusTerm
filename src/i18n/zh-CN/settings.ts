@@ -10,6 +10,11 @@ export const settings: Messages<typeof en> = {
     title: "设置",
     sections: "设置分区",
   },
+  search: {
+    label: "搜索设置",
+    placeholder: "搜索设置…",
+    noResults: "没有与“{query}”匹配的设置。",
+  },
   groups: {
     colours: "颜色",
     fonts: "字体与文字大小",
