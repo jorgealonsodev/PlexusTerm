@@ -1,7 +1,7 @@
 # Maintainer: Jorge Alonso <jorgealonsodev at gmail dot com>
 pkgname=plexusterm-bin
 _pkgname=plexusterm
-pkgver=0.2.0
+pkgver=0.2.21
 pkgrel=1
 pkgdesc='Terminal and remote-session manager: local shells, SSH, SFTP, tunnels and serial consoles'
 arch=('x86_64' 'aarch64')
@@ -16,8 +16,8 @@ source=("LICENSE-$pkgver::https://raw.githubusercontent.com/jorgealonsodev/Plexu
 source_x86_64=("$_repo/releases/download/v$pkgver/${_pkgname}_${pkgver}_linux_amd64.tar.gz")
 source_aarch64=("$_repo/releases/download/v$pkgver/${_pkgname}_${pkgver}_linux_arm64.tar.gz")
 sha256sums=('bcb9162e209261631372686f45c29ad6d6946ff0674326b4adcfc461dcd197c4')
-sha256sums_x86_64=('b6c15f007e96fc394aa93aa2ac3a8d03b4e993ce0342994cb850cf660f5e46fd')
-sha256sums_aarch64=('c654b395edb05234ed545570ab469c460f3658d64c70828fd2fc1b7991cca0b6')
+sha256sums_x86_64=('3388a916aaf31937f6805807658599268d51d059a6a3a4b390ac8663c63a01bb')
+sha256sums_aarch64=('0560e4045d06e6d4e64ad03e0beb63cf0224f1d4d782097e5520dc15bc1ce102')
 
 package() {
   local _arch

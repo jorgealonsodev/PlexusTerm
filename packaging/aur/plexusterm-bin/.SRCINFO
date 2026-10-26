@@ -1,6 +1,6 @@
 pkgbase = plexusterm-bin
 	pkgdesc = Terminal and remote-session manager: local shells, SSH, SFTP, tunnels and serial consoles
-	pkgver = 0.2.0
+	pkgver = 0.2.21
 	pkgrel = 1
 	url = https://plexusterm.xdev.es
 	arch = x86_64
@@ -12,11 +12,11 @@ pkgbase = plexusterm-bin
 	conflicts = plexusterm
 	options = !strip
 	options = !debug
-	source = LICENSE-0.2.0::https://raw.githubusercontent.com/jorgealonsodev/PlexusTerm/v0.2.0/LICENSE
+	source = LICENSE-0.2.21::https://raw.githubusercontent.com/jorgealonsodev/PlexusTerm/v0.2.21/LICENSE
 	sha256sums = bcb9162e209261631372686f45c29ad6d6946ff0674326b4adcfc461dcd197c4
-	source_x86_64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.0/plexusterm_0.2.0_linux_amd64.tar.gz
-	sha256sums_x86_64 = b6c15f007e96fc394aa93aa2ac3a8d03b4e993ce0342994cb850cf660f5e46fd
-	source_aarch64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.0/plexusterm_0.2.0_linux_arm64.tar.gz
-	sha256sums_aarch64 = c654b395edb05234ed545570ab469c460f3658d64c70828fd2fc1b7991cca0b6
+	source_x86_64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.21/plexusterm_0.2.21_linux_amd64.tar.gz
+	sha256sums_x86_64 = 3388a916aaf31937f6805807658599268d51d059a6a3a4b390ac8663c63a01bb
+	source_aarch64 = https://github.com/jorgealonsodev/PlexusTerm/releases/download/v0.2.21/plexusterm_0.2.21_linux_arm64.tar.gz
+	sha256sums_aarch64 = 0560e4045d06e6d4e64ad03e0beb63cf0224f1d4d782097e5520dc15bc1ce102
 
 pkgname = plexusterm-bin
