@@ -572,7 +572,7 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 
 ## Updates
 
-When PlexusTerm starts it asks GitHub for the latest published release, once. A newer release appears in a bar under the toolbar. The close button hides the bar until the next start, and a failed startup check (no network, GitHub unavailable) shows nothing. Nothing downloads until you choose **Download**.
+When PlexusTerm starts it asks GitHub for the latest published release, once. A newer release appears in a card at the bottom right of the window. The close button hides the card until the next start, and a failed startup check (no network, GitHub unavailable) shows nothing. Nothing downloads until you choose **Download**.
 
 The notice and **Settings → About** offer two independent actions:
 

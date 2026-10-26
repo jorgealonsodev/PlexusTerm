@@ -1368,10 +1368,62 @@ body.is-moving-tab {
   gap: 6px;
 }
 
-.notice--update {
+/* Startup notice of a newer release: a card floating over the bottom-right corner. */
+.update-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px;
   color: var(--text);
-  background: var(--surface);
-  border-bottom: 1px solid var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.update-toast__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-toast__icon {
+  display: inline-flex;
+  flex: none;
+  padding: 6px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: 6px;
+}
+
+.update-toast__text {
+  flex: 1;
+  font-weight: 600;
+}
+
+.update-toast .notice__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Download is the main action here; progress and errors take a line of their own. */
+.update-toast .notice__actions > .btn:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.update-toast .notice__actions > span {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.9em;
 }
 
 .settings__updates {
