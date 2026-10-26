@@ -1,8 +1,10 @@
 # Packaging drafts
 
-Package manifests for third-party package managers, kept here so they can be
-updated and submitted by hand after each release. Nothing in this folder is
-used by the build or the release workflow.
+Package manifests for third-party package managers. The first submission of
+each package is made by hand from these files; after that,
+`.github/workflows/packages.yml` updates both packages whenever a GitHub
+Release is published. The build and the release workflow do not use this
+folder.
 
 | Folder | Package manager | Package |
 | --- | --- | --- |
@@ -12,7 +14,33 @@ used by the build or the release workflow.
 Both take their hashes from the release's `checksums.txt`. Never type a hash
 by hand.
 
-## Updating for a new release
+## Automatic updates
+
+`packages.yml` runs when a release is published (publishing the draft that
+`release.yml` creates), skips prereleases, and can be rerun for a tag from the
+Actions tab (`workflow_dispatch`). It needs these repository secrets:
+
+| Secret | Used by | Value |
+| --- | --- | --- |
+| `AUR_USERNAME` | AUR | AUR account name, used as the commit author |
+| `AUR_EMAIL` | AUR | Email for the AUR commit |
+| `AUR_SSH_PRIVATE_KEY` | AUR | Private key whose public half is added to the AUR account |
+| `WINGET_TOKEN` | winget | Classic personal access token of the repository owner's account, with the `public_repo` and `workflow` scopes |
+
+- **AUR**: sets `pkgver` from the tag in `aur/plexusterm-bin/PKGBUILD`,
+  recomputes the checksums from the release assets, regenerates `.SRCINFO`
+  and pushes to the AUR. Changes to the PKGBUILD itself (dependencies,
+  install steps) are still made here first.
+- **winget**: opens a pull request to microsoft/winget-pkgs from your fork of
+  it (fork it once under the same account). It only updates an existing
+  package, so it fails until the first submission has been merged.
+
+The workflow commits nothing back to this repository: the version folders
+under `winget/` stay as the record of the first submission, and `pkgver` and
+the checksums in `aur/plexusterm-bin/` keep the version they were last edited
+for. Only the version tag format `v<major>.<minor>.<patch>` is accepted.
+
+## Updating by hand
 
 Publish the GitHub Release first: the manifests point at its assets.
 

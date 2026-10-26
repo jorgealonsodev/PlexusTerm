@@ -1,0 +1,72 @@
+name: Packages
+
+# Publishing a GitHub Release (not the draft created by release.yml) updates
+# the third-party packages from that release's assets. The first submission
+# of each package is manual; see packaging/README.md.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v0.2.21
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  aur:
+    name: AUR (plexusterm-bin)
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Manual runs bypass the prerelease check, and pkgver cannot contain
+      # a hyphen, so only plain v<major>.<minor>.<patch> tags are accepted.
+      - name: Check tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag '$TAG' is not of the form v<major>.<minor>.<patch>"
+            exit 1
+          fi
+
+      - name: Set version in PKGBUILD
+        run: |
+          VERSION="${TAG#v}"
+          sed -i -e "s/^pkgver=.*/pkgver=$VERSION/" -e "s/^pkgrel=.*/pkgrel=1/" \
+            packaging/aur/plexusterm-bin/PKGBUILD
+          grep -E '^pkg(ver|rel)=' packaging/aur/plexusterm-bin/PKGBUILD
+
+      # Recomputes every checksum from the release assets (updpkgsums),
+      # regenerates .SRCINFO and pushes both to the AUR.
+      - uses: KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
+        with:
+          pkgname: plexusterm-bin
+          pkgbuild: packaging/aur/plexusterm-bin/PKGBUILD
+          updpkgsums: true
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update to ${{ env.TAG }}
+
+  winget:
+    name: winget (JorgeAlonso.PlexusTerm)
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-24.04
+    steps:
+      # Opens a pull request to microsoft/winget-pkgs from the fork owned by
+      # the repository owner, so WINGET_TOKEN must belong to that account.
+      # It downloads both installers and fills in the hashes and the MSI
+      # ProductCode itself.
+      - uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54 # v2
+        with:
+          identifier: JorgeAlonso.PlexusTerm
+          release-tag: ${{ env.TAG }}
+          installers-regex: '_windows_x86_64(\.msi|-setup\.exe)$'
+          fork-user: ${{ github.repository_owner }}
+          token: ${{ secrets.WINGET_TOKEN }}

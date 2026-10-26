@@ -69,4 +69,6 @@ The packaging script builds `.deb`, `.rpm` and AppImage bundles together, then d
 
 The isolated packaging tests run in Linux CI before dependency installation. They use temporary fixture copies and command doubles, never build or install native packages, and cover both architectures, missing/ambiguous AppImages and existing package/archive behavior. Real AppImage builds and execution still need native CI/platform verification.
 
+Publishing the release also starts the `Packages` workflow (`.github/workflows/packages.yml`), which updates the AUR package and opens the winget pull request; see [packaging/README.md](../packaging/README.md#automatic-updates). For the full step-by-step procedure, follow the [release checklist](release-checklist.md).
+
 Users verify and install the assets as described in the [README](../README.md#install).
