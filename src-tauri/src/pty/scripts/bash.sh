@@ -1,0 +1,31 @@
+# PlexusTerm shell integration for bash: OSC 133 marks (A prompt, B command line, C command
+# runs, D;exit code finished). Started with --rcfile, so it loads what bash would have loaded.
+if [ -r /etc/bash.bashrc ]; then . /etc/bash.bashrc; fi
+if [ -r ~/.bashrc ]; then . ~/.bashrc; fi
+
+if [[ $- == *i* && -z ${__plexus_integration-} ]]; then
+  __plexus_integration=1
+  # First at every prompt, while $? is still the command's: D with its exit code, then A.
+  __plexus_precmd() {
+    local status=$?
+    printf '\e]133;D;%s\a\e]133;A\a' "$status"
+    return "$status"
+  }
+  # Last at every prompt: B ends the prompt, also one a prompt theme rewrote just before.
+  __plexus_prompt_end() {
+    local status=$?
+    [[ $PS1 == *'133;B'* ]] || PS1="$PS1"'\[\e]133;B\a\]'
+    return "$status"
+  }
+  if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == 'declare -a'* ]]; then
+    PROMPT_COMMAND=(__plexus_precmd "${PROMPT_COMMAND[@]}" __plexus_prompt_end)
+  else
+    __plexus_theirs=${PROMPT_COMMAND-}
+    # `foo;` followed by `; bar` would be `;;`, which bash refuses.
+    while [[ $__plexus_theirs == *[\;[:space:]] ]]; do __plexus_theirs=${__plexus_theirs%?}; done
+    PROMPT_COMMAND="__plexus_precmd${__plexus_theirs:+; $__plexus_theirs}; __plexus_prompt_end"
+    unset __plexus_theirs
+  fi
+  # Shown once a command line is read, before it runs (bash 4.4 and later).
+  PS0='\e]133;C\a'"${PS0-}"
+fi

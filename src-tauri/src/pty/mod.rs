@@ -123,9 +123,19 @@ struct Session {
 pub struct PtyManager {
     next_id: AtomicU32,
     sessions: Mutex<HashMap<u32, Session>>,
+    /// Where the shell integration scripts were written; None until then (shells start plain).
+    scripts: Mutex<Option<PathBuf>>,
 }
 
 impl PtyManager {
+    /// Writes the shell integration scripts to `dir` for the shells started from now on; when they
+    /// cannot be written, shells keep starting without them.
+    pub fn set_scripts_dir(&self, dir: PathBuf) -> std::io::Result<()> {
+        shell_integration::install_scripts(&dir)?;
+        *self.scripts.lock().unwrap() = Some(dir);
+        Ok(())
+    }
+
     pub fn spawn(&self, req: SpawnRequest, sink: impl TerminalSink) -> Result<u32, PtyError> {
         let pair = native_pty_system()
             .openpty(size(req.cols, req.rows))
@@ -135,15 +145,22 @@ impl PtyManager {
         let mut cmd = CommandBuilder::new(&program);
         hide_webkit_only_vars(&mut cmd, platform::webkit_only_vars());
         // Windows has no way to read PowerShell's folder: the shells report it with each prompt.
-        let integration = if cfg!(windows) {
-            let prompt = std::env::var("PROMPT").ok();
-            let prompt_command = std::env::var("PROMPT_COMMAND").ok();
+        // bash and zsh mark their prompt and commands (OSC 133) on Linux and macOS.
+        let prompt = std::env::var("PROMPT").ok();
+        let prompt_command = std::env::var("PROMPT_COMMAND").ok();
+        let zdotdir = std::env::var("ZDOTDIR").ok();
+        let scripts = self.scripts.lock().unwrap().clone();
+        // Elsewhere the folder of any shell can be read: only bash and zsh get anything.
+        let integrated = cfg!(windows) || matches!(platform::shell_name(&program), "bash" | "zsh");
+        let integration = if integrated {
             shell_integration::integration(
                 &program,
                 &req.args,
                 shell_integration::Inherited {
                     prompt: prompt.as_deref(),
                     prompt_command: prompt_command.as_deref(),
+                    zdotdir: zdotdir.as_deref(),
+                    scripts: scripts.as_deref(),
                 },
             )
         } else {

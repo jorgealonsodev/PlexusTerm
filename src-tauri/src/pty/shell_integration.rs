@@ -1,6 +1,11 @@
 //! Makes the Windows shells report their folder with every prompt (OSC 9;9, as ConEmu and
 //! Windows Terminal read it), so the Explorer can follow the terminal: Windows gives no way to
 //! read another process's folder that works for PowerShell.
+//!
+//! On Linux and macOS, bash and zsh load scripts that mark the prompt, the command line, the
+//! command's run and its exit code (OSC 133), after the user's own startup files.
+
+use std::path::Path;
 
 /// Arguments and environment to add when starting `program`.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -36,6 +41,36 @@ fn is_git_bash(program: &str) -> bool {
     shell_name(program) == "bash" && path.contains("\\git\\")
 }
 
+/// bash's startup script (`--rcfile`), and zsh's in a folder of their own (`ZDOTDIR`).
+pub const BASH_SCRIPT: &str = include_str!("scripts/bash.sh");
+pub const ZSH_ENV: &str = include_str!("scripts/zsh/.zshenv");
+pub const ZSH_PROFILE: &str = include_str!("scripts/zsh/.zprofile");
+pub const ZSH_RC: &str = include_str!("scripts/zsh/.zshrc");
+
+/// The files of [`install_scripts`], relative to its folder.
+const SCRIPTS: [(&str, &str); 4] = [
+    ("bash.sh", BASH_SCRIPT),
+    ("zsh/.zshenv", ZSH_ENV),
+    ("zsh/.zprofile", ZSH_PROFILE),
+    ("zsh/.zshrc", ZSH_RC),
+];
+
+/// Writes the startup scripts to `dir` (in the app's config folder, which only the user can
+/// change), replacing any that differ from this version's.
+pub fn install_scripts(dir: &Path) -> std::io::Result<()> {
+    for (name, contents) in SCRIPTS {
+        let path = dir.join(name);
+        if std::fs::read_to_string(&path).is_ok_and(|current| current == contents) {
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        crate::platform::write_private(&path, contents.as_bytes())?;
+    }
+    Ok(())
+}
+
 /// The variables the shell would otherwise get, read when it starts.
 #[derive(Default)]
 pub struct Inherited<'a> {
@@ -43,6 +78,10 @@ pub struct Inherited<'a> {
     pub prompt: Option<&'a str>,
     /// bash's PROMPT_COMMAND.
     pub prompt_command: Option<&'a str>,
+    /// zsh's ZDOTDIR.
+    pub zdotdir: Option<&'a str>,
+    /// Where [`install_scripts`] wrote the scripts; None leaves bash and zsh as they are.
+    pub scripts: Option<&'a Path>,
 }
 
 /// What to add to start `program` (with the user's `args`) so it reports its folder.
@@ -63,6 +102,30 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
     }
     let prompt = inherited.prompt;
     match shell_name(program).as_str() {
+        "bash" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+            Some(dir) => Integration {
+                args: Some(vec![
+                    "--rcfile".into(),
+                    dir.join("bash.sh").to_string_lossy().into_owned(),
+                ]),
+                env: vec![],
+            },
+            None => Integration::default(),
+        },
+        "zsh" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+            Some(dir) => {
+                let mut env = vec![(
+                    "ZDOTDIR".to_string(),
+                    dir.join("zsh").to_string_lossy().into_owned(),
+                )];
+                if let Some(theirs) = inherited.zdotdir.filter(|d| !d.is_empty()) {
+                    env.push(("PLEXUS_USER_ZDOTDIR".into(), theirs.into()));
+                    env.push(("PLEXUS_ZDOTDIR_WAS_SET".into(), "1".into()));
+                }
+                Integration { args: None, env }
+            }
+            None => Integration::default(),
+        },
         "pwsh" | "powershell" if args.is_empty() => Integration {
             args: Some(vec![
                 "-NoExit".into(),
@@ -156,6 +219,150 @@ mod tests {
                 Integration::default(),
                 "{program}"
             );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bash_and_zsh_load_the_marks_from_the_scripts_folder_only_without_arguments_of_the_user() {
+        let dir = std::path::Path::new("/home/me/.config/plexusterm/shell-integration");
+        let with = |zdotdir| Inherited {
+            scripts: Some(dir),
+            zdotdir,
+            ..Default::default()
+        };
+        assert_eq!(
+            integration("/bin/bash", &[], with(None)),
+            Integration {
+                args: Some(vec![
+                    "--rcfile".to_string(),
+                    format!("{}/bash.sh", dir.display())
+                ]),
+                env: vec![],
+            }
+        );
+        assert_eq!(
+            integration("/usr/bin/zsh", &[], with(None)).env,
+            vec![("ZDOTDIR".to_string(), format!("{}/zsh", dir.display()))]
+        );
+        // The user's own ZDOTDIR is where the zsh scripts find the user's files.
+        assert_eq!(
+            integration("zsh", &[], with(Some("/home/me/.zsh"))).env,
+            vec![
+                ("ZDOTDIR".to_string(), format!("{}/zsh", dir.display())),
+                (
+                    "PLEXUS_USER_ZDOTDIR".to_string(),
+                    "/home/me/.zsh".to_string()
+                ),
+                ("PLEXUS_ZDOTDIR_WAS_SET".to_string(), "1".to_string()),
+            ]
+        );
+        let theirs = vec!["-l".to_string()];
+        for program in ["/bin/bash", "/bin/zsh"] {
+            assert_eq!(
+                integration(program, &theirs, with(None)),
+                Integration::default(),
+                "{program}"
+            );
+        }
+        // Without the scripts written, nothing is added.
+        assert_eq!(
+            integration("/bin/bash", &[], Inherited::default()),
+            Integration::default()
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_scripts_are_written_to_their_folder_and_rewritten_when_they_change() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("shell-integration");
+        install_scripts(&dir).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("bash.sh")).unwrap(),
+            BASH_SCRIPT
+        );
+        assert_eq!(
+            std::fs::read_to_string(dir.join("zsh/.zshrc")).unwrap(),
+            ZSH_RC
+        );
+        std::fs::write(dir.join("bash.sh"), "tampered").unwrap();
+        install_scripts(&dir).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("bash.sh")).unwrap(),
+            BASH_SCRIPT
+        );
+    }
+
+    /// Runs `false` in a real shell started as PlexusTerm starts it, with an empty home, and
+    /// returns what it printed. None when the shell is not installed.
+    #[cfg(unix)]
+    fn run_marked(shell: &str) -> Option<String> {
+        use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+        use std::io::{Read, Write};
+        let program = crate::platform::find_program(shell, &std::env::var_os("PATH")?)?;
+        let tmp = tempfile::tempdir().unwrap();
+        let scripts = tmp.path().join("scripts");
+        install_scripts(&scripts).unwrap();
+        let home = tmp.path().join("home");
+        std::fs::create_dir(&home).unwrap();
+        let program = program.to_string_lossy().into_owned();
+        let it = integration(
+            &program,
+            &[],
+            Inherited {
+                scripts: Some(&scripts),
+                ..Default::default()
+            },
+        );
+        let pair = native_pty_system()
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+        let mut cmd = CommandBuilder::new(&program);
+        cmd.args(it.args.unwrap_or_default());
+        cmd.env("HOME", &home);
+        cmd.env("TERM", "xterm-256color");
+        for (name, value) in it.env {
+            cmd.env(name, value);
+        }
+        let mut child = pair.slave.spawn_command(cmd).unwrap();
+        drop(pair.slave);
+        let mut reader = pair.master.try_clone_reader().unwrap();
+        let mut writer = pair.master.take_writer().unwrap();
+        writer.write_all(b"false\rexit\r").unwrap();
+        let mut out = Vec::new();
+        let _ = reader.read_to_end(&mut out);
+        let _ = child.wait();
+        Some(String::from_utf8_lossy(&out).into_owned())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bash_and_zsh_mark_the_prompt_the_command_line_and_how_the_command_ended() {
+        for shell in ["bash", "zsh"] {
+            let Some(out) = run_marked(shell) else {
+                eprintln!("{shell} is not installed: not checked");
+                continue;
+            };
+            for mark in [
+                "\x1b]133;A\x07",
+                "\x1b]133;B\x07",
+                "\x1b]133;C\x07",
+                "\x1b]133;D;1\x07",
+            ] {
+                assert!(
+                    out.contains(mark),
+                    "{shell} did not print {mark:?}: {out:?}"
+                );
+            }
+            // B ends the prompt: what is typed comes after it.
+            let b = out.find("\x1b]133;B\x07").unwrap();
+            assert!(out[b..].contains("false"), "{shell}: {out:?}");
         }
     }
 
