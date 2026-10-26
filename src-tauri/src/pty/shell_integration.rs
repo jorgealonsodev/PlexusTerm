@@ -15,19 +15,42 @@ pub struct Integration {
     pub env: Vec<(String, String)>,
 }
 
-/// PowerShell: wraps whatever `prompt` the profile left (oh-my-posh, starship...) so it starts
-/// with the folder report. That prompt runs first, while `$?` still holds the last command's. No double quotes, so it survives the Windows command line as is.
+/// PowerShell: wraps whatever `prompt` the profile left (oh-my-posh, starship...) between the
+/// OSC 133 marks: D with the last command's exit code and A, the folder report, that prompt, B.
+/// `$?` is read first and given back before that prompt runs (an error written to nowhere makes
+/// it false again, as VS Code does), so the prompt still tells how the last command went. No C:
+/// PSReadLine has no hook before a command runs. No double quotes, so it survives the Windows
+/// command line as is.
 pub const POWERSHELL_PROMPT: &str = "$global:__plexusPrompt=$function:prompt;\
-function global:prompt{$o=& $global:__plexusPrompt;\
+function global:prompt{$f=!$global:?;$c=$global:LASTEXITCODE;\
+$x=if(!$f){0}elseif($c){$c}else{1};\
+if($f){Write-Error 'failed' -ErrorAction Ignore};\
+$o=& $global:__plexusPrompt;\
+$e=[char]27;$b=[char]7;$r=$e+']133;D;'+$x+$b+$e+']133;A'+$b;\
 $l=$executionContext.SessionState.Path.CurrentLocation;\
-if($l.Provider.Name -eq 'FileSystem'){((([char]27),']9;9;',([char]34),$l.ProviderPath,([char]34),([char]27),'\\') -join '')+($o -join '')}else{$o}}";
+if($l.Provider.Name -eq 'FileSystem'){$r+=$e+']9;9;'+[char]34+$l.ProviderPath+[char]34+$e+'\\'};\
+$r+($o -join '')+$e+']133;B'+$b}";
 
 /// Git Bash: the Windows form of `$PWD` (`/c/Users` is `C:\Users`, without starting a program
 /// at every prompt; `cygpath` only outside a drive). bash keeps `$?` for the prompt.
 pub const GIT_BASH_REPORT: &str = r#"__plexus_dir=; if [[ $PWD =~ ^/([a-zA-Z])(/.*)?$ ]]; then __plexus_dir="${BASH_REMATCH[1]^^}:${BASH_REMATCH[2]:-/}"; __plexus_dir="${__plexus_dir//\//\\}"; else __plexus_dir="$(cygpath -w "$PWD" 2>/dev/null)"; fi; [ -n "$__plexus_dir" ] && printf '\e]9;9;"%s"\e\\' "$__plexus_dir""#;
 
-/// cmd: the folder report in front of the prompt, `$P$G` (cmd's own) unless one is set.
-const CMD_REPORT: &str = "$e]9;9;$P$e\\";
+/// Git Bash, before the user's PROMPT_COMMAND: D with the last command's exit code and A, then
+/// `$?` given back for the user's command.
+pub const GIT_BASH_BEFORE: &str = r#"__plexus_status=$?; __plexus_return() { return "$1"; }; printf '\e]133;D;%s\a\e]133;A\a' "$__plexus_status"; __plexus_return "$__plexus_status""#;
+
+/// Git Bash, last: B ends the prompt (also one rewritten just before), and `$?` is given back for
+/// the prompt itself.
+pub const GIT_BASH_AFTER: &str =
+    r#"[[ $PS1 == *'133;B'* ]] || PS1="$PS1"'\[\e]133;B\a\]'; __plexus_return "$__plexus_status""#;
+
+/// Git Bash: C, shown once a command line is read, before it runs.
+pub const GIT_BASH_PS0: &str = r"\e]133;C\a";
+
+/// cmd: A and the folder report in front of the prompt, `$P$G` (cmd's own) unless one is set,
+/// and B after it. cmd has no hook for C nor the exit code for D.
+const CMD_BEFORE: &str = "$e]133;A$e\\$e]9;9;$P$e\\";
+const CMD_AFTER: &str = "$e]133;B$e\\";
 
 fn shell_name(program: &str) -> String {
     let name = program.rsplit(['\\', '/']).next().unwrap_or(program);
@@ -107,12 +130,17 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
             .prompt_command
             .map(|c| c.trim_end().trim_end_matches(';').trim_end());
         let command = match theirs.filter(|c| !c.is_empty()) {
-            Some(theirs) => format!("{theirs}; {GIT_BASH_REPORT}"),
-            None => GIT_BASH_REPORT.to_string(),
+            Some(theirs) => {
+                format!("{GIT_BASH_BEFORE}; {theirs}; {GIT_BASH_REPORT}; {GIT_BASH_AFTER}")
+            }
+            None => format!("{GIT_BASH_BEFORE}; {GIT_BASH_REPORT}; {GIT_BASH_AFTER}"),
         };
         return Integration {
             args: None,
-            env: vec![("PROMPT_COMMAND".into(), command)],
+            env: vec![
+                ("PROMPT_COMMAND".into(), command),
+                ("PS0".into(), GIT_BASH_PS0.into()),
+            ],
         };
     }
     let prompt = inherited.prompt;
@@ -167,7 +195,7 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
             let own = prompt.filter(|p| !p.is_empty()).unwrap_or("$P$G");
             Integration {
                 args: None,
-                env: vec![("PROMPT".into(), format!("{CMD_REPORT}{own}"))],
+                env: vec![("PROMPT".into(), format!("{CMD_BEFORE}{own}{CMD_AFTER}"))],
             }
         }
         _ => Integration::default(),
@@ -203,13 +231,12 @@ mod tests {
             Integration::default()
         );
         assert!(!POWERSHELL_PROMPT.contains('"'));
-        // The user's prompt runs first, while `$?` still tells how the last command went
-        // (Starship and oh-my-posh show it).
+        // `$?` is read before anything else runs (Starship and oh-my-posh show it).
         let body = POWERSHELL_PROMPT
             .split("function global:prompt{")
             .nth(1)
             .unwrap();
-        assert!(body.starts_with("$o=& $global:__plexusPrompt;"), "{body}");
+        assert!(body.starts_with("$f=!$global:?;"), "{body}");
         assert!(POWERSHELL_PROMPT.contains("]9;9;"));
     }
 
@@ -219,7 +246,10 @@ mod tests {
         assert_eq!(it.args, None);
         assert_eq!(
             it.env,
-            vec![("PROMPT".to_string(), "$e]9;9;$P$e\\$P$G".to_string())]
+            vec![(
+                "PROMPT".to_string(),
+                "$e]133;A$e\\$e]9;9;$P$e\\$P$G$e]133;B$e\\".to_string()
+            )]
         );
         let custom = integration(
             "cmd.exe",
@@ -231,7 +261,10 @@ mod tests {
         );
         assert_eq!(
             custom.env,
-            vec![("PROMPT".to_string(), "$e]9;9;$P$e\\$T$G".to_string())]
+            vec![(
+                "PROMPT".to_string(),
+                "$e]133;A$e\\$e]9;9;$P$e\\$T$G$e]133;B$e\\".to_string()
+            )]
         );
     }
 
@@ -360,8 +393,6 @@ mod tests {
     /// installed.
     #[cfg(unix)]
     fn run_marked(shell: &str, rc: &str) -> Option<String> {
-        use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-        use std::io::{Read, Write};
         let program = crate::platform::find_program(shell, &std::env::var_os("PATH")?)?;
         let tmp = tempfile::tempdir().unwrap();
         let scripts = tmp.path().join("scripts");
@@ -383,6 +414,29 @@ mod tests {
                 ..Default::default()
             },
         );
+        Some(run_in_pty(
+            &program,
+            it.args.unwrap_or_default(),
+            it.env,
+            &home,
+            b"false\rexit\r",
+            false,
+        ))
+    }
+
+    /// Runs `program` in a pty with `home` as its home, types `input` and returns what it printed
+    /// until it exited (a cursor position query is answered, as a terminal would). `paced` types
+    /// one line per prompt (A mark), for shells that drop what is typed before they are ready.
+    fn run_in_pty(
+        program: &str,
+        args: Vec<String>,
+        env: Vec<(String, String)>,
+        home: &Path,
+        input: &[u8],
+        paced: bool,
+    ) -> String {
+        use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+        use std::io::{Read, Write};
         let pair = native_pty_system()
             .openpty(PtySize {
                 rows: 24,
@@ -391,30 +445,59 @@ mod tests {
                 pixel_height: 0,
             })
             .unwrap();
-        let mut cmd = CommandBuilder::new(&program);
-        cmd.args(it.args.unwrap_or_default());
-        cmd.env("HOME", &home);
+        let mut cmd = CommandBuilder::new(program);
+        cmd.args(args);
+        cmd.env("HOME", home);
         cmd.env("TERM", "xterm-256color");
-        for (name, value) in it.env {
+        for (name, value) in env {
             cmd.env(name, value);
         }
         let mut child = pair.slave.spawn_command(cmd).unwrap();
         drop(pair.slave);
         let mut reader = pair.master.try_clone_reader().unwrap();
         let mut writer = pair.master.take_writer().unwrap();
-        writer.write_all(b"false\rexit\r").unwrap();
+        let mut lines: std::collections::VecDeque<Vec<u8>> = if paced {
+            input
+                .split_inclusive(|&b| b == b'\r')
+                .map(<[u8]>::to_vec)
+                .collect()
+        } else {
+            writer.write_all(input).unwrap();
+            Default::default()
+        };
         // A shell that never exits (a startup file waiting for input) fails the test, never hangs it.
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let mut out = Vec::new();
-            let _ = reader.read_to_end(&mut out);
+            let mut chunk = [0u8; 4096];
+            let mut prompts = 0;
+            while let Ok(n) = reader.read(&mut chunk) {
+                if n == 0 {
+                    break;
+                }
+                if chunk[..n].windows(4).any(|w| w == b"\x1b[6n") {
+                    let _ = writer.write_all(b"\x1b[1;1R");
+                }
+                out.extend_from_slice(&chunk[..n]);
+                // A, ended by BEL or (cmd) ESC \\.
+                let seen = out
+                    .windows(8)
+                    .filter(|w| w.starts_with(b"\x1b]133;A"))
+                    .count();
+                while prompts < seen {
+                    prompts += 1;
+                    if let Some(line) = lines.pop_front() {
+                        let _ = writer.write_all(&line);
+                    }
+                }
+            }
             let _ = tx.send(out);
         });
-        let out = rx.recv_timeout(std::time::Duration::from_secs(20));
+        let out = rx.recv_timeout(std::time::Duration::from_secs(30));
         let _ = child.kill();
         let _ = child.wait();
-        let out = out.unwrap_or_else(|_| panic!("{shell} did not exit"));
-        Some(String::from_utf8_lossy(&out).into_owned())
+        let out = out.unwrap_or_else(|_| panic!("{program} did not exit"));
+        String::from_utf8_lossy(&out).into_owned()
     }
 
     #[cfg(unix)]
@@ -479,7 +562,13 @@ mod tests {
             assert_eq!(it.args, None, "{program}");
             assert_eq!(
                 it.env,
-                vec![("PROMPT_COMMAND".to_string(), GIT_BASH_REPORT.to_string())]
+                vec![
+                    (
+                        "PROMPT_COMMAND".to_string(),
+                        format!("{GIT_BASH_BEFORE}; {GIT_BASH_REPORT}; {GIT_BASH_AFTER}")
+                    ),
+                    ("PS0".to_string(), GIT_BASH_PS0.to_string()),
+                ]
             );
         }
         let theirs = integration(
@@ -492,10 +581,13 @@ mod tests {
         );
         assert_eq!(
             theirs.env,
-            vec![(
-                "PROMPT_COMMAND".to_string(),
-                format!("history -a; {GIT_BASH_REPORT}")
-            )]
+            vec![
+                (
+                    "PROMPT_COMMAND".to_string(),
+                    format!("{GIT_BASH_BEFORE}; history -a; {GIT_BASH_REPORT}; {GIT_BASH_AFTER}")
+                ),
+                ("PS0".to_string(), GIT_BASH_PS0.to_string()),
+            ]
         );
         // A command already ending in `;` would make `;;`, which bash refuses.
         let ending = integration(
@@ -507,6 +599,150 @@ mod tests {
             },
         );
         assert_eq!(ending.env, theirs.env);
+    }
+
+    /// Git Bash's prompt command, run by this system's bash: the marks, the user's own command
+    /// still seeing the exit code, and the prompt ending with B.
+    #[cfg(unix)]
+    #[test]
+    fn git_bash_marks_the_prompt_and_keeps_the_exit_code_for_its_own_prompt_command() {
+        let it = integration(
+            "C:\\Program Files\\Git\\bin\\bash.exe",
+            &[],
+            Inherited {
+                prompt_command: Some("echo THEIRS=$?"),
+                ..Default::default()
+            },
+        );
+        let home = tempfile::tempdir().unwrap();
+        let out = run_in_pty(
+            "bash",
+            vec!["--norc".into(), "-i".into()],
+            it.env,
+            home.path(),
+            b"false\rexit\r",
+            false,
+        );
+        for mark in [
+            "\x1b]133;A\x07",
+            "\x1b]133;B\x07",
+            "\x1b]133;C\x07",
+            "\x1b]133;D;1\x07",
+        ] {
+            assert!(out.contains(mark), "did not print {mark:?}: {out:?}");
+        }
+        assert!(out.contains("THEIRS=1"), "{out:?}");
+    }
+
+    /// PowerShell's prompt wrapper, run by PowerShell for Linux when it is installed (`pwsh` on
+    /// the PATH): the marks with the exit codes of a cmdlet and of a program, the folder report,
+    /// and the profile's prompt still seeing `$?`.
+    #[cfg(unix)]
+    #[test]
+    fn powershell_marks_the_prompt_and_keeps_dollar_question_for_the_profile_prompt() {
+        let Some(pwsh) =
+            std::env::var_os("PATH").and_then(|path| crate::platform::find_program("pwsh", &path))
+        else {
+            eprintln!("pwsh is not installed: not checked");
+            return;
+        };
+        let home = tempfile::tempdir().unwrap();
+        let profile = home.path().join(".config/powershell");
+        std::fs::create_dir_all(&profile).unwrap();
+        std::fs::write(
+            profile.join("Microsoft.PowerShell_profile.ps1"),
+            "function prompt { 'PS[' + $? + ']> ' }\n",
+        )
+        .unwrap();
+        let it = integration("pwsh", &[], Inherited::default());
+        let out = run_in_pty(
+            &pwsh.to_string_lossy(),
+            it.args.unwrap(),
+            vec![],
+            home.path(),
+            b"Get-Item nope\rsh -c 'exit 3'\rexit\r",
+            true,
+        );
+        for wanted in [
+            "\x1b]133;D;0\x07\x1b]133;A\x07\x1b]9;9;",
+            "\x1b]133;D;1\x07",
+            "\x1b]133;D;3\x07",
+            "PS[False]> \x1b]133;B\x07",
+            "PS[True]> \x1b]133;B\x07",
+        ] {
+            assert!(out.contains(wanted), "did not print {wanted:?}: {out:?}");
+        }
+    }
+
+    /// The Windows shells as PlexusTerm starts them, through ConPTY (run by CI on Windows): their
+    /// marks reach the terminal, with the exit code where the shell gives one.
+    #[cfg(windows)]
+    #[test]
+    fn windows_shells_mark_their_prompts_through_conpty() {
+        let home = tempfile::tempdir().unwrap();
+        let git_bash = "C:\\Program Files\\Git\\bin\\bash.exe";
+        let cases: [(&str, &[u8], &[&str]); 4] = [
+            (
+                "powershell.exe",
+                b"cmd /c exit 3\rexit\r",
+                &[
+                    "\x1b]133;A\x07",
+                    "\x1b]133;B\x07",
+                    "\x1b]133;D;3\x07",
+                    "]9;9;",
+                ],
+            ),
+            (
+                "pwsh.exe",
+                b"cmd /c exit 3\rexit\r",
+                &[
+                    "\x1b]133;A\x07",
+                    "\x1b]133;B\x07",
+                    "\x1b]133;D;3\x07",
+                    "]9;9;",
+                ],
+            ),
+            (
+                "cmd.exe",
+                b"exit\r",
+                &["\x1b]133;A\x1b\\", "\x1b]133;B\x1b\\", "]9;9;"],
+            ),
+            (
+                git_bash,
+                b"false\rexit\r",
+                &[
+                    "\x1b]133;A\x07",
+                    "\x1b]133;B\x07",
+                    "\x1b]133;C\x07",
+                    "\x1b]133;D;1\x07",
+                ],
+            ),
+        ];
+        for (program, input, marks) in cases {
+            let found = std::env::var_os("PATH")
+                .and_then(|path| crate::platform::find_program(program, &path))
+                .or_else(|| Path::new(program).is_file().then(|| program.into()));
+            let Some(found) = found else {
+                eprintln!("{program} is not installed: not checked");
+                continue;
+            };
+            let found = found.to_string_lossy().into_owned();
+            let it = integration(&found, &[], Inherited::default());
+            let out = run_in_pty(
+                &found,
+                it.args.unwrap_or_default(),
+                it.env,
+                home.path(),
+                input,
+                true,
+            );
+            for mark in marks {
+                assert!(
+                    out.contains(mark),
+                    "{program} did not print {mark:?}: {out:?}"
+                );
+            }
+        }
     }
 
     /// The command really prints the Windows folder (run with this system's bash).
