@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "命令面板",
     placeholder: "输入操作、会话、宏、标签页或设置…",
     noResults: "没有匹配项。",
+    historyTitle: "命令历史",
+    historyPlaceholder: "输入之前在这台电脑上运行过的命令的一部分…",
     groups: {
       actions: "操作",
       sessions: "会话",
       macros: "宏",
       tabs: "标签页",
       settings: "设置",
+      history: "历史",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: "“{name}”的 SSH 会话已不存在；请编辑它以选择其他会话。",
     sshSessionGone: "该 SSH 会话已不存在。",
     noTerminalForAi: "请打开一个终端以与 AI 聊天。",
+    noTerminalForHistory: "请打开一个终端以搜索其命令历史。",
     tabFull: "此标签页已有 {max} 个窗格；请关闭一个以打开 AI 聊天。",
     commandNotRun: "命令未运行：终端正在等待输入密码或正在运行全屏程序。",
     copyFailed: "无法复制到剪贴板。",

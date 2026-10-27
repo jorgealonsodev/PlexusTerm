@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "Paleta de comandos",
     placeholder: "Digite uma ação, sessão, macro, aba ou configuração…",
     noResults: "Nada corresponde.",
+    historyTitle: "Histórico de comandos",
+    historyPlaceholder: "Digite parte de um comando executado antes neste computador…",
     groups: {
       actions: "Ação",
       sessions: "Sessão",
       macros: "Macro",
       tabs: "Aba",
       settings: "Configurações",
+      history: "Histórico",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: 'A sessão SSH de "{name}" não existe mais; edite-a para escolher outra.',
     sshSessionGone: "Essa sessão SSH não existe mais.",
     noTerminalForAi: "Abra um terminal para conversar com a IA.",
+    noTerminalForHistory: "Abra um terminal para pesquisar no histórico de comandos dele.",
     tabFull: "Esta aba já tem {max} painéis; feche um para abrir o chat de IA.",
     commandNotRun:
       "O comando não foi executado: o terminal está em um pedido de senha ou em um programa em tela cheia.",

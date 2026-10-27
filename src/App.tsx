@@ -319,6 +319,9 @@ function ToolsMenu(props: {
   );
 }
 
+/** Most commands the history search lists. */
+const HISTORY_SHOWN = 1000;
+
 function AppContent() {
   const [state, dispatch] = useReducer(tabsReducer, initialTabs);
   const [modal, setModal] = useState<Modal>(null);
@@ -495,6 +498,8 @@ function AppContent() {
   /** Each terminal's own actions (find, copy, clear…), for the command palette. */
   const [paneShortcuts] = useState(() => createTargetRegistry<(shortcut: Shortcut) => void>());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  /** The history search: the commands of the focused terminal's computer, newest first. */
+  const [historyItems, setHistoryItems] = useState<PaletteItem[] | null>(null);
   /** The app's actions as the keyboard runs them, kept by the shortcut effect below. */
   const runShortcutRef = useRef<(shortcut: Shortcut, fromPalette?: boolean) => void>(() => {});
   const [aiLimit] = useState(() => createAiLimiter());
@@ -1422,6 +1427,8 @@ function AppContent() {
       switch (shortcut.type) {
         case "commandPalette":
           return setPaletteOpen(true);
+        case "searchHistory":
+          return openHistorySearch();
         case "newTerminal":
           return openLocal();
         case "quickConnect":
@@ -1508,6 +1515,28 @@ function AppContent() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openLocal, activeTab, updateSettingsWith, toggleDev]);
+
+  /** Lists the commands run on the focused terminal's computer; the chosen one is typed at its prompt, not run. */
+  const openHistorySearch = () => {
+    const tab = activeTab;
+    const paneId = tab ? terminalPaneOf(tab) : null;
+    if (!tab || !paneId) return setNotice(t("app.notice.noTerminalForHistory"));
+    void commandHistory.ready().then(() => {
+      const commands = commandHistory.recent(hostKeyOf(tab.target), HISTORY_SHOWN).reverse();
+      setHistoryItems(
+        commands.map((command, i) => ({
+          id: String(i),
+          group: "history" as const,
+          label: command,
+          run: () => {
+            dispatch({ type: "focusPane", key: tab.key, paneId });
+            assistTargets.get(paneId)?.insert(command);
+            assistTargets.get(paneId)?.focus();
+          },
+        })),
+      );
+    });
+  };
 
   /** What the command palette offers: actions, saved sessions, macros, open tabs and Settings sections. */
   const paletteItems = (): PaletteItem[] => [
@@ -2327,6 +2356,17 @@ function AppContent() {
           onNewSshSession={(host) =>
             setModal({ kind: "editSession", session: { ...draftSession(""), name: host, host }, isNew: true })
           }
+        />
+      )}
+      {historyItems && (
+        <CommandPalette
+          items={historyItems}
+          title={t("app.palette.historyTitle")}
+          placeholder={t("app.palette.historyPlaceholder")}
+          onClose={(run) => {
+            setHistoryItems(null);
+            if (run) setTimeout(run, 0);
+          }}
         />
       )}
       {paletteOpen && (

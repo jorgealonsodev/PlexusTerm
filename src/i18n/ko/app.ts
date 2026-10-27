@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "명령 팔레트",
     placeholder: "작업, 세션, 매크로, 탭 또는 설정을 입력하세요…",
     noResults: "일치하는 항목이 없습니다.",
+    historyTitle: "명령 기록",
+    historyPlaceholder: "이 컴퓨터에서 전에 실행한 명령의 일부를 입력하세요…",
     groups: {
       actions: "작업",
       sessions: "세션",
       macros: "매크로",
       tabs: "탭",
       settings: "설정",
+      history: "기록",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: '"{name}"의 SSH 세션이 더 이상 존재하지 않습니다. 편집하여 다른 세션을 선택하십시오.',
     sshSessionGone: "해당 SSH 세션이 더 이상 존재하지 않습니다.",
     noTerminalForAi: "AI와 대화하려면 터미널을 여십시오.",
+    noTerminalForHistory: "명령 기록을 검색하려면 터미널을 여세요.",
     tabFull: "이 탭에는 이미 창이 {max}개 있습니다. AI 채팅을 열려면 하나를 닫으십시오.",
     commandNotRun: "명령이 실행되지 않았습니다. 터미널이 암호 입력 중이거나 전체 화면 프로그램을 실행 중입니다.",
     copyFailed: "클립보드에 복사할 수 없습니다.",

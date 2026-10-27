@@ -4,6 +4,9 @@ import { filterPalette, type PaletteItem } from "./paletteItems";
 
 interface CommandPaletteProps {
   items: readonly PaletteItem[];
+  /** The palette's name and the hint in its box; the command palette's when omitted. */
+  title?: string;
+  placeholder?: string;
   /** Closes the palette; `run` is the item chosen, run once the palette is gone (focus goes back first). */
   onClose: (run?: () => void) => void;
 }
@@ -12,7 +15,7 @@ interface CommandPaletteProps {
  * One box to reach everything: type to narrow the actions, sessions, macros, tabs and Settings
  * sections; ↑/↓ choose, Enter or a click runs, Esc closes.
  */
-export function CommandPalette({ items, onClose }: CommandPaletteProps) {
+export function CommandPalette({ items, title, placeholder, onClose }: CommandPaletteProps) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -42,7 +45,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
 
   return (
     <div className="overlay overlay--top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="palette" role="dialog" aria-label={t("app.palette.title")}>
+      <div className="palette" role="dialog" aria-label={title ?? t("app.palette.title")}>
         <input
           className="palette__input"
           role="combobox"
@@ -51,7 +54,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
           aria-activedescendant={shown[current] ? `palette-item-${current}` : undefined}
           autoFocus
           spellCheck={false}
-          placeholder={t("app.palette.placeholder")}
+          placeholder={placeholder ?? t("app.palette.placeholder")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

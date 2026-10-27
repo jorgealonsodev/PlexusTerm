@@ -306,6 +306,7 @@ export const settings: Messages<typeof en> = {
       recentFolders: "हाल का खोलें (DEV मोड)",
       openSettings: "सेटिंग्स खोलें",
       commandPalette: "कमांड पैलेट",
+      searchHistory: "कमांड इतिहास खोजें",
       assistant: "AI सहायक",
     },
     fixed: {

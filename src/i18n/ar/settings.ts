@@ -306,6 +306,7 @@ export const settings: Messages<typeof en> = {
       recentFolders: "فتح عنصر حديث (وضع DEV)",
       openSettings: "فتح الإعدادات",
       commandPalette: "لوحة الأوامر",
+      searchHistory: "البحث في سجل الأوامر",
       assistant: "مساعد الذكاء الاصطناعي",
     },
     fixed: {

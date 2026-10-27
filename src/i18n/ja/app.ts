@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "コマンドパレット",
     placeholder: "操作、セッション、マクロ、タブ、設定を入力…",
     noResults: "一致するものがありません。",
+    historyTitle: "コマンド履歴",
+    historyPlaceholder: "このコンピューターで以前実行したコマンドの一部を入力…",
     groups: {
       actions: "操作",
       sessions: "セッション",
       macros: "マクロ",
       tabs: "タブ",
       settings: "設定",
+      history: "履歴",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: "「{name}」の SSH セッションは存在しません。編集して別のセッションを選択してください。",
     sshSessionGone: "その SSH セッションは存在しません。",
     noTerminalForAi: "AI とチャットするにはターミナルを開いてください。",
+    noTerminalForHistory: "コマンド履歴を検索するにはターミナルを開いてください。",
     tabFull: "このタブにはすでに {max} 個のペインがあります。AI チャットを開くには 1 つ閉じてください。",
     commandNotRun:
       "コマンドは実行されませんでした。ターミナルがパスワード入力中か、全画面プログラムを表示しています。",

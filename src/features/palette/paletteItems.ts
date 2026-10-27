@@ -4,7 +4,7 @@
  */
 import { matchesQuery } from "../settings/settingsSearch";
 
-export type PaletteGroup = "actions" | "sessions" | "macros" | "tabs" | "settings";
+export type PaletteGroup = "actions" | "sessions" | "macros" | "tabs" | "settings" | "history";
 
 export interface PaletteItem {
   id: string;

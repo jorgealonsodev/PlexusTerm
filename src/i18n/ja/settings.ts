@@ -306,6 +306,7 @@ export const settings: Messages<typeof en> = {
       recentFolders: "最近使った項目を開く (DEV モード)",
       openSettings: "設定を開く",
       commandPalette: "コマンドパレット",
+      searchHistory: "コマンド履歴を検索",
       assistant: "AI アシスタント",
     },
     fixed: {

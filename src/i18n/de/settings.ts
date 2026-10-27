@@ -306,6 +306,7 @@ export const settings: Messages<typeof en> = {
       recentFolders: "Zuletzt geöffnet (DEV-Modus)",
       openSettings: "Einstellungen öffnen",
       commandPalette: "Befehlspalette",
+      searchHistory: "Befehlsverlauf durchsuchen",
       assistant: "KI-Assistent",
     },
     fixed: {

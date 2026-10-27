@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "لوحة الأوامر",
     placeholder: "اكتب إجراءً أو جلسة أو ماكرو أو علامة تبويب أو إعدادًا…",
     noResults: "لا توجد نتائج مطابقة.",
+    historyTitle: "سجل الأوامر",
+    historyPlaceholder: "اكتب جزءًا من أمر نفّذته من قبل على هذا الجهاز…",
     groups: {
       actions: "إجراء",
       sessions: "جلسة",
       macros: "ماكرو",
       tabs: "علامة تبويب",
       settings: "الإعدادات",
+      history: "السجل",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: 'جلسة SSH الخاصة بـ "{name}" لم تعد موجودة؛ حرّرها لاختيار جلسة أخرى.',
     sshSessionGone: "جلسة SSH هذه لم تعد موجودة.",
     noTerminalForAi: "افتح طرفية للدردشة مع الذكاء الاصطناعي.",
+    noTerminalForHistory: "افتح طرفية للبحث في سجل أوامرها.",
     tabFull: "تحتوي علامة التبويب هذه على {max} أجزاء بالفعل؛ أغلق أحدها لفتح دردشة الذكاء الاصطناعي.",
     commandNotRun: "لم يُنفَّذ الأمر: الطرفية تنتظر كلمة مرور أو تعرض برنامجًا بملء الشاشة.",
     copyFailed: "تعذّر النسخ إلى الحافظة.",

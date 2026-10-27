@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "कमांड पैलेट",
     placeholder: "कोई कार्य, सत्र, मैक्रो, टैब या सेटिंग लिखें…",
     noResults: "कुछ मेल नहीं खाता।",
+    historyTitle: "कमांड इतिहास",
+    historyPlaceholder: "इस कंप्यूटर पर पहले चलाई गई किसी कमांड का हिस्सा लिखें…",
     groups: {
       actions: "कार्य",
       sessions: "सत्र",
       macros: "मैक्रो",
       tabs: "टैब",
       settings: "सेटिंग्स",
+      history: "इतिहास",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: '"{name}" का SSH सेशन अब मौजूद नहीं है; कोई दूसरा चुनने के लिए इसे संपादित करें।',
     sshSessionGone: "वह SSH सेशन अब मौजूद नहीं है।",
     noTerminalForAi: "AI से चैट करने के लिए एक टर्मिनल खोलें।",
+    noTerminalForHistory: "कमांड इतिहास खोजने के लिए कोई टर्मिनल खोलें।",
     tabFull: "इस टैब में पहले से {max} पेन हैं; AI चैट खोलने के लिए एक बंद करें।",
     commandNotRun: "कमांड नहीं चलाई गई: टर्मिनल पासवर्ड प्रॉम्प्ट पर है या कोई फ़ुल-स्क्रीन प्रोग्राम चल रहा है।",
     copyFailed: "क्लिपबोर्ड पर कॉपी नहीं किया जा सका।",

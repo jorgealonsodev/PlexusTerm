@@ -304,6 +304,7 @@ export const settings = {
       recentFolders: "Open recent (DEV mode)",
       openSettings: "Open Settings",
       commandPalette: "Command palette",
+      searchHistory: "Search the command history",
       assistant: "AI assistant",
     },
     fixed: {

@@ -303,6 +303,7 @@ export const settings: Messages<typeof en> = {
       recentFolders: "打开最近的项目（DEV 模式）",
       openSettings: "打开设置",
       commandPalette: "命令面板",
+      searchHistory: "搜索命令历史",
       assistant: "AI 助手",
     },
     fixed: {

@@ -636,7 +636,9 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 - **Tabs**: the open tabs, to switch to one.
 - **Settings**: opens Settings at that section.
 
-↑ and ↓ move through the list, Enter or a click runs the highlighted item, and Esc or a click outside closes it. Its shortcut can be changed in Settings → Shortcuts (**Command palette**, under Tools).
+↑ and ↓ move through the list, Enter or a click runs the highlighted item, and Esc or a click outside closes it.
+
+**Ctrl+Shift+H** opens the same kind of box with the **command history** of the focused terminal's computer (this computer for local terminals, the server for SSH ones), newest first: type part of a command to narrow it, and Enter types the chosen one at the prompt without running it, so you can change it before pressing Enter. Ctrl+R stays the shell's own history search. Its shortcut can be changed in Settings → Shortcuts (**Command palette**, under Tools).
 
 ## Keyboard shortcuts
 
@@ -645,6 +647,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 | Ctrl+Shift+T | New local terminal tab |
 | Ctrl+Shift+S | New SSH session (quick connect) |
 | Ctrl+Shift+P | Command palette: every action, session, macro, tab and setting in one box |
+| Ctrl+Shift+H | Search the command history of the focused terminal's computer and type the chosen command |
 | Ctrl+Shift+D | Split the focused pane right |
 | Ctrl+Shift+E | Split the focused pane down |
 | Ctrl+Shift+W | Close the focused pane (the tab closes with its last pane) |

@@ -6,12 +6,15 @@ export const app: Messages<typeof en> = {
     title: "Befehlspalette",
     placeholder: "Aktion, Sitzung, Makro, Tab oder Einstellung eingeben …",
     noResults: "Keine Treffer.",
+    historyTitle: "Befehlsverlauf",
+    historyPlaceholder: "Teil eines Befehls eingeben, der auf diesem Computer lief …",
     groups: {
       actions: "Aktion",
       sessions: "Sitzung",
       macros: "Makro",
       tabs: "Tab",
       settings: "Einstellungen",
+      history: "Verlauf",
     },
   },
   toolbar: {
@@ -58,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: "Die SSH-Sitzung von „{name}“ existiert nicht mehr; bearbeite sie, um eine andere auszuwählen.",
     sshSessionGone: "Diese SSH-Sitzung existiert nicht mehr.",
     noTerminalForAi: "Öffne ein Terminal, um mit der KI zu chatten.",
+    noTerminalForHistory: "Öffne ein Terminal, um seinen Befehlsverlauf zu durchsuchen.",
     tabFull: "Dieser Tab hat bereits {max} Bereiche; schließe einen, um den KI-Chat zu öffnen.",
     commandNotRun:
       "Der Befehl wurde nicht ausgeführt: Das Terminal wartet auf ein Passwort oder zeigt ein Vollbildprogramm.",
