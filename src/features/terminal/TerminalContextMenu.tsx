@@ -3,6 +3,7 @@ import { useT } from "../../i18n/i18n";
 
 export type MenuAction =
   | "copy"
+  | "copyOutput"
   | "askAi"
   | "typeSelection"
   | "findSelection"
@@ -24,6 +25,8 @@ interface TerminalContextMenuProps {
   selection?: string;
   /** The AI chat can be opened from this pane. */
   canAskAi?: boolean;
+  /** The shell marked the command under the click, so its output can be copied. */
+  commandOutput?: boolean;
   onAction: (action: MenuAction) => void;
   onClose: () => void;
 }
@@ -35,7 +38,16 @@ export const linkOf = (selection: string): string | null => {
 };
 
 /** Right-click menu of a terminal pane (S15.4), with the selection's own actions first (S7). */
-export function TerminalContextMenu({ x, y, logging, selection = "", canAskAi = false, onAction, onClose }: TerminalContextMenuProps) {
+export function TerminalContextMenu({
+  x,
+  y,
+  logging,
+  selection = "",
+  canAskAi = false,
+  commandOutput = false,
+  onAction,
+  onClose,
+}: TerminalContextMenuProps) {
   const t = useT();
   const item = (action: MenuAction, label: string): ContextMenuItem => ({ label, onSelect: () => onAction(action) });
   const selectionItems: ContextMenuItem[] = selection
@@ -50,6 +62,7 @@ export function TerminalContextMenu({ x, y, logging, selection = "", canAskAi = 
     : [item("copy", t("common.copy"))];
   const items: ContextMenuItem[] = [
     ...selectionItems,
+    ...(commandOutput ? [item("copyOutput", t("terminal.menu.copyOutput"))] : []),
     item("paste", t("terminal.menu.paste")),
     item("selectAll", t("terminal.menu.selectAll")),
     item("clear", t("terminal.menu.clear")),

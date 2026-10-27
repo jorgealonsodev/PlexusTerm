@@ -1107,6 +1107,48 @@ describe("TerminalView", () => {
       expect(term().clear).toHaveBeenCalled();
     });
 
+    it("copies a command's output from the menu or its shortcut once the shell marks its commands", async () => {
+      clipboard.writeText.mockClear();
+      const { container } = renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { copyCommandOutput: "Alt+O" } } });
+      const items = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+      const press = (key: string, mods: Partial<KeyboardEvent>) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      rightClick(container, { ctrlKey: true });
+      expect(items()).not.toContain("Copy command output");
+      fireEvent.keyDown(screen.getAllByRole("menuitem")[0], { key: "Escape" });
+      act(() => void press("o", { altKey: true }));
+      expect(clipboard.writeText).not.toHaveBeenCalled();
+
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "B");
+        term().osc(133, "C");
+        term().line = "hello";
+        term().osc(133, "D;0");
+      });
+      rightClick(container, { ctrlKey: true });
+      fireEvent.click(screen.getByRole("menuitem", { name: "Copy command output" }));
+      expect(clipboard.writeText).toHaveBeenLastCalledWith("hello");
+      clipboard.writeText.mockClear();
+      act(() => void press("o", { altKey: true }));
+      expect(clipboard.writeText).toHaveBeenCalledWith("hello");
+    });
+
+    it("takes Ctrl+Shift+Up and Ctrl+Shift+Down to move between prompts only while the shell marks them", () => {
+      renderView();
+      const press = (key: string) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: true, shiftKey: true, altKey: false, metaKey: false });
+      // No marks (a remote shell, integration off): the keys reach the program.
+      expect(press("ArrowUp")).toBe(true);
+      expect(press("ArrowDown")).toBe(true);
+      act(() => void term().osc(133, "A"));
+      expect(press("ArrowUp")).toBe(false);
+      expect(press("ArrowDown")).toBe(false);
+      // A full-screen program (vim, tmux) keeps them.
+      term().bufferType = "alternate";
+      expect(press("ArrowUp")).toBe(true);
+    });
+
     it("hands the assistant the pane's selection and a way to focus it back (S3)", () => {
       let assist: { selection: () => string; focus: () => void } | null = null;
       const unregister = vi.fn();

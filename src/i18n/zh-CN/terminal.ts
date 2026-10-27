@@ -20,6 +20,7 @@ export const terminal: Messages<typeof en> = {
     paste: "粘贴",
   },
   menu: {
+    copyOutput: "复制命令输出",
     askAi: "询问 AI",
     typeSelection: "输入到命令行",
     findSelection: "在终端中查找",

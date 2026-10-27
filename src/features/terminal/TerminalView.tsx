@@ -52,6 +52,7 @@ import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextM
 import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
+import { attachCommandBlocks, jumpColor, type CommandBlocks } from "./commandBlocks";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
@@ -307,6 +308,8 @@ export function TerminalView({
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const errorsRef = useRef<ErrorHighlight | null>(null);
+  /** The commands the shell's marks delimit; empty without shell integration. */
+  const blocksRef = useRef<CommandBlocks | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   /** The WebGL renderer while it draws this terminal; null means xterm's own (DOM) renderer. */
   const webglRef = useRef<WebglAddon | null>(null);
@@ -327,7 +330,8 @@ export function TerminalView({
   /** Sends data as if typed (set by the terminal effect), for keys the key handler translates. */
   const typedRef = useRef<(data: string) => void>(() => {});
   const [findOpen, setFindOpen] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
+  /** `output` is the output of the command under the click, when the shell marks its commands. */
+  const [menu, setMenu] = useState<{ x: number; y: number; selection: string; output: string | null } | null>(null);
   /** What the find bar opens with: the selection it was opened from, or nothing. */
   const [findText, setFindText] = useState("");
   /** Bumped when the bar must start again with `findText`; plain Ctrl+Shift+F keeps what is typed. */
@@ -426,6 +430,10 @@ export function TerminalView({
         }
         return false;
       }
+      // Without prompts to jump to (no shell marks, a full-screen program) the keys stay the program's.
+      if ((shortcut.type === "previousCommand" || shortcut.type === "nextCommand") && !blocksRef.current?.canJump()) {
+        return true;
+      }
       if (e.type === "keydown") {
         // No native paste on top of ours.
         if (shortcut.type === "paste") e.preventDefault();
@@ -441,6 +449,11 @@ export function TerminalView({
       color: () => errorColor(themeById(settingsRef.current.theme).theme),
     });
     errorsRef.current = errors;
+    const blocks = attachCommandBlocks(term, {
+      failedColor: () => errorColor(themeById(settingsRef.current.theme).theme),
+      jumpColor: () => jumpColor(themeById(settingsRef.current.theme).theme),
+    });
+    blocksRef.current = blocks;
     let errorsTimer: ReturnType<typeof setTimeout> | null = null;
     fitRef.current = fit;
     searchRef.current = search;
@@ -1017,6 +1030,7 @@ export function TerminalView({
       term.parser.registerOscHandler(133, (data) => {
         const mark = parseOsc133(data);
         if (!mark) return true;
+        blocks.mark(mark);
         inputStart?.marker.dispose();
         inputStart = null;
         if (mark.kind !== "B") atPrompt = mark.kind === "A";
@@ -1088,6 +1102,8 @@ export function TerminalView({
       if (activityTimer) clearTimeout(activityTimer);
       errors.dispose();
       errorsRef.current = null;
+      blocks.dispose();
+      blocksRef.current = null;
       // Disposed with the terminal.
       webglRef.current = null;
       if (sessionId !== null) void backend.close(sessionId);
@@ -1226,6 +1242,11 @@ export function TerminalView({
     if (term?.hasSelection()) void writeText(term.getSelection()).catch(() => {});
   };
 
+  /** Copies a command's output: the one under the menu's click, or the last command's. */
+  const copyCommandOutput = (output = blocksRef.current?.outputAt() ?? null) => {
+    if (output !== null) void writeText(output).catch(() => {});
+  };
+
   const find = (text: string, options: FindOptions, direction: FindDirection) => {
     const search = searchRef.current;
     if (!search) return false;
@@ -1294,6 +1315,9 @@ export function TerminalView({
       case "copy":
         copySelection();
         break;
+      case "copyOutput":
+        copyCommandOutput(menu?.output ?? null);
+        break;
       case "askAi":
         // The chat takes the focus and the selection with it.
         return onAskAiRef.current?.();
@@ -1342,19 +1366,32 @@ export function TerminalView({
     else if (shortcut.type === "find") openFind();
     else if (shortcut.type === "copy") copySelection();
     else if (shortcut.type === "paste") pasteFromClipboard();
+    else if (shortcut.type === "previousCommand") blocksRef.current?.jump("previous");
+    else if (shortcut.type === "nextCommand") blocksRef.current?.jump("next");
+    else if (shortcut.type === "copyCommandOutput") copyCommandOutput();
   };
 
   /**
    * Right click pastes, or opens the menu when that is turned off; Ctrl+right click always opens it
    * (S15.4), and so does a right click on selected text, with the selection's actions (S7).
    */
+  /** The output of the command shown at viewport height `clientY`, when the shell marks its commands. */
+  const outputUnder = (clientY: number) => {
+    const term = termRef.current;
+    const blocks = blocksRef.current;
+    const screen = term?.element?.querySelector(".xterm-screen")?.getBoundingClientRect();
+    if (!term || !blocks || !screen || screen.height <= 0) return blocks?.outputAt() ?? null;
+    const row = Math.floor(((clientY - screen.top) / screen.height) * term.rows);
+    return blocks.outputAt(term.buffer.active.viewportY + Math.max(0, Math.min(row, term.rows - 1)));
+  };
+
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     // The selection from before the click: on macOS xterm selects the word under a right click.
     const selection = selectionAtRightDown.current ?? "";
     selectionAtRightDown.current = null;
     if (settingsRef.current.rightClickPastes && !e.ctrlKey && !selection) pasteFromClipboard();
-    else setMenu({ x: e.clientX, y: e.clientY, selection });
+    else setMenu({ x: e.clientX, y: e.clientY, selection, output: outputUnder(e.clientY) });
   };
 
   return (
@@ -1382,6 +1419,7 @@ export function TerminalView({
           y={menu.y}
           logging={logPath !== null}
           selection={menu.selection}
+          commandOutput={menu.output !== null}
           canAskAi={onAskAi !== undefined}
           onAction={runMenuAction}
           onClose={() => {

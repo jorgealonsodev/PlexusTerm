@@ -20,6 +20,7 @@ export const terminal: Messages<typeof en> = {
     paste: "貼り付け",
   },
   menu: {
+    copyOutput: "コマンドの出力をコピー",
     askAi: "AI に質問",
     typeSelection: "プロンプトに入力",
     findSelection: "端末内を検索",

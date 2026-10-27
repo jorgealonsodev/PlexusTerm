@@ -1453,6 +1453,9 @@ function AppContent() {
         case "saveOutput":
         case "toggleLogging":
         case "askAi":
+        case "previousCommand":
+        case "nextCommand":
+        case "copyCommandOutput":
           return;
       }
       if (!activeTab) return;

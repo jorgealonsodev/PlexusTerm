@@ -24,6 +24,7 @@ export const terminal: Messages<typeof en> = {
     paste: "Colar",
   },
   menu: {
+    copyOutput: "Copiar a saída do comando",
     askAi: "Perguntar à IA",
     typeSelection: "Digitar no prompt",
     findSelection: "Localizar no terminal",

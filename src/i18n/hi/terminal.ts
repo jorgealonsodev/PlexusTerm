@@ -20,6 +20,7 @@ export const terminal: Messages<typeof en> = {
     paste: "पेस्ट करें",
   },
   menu: {
+    copyOutput: "कमांड का आउटपुट कॉपी करें",
     askAi: "AI से पूछें",
     typeSelection: "प्रॉम्प्ट पर लिखें",
     findSelection: "टर्मिनल में खोजें",

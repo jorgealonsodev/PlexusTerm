@@ -27,6 +27,7 @@ export const terminal: Messages<typeof en> = {
     paste: "لصق",
   },
   menu: {
+    copyOutput: "نسخ مخرجات الأمر",
     askAi: "اسأل الذكاء الاصطناعي",
     typeSelection: "اكتب في سطر الأوامر",
     findSelection: "البحث في الطرفية",

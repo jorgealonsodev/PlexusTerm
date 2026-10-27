@@ -18,6 +18,7 @@ export const terminal = {
     paste: "Paste",
   },
   menu: {
+    copyOutput: "Copy command output",
     askAi: "Ask the AI about it",
     typeSelection: "Type at the prompt",
     findSelection: "Find in terminal",

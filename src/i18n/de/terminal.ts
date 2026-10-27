@@ -20,6 +20,7 @@ export const terminal: Messages<typeof en> = {
     paste: "Einfügen",
   },
   menu: {
+    copyOutput: "Befehlsausgabe kopieren",
     askAi: "Die KI dazu fragen",
     typeSelection: "An der Eingabeaufforderung eingeben",
     findSelection: "Im Terminal suchen",

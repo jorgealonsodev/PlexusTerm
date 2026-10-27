@@ -26,6 +26,10 @@ export type Shortcut =
   | { type: "copy" }
   | { type: "paste" }
   | { type: "selectAll" }
+  /** Command blocks: the prompt before or after, and the last command's output (shell integration). */
+  | { type: "previousCommand" }
+  | { type: "nextCommand" }
+  | { type: "copyCommandOutput" }
   | { type: "clear" }
   | { type: "saveOutput" }
   | { type: "toggleLogging" }
@@ -89,6 +93,9 @@ export const SHORTCUT_ACTIONS = {
   copy: { shortcut: { type: "copy" }, group: "terminal", defaults: ["Ctrl+Shift+C"] },
   paste: { shortcut: { type: "paste" }, group: "terminal", defaults: ["Ctrl+Shift+V"] },
   selectAll: { shortcut: { type: "selectAll" }, group: "terminal", defaults: [] },
+  previousCommand: { shortcut: { type: "previousCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowUp"] },
+  nextCommand: { shortcut: { type: "nextCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowDown"] },
+  copyCommandOutput: { shortcut: { type: "copyCommandOutput" }, group: "terminal", defaults: [] },
   clear: { shortcut: { type: "clear" }, group: "terminal", defaults: [] },
   saveOutput: { shortcut: { type: "saveOutput" }, group: "terminal", defaults: [] },
   toggleLogging: { shortcut: { type: "toggleLogging" }, group: "terminal", defaults: [] },
