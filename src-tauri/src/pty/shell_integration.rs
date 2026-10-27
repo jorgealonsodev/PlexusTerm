@@ -31,6 +31,13 @@ $l=$executionContext.SessionState.Path.CurrentLocation;\
 if($l.Provider.Name -eq 'FileSystem'){$r+=$e+']9;9;'+[char]34+$l.ProviderPath+[char]34+$e+'\\'};\
 $r+($o -join '')+$e+']133;B'+$b}";
 
+/// PowerShell with shell integration off: only the folder report in front of the profile's
+/// prompt, which runs first while `$?` still holds the last command's.
+pub const POWERSHELL_FOLDER_PROMPT: &str = "$global:__plexusPrompt=$function:prompt;\
+function global:prompt{$o=& $global:__plexusPrompt;\
+$l=$executionContext.SessionState.Path.CurrentLocation;\
+if($l.Provider.Name -eq 'FileSystem'){((([char]27),']9;9;',([char]34),$l.ProviderPath,([char]34),([char]27),'\\') -join '')+($o -join '')}else{$o}}";
+
 /// Git Bash: the Windows form of `$PWD` (`/c/Users` is `C:\Users`, without starting a program
 /// at every prompt; `cygpath` only outside a drive). bash keeps `$?` for the prompt.
 pub const GIT_BASH_REPORT: &str = r#"__plexus_dir=; if [[ $PWD =~ ^/([a-zA-Z])(/.*)?$ ]]; then __plexus_dir="${BASH_REMATCH[1]^^}:${BASH_REMATCH[2]:-/}"; __plexus_dir="${__plexus_dir//\//\\}"; else __plexus_dir="$(cygpath -w "$PWD" 2>/dev/null)"; fi; [ -n "$__plexus_dir" ] && printf '\e]9;9;"%s"\e\\' "$__plexus_dir""#;
@@ -51,6 +58,8 @@ pub const GIT_BASH_PS0: &str = r"\e]133;C\a";
 /// and B after it. cmd has no hook for C nor the exit code for D.
 const CMD_BEFORE: &str = "$e]133;A$e\\$e]9;9;$P$e\\";
 const CMD_AFTER: &str = "$e]133;B$e\\";
+/// cmd with shell integration off: only the folder report.
+const CMD_REPORT: &str = "$e]9;9;$P$e\\";
 
 fn shell_name(program: &str) -> String {
     let name = program.rsplit(['\\', '/']).next().unwrap_or(program);
@@ -120,6 +129,8 @@ pub struct Inherited<'a> {
     pub zdotdir: Option<&'a str>,
     /// Where [`install_scripts`] wrote the scripts; None leaves bash and zsh as they are.
     pub scripts: Option<&'a Path>,
+    /// Shell integration turned off in Settings: no OSC 133 marks, only the Windows folder report.
+    pub plain: bool,
 }
 
 /// What to add to start `program` (with the user's `args`) so it reports its folder.
@@ -129,7 +140,18 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
         let theirs = inherited
             .prompt_command
             .map(|c| c.trim_end().trim_end_matches(';').trim_end());
-        let command = match theirs.filter(|c| !c.is_empty()) {
+        let theirs = theirs.filter(|c| !c.is_empty());
+        if inherited.plain {
+            let command = match theirs {
+                Some(theirs) => format!("{theirs}; {GIT_BASH_REPORT}"),
+                None => GIT_BASH_REPORT.to_string(),
+            };
+            return Integration {
+                args: None,
+                env: vec![("PROMPT_COMMAND".into(), command)],
+            };
+        }
+        let command = match theirs {
             Some(theirs) => {
                 format!("{GIT_BASH_BEFORE}; {theirs}; {GIT_BASH_REPORT}; {GIT_BASH_AFTER}")
             }
@@ -144,8 +166,9 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
         };
     }
     let prompt = inherited.prompt;
+    let scripts = inherited.scripts.filter(|_| !inherited.plain);
     match shell_name(program).as_str() {
-        "bash" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+        "bash" if cfg!(unix) && args.is_empty() => match scripts {
             Some(dir) => Integration {
                 args: Some(vec![
                     "--rcfile".into(),
@@ -156,7 +179,7 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
             None => Integration::default(),
         },
         // The path goes through a variable: fish never splits it, whatever characters it has.
-        "fish" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+        "fish" if cfg!(unix) && args.is_empty() => match scripts {
             Some(dir) => Integration {
                 args: Some(vec![
                     "--init-command".into(),
@@ -169,7 +192,7 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
             },
             None => Integration::default(),
         },
-        "zsh" if cfg!(unix) && args.is_empty() => match inherited.scripts {
+        "zsh" if cfg!(unix) && args.is_empty() => match scripts {
             Some(dir) => {
                 let mut env = vec![(
                     "ZDOTDIR".to_string(),
@@ -187,15 +210,25 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
             args: Some(vec![
                 "-NoExit".into(),
                 "-Command".into(),
-                POWERSHELL_PROMPT.into(),
+                if inherited.plain {
+                    POWERSHELL_FOLDER_PROMPT
+                } else {
+                    POWERSHELL_PROMPT
+                }
+                .into(),
             ]),
             env: vec![],
         },
         "cmd" => {
             let own = prompt.filter(|p| !p.is_empty()).unwrap_or("$P$G");
+            let prompt = if inherited.plain {
+                format!("{CMD_REPORT}{own}")
+            } else {
+                format!("{CMD_BEFORE}{own}{CMD_AFTER}")
+            };
             Integration {
                 args: None,
-                env: vec![("PROMPT".into(), format!("{CMD_BEFORE}{own}{CMD_AFTER}"))],
+                env: vec![("PROMPT".into(), prompt)],
             }
         }
         _ => Integration::default(),
@@ -205,6 +238,59 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn turned_off_leaves_only_the_windows_folder_report() {
+        let dir = std::path::Path::new("/scripts");
+        let plain = |program: &str, inherited: Inherited| {
+            integration(
+                program,
+                &[],
+                Inherited {
+                    plain: true,
+                    ..inherited
+                },
+            )
+        };
+        for shell in ["/bin/bash", "/usr/bin/zsh", "/usr/bin/fish"] {
+            let it = plain(
+                shell,
+                Inherited {
+                    scripts: Some(dir),
+                    ..Default::default()
+                },
+            );
+            assert_eq!(it, Integration::default(), "{shell}");
+        }
+        assert_eq!(
+            plain("pwsh.exe", Inherited::default()).args,
+            Some(vec![
+                "-NoExit".to_string(),
+                "-Command".to_string(),
+                POWERSHELL_FOLDER_PROMPT.to_string()
+            ])
+        );
+        assert!(!POWERSHELL_FOLDER_PROMPT.contains("133"));
+        assert!(!POWERSHELL_FOLDER_PROMPT.contains('"'));
+        assert_eq!(
+            plain("cmd.exe", Inherited::default()).env,
+            vec![("PROMPT".to_string(), "$e]9;9;$P$e\\$P$G".to_string())]
+        );
+        assert_eq!(
+            plain(
+                "C:\\Program Files\\Git\\bin\\bash.exe",
+                Inherited {
+                    prompt_command: Some("history -a;"),
+                    ..Default::default()
+                }
+            )
+            .env,
+            vec![(
+                "PROMPT_COMMAND".to_string(),
+                format!("history -a; {GIT_BASH_REPORT}")
+            )]
+        );
+    }
 
     #[test]
     fn powershell_gets_the_prompt_wrapper_only_without_arguments_of_the_user() {

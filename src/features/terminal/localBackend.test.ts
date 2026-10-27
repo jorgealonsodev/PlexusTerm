@@ -11,9 +11,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 beforeEach(() => invoke.mockReset());
 
-const requestOf = async (target: Parameters<typeof backendFor>[0]) => {
+const requestOf = async (target: Parameters<typeof backendFor>[0], shellIntegration?: boolean) => {
+  invoke.mockReset();
   invoke.mockResolvedValue(7);
-  expect(await backendFor(target).start({ cols: 100, rows: 30 }, () => {})).toBe(7);
+  expect(await backendFor(target).start({ cols: 100, rows: 30, shellIntegration }, () => {})).toBe(7);
   const [command, args] = invoke.mock.calls[0];
   expect(command).toBe("pty_spawn");
   expect(args.onEvent).toBeDefined();
@@ -33,6 +34,11 @@ describe("local backend", () => {
 
   it("leaves out a blank program, no arguments and a blank directory", async () => {
     expect(await requestOf({ type: "local", program: "  ", args: [], cwd: "" })).toEqual({ cols: 100, rows: 30 });
+  });
+
+  it("asks for a plain shell only when shell integration is turned off", async () => {
+    expect(await requestOf({ type: "local" }, true)).toEqual({ cols: 100, rows: 30 });
+    expect(await requestOf({ type: "local" }, false)).toEqual({ cols: 100, rows: 30, shellIntegration: false });
   });
 
   it("writes, resizes and closes through the PTY commands", async () => {

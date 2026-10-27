@@ -36,7 +36,7 @@ import type { MacroTarget } from "../macros/player";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
-import { backendFor, setTerminalFlow } from "./backend";
+import { backendFor, setTerminalFlow, type StartOptions } from "./backend";
 import { createOutputFlow } from "./flowControl";
 import { runningShellOf } from "./localShell";
 import { useShells } from "../platform/useShells";
@@ -541,8 +541,16 @@ export function TerminalView({
           endKeepingPane(t("terminal.view.connectCancelled"));
         };
       }
+      const options: StartOptions = {
+        cols: term.cols,
+        rows: term.rows,
+        trustedFingerprint,
+        jumps: jumpsRef.current,
+        shellIntegration: settingsRef.current.shellIntegration,
+        ...typedLogin.current,
+      };
       backend
-        .start({ cols: term.cols, rows: term.rows, trustedFingerprint, jumps: jumpsRef.current, ...typedLogin.current }, (event) => {
+        .start(options, (event) => {
           // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
           if (disposed) return;
           // Shared output is output like any other, numbered for the snapshots of the share.

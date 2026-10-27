@@ -24,10 +24,18 @@ pub struct SpawnRequest {
     pub cwd: Option<String>,
     pub cols: u16,
     pub rows: u16,
+    /// Settings → Terminal → Shell integration: false starts bash, zsh and fish plain and leaves
+    /// the Windows shells only their folder report (no OSC 133 marks). Missing means on.
+    #[serde(default = "shell_integration_default")]
+    pub shell_integration: bool,
     /// Extra environment for the child, set only by Rust (e.g. `MOSH_KEY`): the frontend
     /// cannot send it.
     #[serde(skip)]
     pub env: ChildEnv,
+}
+
+fn shell_integration_default() -> bool {
+    true
 }
 
 /// Environment variables passed to a child process. `Debug` shows only their names,
@@ -162,6 +170,7 @@ impl PtyManager {
                     prompt_command: prompt_command.as_deref(),
                     zdotdir: zdotdir.as_deref(),
                     scripts: shell_integration::ready_scripts(scripts.as_deref()),
+                    plain: !req.shell_integration,
                 },
             )
         } else {
@@ -363,8 +372,16 @@ mod tests {
             cwd: None,
             cols: 80,
             rows: 24,
+            shell_integration: true,
             env: ChildEnv::default(),
         }
+    }
+
+    #[test]
+    fn shell_integration_is_on_unless_the_request_turns_it_off() {
+        let parse = |json: &str| serde_json::from_str::<SpawnRequest>(json).unwrap();
+        assert!(parse(r#"{"cols":80,"rows":24}"#).shell_integration);
+        assert!(!parse(r#"{"cols":80,"rows":24,"shellIntegration":false}"#).shell_integration);
     }
 
     #[test]

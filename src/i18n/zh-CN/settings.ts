@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "本地终端的起始文件夹",
     newTerminalFolder: "新终端 (+) 的打开位置",
     devNewTerminalFolder: "DEV 模式下 + 的打开位置",
+    shellIntegration: "Shell 集成",
+    shellIntegrationHelp:
+      "本地 shell 会标记提示符的结束位置以及每条命令的结束状态 (OSC 133)，让建议、历史记录和错误颜色准确跟随你的输入。bash、zsh 和 fish 会在你自己的启动文件之后加载一个小脚本；PowerShell、Git Bash 和 cmd 使用包装后的提示符。关闭后 shell 将按原样启动 (在 Windows 上仍会向资源管理器报告所在文件夹)。对此后打开的终端生效。",
     newTerminalStart: "起始文件夹",
     newTerminalHere: "当前终端所在的文件夹",
     copyOnSelect: "选中即复制",

@@ -38,6 +38,8 @@ export interface TerminalSettings {
   confirmMultilinePaste: boolean;
   /** Output lines that look like errors are shown in the colour scheme's red. */
   errorHighlight: boolean;
+  /** Local shells mark their prompt and commands (OSC 133); for terminals opened from now on. */
+  shellIntegration: boolean;
   /** Colour scheme id (see TERMINAL_THEMES). */
   theme: string;
   /** Font family: one font name, or a CSS font list. */
@@ -230,6 +232,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   rightClickPastes: true,
   confirmMultilinePaste: true,
   errorHighlight: true,
+  shellIntegration: true,
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontWeight: 400,
@@ -455,6 +458,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     rightClickPastes: bool(value.rightClickPastes, d.rightClickPastes),
     confirmMultilinePaste: bool(value.confirmMultilinePaste, d.confirmMultilinePaste),
     errorHighlight: bool(value.errorHighlight, d.errorHighlight),
+    shellIntegration: bool(value.shellIntegration, d.shellIntegration),
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,

@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "로컬 터미널의 시작 폴더",
     newTerminalFolder: "새 터미널(+)을 여는 위치",
     devNewTerminalFolder: "DEV 모드에서 +를 여는 위치",
+    shellIntegration: "셸 통합",
+    shellIntegrationHelp:
+      "로컬 셸이 프롬프트가 끝나는 위치와 각 명령의 종료 상태를 표시하여 (OSC 133) 제안, 기록, 오류 색상이 입력한 내용을 정확히 따릅니다. bash, zsh, fish는 사용자 시작 파일 다음에 작은 스크립트를 불러오고, PowerShell, Git Bash, cmd는 감싼 프롬프트를 사용합니다. 끄면 셸을 그대로 시작합니다 (Windows에서는 탐색기를 위해 폴더는 계속 알립니다). 지금부터 여는 터미널에 적용됩니다.",
     newTerminalStart: "시작 폴더",
     newTerminalHere: "활성 터미널의 폴더",
     copyOnSelect: "선택 시 복사",

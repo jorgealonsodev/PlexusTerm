@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "مجلد البدء للطرفيات المحلية",
     newTerminalFolder: "يُفتح الطرفية الجديدة (+) في",
     devNewTerminalFolder: "في وضع DEV، يُفتح + في",
+    shellIntegration: "تكامل الصدفة",
+    shellIntegrationHelp:
+      "تُعلِّم الصدفات المحلية نهاية موجّهها وكيف انتهى كل أمر (OSC 133)، لتتبع الاقتراحات والسجل ولون الأخطاء ما تكتبه بدقة. تحمّل bash وzsh وfish نصًا صغيرًا بعد ملفات بدء التشغيل الخاصة بك؛ ويحصل PowerShell وGit Bash وcmd على موجّه مغلّف. أوقفه لتشغيل الصدفات كما هي (على Windows تواصل إبلاغ المستكشف بمجلدها). يُطبَّق على الطرفيات التي تُفتح من الآن فصاعدًا.",
     newTerminalStart: "مجلد البدء",
     newTerminalHere: "مجلد الطرفية النشطة",
     copyOnSelect: "النسخ عند التحديد",

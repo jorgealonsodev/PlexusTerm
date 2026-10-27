@@ -282,6 +282,7 @@ impl MoshLauncher {
             cwd: None,
             cols: login.cols,
             rows: login.rows,
+            shell_integration: false,
             env: ChildEnv::new([("MOSH_KEY".to_string(), server.key)]),
         };
         ptys.spawn(request, sink)

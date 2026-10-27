@@ -350,6 +350,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [rightClickPastes, setRightClickPastes] = useState(settings.rightClickPastes);
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
   const [errorHighlight, setErrorHighlight] = useState(settings.errorHighlight);
+  const [shellIntegration, setShellIntegration] = useState(settings.shellIntegration);
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
@@ -495,6 +496,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       rightClickPastes,
       confirmMultilinePaste,
       errorHighlight,
+      shellIntegration,
       theme,
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
@@ -931,6 +933,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <option value="start">{t("settings.terminal.newTerminalStart")}</option>
                 <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
               </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={shellIntegration} onChange={(e) => setShellIntegration(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.shellIntegration")} <HelpTip text={t("settings.terminal.shellIntegrationHelp")} />
+              </span>
             </label>
             <h3 className="settings__group">{t("settings.groups.input")}</h3>
             <label className="check">

@@ -100,6 +100,9 @@ export const settings = {
     startDir: "Starting folder for local terminals",
     newTerminalFolder: "New terminal (+) opens in",
     devNewTerminalFolder: "In DEV mode, the + opens in",
+    shellIntegration: "Shell integration",
+    shellIntegrationHelp:
+      "Local shells mark where their prompt ends and how each command ended (OSC 133), so suggestions, history and the error colour follow what you type exactly. bash, zsh and fish load a small script after your own startup files; PowerShell, Git Bash and cmd get a wrapped prompt. Turn it off to start shells exactly as they are (on Windows they still report their folder for the Explorer). Applies to terminals opened from now on.",
     newTerminalStart: "The starting folder",
     newTerminalHere: "The active terminal's folder",
     copyOnSelect: "Copy on select",

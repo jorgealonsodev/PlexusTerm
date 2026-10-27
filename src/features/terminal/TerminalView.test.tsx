@@ -331,6 +331,24 @@ describe("TerminalView", () => {
     expect(backend.start).toHaveBeenCalledTimes(1);
   });
 
+  it("starts the shell with or without shell integration as the setting says", async () => {
+    for (const shellIntegration of [true, false]) {
+      backend.start.mockClear();
+      const { unmount } = render(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, shellIntegration }}
+        />,
+      );
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      expect(backend.start).toHaveBeenCalledWith(expect.objectContaining({ shellIntegration }), expect.any(Function));
+      unmount();
+    }
+  });
+
   it("never opens a session when unmounted before the deferred start", async () => {
     const { unmount } = render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
     unmount();
