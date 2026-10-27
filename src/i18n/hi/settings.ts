@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "डिस्प्ले",
     notifications: "सूचनाएँ",
     highlightRules: "हाइलाइट नियम",
+    sessionSync: "सत्र सिंक करें",
     devCommands: "कमांड और फ़ोल्डर",
     devColumn: "टैब कॉलम",
     bar: "टर्मिनल के नीचे की पट्टी",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "रिमोट मॉनिटर बार (SSH टैब)",
+    syncFolder: "सिंक फ़ोल्डर",
+    syncFolderHelp: "वह फ़ोल्डर जिसे आप पहले से अपने कंप्यूटरों के बीच सिंक करते हैं (Syncthing, Drive, Dropbox…)। PlexusTerm अपने सहेजे सत्र वहाँ plexusterm-sessions-sync.json में रखता है और आपके दूसरे कंप्यूटरों के बदलाव लेता है: अगर कोई सत्र दो कंप्यूटरों पर बदला, तो सबसे बाद का बदलाव मान्य होता है, और एक पर हटाया गया सत्र सब पर हट जाता है। पासवर्ड वहाँ कभी नहीं जाते; वे हर कंप्यूटर के कीरिंग में रहते हैं। फ़ाइल उतनी ही निजी है जितना फ़ोल्डर। सिंक बंद करने के लिए इसे खाली छोड़ें।",
+    syncFolderPlaceholder: "खाली: सत्र सिंक नहीं होते",
+    chooseSyncFolder: "सिंक फ़ोल्डर चुनें",
+    syncedAt: "{time} पर सिंक हुआ",
+    syncing: "सिंक हो रहा है…",
+    syncError: "सिंक नहीं हो सका: {error}",
+    syncForeign: "उस फ़ोल्डर की plexusterm-sessions-sync.json PlexusTerm की सत्र फ़ाइल नहीं है; उसे छुआ नहीं गया।",
     remoteMonitorHelp:
       "हर SSH पेन के नीचे एक बार, जिसमें सर्वर का CPU, मेमोरी, डिस्क, नेटवर्क और उपयोगकर्ता उसी कनेक्शन से पढ़कर दिखाए जाते हैं। टूल में भी उपलब्ध।",
   },

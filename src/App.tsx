@@ -75,6 +75,7 @@ import { Sidebar, SIDEBAR_VIEWS, type SidebarView } from "./features/sidebar/Sid
 import { loadSidebarView, saveSidebarView } from "./features/sidebar/uiMemory";
 import type { SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
+import { useSessionSync } from "./features/sessions/useSessionSync";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type TabsAction, type ViewerLink } from "./features/tabs/tabs";
@@ -435,6 +436,7 @@ function AppContent() {
     dispatch(action);
   };
   const sessions = useSessionLibrary();
+  const sessionSync = useSessionSync(sessions, terminalSettings.settings.syncFolder);
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
   const tunnels = useTunnels();
@@ -2328,6 +2330,7 @@ function AppContent() {
           onCancel={() => setModal(null)}
           onSave={(next) => terminalSettings.update(next)}
           onLanguageNow={(language) => terminalSettings.update({ language })}
+          syncStatus={sessionSync}
         />
       )}
       {modal?.kind === "share" && (

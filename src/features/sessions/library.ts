@@ -134,7 +134,7 @@ function sanitizeAuth(auth: SavedAuth): SavedAuth {
 }
 
 /** Keeps only the saved shape of a session (no secrets, no stray fields), with its `kind`. */
-function sanitizeSession(s: LibrarySession): LibrarySession {
+export function sanitizeSession(s: LibrarySession): LibrarySession {
   const base = { id: s.id, name: s.name, folder: normalizeFolder(s.folder) };
   if (isSerialSession(s)) {
     const { path, baud, dataBits, parity, stopBits, flow } = s;

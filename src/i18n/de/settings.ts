@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "Anzeige",
     notifications: "Benachrichtigungen",
     highlightRules: "Hervorhebungsregeln",
+    sessionSync: "Sitzungen synchronisieren",
     devCommands: "Befehle und Ordner",
     devColumn: "Tab-Spalte",
     bar: "Leiste unter dem Terminal",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Remote-Monitorleiste (SSH-Tabs)",
+    syncFolder: "Synchronisierter Ordner",
+    syncFolderHelp: "Ein Ordner, den du bereits zwischen deinen Computern synchronisierst (Syncthing, Drive, Dropbox …). PlexusTerm legt dort seine gespeicherten Sitzungen in plexusterm-sessions-sync.json ab und übernimmt die Änderungen deiner anderen Computer: Wurde eine Sitzung auf zweien geändert, gilt die letzte Änderung, und eine auf einem gelöschte wird überall gelöscht. Passwörter kommen nie dorthin; sie bleiben im Schlüsselbund jedes Computers. Die Datei ist so privat wie der Ordner. Leer lassen, um nicht mehr zu synchronisieren.",
+    syncFolderPlaceholder: "Leer: Sitzungen werden nicht synchronisiert",
+    chooseSyncFolder: "Synchronisierten Ordner wählen",
+    syncedAt: "Synchronisiert um {time}",
+    syncing: "Wird synchronisiert …",
+    syncError: "Synchronisieren fehlgeschlagen: {error}",
+    syncForeign: "Die plexusterm-sessions-sync.json in diesem Ordner ist keine Sitzungsdatei von PlexusTerm; sie wurde nicht verändert.",
     remoteMonitorHelp:
       "Eine Leiste unter jedem SSH-Bereich mit CPU, Arbeitsspeicher, Datenträger, Netzwerk und Benutzern des Servers, über dieselbe Verbindung gelesen. Auch unter Werkzeuge.",
   },

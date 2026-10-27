@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "표시",
     notifications: "알림",
     highlightRules: "강조 규칙",
+    sessionSync: "세션 동기화",
     devCommands: "명령 및 폴더",
     devColumn: "탭 열",
     bar: "터미널 아래 막대",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "원격 모니터 막대(SSH 탭)",
+    syncFolder: "동기화 폴더",
+    syncFolderHelp: "이미 컴퓨터 간에 동기화하는 폴더(Syncthing, Drive, Dropbox 등)입니다. PlexusTerm은 저장된 세션을 그곳의 plexusterm-sessions-sync.json에 두고 다른 컴퓨터의 변경을 가져옵니다. 같은 세션이 두 컴퓨터에서 바뀌면 마지막 변경이 이기고, 한 곳에서 삭제한 세션은 모든 곳에서 삭제됩니다. 비밀번호는 그곳에 가지 않고 각 컴퓨터의 키링에 남습니다. 파일은 폴더만큼만 비공개입니다. 비워 두면 동기화를 멈춥니다.",
+    syncFolderPlaceholder: "비어 있음: 세션을 동기화하지 않음",
+    chooseSyncFolder: "동기화 폴더 선택",
+    syncedAt: "{time}에 동기화됨",
+    syncing: "동기화 중…",
+    syncError: "동기화하지 못했습니다: {error}",
+    syncForeign: "그 폴더의 plexusterm-sessions-sync.json은 PlexusTerm 세션 파일이 아니어서 건드리지 않았습니다.",
     remoteMonitorHelp:
       "각 SSH 창 아래에 서버의 CPU, 메모리, 디스크, 네트워크, 사용자를 같은 연결로 읽어 표시하는 막대입니다. 도구 메뉴에도 있습니다.",
   },

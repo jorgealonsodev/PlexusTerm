@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "Pantalla",
     notifications: "Avisos",
     highlightRules: "Reglas de resaltado",
+    sessionSync: "Sincronizar sesiones",
     devCommands: "Comandos y carpetas",
     devColumn: "Columna de pestañas",
     bar: "Barra bajo el terminal",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Barra de monitor remoto (pestañas SSH)",
+    syncFolder: "Carpeta sincronizada",
+    syncFolderHelp: "Una carpeta que ya sincronizas entre tus equipos (Syncthing, Drive, Dropbox…). PlexusTerm guarda ahí sus sesiones en plexusterm-sessions-sync.json y recoge los cambios de tus otros equipos: si una sesión cambió en dos de ellos, gana el cambio más reciente, y una borrada en uno se borra en todos. Las contraseñas nunca van ahí; se quedan en el llavero de cada equipo. El archivo es tan privado como la carpeta. Déjalo vacío para dejar de sincronizar.",
+    syncFolderPlaceholder: "Vacío: las sesiones no se sincronizan",
+    chooseSyncFolder: "Elegir la carpeta sincronizada",
+    syncedAt: "Sincronizado a las {time}",
+    syncing: "Sincronizando…",
+    syncError: "No se pudo sincronizar: {error}",
+    syncForeign: "El plexusterm-sessions-sync.json de esa carpeta no es un archivo de sesiones de PlexusTerm; no se ha tocado.",
     remoteMonitorHelp:
       "Una barra bajo cada panel SSH con la CPU, la memoria, el disco, la red y los usuarios del servidor, leídos por la misma conexión. También en Herramientas.",
   },

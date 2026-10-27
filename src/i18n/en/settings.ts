@@ -24,6 +24,7 @@ export const settings = {
     display: "Display",
     notifications: "Notifications",
     highlightRules: "Highlight rules",
+    sessionSync: "Sync sessions",
     devCommands: "Commands and folders",
     devColumn: "Tab column",
     bar: "Bar under the terminal",
@@ -158,6 +159,14 @@ export const settings = {
   },
   ssh: {
     remoteMonitor: "Remote monitor bar (SSH tabs)",
+    syncFolder: "Synced folder",
+    syncFolderHelp: "A folder you already sync between your computers (Syncthing, Drive, Dropbox…). PlexusTerm keeps its saved sessions there in plexusterm-sessions-sync.json and takes the changes of your other computers: when a session changed on two of them, the change made last wins, and one deleted on one is deleted on all. Passwords never go there; they stay in each computer's keyring. The file is as private as the folder. Leave it empty to stop syncing.",
+    syncFolderPlaceholder: "Empty: sessions are not synced",
+    chooseSyncFolder: "Choose the synced folder",
+    syncedAt: "Synced at {time}",
+    syncing: "Syncing…",
+    syncError: "Could not sync: {error}",
+    syncForeign: "The plexusterm-sessions-sync.json in that folder is not a PlexusTerm sessions file; it was left untouched.",
     remoteMonitorHelp:
       "A bar under each SSH pane with the server's CPU, memory, disk, network and users, read over the same connection. Also in Tools.",
   },

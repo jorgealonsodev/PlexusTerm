@@ -310,6 +310,20 @@ describe("SettingsDialog", () => {
     );
   });
 
+  it("sets the sessions' synced folder in Connections and tells how the last sync went", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={() => {}} initialSection="ssh" />);
+    const field = screen.getByLabelText(/^Synced folder/) as HTMLInputElement;
+    expect(field.value).toBe("");
+    fireEvent.change(field, { target: { value: "  /home/me/Sync  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ syncFolder: "/home/me/Sync" }));
+    cleanup();
+    const synced = { ...DEFAULT_SETTINGS, syncFolder: "/home/me/Sync" };
+    render(<SettingsDialog settings={synced} onSave={onSave} onCancel={() => {}} initialSection="ssh" syncStatus={{ state: "error", message: "x", foreign: true }} />);
+    expect(screen.getByRole("status").textContent).toMatch(/not a PlexusTerm sessions file/);
+  });
+
   it("keeps an OpenCode Go key for the usage apart from the AI one, and hides it with the usage", async () => {
     const { onSave } = setup();
     // With the rest of the bar under the terminal, in DEV mode.

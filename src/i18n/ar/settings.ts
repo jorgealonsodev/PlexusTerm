@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "العرض",
     notifications: "الإشعارات",
     highlightRules: "قواعد التمييز",
+    sessionSync: "مزامنة الجلسات",
     devCommands: "الأوامر والمجلدات",
     devColumn: "عمود علامات التبويب",
     bar: "الشريط أسفل الطرفية",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "شريط المراقب البعيد (علامات تبويب SSH)",
+    syncFolder: "المجلد المتزامن",
+    syncFolderHelp: "مجلد تزامنه بالفعل بين أجهزتك (Syncthing أو Drive أو Dropbox…). يحفظ PlexusTerm فيه جلساته المحفوظة في plexusterm-sessions-sync.json ويأخذ تغييرات أجهزتك الأخرى: إذا تغيّرت جلسة على جهازين يُعتمد آخر تغيير، والجلسة المحذوفة على جهاز تُحذف من الجميع. لا تذهب كلمات المرور إلى هناك أبدًا؛ بل تبقى في سلسلة مفاتيح كل جهاز. الملف خاص بقدر خصوصية المجلد. اتركه فارغًا لإيقاف المزامنة.",
+    syncFolderPlaceholder: "فارغ: لا تُزامن الجلسات",
+    chooseSyncFolder: "اختيار المجلد المتزامن",
+    syncedAt: "تمت المزامنة في {time}",
+    syncing: "جارٍ المزامنة…",
+    syncError: "تعذّرت المزامنة: {error}",
+    syncForeign: "ملف plexusterm-sessions-sync.json في ذلك المجلد ليس ملف جلسات PlexusTerm؛ لم يُمسّ.",
     remoteMonitorHelp:
       "شريط أسفل كل جزء SSH يعرض CPU الخادم والذاكرة والقرص والشبكة والمستخدمين، ويُقرأ عبر الاتصال نفسه. متاح أيضًا في الأدوات.",
   },

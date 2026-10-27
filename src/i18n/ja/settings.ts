@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "表示",
     notifications: "通知",
     highlightRules: "ハイライトルール",
+    sessionSync: "セッションの同期",
     devCommands: "コマンドとフォルダー",
     devColumn: "タブ列",
     bar: "ターミナル下のバー",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "リモートモニターバー (SSH タブ)",
+    syncFolder: "同期フォルダー",
+    syncFolderHelp: "すでにコンピューター間で同期しているフォルダー（Syncthing、Drive、Dropbox など）。PlexusTerm は保存したセッションをそこに plexusterm-sessions-sync.json として置き、ほかのコンピューターの変更を取り込みます。同じセッションが 2 台で変更された場合は最後の変更が優先され、1 台で削除したセッションはすべてで削除されます。パスワードは置かれず、各コンピューターのキーリングに残ります。ファイルの機密性はフォルダーと同じです。空にすると同期を止めます。",
+    syncFolderPlaceholder: "空: セッションは同期されません",
+    chooseSyncFolder: "同期フォルダーを選択",
+    syncedAt: "{time} に同期しました",
+    syncing: "同期中…",
+    syncError: "同期できませんでした: {error}",
+    syncForeign: "そのフォルダーの plexusterm-sessions-sync.json は PlexusTerm のセッションファイルではないため、変更していません。",
     remoteMonitorHelp:
       "各 SSH ペインの下に、サーバーの CPU、メモリ、ディスク、ネットワーク、ユーザーを表示するバーです。同じ接続を通じて取得します。［ツール］からも利用できます。",
   },

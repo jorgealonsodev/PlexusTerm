@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "Affichage",
     notifications: "Notifications",
     highlightRules: "Règles de surlignage",
+    sessionSync: "Synchroniser les sessions",
     devCommands: "Commandes et dossiers",
     devColumn: "Colonne d’onglets",
     bar: "Barre sous le terminal",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Barre du moniteur distant (onglets SSH)",
+    syncFolder: "Dossier synchronisé",
+    syncFolderHelp: "Un dossier que vous synchronisez déjà entre vos ordinateurs (Syncthing, Drive, Dropbox…). PlexusTerm y garde ses sessions enregistrées dans plexusterm-sessions-sync.json et reprend les modifications de vos autres ordinateurs : si une session a changé sur deux d'entre eux, la modification la plus récente l'emporte, et une session supprimée sur l'un est supprimée partout. Les mots de passe n'y vont jamais ; ils restent dans le trousseau de chaque ordinateur. Le fichier est aussi privé que le dossier. Laissez vide pour arrêter la synchronisation.",
+    syncFolderPlaceholder: "Vide : les sessions ne sont pas synchronisées",
+    chooseSyncFolder: "Choisir le dossier synchronisé",
+    syncedAt: "Synchronisé à {time}",
+    syncing: "Synchronisation…",
+    syncError: "Échec de la synchronisation : {error}",
+    syncForeign: "Le plexusterm-sessions-sync.json de ce dossier n'est pas un fichier de sessions PlexusTerm ; il n'a pas été modifié.",
     remoteMonitorHelp:
       "Une barre sous chaque volet SSH avec le CPU, la mémoire, le disque, le réseau et les utilisateurs du serveur, lus par la même connexion. Également dans Outils.",
   },

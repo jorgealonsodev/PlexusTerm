@@ -27,6 +27,7 @@ export const settings: Messages<typeof en> = {
     display: "显示",
     notifications: "通知",
     highlightRules: "高亮规则",
+    sessionSync: "同步会话",
     devCommands: "命令与文件夹",
     devColumn: "标签列",
     bar: "终端下方的栏",
@@ -161,6 +162,14 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "远程监视栏（SSH 标签页）",
+    syncFolder: "同步文件夹",
+    syncFolderHelp: "你已在多台电脑之间同步的文件夹（Syncthing、Drive、Dropbox 等）。PlexusTerm 会把保存的会话存到其中的 plexusterm-sessions-sync.json，并接收其他电脑的更改：同一会话在两台电脑上被修改时，以最后的修改为准；在一台电脑上删除的会话会在所有电脑上删除。密码绝不会放在那里，而是留在各台电脑的密钥环中。该文件的私密程度与文件夹相同。留空即停止同步。",
+    syncFolderPlaceholder: "留空：不同步会话",
+    chooseSyncFolder: "选择同步文件夹",
+    syncedAt: "已于 {time} 同步",
+    syncing: "正在同步…",
+    syncError: "无法同步：{error}",
+    syncForeign: "该文件夹中的 plexusterm-sessions-sync.json 不是 PlexusTerm 会话文件，未作改动。",
     remoteMonitorHelp:
       "在每个 SSH 窗格下方显示服务器的 CPU、内存、磁盘、网络和用户信息，通过同一连接读取。也可在“工具”中打开。",
   },
