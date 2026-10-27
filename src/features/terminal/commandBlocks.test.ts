@@ -286,6 +286,34 @@ describe("jump", () => {
     }
   });
 
+  it("jumps between failed commands only, skipping the ones that succeeded", () => {
+    const { term, blocks } = setup();
+    // Prompts on rows 0, 9, 18 … 81; commands 2, 5 and 7 fail.
+    for (let i = 0; i < 10; i++) term.run(`cmd ${i}`, Array.from({ length: 8 }, (_, n) => `out ${n}`), [2, 5, 7].includes(i) ? 1 : 0);
+    term.mark("A");
+    term.print("$ ");
+    term.baseY = term.cursor.y - 9;
+    term.viewportY = term.baseY;
+    expect(blocks.canJump(true)).toBe(true);
+    expect(blocks.jump("previous", true)).toBe(true);
+    expect(term.viewportY).toBe(63);
+    blocks.jump("previous", true);
+    expect(term.viewportY).toBe(45);
+    blocks.jump("previous", true);
+    expect(term.viewportY).toBe(18);
+    expect(blocks.jump("previous", true)).toBe(false);
+    blocks.jump("next", true);
+    expect(term.viewportY).toBe(45);
+  });
+
+  it("has no failed command to jump to when none failed", () => {
+    const { term, blocks } = setup();
+    term.run("true", [], 0);
+    expect(blocks.canJump()).toBe(true);
+    expect(blocks.canJump(true)).toBe(false);
+    expect(blocks.jump("previous", true)).toBe(false);
+  });
+
   it("does nothing without marks, and is not offered then nor in a full-screen program", () => {
     const { term, blocks } = setup();
     expect(blocks.canJump()).toBe(false);

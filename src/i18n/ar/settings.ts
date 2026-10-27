@@ -269,6 +269,8 @@ export const settings: Messages<typeof en> = {
       previousCommand: "الانتقال إلى الأمر السابق",
       nextCommand: "الانتقال إلى الأمر التالي",
       copyCommandOutput: "نسخ مخرجات آخر أمر",
+      previousFailedCommand: "الانتقال إلى الأمر الفاشل السابق",
+      nextFailedCommand: "الانتقال إلى الأمر الفاشل التالي",
       clear: "مسح الطرفية",
       saveOutput: "حفظ المخرجات في ملف",
       toggleLogging: "بدء التسجيل أو إيقافه",

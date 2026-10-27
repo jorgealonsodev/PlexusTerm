@@ -267,6 +267,8 @@ export const settings = {
       previousCommand: "Scroll to the previous command",
       nextCommand: "Scroll to the next command",
       copyCommandOutput: "Copy the last command's output",
+      previousFailedCommand: "Scroll to the previous failed command",
+      nextFailedCommand: "Scroll to the next failed command",
       clear: "Clear the terminal",
       saveOutput: "Save output to a file",
       toggleLogging: "Start or stop logging",

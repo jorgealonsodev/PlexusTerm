@@ -269,6 +269,8 @@ export const settings: Messages<typeof en> = {
       previousCommand: "前のコマンドへ移動",
       nextCommand: "次のコマンドへ移動",
       copyCommandOutput: "最後のコマンドの出力をコピー",
+      previousFailedCommand: "前の失敗したコマンドへ移動",
+      nextFailedCommand: "次の失敗したコマンドへ移動",
       clear: "ターミナルをクリア",
       saveOutput: "出力をファイルに保存",
       toggleLogging: "ログ記録の開始/停止",

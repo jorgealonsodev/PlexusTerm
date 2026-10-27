@@ -269,6 +269,8 @@ export const settings: Messages<typeof en> = {
       previousCommand: "이전 명령으로 이동",
       nextCommand: "다음 명령으로 이동",
       copyCommandOutput: "마지막 명령의 출력 복사",
+      previousFailedCommand: "이전 실패한 명령으로 이동",
+      nextFailedCommand: "다음 실패한 명령으로 이동",
       clear: "터미널 지우기",
       saveOutput: "출력을 파일로 저장",
       toggleLogging: "로깅 시작/중지",

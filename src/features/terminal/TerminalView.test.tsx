@@ -1156,6 +1156,24 @@ describe("TerminalView", () => {
       expect(clipboard.writeText).toHaveBeenCalledWith("hello");
     });
 
+    it("moves between failed commands with their bound keys, and leaves the keys to the program while none failed", () => {
+      renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { previousFailedCommand: "Alt+F" } } });
+      const press = () =>
+        term().keyHandler({ type: "keydown", key: "f", ctrlKey: false, shiftKey: false, altKey: true, metaKey: false });
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "C");
+        term().osc(133, "D;0");
+      });
+      expect(press()).toBe(true);
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "C");
+        term().osc(133, "D;2");
+      });
+      expect(press()).toBe(false);
+    });
+
     it("takes Ctrl+Shift+Up and Ctrl+Shift+Down to move between prompts only while the shell marks them", () => {
       renderView();
       const press = (key: string) =>

@@ -62,13 +62,16 @@ interface Block {
 export interface CommandBlocks {
   /** Takes one shell mark at the cursor. */
   mark(mark: ShellMark): void;
-  /** Whether there are prompts to jump to: the shell marks its commands and no full-screen program is up. */
-  canJump(): boolean;
+  /**
+   * Whether there are prompts to jump to (of failed commands, with `failedOnly`): the shell marks
+   * its commands and no full-screen program is up.
+   */
+  canJump(failedOnly?: boolean): boolean;
   /**
    * Scrolls the prompt before or after the last one jumped to (or the screen's top row) to the top
    * of the screen; going past the last prompt scrolls to the bottom. False when there is nowhere to go.
    */
-  jump(direction: "previous" | "next"): boolean;
+  jump(direction: "previous" | "next", failedOnly?: boolean): boolean;
   /**
    * The output of the command whose prompt or output holds buffer row `row`, or of the last command
    * that ran when `row` is omitted; null when there is no such command or it printed nothing yet.
@@ -212,9 +215,11 @@ export function attachCommandBlocks(
     }
   };
 
-  const jump = (direction: "previous" | "next") => {
+  const jump = (direction: "previous" | "next", failedOnly = false) => {
     const buffer = term.buffer.active;
-    const prompts = live().map((block) => block.prompt);
+    const prompts = live()
+      .filter((block) => !failedOnly || block.failed !== null)
+      .map((block) => block.prompt);
     let from: number;
     if (jumped && !jumped.prompt.isDisposed && jumped.viewportY === buffer.viewportY) from = jumped.prompt.line;
     // At the bottom the current prompt is the start; scrolled up, the screen's top row.
@@ -271,7 +276,8 @@ export function attachCommandBlocks(
 
   return {
     mark,
-    canJump: () => term.buffer.active.type === "normal" && live().length > 0,
+    canJump: (failedOnly = false) =>
+      term.buffer.active.type === "normal" && live().some((block) => !failedOnly || block.failed !== null),
     jump,
     outputAt,
     dispose: () => {

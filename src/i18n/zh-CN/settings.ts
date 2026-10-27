@@ -266,6 +266,8 @@ export const settings: Messages<typeof en> = {
       previousCommand: "跳到上一条命令",
       nextCommand: "跳到下一条命令",
       copyCommandOutput: "复制最后一条命令的输出",
+      previousFailedCommand: "跳到上一条失败的命令",
+      nextFailedCommand: "跳到下一条失败的命令",
       clear: "清空终端",
       saveOutput: "将输出保存到文件",
       toggleLogging: "开始或停止记录日志",

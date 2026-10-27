@@ -443,7 +443,11 @@ export function TerminalView({
         return false;
       }
       // Without prompts to jump to (no shell marks, a full-screen program) the keys stay the program's.
-      if ((shortcut.type === "previousCommand" || shortcut.type === "nextCommand") && !blocksRef.current?.canJump()) {
+      const failedOnly = shortcut.type === "previousFailedCommand" || shortcut.type === "nextFailedCommand";
+      if (
+        (failedOnly || shortcut.type === "previousCommand" || shortcut.type === "nextCommand") &&
+        !blocksRef.current?.canJump(failedOnly)
+      ) {
         return true;
       }
       if (e.type === "keydown") {
@@ -1447,6 +1451,8 @@ export function TerminalView({
     else if (shortcut.type === "paste") pasteFromClipboard();
     else if (shortcut.type === "previousCommand") blocksRef.current?.jump("previous");
     else if (shortcut.type === "nextCommand") blocksRef.current?.jump("next");
+    else if (shortcut.type === "previousFailedCommand") blocksRef.current?.jump("previous", true);
+    else if (shortcut.type === "nextFailedCommand") blocksRef.current?.jump("next", true);
     else if (shortcut.type === "copyCommandOutput") copyCommandOutput();
   };
 

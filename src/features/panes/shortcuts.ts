@@ -30,6 +30,8 @@ export type Shortcut =
   | { type: "previousCommand" }
   | { type: "nextCommand" }
   | { type: "copyCommandOutput" }
+  | { type: "previousFailedCommand" }
+  | { type: "nextFailedCommand" }
   | { type: "clear" }
   | { type: "saveOutput" }
   | { type: "toggleLogging" }
@@ -98,6 +100,8 @@ export const SHORTCUT_ACTIONS = {
   previousCommand: { shortcut: { type: "previousCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowUp"] },
   nextCommand: { shortcut: { type: "nextCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowDown"] },
   copyCommandOutput: { shortcut: { type: "copyCommandOutput" }, group: "terminal", defaults: [] },
+  previousFailedCommand: { shortcut: { type: "previousFailedCommand" }, group: "terminal", defaults: [] },
+  nextFailedCommand: { shortcut: { type: "nextFailedCommand" }, group: "terminal", defaults: [] },
   clear: { shortcut: { type: "clear" }, group: "terminal", defaults: [] },
   saveOutput: { shortcut: { type: "saveOutput" }, group: "terminal", defaults: [] },
   toggleLogging: { shortcut: { type: "toggleLogging" }, group: "terminal", defaults: [] },

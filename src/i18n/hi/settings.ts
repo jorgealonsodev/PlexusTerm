@@ -269,6 +269,8 @@ export const settings: Messages<typeof en> = {
       previousCommand: "पिछली कमांड पर जाएँ",
       nextCommand: "अगली कमांड पर जाएँ",
       copyCommandOutput: "आख़िरी कमांड का आउटपुट कॉपी करें",
+      previousFailedCommand: "पिछली विफल कमांड पर जाएँ",
+      nextFailedCommand: "अगली विफल कमांड पर जाएँ",
       clear: "टर्मिनल साफ़ करें",
       saveOutput: "आउटपुट फ़ाइल में सहेजें",
       toggleLogging: "लॉगिंग शुरू या बंद करें",
