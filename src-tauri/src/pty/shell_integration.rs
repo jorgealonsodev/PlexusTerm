@@ -571,6 +571,8 @@ mod tests {
         let mut cmd = CommandBuilder::new(program);
         cmd.args(args);
         cmd.env("HOME", home);
+        // pwsh and fish read their profile from XDG_CONFIG_HOME when set (CI runners set it).
+        cmd.env("XDG_CONFIG_HOME", home.join(".config"));
         cmd.env("TERM", "xterm-256color");
         for (name, value) in env {
             cmd.env(name, value);
