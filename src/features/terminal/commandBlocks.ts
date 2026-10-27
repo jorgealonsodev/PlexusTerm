@@ -154,7 +154,8 @@ export function attachCommandBlocks(
     const decoration = term.registerDecoration({ marker: block.prompt, x: 0, width: 1, layer: "top" });
     decoration?.onRender((element) => {
       element.classList.add("command-failed");
-      element.style.boxShadow = `inset 3px 0 0 ${color}`;
+      // Drawn in the pane's padding, left of the prompt, so it never covers the first character.
+      element.style.boxShadow = `-4px 0 0 0 ${color}`;
       // Clicks on the prompt's first cell still select text.
       element.style.pointerEvents = "none";
     });
