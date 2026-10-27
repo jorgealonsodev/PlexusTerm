@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       toggleDevMode: "DEV モードのオン/オフ",
       recentFolders: "最近使った項目を開く (DEV モード)",
       openSettings: "設定を開く",
+      commandPalette: "コマンドパレット",
       assistant: "AI アシスタント",
     },
     fixed: {

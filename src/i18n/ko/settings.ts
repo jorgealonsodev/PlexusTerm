@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       toggleDevMode: "DEV 모드 켜기/끄기",
       recentFolders: "최근 항목 열기 (DEV 모드)",
       openSettings: "설정 열기",
+      commandPalette: "명령 팔레트",
       assistant: "AI 도우미",
     },
     fixed: {

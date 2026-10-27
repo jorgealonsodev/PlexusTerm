@@ -1,5 +1,17 @@
 /** The app shell: toolbar, tabs, panes, sidebar, dialogs and notices. */
 export const app = {
+  palette: {
+    title: "Command palette",
+    placeholder: "Type an action, session, macro, tab or setting…",
+    noResults: "Nothing matches.",
+    groups: {
+      actions: "Action",
+      sessions: "Session",
+      macros: "Macro",
+      tabs: "Tab",
+      settings: "Settings",
+    },
+  },
   toolbar: {
     aiAssistant: "AI assistant",
     aiAssistantTitle: "AI assistant ({shortcut})",

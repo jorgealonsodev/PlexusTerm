@@ -21,6 +21,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [Updates](#updates) | Being told about a new release |
 | [Reporting a problem](#reporting-a-problem) | Sending a bug report or a suggestion |
 | [Windows](#windows) | What differs on Windows 10/11 |
+| [Command palette](#command-palette) | One box for every action, session, macro, tab and setting |
 | [Keyboard shortcuts](#keyboard-shortcuts) | Every shortcut |
 
 ## SSH sessions
@@ -613,12 +614,25 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 - **Port and network scanners**: Windows retries a refused connection for about two seconds, longer than the one-second probe, so closed ports may be listed as **filtered**. Open ports are found as on Linux.
 - **Mosh** is not offered: there is no packaged `mosh-client` for Windows. A Mosh session imported or saved elsewhere reports "Mosh is not available on Windows" unless a `mosh-client.exe` is on `PATH`.
 
+## Command palette
+
+**Ctrl+Shift+P** opens a box at the top of the window that reaches everything without the mouse. Type to narrow the list; each word must appear, in any order and ignoring case and accents, and the names that start with what you typed come first. It lists:
+
+- **Actions**: every action of Settings → Shortcuts, with its shortcut when it has one (new terminal, split, find, copy the last command's output, the tools…). The terminal's own actions (find, copy, clear…) act on the focused terminal.
+- **Sessions**: your saved sessions, also found by their folder; choosing one connects, as a double-click in the Sessions tab does.
+- **Macros**: plays the macro in the focused terminal.
+- **Tabs**: the open tabs, to switch to one.
+- **Settings**: opens Settings at that section.
+
+↑ and ↓ move through the list, Enter or a click runs the highlighted item, and Esc or a click outside closes it. Its shortcut can be changed in Settings → Shortcuts (**Command palette**, under Tools).
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
 | --- | --- |
 | Ctrl+Shift+T | New local terminal tab |
 | Ctrl+Shift+S | New SSH session (quick connect) |
+| Ctrl+Shift+P | Command palette: every action, session, macro, tab and setting in one box |
 | Ctrl+Shift+D | Split the focused pane right |
 | Ctrl+Shift+E | Split the focused pane down |
 | Ctrl+Shift+W | Close the focused pane (the tab closes with its last pane) |

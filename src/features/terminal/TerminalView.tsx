@@ -84,6 +84,8 @@ interface TerminalViewProps {
   onLogging?: (path: string | null) => void;
   /** Hands out this pane's macro interface (S16.3); returns its unregister function. */
   registerMacroTarget?: (target: MacroTarget) => () => void;
+  /** Hands out how to run this pane's own actions (find, copy…) from the command palette; returns its unregister function. */
+  registerPaneShortcuts?: (run: (shortcut: Shortcut) => void) => () => void;
   /**
    * Asks the AI provider to complete the typed line when the history has no suggestion
    * (S2); resolves with the whole command line (starting with `line`) or null.
@@ -287,6 +289,7 @@ export function TerminalView({
   onSettingsChange,
   onLogging,
   registerMacroTarget,
+  registerPaneShortcuts,
   aiSuggest,
   history = commandHistory,
   registerAssistTarget,
@@ -1395,6 +1398,9 @@ export function TerminalView({
     toggleLogging: "log",
     askAi: "askAi",
   };
+  // The command palette runs this pane's actions as their keys would; the pane lives as long as its id.
+  const registerPaneShortcutsRef = useRef(registerPaneShortcuts);
+  useEffect(() => registerPaneShortcutsRef.current?.((shortcut) => paneShortcutRef.current(shortcut)), []);
   paneShortcutRef.current = (shortcut) => {
     const action = paneMenuActions[shortcut.type];
     if (action) runMenuAction(action);

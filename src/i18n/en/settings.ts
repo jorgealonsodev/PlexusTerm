@@ -280,6 +280,7 @@ export const settings = {
       toggleDevMode: "DEV mode on or off",
       recentFolders: "Open recent (DEV mode)",
       openSettings: "Open Settings",
+      commandPalette: "Command palette",
       assistant: "AI assistant",
     },
     fixed: {

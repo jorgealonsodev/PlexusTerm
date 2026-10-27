@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "कमांड पैलेट",
+    placeholder: "कोई कार्य, सत्र, मैक्रो, टैब या सेटिंग लिखें…",
+    noResults: "कुछ मेल नहीं खाता।",
+    groups: {
+      actions: "कार्य",
+      sessions: "सत्र",
+      macros: "मैक्रो",
+      tabs: "टैब",
+      settings: "सेटिंग्स",
+    },
+  },
   toolbar: {
     aiAssistant: "AI सहायक",
     aiAssistantTitle: "AI सहायक ({shortcut})",

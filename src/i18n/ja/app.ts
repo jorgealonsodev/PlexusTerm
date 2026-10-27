@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "コマンドパレット",
+    placeholder: "操作、セッション、マクロ、タブ、設定を入力…",
+    noResults: "一致するものがありません。",
+    groups: {
+      actions: "操作",
+      sessions: "セッション",
+      macros: "マクロ",
+      tabs: "タブ",
+      settings: "設定",
+    },
+  },
   toolbar: {
     aiAssistant: "AI アシスタント",
     aiAssistantTitle: "AI アシスタント ({shortcut})",

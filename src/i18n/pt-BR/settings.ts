@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       toggleDevMode: "Ativar ou desativar o modo DEV",
       recentFolders: "Abrir recente (modo DEV)",
       openSettings: "Abrir Configurações",
+      commandPalette: "Paleta de comandos",
       assistant: "Assistente de IA",
     },
     fixed: {

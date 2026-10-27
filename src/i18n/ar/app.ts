@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "لوحة الأوامر",
+    placeholder: "اكتب إجراءً أو جلسة أو ماكرو أو علامة تبويب أو إعدادًا…",
+    noResults: "لا توجد نتائج مطابقة.",
+    groups: {
+      actions: "إجراء",
+      sessions: "جلسة",
+      macros: "ماكرو",
+      tabs: "علامة تبويب",
+      settings: "الإعدادات",
+    },
+  },
   toolbar: {
     aiAssistant: "مساعد الذكاء الاصطناعي",
     aiAssistantTitle: "مساعد الذكاء الاصطناعي ({shortcut})",

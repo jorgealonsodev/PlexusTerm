@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "명령 팔레트",
+    placeholder: "작업, 세션, 매크로, 탭 또는 설정을 입력하세요…",
+    noResults: "일치하는 항목이 없습니다.",
+    groups: {
+      actions: "작업",
+      sessions: "세션",
+      macros: "매크로",
+      tabs: "탭",
+      settings: "설정",
+    },
+  },
   toolbar: {
     aiAssistant: "AI 도우미",
     aiAssistantTitle: "AI 도우미({shortcut})",

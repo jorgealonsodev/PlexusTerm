@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "Befehlspalette",
+    placeholder: "Aktion, Sitzung, Makro, Tab oder Einstellung eingeben …",
+    noResults: "Keine Treffer.",
+    groups: {
+      actions: "Aktion",
+      sessions: "Sitzung",
+      macros: "Makro",
+      tabs: "Tab",
+      settings: "Einstellungen",
+    },
+  },
   toolbar: {
     aiAssistant: "KI-Assistent",
     aiAssistantTitle: "KI-Assistent ({shortcut})",

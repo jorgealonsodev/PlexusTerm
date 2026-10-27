@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       toggleDevMode: "DEV मोड चालू या बंद करें",
       recentFolders: "हाल का खोलें (DEV मोड)",
       openSettings: "सेटिंग्स खोलें",
+      commandPalette: "कमांड पैलेट",
       assistant: "AI सहायक",
     },
     fixed: {

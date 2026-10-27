@@ -51,6 +51,8 @@ export type Shortcut =
   | { type: "tool"; tool: ToolId }
   | { type: "toggleRemoteMonitor" }
   | { type: "openSettings" }
+  /** One box to reach every action, saved session, macro, tab and Settings section. */
+  | { type: "commandPalette" }
   /** The active tab's DEV mode on or off (S10). */
   | { type: "toggleDevMode" }
   /** Folds DEV mode's tab column to its icons (or hides it) and opens it again. */
@@ -123,6 +125,7 @@ export const SHORTCUT_ACTIONS = {
   wakeOnLan: { shortcut: { type: "tool", tool: "wakeOnLan" }, group: "tools", defaults: [] },
   toggleRemoteMonitor: { shortcut: { type: "toggleRemoteMonitor" }, group: "tools", defaults: [] },
   openSettings: { shortcut: { type: "openSettings" }, group: "tools", defaults: [] },
+  commandPalette: { shortcut: { type: "commandPalette" }, group: "tools", defaults: ["Ctrl+Shift+P"] },
 } satisfies Record<string, ShortcutAction>;
 
 export type ShortcutActionId = keyof typeof SHORTCUT_ACTIONS;

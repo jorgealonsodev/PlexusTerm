@@ -145,6 +145,9 @@ const SECTIONS: { id: Section; icon: LucideIcon }[] = [
   { id: "about", icon: Info },
 ];
 
+/** The sections in the order the side menu lists them (the command palette lists them too). */
+export const SETTINGS_SECTIONS: readonly SettingsSection[] = SECTIONS.map((s) => s.id);
+
 /** A section's name in the current language. */
 const sectionLabel = (id: Section) => translate(`settings.sections.${id}`);
 

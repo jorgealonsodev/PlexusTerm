@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       toggleDevMode: "تشغيل وضع DEV أو إيقافه",
       recentFolders: "فتح عنصر حديث (وضع DEV)",
       openSettings: "فتح الإعدادات",
+      commandPalette: "لوحة الأوامر",
       assistant: "مساعد الذكاء الاصطناعي",
     },
     fixed: {

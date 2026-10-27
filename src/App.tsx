@@ -28,7 +28,16 @@ import { EditUploads } from "./features/sftp/EditUploads";
 import { writeText } from "./features/terminal/clipboard";
 import { PaneGrid } from "./features/panes/PaneGrid";
 import { MAX_PANES, neighbour, paneIds, shownLayout } from "./features/panes/paneLayout";
-import { shortcutFor, shortcutLabel, type ShortcutActionId } from "./features/panes/shortcuts";
+import {
+  SHORTCUT_ACTION_IDS,
+  SHORTCUT_ACTIONS,
+  shortcutFor,
+  shortcutLabel,
+  type Shortcut,
+  type ShortcutActionId,
+} from "./features/panes/shortcuts";
+import { CommandPalette } from "./features/palette/CommandPalette";
+import type { PaletteItem } from "./features/palette/paletteItems";
 import { SerialDialog } from "./features/serial/SerialDialog";
 import { LocalPanel, recentItems } from "./features/local/LocalPanel";
 import { useShellCwd } from "./features/local/useShellCwd";
@@ -42,7 +51,7 @@ import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepFontSize } from "./features/settings/settings";
-import { SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
+import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
 import { useDiagnosticLog } from "./features/diagnostics/useDiagnosticLog";
@@ -481,6 +490,11 @@ function AppContent() {
   const runRef = useRef<MacroRun | null>(null);
   const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
   const [chatDrops] = useState(() => createTargetRegistry<ChatTarget>());
+  /** Each terminal's own actions (find, copy, clear…), for the command palette. */
+  const [paneShortcuts] = useState(() => createTargetRegistry<(shortcut: Shortcut) => void>());
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  /** The app's actions as the keyboard runs them, kept by the shortcut effect below. */
+  const runShortcutRef = useRef<(shortcut: Shortcut, fromPalette?: boolean) => void>(() => {});
   const [aiLimit] = useState(() => createAiLimiter());
   const [aiHints, setAiHints] = useState<Record<string, AiHint>>({});
   /** Folders added to each DEV tab's workspace, by tab key (VS Code-style roots in the Explorer). */
@@ -1387,16 +1401,11 @@ function AppContent() {
       const index = tabs.findIndex((tab) => tab.key === activeKey);
       dispatch({ type: "activate", key: tabs[(index + step + tabs.length) % tabs.length].key });
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (matchesShortcut(e, assistantKeys.current.shortcut)) {
-        e.preventDefault();
-        if (!assistantKeys.current.blocked) assistantKeys.current.openAssistant();
-        return;
-      }
-      const shortcut = shortcutFor(e, shortcutKeys.current.overrides);
-      if (!shortcut) return;
-      e.preventDefault();
+    /** Runs an action; `fromPalette` runs the focused terminal's own ones too (its keys reach it first). */
+    const runShortcut = (shortcut: Shortcut, fromPalette = false) => {
       switch (shortcut.type) {
+        case "commandPalette":
+          return setPaletteOpen(true);
         case "newTerminal":
           return openLocal();
         case "quickConnect":
@@ -1456,6 +1465,7 @@ function AppContent() {
         case "previousCommand":
         case "nextCommand":
         case "copyCommandOutput":
+          if (fromPalette && activeTab) paneShortcuts.get(activeTab.focusedPane)?.(shortcut);
           return;
       }
       if (!activeTab) return;
@@ -1465,9 +1475,58 @@ function AppContent() {
       else if (shortcut.type === "split") dispatch({ type: "split", key, direction: shortcut.direction });
       else dispatch({ type: "focusDirection", key, direction: shortcut.direction });
     };
+    runShortcutRef.current = runShortcut;
+    const onKey = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, assistantKeys.current.shortcut)) {
+        e.preventDefault();
+        if (!assistantKeys.current.blocked) assistantKeys.current.openAssistant();
+        return;
+      }
+      const shortcut = shortcutFor(e, shortcutKeys.current.overrides);
+      if (!shortcut) return;
+      e.preventDefault();
+      runShortcut(shortcut);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openLocal, activeTab, updateSettingsWith, toggleDev]);
+
+  /** What the command palette offers: actions, saved sessions, macros, open tabs and Settings sections. */
+  const paletteItems = (): PaletteItem[] => [
+    ...SHORTCUT_ACTION_IDS.filter((id) => id !== "commandPalette").map((id) => ({
+      id,
+      group: "actions" as const,
+      label: t(`settings.shortcuts.actions.${id}`),
+      shortcut: shortcutLabel(id, settings.shortcuts) || undefined,
+      run: () => runShortcutRef.current(SHORTCUT_ACTIONS[id].shortcut as Shortcut, true),
+    })),
+    ...sessions.library.sessions.map((session) => ({
+      id: session.id,
+      group: "sessions" as const,
+      label: session.name,
+      detail: session.folder || undefined,
+      run: () => void openSaved(session),
+    })),
+    ...macros.list.macros.map((macro) => ({
+      id: macro.id,
+      group: "macros" as const,
+      label: macro.name,
+      shortcut: macro.hotkey ? hotkeyLabel(macro.hotkey) : undefined,
+      run: () => startMacro(macro),
+    })),
+    ...state.tabs.map((tab) => ({
+      id: tab.key,
+      group: "tabs" as const,
+      label: tabTitle(tab),
+      run: () => dispatch({ type: "activate", key: tab.key }),
+    })),
+    ...SETTINGS_SECTIONS.map((section) => ({
+      id: section,
+      group: "settings" as const,
+      label: t(`settings.sections.${section}`),
+      run: () => setModal({ kind: "settings", section }),
+    })),
+  ];
 
   /** A title with an action's shortcut in it, or the plain label when the action has none. */
   const titleWith = (key: AppKey, plainKey: AppKey, action: ShortcutActionId) => {
@@ -1984,6 +2043,7 @@ function AppContent() {
                             }}
                             registerWriter={(write) => writers.register(paneId, write)}
                             registerMacroTarget={(target) => macroTargets.register(paneId, target)}
+                            registerPaneShortcuts={(run) => paneShortcuts.register(paneId, run)}
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
                             registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}
                             aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
@@ -2247,6 +2307,16 @@ function AppContent() {
           onNewSshSession={(host) =>
             setModal({ kind: "editSession", session: { ...draftSession(""), name: host, host }, isNew: true })
           }
+        />
+      )}
+      {paletteOpen && (
+        <CommandPalette
+          items={paletteItems()}
+          onClose={(run) => {
+            setPaletteOpen(false);
+            // After the palette is gone, so a dialog it opens or a terminal it acts on gets the focus.
+            if (run) setTimeout(run, 0);
+          }}
         />
       )}
       {modal?.kind === "settings" && (

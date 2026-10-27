@@ -2,6 +2,18 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "命令面板",
+    placeholder: "输入操作、会话、宏、标签页或设置…",
+    noResults: "没有匹配项。",
+    groups: {
+      actions: "操作",
+      sessions: "会话",
+      macros: "宏",
+      tabs: "标签页",
+      settings: "设置",
+    },
+  },
   toolbar: {
     aiAssistant: "AI 助手",
     aiAssistantTitle: "AI 助手 ({shortcut})",
