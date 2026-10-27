@@ -158,12 +158,12 @@ export function attachCommandBlocks(
       element.style.pointerEvents = "none";
       if (element.firstChild) return;
       // A dot centred in the pane's 12 px left padding (App.css), so it never covers the first
-      // character, and a little below the row's middle: level with the middle of lowercase letters.
+      // character, and just below the row's middle, where a prompt's first symbol sits.
       const dot = document.createElement("div");
       Object.assign(dot.style, {
         position: "absolute",
         left: "-9.5px",
-        top: "calc(56% - 3.5px)",
+        top: "calc(53% - 3.5px)",
         width: "7px",
         height: "7px",
         borderRadius: "50%",
