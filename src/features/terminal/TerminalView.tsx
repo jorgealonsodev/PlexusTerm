@@ -54,6 +54,8 @@ import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRow
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { attachCommandBlocks, jumpColor, type CommandBlocks } from "./commandBlocks";
+import { compileRules } from "./highlightRules";
+import { attachRuleHighlight, type RuleHighlight } from "./ruleHighlight";
 import { createCommandTimer, formatDuration, shortCommand, type FinishedCommand } from "./commandTimer";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
 import type { SharePane } from "../share/sharePane";
@@ -313,6 +315,9 @@ export function TerminalView({
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const errorsRef = useRef<ErrorHighlight | null>(null);
+  /** The user's highlight rules (Settings > Terminal), compiled once per change. */
+  const rulesRef = useRef<RuleHighlight | null>(null);
+  const compiledRulesRef = useRef(compileRules(settings.highlightRules));
   /** The commands the shell's marks delimit; empty without shell integration. */
   const blocksRef = useRef<CommandBlocks | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
@@ -456,6 +461,15 @@ export function TerminalView({
       color: () => errorColor(themeById(settingsRef.current.theme).theme),
     });
     errorsRef.current = errors;
+    const rules = attachRuleHighlight(term, {
+      rules: () => compiledRulesRef.current,
+      onNotify: (rule, line) =>
+        callbacks.current.onAttention?.({
+          title: t("terminal.ruleMatched", { pattern: settingsRef.current.highlightRules[rule]?.pattern ?? "" }),
+          body: line,
+        }),
+    });
+    rulesRef.current = rules;
     const blocks = attachCommandBlocks(term, {
       failedColor: () => errorColor(themeById(settingsRef.current.theme).theme),
       jumpColor: () => jumpColor(themeById(settingsRef.current.theme).theme),
@@ -1038,6 +1052,7 @@ export function TerminalView({
         errorsTimer = setTimeout(() => {
           errorsTimer = null;
           errors.refresh();
+          rules.refresh();
         }, ERROR_REFRESH_DELAY_MS);
       }),
       term.onTitleChange(titleChanged),
@@ -1129,6 +1144,8 @@ export function TerminalView({
       if (activityTimer) clearTimeout(activityTimer);
       errors.dispose();
       errorsRef.current = null;
+      rules.dispose();
+      rulesRef.current = null;
       blocks.dispose();
       blocksRef.current = null;
       // Disposed with the terminal.
@@ -1240,6 +1257,16 @@ export function TerminalView({
     errorsRef.current?.refresh();
   }, [theme]);
   // Error lines follow the setting at once: coloured again when it is turned on, cleared when off.
+  // New rules colour the whole buffer again (without notifying for what was already read).
+  const highlightRules = settings.highlightRules;
+  const highlightRulesSeen = useRef(highlightRules);
+  useEffect(() => {
+    if (highlightRulesSeen.current === highlightRules) return;
+    highlightRulesSeen.current = highlightRules;
+    compiledRulesRef.current = compileRules(highlightRules);
+    rulesRef.current?.refresh();
+  }, [highlightRules]);
+
   const errorHighlight = settings.errorHighlight;
   const errorHighlightSeen = useRef(errorHighlight);
   useEffect(() => {
