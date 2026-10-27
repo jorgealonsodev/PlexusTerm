@@ -458,7 +458,7 @@ It is **Off** until you choose what it shows: the bar keeps only an "off" icon. 
 - **OpenCode Go**: read from OpenCode's usage API with **OpenCode Go API key for the usage** (Settings → AI, kept in the system keyring apart from the AI one), or, when none is saved there, the OpenCode Go key in **Settings → AI**.
 - **Claude Code**: read from Anthropic's usage service (`api.anthropic.com/api/oauth/usage`, what Claude Code's `/usage` shows) with the Claude plan sign-in Claude Code keeps in `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`; the Keychain on macOS). The token is only read: PlexusTerm never renews it, saves it or shows it. When it has expired, open Claude Code once and it renews it. An API key sign-in has no plan limits to show.
 
-Each provider is read at most once a minute, and only while a bar showing it is on screen. OpenCode with other providers only keeps a cost total (`opencode stats`), so it is not offered.
+Each provider is read only while a bar showing it is on screen, and every PlexusTerm window shares the reads: Claude Code, Codex and OpenCode Go are asked at most once every 5 minutes (their services limit how often an account may ask, and Claude Code and Codex ask too), Antigravity, which answers on this computer, once a minute. After a failed read (a limit reached, no connection) the wait doubles each time, up to 30 minutes, and a good read brings it back. **Refresh now** reads again at once, but never sooner than a minute after the last read. OpenCode with other providers only keeps a cost total (`opencode stats`), so it is not offered.
 
 ## Command suggestions and AI
 

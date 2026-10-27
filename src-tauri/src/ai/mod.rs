@@ -737,13 +737,21 @@ pub async fn ai_assist(
     ai.assist(secrets.inner(), &config, &request).await
 }
 
-/// How much of the OpenCode Go plan is spent (for the bar under a terminal).
+/// How much of the OpenCode Go plan is spent (for the bar under a terminal), shared by every
+/// window like the other providers' usage.
 #[tauri::command]
 pub async fn ai_opencode_go_usage(
+    force: Option<bool>,
+    app: AppHandle,
     secrets: State<'_, SharedSecrets>,
     ai: State<'_, AiClient>,
-) -> Result<crate::usage::Usage, AiError> {
-    ai.opencode_go_usage(secrets.inner()).await
+) -> Result<crate::usage::Usage, String> {
+    let read = || async {
+        ai.opencode_go_usage(secrets.inner())
+            .await
+            .map_err(|err| err.message)
+    };
+    crate::usage::shared_usage(&app, "opencodeGo", force.unwrap_or(false), read).await
 }
 
 /// The OpenCode Go models (public list + per-model API format from models.dev), cached 24 h.
