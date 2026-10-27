@@ -48,7 +48,7 @@ import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, p
 import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
-import { createSessionLog, type SessionLog } from "./sessionLog";
+import { createSessionLog, logTimestamp, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
 import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
@@ -1368,6 +1368,8 @@ export function TerminalView({
     if (!path || logRef.current || !termRef.current) return;
     const log = createSessionLog(path, (file, contents) => invoke("append_text_file", { path: file, contents }), {
       droppedNote: (count) => `\n${t("terminal.view.logDropped", { count })}\n`,
+      // Taken when logging starts: a log keeps one format from start to end.
+      timestamp: settingsRef.current.logTimestamps ? () => logTimestamp() : undefined,
       onError: (err) => {
         if (logRef.current !== log) return;
         termRef.current?.write(red(t("terminal.view.loggingStopped", { error: String(err) })));

@@ -10,6 +10,13 @@ export interface SessionLog {
   stop: () => Promise<void>;
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** The local date and time a logged line starts with: `[2026-10-27 09:05:07] `. */
+export const logTimestamp = (date = new Date()) =>
+  `[${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+  `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}] `;
+
 /** Most text waiting for the disk; output beyond it is counted and left out of the log. */
 export const MAX_LOG_BACKLOG = 8 * 1024 * 1024;
 
@@ -28,11 +35,14 @@ export function createSessionLog(
     onError,
     maxBacklog = MAX_LOG_BACKLOG,
     droppedNote = (count: number) => `\n[${count} characters of output not logged: the disk was too slow]\n`,
+    timestamp,
   }: {
     intervalMs?: number;
     onError?: (error: unknown) => void;
     maxBacklog?: number;
     droppedNote?: (count: number) => string;
+    /** Given, every line with output starts with what it returns (the time of its batch). */
+    timestamp?: () => string;
   } = {},
 ): SessionLog {
   let pending = "";
@@ -43,6 +53,28 @@ export function createSessionLog(
   /** Characters left out since the last append started. */
   let dropped = 0;
   let inFlight: Promise<void> | null = null;
+  /** The last text logged ended a line: the next output starts a new one. */
+  let atLineStart = true;
+
+  /** Puts the time before each line with output; empty lines stay empty. */
+  const stamped = (text: string) => {
+    if (!timestamp) return text;
+    const prefix = timestamp();
+    const parts = text.split("\n");
+    let out = "";
+    parts.forEach((part, i) => {
+      if (part !== "") {
+        if (atLineStart) out += prefix;
+        out += part;
+        atLineStart = false;
+      }
+      if (i < parts.length - 1) {
+        out += "\n";
+        atLineStart = true;
+      }
+    });
+    return out;
+  };
 
   const pump = () => {
     if (inFlight || failed || (backlog === "" && dropped === 0)) return;
@@ -68,7 +100,7 @@ export function createSessionLog(
     let [ready, rest] = final ? [pending, ""] : splitIncompleteEscape(pending);
     if (rest.length > MAX_TAIL) [ready, rest] = [pending, ""];
     pending = rest;
-    const text = stripAnsi(ready);
+    const text = stamped(stripAnsi(ready));
     if (text === "") return;
     const room = Math.max(0, maxBacklog - backlog.length);
     backlog += text.slice(0, room);

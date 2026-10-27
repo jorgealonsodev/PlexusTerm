@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "Neues Terminal (+) öffnet in",
     devNewTerminalFolder: "Im DEV-Modus öffnet + in",
     shellIntegration: "Shell-Integration",
+    logTimestamps: "Datum und Uhrzeit in jeder Protokollzeile",
+    logTimestampsHelp: "In Datei protokollieren … beginnt jede geschriebene Zeile mit Datum und Uhrzeit, etwa [2026-10-27 09:05:07], damit du siehst, wann etwas passiert ist (eine serielle Konsole, ein Audit). Schalte es aus, um die Ausgabe genau so zu protokollieren, wie sie kam. Gilt für Protokolle, die danach beginnen.",
     shellIntegrationHelp:
       "Lokale Shells markieren, wo ihr Prompt endet und wie jeder Befehl beendet wurde (OSC 133), damit Vorschläge, Verlauf und Fehlerfarbe genau dem folgen, was du tippst. bash, zsh und fish laden nach deinen eigenen Startdateien ein kleines Skript; PowerShell, Git Bash und cmd erhalten einen Wrapper um ihren Prompt. Schalte sie aus, um Shells unverändert zu starten (unter Windows melden sie dem Explorer weiterhin ihren Ordner). Gilt für ab jetzt geöffnete Terminals.",
     newTerminalStart: "Dem Startordner",

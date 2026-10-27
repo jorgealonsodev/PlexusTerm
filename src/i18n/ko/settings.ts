@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "새 터미널(+)을 여는 위치",
     devNewTerminalFolder: "DEV 모드에서 +를 여는 위치",
     shellIntegration: "셸 통합",
+    logTimestamps: "로그의 각 줄에 날짜와 시간 표시",
+    logTimestampsHelp: "파일에 기록…이 쓰는 각 줄의 앞에 [2026-10-27 09:05:07]처럼 날짜와 시간을 붙여 언제 무슨 일이 있었는지 알 수 있게 합니다(시리얼 콘솔, 감사 등). 끄면 출력을 들어온 그대로 기록합니다. 이후에 시작한 기록에 적용됩니다.",
     shellIntegrationHelp:
       "로컬 셸이 프롬프트가 끝나는 위치와 각 명령의 종료 상태를 표시하므로(OSC 133) 제안, 기록, 오류 색상이 입력한 내용을 정확히 따릅니다. bash, zsh, fish는 사용자 시작 파일 다음에 작은 스크립트를 불러오고, PowerShell, Git Bash, cmd는 감싼 프롬프트를 사용합니다. 끄면 셸을 그대로 시작합니다 (Windows에서는 탐색기에 폴더를 계속 알려 줍니다). 지금부터 여는 터미널에 적용됩니다.",
     newTerminalStart: "시작 폴더",

@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "新しい端末 (+) を開く場所",
     devNewTerminalFolder: "DEV モードで + を開く場所",
     shellIntegration: "シェル統合",
+    logTimestamps: "ログの各行に日時を付ける",
+    logTimestampsHelp: "「ファイルに記録…」で書き込む各行の先頭に [2026-10-27 09:05:07] のように日時を付け、いつ何が起きたかを分かるようにします（シリアルコンソールや監査など）。オフにすると、出力を届いたとおりに記録します。以後に開始した記録に適用されます。",
     shellIntegrationHelp:
       "ローカルシェルがプロンプトの終わりと各コマンドの終了状態を示す （OSC 133） ため、候補・履歴・エラー色が入力内容に正確に追従します。bash、zsh、fish はご自身の起動ファイルの後に小さなスクリプトを読み込み、PowerShell、Git Bash、cmd はプロンプトがラップされます。オフにするとシェルをそのまま起動します （Windows ではエクスプローラー用にフォルダーは引き続き通知されます）。これから開くターミナルに適用されます。",
     newTerminalStart: "開始フォルダー",

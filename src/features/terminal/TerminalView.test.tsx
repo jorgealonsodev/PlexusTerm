@@ -1277,7 +1277,11 @@ describe("TerminalView", () => {
       expect(t.linkProviders).toHaveLength(1);
     });
 
-    it("logs received output to the chosen file without escape sequences", async () => {
+    /** Logs one bold line with `logTimestamps` and returns what was appended to the file. */
+    const logOneLine = async (logTimestamps: boolean) => {
+      // A pane closed by an earlier test may still be flushing its log.
+      await settle();
+      vi.mocked(invoke).mockClear();
       let emit: (msg: { event: string; data: unknown }) => void = () => {};
       backend.start.mockImplementationOnce((_options, onEvent) => {
         emit = onEvent as typeof emit;
@@ -1285,7 +1289,7 @@ describe("TerminalView", () => {
       });
       const onLogging = vi.fn();
       const { container, unmount } = renderView({
-        settings: { ...DEFAULT_SETTINGS, rightClickPastes: false },
+        settings: { ...DEFAULT_SETTINGS, rightClickPastes: false, logTimestamps },
         onLogging,
       });
       await settle();
@@ -1294,9 +1298,22 @@ describe("TerminalView", () => {
       await vi.waitFor(() => expect(onLogging).toHaveBeenCalledWith("/tmp/session.log"));
       act(() => emit({ event: "output", data: "\x1b[1mbold\x1b[0m\r\n" }));
       unmount(); // closing the pane flushes the log
-      await vi.waitFor(() =>
-        expect(vi.mocked(invoke)).toHaveBeenCalledWith("append_text_file", { path: "/tmp/session.log", contents: "bold\n" }),
-      );
+      let contents = "";
+      await vi.waitFor(() => {
+        const call = vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "append_text_file").pop();
+        expect(call).toBeTruthy();
+        contents = (call![1] as { path: string; contents: string }).contents;
+      });
+      return contents;
+    };
+
+    it("logs received output to the chosen file without escape sequences", async () => {
+      expect(await logOneLine(false)).toBe("bold\n");
+    });
+
+    it("starts each logged line with its date and time when Settings ask for it (the default)", async () => {
+      expect(DEFAULT_SETTINGS.logTimestamps).toBe(true);
+      expect(await logOneLine(true)).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] bold\n$/);
     });
   });
 

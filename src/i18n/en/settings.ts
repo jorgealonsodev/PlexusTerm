@@ -112,6 +112,8 @@ export const settings = {
     newTerminalFolder: "New terminal (+) opens in",
     devNewTerminalFolder: "In DEV mode, the + opens in",
     shellIntegration: "Shell integration",
+    logTimestamps: "Date and time on each line of logs",
+    logTimestampsHelp: "Log to file… starts each line it writes with its date and time, as [2026-10-27 09:05:07], to tell when each thing happened (a serial console, an audit). Turn it off to log the output exactly as it came. Applies to logs started from then on.",
     shellIntegrationHelp:
       "Local shells mark where their prompt ends and how each command ended (OSC 133), so suggestions, history and the error colour follow what you type exactly. bash, zsh and fish load a small script after your own startup files; PowerShell, Git Bash and cmd get a wrapped prompt. Turn it off to start shells exactly as they are (on Windows they still report their folder for the Explorer). Applies to terminals opened from now on.",
     newTerminalStart: "The starting folder",

@@ -123,6 +123,8 @@ export interface TerminalSettings {
    * finishes, like a program asking for attention; 0 turns it off.
    */
   commandNotifySeconds: number;
+  /** Logs to a file (Log to file…) start each line with its date and time. */
+  logTimestamps: boolean;
   /** The user's highlight rules: expressions coloured in every terminal, optionally asking for attention. */
   highlightRules: HighlightRule[];
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
@@ -273,6 +275,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shiftEnterNewline: true,
   attentionNotifications: true,
   commandNotifySeconds: 10,
+  logTimestamps: true,
   // One rule to show how they work; removing it keeps the list empty.
   highlightRules: [EXAMPLE_RULE],
   gpuAcceleration: true,
@@ -531,6 +534,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
     commandNotifySeconds: size(value.commandNotifySeconds, clampCommandNotifySeconds, d.commandNotifySeconds),
+    logTimestamps: bool(value.logTimestamps, d.logTimestamps),
     highlightRules: Array.isArray(value.highlightRules) ? parseHighlightRules(value.highlightRules) : d.highlightRules,
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),

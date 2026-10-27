@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "Le nouveau terminal (+) s'ouvre dans",
     devNewTerminalFolder: "En mode DEV, le + s'ouvre dans",
     shellIntegration: "Intégration du shell",
+    logTimestamps: "Date et heure sur chaque ligne des journaux",
+    logTimestampsHelp: "Journaliser dans un fichier… commence chaque ligne écrite par sa date et son heure, comme [2026-10-27 09:05:07], pour savoir quand chaque chose s'est produite (une console série, un audit). Désactivez-la pour journaliser la sortie telle qu'elle est arrivée. S'applique aux journaux démarrés ensuite.",
     shellIntegrationHelp:
       "Les shells locaux marquent la fin de leur invite et la façon dont chaque commande s'est terminée (OSC 133), afin que les suggestions, l'historique et la couleur des erreurs suivent exactement ce que vous tapez. bash, zsh et fish chargent un petit script après vos propres fichiers de démarrage ; PowerShell, Git Bash et cmd reçoivent une invite enveloppée. Désactivez-la pour lancer les shells tels quels (sous Windows, ils indiquent toujours leur dossier à l'Explorateur). S'applique aux terminaux ouverts à partir de maintenant.",
     newTerminalStart: "Le dossier de départ",

@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "O novo terminal (+) abre em",
     devNewTerminalFolder: "No modo DEV, o + abre em",
     shellIntegration: "Integração com o shell",
+    logTimestamps: "Data e hora em cada linha dos registros",
+    logTimestampsHelp: "Registrar em arquivo… começa cada linha que escreve com a data e a hora, como [2026-10-27 09:05:07], para saber quando cada coisa aconteceu (um console serial, uma auditoria). Desative para registrar a saída exatamente como chegou. Vale para os registros iniciados a partir de então.",
     shellIntegrationHelp:
       "Os shells locais marcam onde o prompt termina e como cada comando terminou (OSC 133), para que sugestões, histórico e a cor dos erros sigam exatamente o que você digita. bash, zsh e fish carregam um pequeno script depois dos seus próprios arquivos de inicialização; PowerShell, Git Bash e cmd recebem um prompt encapsulado. Desative para iniciar os shells sem alterações (no Windows eles continuam informando a pasta ao Explorador). Vale para os terminais abertos a partir de agora.",
     newTerminalStart: "A pasta inicial",

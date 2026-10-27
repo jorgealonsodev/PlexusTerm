@@ -115,6 +115,8 @@ export const settings: Messages<typeof en> = {
     newTerminalFolder: "新终端 (+) 的打开位置",
     devNewTerminalFolder: "DEV 模式下 + 的打开位置",
     shellIntegration: "Shell 集成",
+    logTimestamps: "日志每行带日期和时间",
+    logTimestampsHelp: "“记录到文件…”写入的每一行都以日期和时间开头，例如 [2026-10-27 09:05:07]，便于了解每件事发生的时间（串口控制台、审计）。关闭后按原样记录输出。对之后开始的记录生效。",
     shellIntegrationHelp:
       "本地 shell 会标记提示符的结束位置以及每条命令的结束状态 (OSC 133)，让建议、历史记录和错误颜色准确跟随你的输入。bash、zsh 和 fish 会在你自己的启动文件之后加载一个小脚本；PowerShell、Git Bash 和 cmd 使用包装后的提示符。关闭后 shell 将按原样启动 （在 Windows 上仍会向资源管理器报告所在文件夹）。对此后打开的终端生效。",
     newTerminalStart: "起始文件夹",
