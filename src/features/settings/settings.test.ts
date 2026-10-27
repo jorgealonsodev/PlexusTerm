@@ -74,7 +74,7 @@ describe("parseSettings", () => {
       recentFolderLimit: 10,
       devFolderInFooter: true,
       aiUsageInFooter: true,
-      aiUsageProvider: "auto" as const,
+      aiUsageProvider: "off" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,
@@ -124,7 +124,8 @@ describe("parseSettings", () => {
     expect(parseSettings(JSON.stringify({ aiUsageInFooter: false })).aiUsageInFooter).toBe(false);
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencodeGo" })).aiUsageProvider).toBe("opencodeGo");
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "agy" })).aiUsageProvider).toBe("agy");
-    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencode" })).aiUsageProvider).toBe("auto");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencode" })).aiUsageProvider).toBe("off");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "auto" })).aiUsageProvider).toBe("auto");
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "off" })).aiUsageProvider).toBe("off");
   });
 
@@ -205,7 +206,7 @@ describe("parseSettings", () => {
       recentFolderLimit: 10,
       devFolderInFooter: true,
       aiUsageInFooter: true,
-      aiUsageProvider: "auto" as const,
+      aiUsageProvider: "off" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,

@@ -294,7 +294,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   recentFolderLimit: DEFAULT_RECENT_FOLDERS,
   devFolderInFooter: true,
   aiUsageInFooter: true,
-  aiUsageProvider: "auto",
+  aiUsageProvider: "off",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
