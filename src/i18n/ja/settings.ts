@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "ローカル端末の開始フォルダー",
     newTerminalFolder: "新しい端末 (+) を開く場所",
     devNewTerminalFolder: "DEV モードで + を開く場所",
+    shellIntegration: "シェル統合",
+    shellIntegrationHelp:
+      "ローカルシェルがプロンプトの終わりと各コマンドの終了状態を示す (OSC 133) ため、候補・履歴・エラー色が入力内容に正確に追従します。bash、zsh、fish はご自身の起動ファイルの後に小さなスクリプトを読み込み、PowerShell、Git Bash、cmd はプロンプトがラップされます。オフにするとシェルをそのまま起動します (Windows ではエクスプローラー用にフォルダーは引き続き通知されます)。これから開くターミナルに適用されます。",
     newTerminalStart: "開始フォルダー",
     newTerminalHere: "アクティブな端末のフォルダー",
     copyOnSelect: "選択時にコピー",

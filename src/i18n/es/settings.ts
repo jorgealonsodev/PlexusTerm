@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "Carpeta de inicio de las terminales locales",
     newTerminalFolder: "El terminal nuevo (+) se abre en",
     devNewTerminalFolder: "En modo DEV, el + se abre en",
+    shellIntegration: "Integración con la shell",
+    shellIntegrationHelp:
+      "Las shells locales marcan dónde acaba su prompt y cómo terminó cada comando (OSC 133), para que las sugerencias, el historial y el color de los errores sigan exactamente lo que escribes. bash, zsh y fish cargan un pequeño script después de tus propios archivos de inicio; PowerShell, Git Bash y cmd reciben un prompt envuelto. Desactívala para iniciar las shells tal cual (en Windows siguen informando de su carpeta al Explorador). Se aplica a los terminales que se abran a partir de ahora.",
     newTerminalStart: "La carpeta de inicio",
     newTerminalHere: "La carpeta del terminal activo",
     copyOnSelect: "Copiar al seleccionar",

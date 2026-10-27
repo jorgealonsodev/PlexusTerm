@@ -24,10 +24,18 @@ pub struct SpawnRequest {
     pub cwd: Option<String>,
     pub cols: u16,
     pub rows: u16,
+    /// Settings → Terminal → Shell integration: false starts bash, zsh and fish plain and leaves
+    /// the Windows shells only their folder report (no OSC 133 marks). Missing means on.
+    #[serde(default = "shell_integration_default")]
+    pub shell_integration: bool,
     /// Extra environment for the child, set only by Rust (e.g. `MOSH_KEY`): the frontend
     /// cannot send it.
     #[serde(skip)]
     pub env: ChildEnv,
+}
+
+fn shell_integration_default() -> bool {
+    true
 }
 
 /// Environment variables passed to a child process. `Debug` shows only their names,
@@ -123,9 +131,19 @@ struct Session {
 pub struct PtyManager {
     next_id: AtomicU32,
     sessions: Mutex<HashMap<u32, Session>>,
+    /// Where the shell integration scripts were written; None until then (shells start plain).
+    scripts: Mutex<Option<PathBuf>>,
 }
 
 impl PtyManager {
+    /// Writes the shell integration scripts to `dir` for the shells started from now on; when they
+    /// cannot be written, shells keep starting without them.
+    pub fn set_scripts_dir(&self, dir: PathBuf) -> std::io::Result<()> {
+        shell_integration::install_scripts(&dir)?;
+        *self.scripts.lock().unwrap() = Some(dir);
+        Ok(())
+    }
+
     pub fn spawn(&self, req: SpawnRequest, sink: impl TerminalSink) -> Result<u32, PtyError> {
         let pair = native_pty_system()
             .openpty(size(req.cols, req.rows))
@@ -135,15 +153,24 @@ impl PtyManager {
         let mut cmd = CommandBuilder::new(&program);
         hide_webkit_only_vars(&mut cmd, platform::webkit_only_vars());
         // Windows has no way to read PowerShell's folder: the shells report it with each prompt.
-        let integration = if cfg!(windows) {
-            let prompt = std::env::var("PROMPT").ok();
-            let prompt_command = std::env::var("PROMPT_COMMAND").ok();
+        // bash and zsh mark their prompt and commands (OSC 133) on Linux and macOS.
+        let prompt = std::env::var("PROMPT").ok();
+        let prompt_command = std::env::var("PROMPT_COMMAND").ok();
+        let zdotdir = std::env::var("ZDOTDIR").ok();
+        let scripts = self.scripts.lock().unwrap().clone();
+        // Elsewhere the folder of any shell can be read: only bash, zsh and fish get anything.
+        let integrated =
+            cfg!(windows) || matches!(platform::shell_name(&program), "bash" | "zsh" | "fish");
+        let integration = if integrated {
             shell_integration::integration(
                 &program,
                 &req.args,
                 shell_integration::Inherited {
                     prompt: prompt.as_deref(),
                     prompt_command: prompt_command.as_deref(),
+                    zdotdir: zdotdir.as_deref(),
+                    scripts: shell_integration::ready_scripts(scripts.as_deref()),
+                    plain: !req.shell_integration,
                 },
             )
         } else {
@@ -345,8 +372,16 @@ mod tests {
             cwd: None,
             cols: 80,
             rows: 24,
+            shell_integration: true,
             env: ChildEnv::default(),
         }
+    }
+
+    #[test]
+    fn shell_integration_is_on_unless_the_request_turns_it_off() {
+        let parse = |json: &str| serde_json::from_str::<SpawnRequest>(json).unwrap();
+        assert!(parse(r#"{"cols":80,"rows":24}"#).shell_integration);
+        assert!(!parse(r#"{"cols":80,"rows":24,"shellIntegration":false}"#).shell_integration);
     }
 
     #[test]

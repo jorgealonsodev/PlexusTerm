@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "Startordner lokaler Terminals",
     newTerminalFolder: "Neues Terminal (+) öffnet in",
     devNewTerminalFolder: "Im DEV-Modus öffnet + in",
+    shellIntegration: "Shell-Integration",
+    shellIntegrationHelp:
+      "Lokale Shells markieren, wo ihr Prompt endet und wie jeder Befehl beendet wurde (OSC 133), damit Vorschläge, Verlauf und Fehlerfarbe genau dem Eingegebenen folgen. bash, zsh und fish laden nach Ihren eigenen Startdateien ein kleines Skript; PowerShell, Git Bash und cmd erhalten einen umhüllten Prompt. Schalten Sie sie aus, um Shells unverändert zu starten (unter Windows melden sie dem Explorer weiterhin ihren Ordner). Gilt für ab jetzt geöffnete Terminals.",
     newTerminalStart: "Dem Startordner",
     newTerminalHere: "Dem Ordner des aktiven Terminals",
     copyOnSelect: "Beim Markieren kopieren",

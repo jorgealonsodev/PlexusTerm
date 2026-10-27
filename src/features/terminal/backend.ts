@@ -23,6 +23,8 @@ export interface StartOptions {
   storage?: PasswordStorage;
   /** SSH only: replaces the target's jump hosts (e.g. after trusting one of them). */
   jumps?: JumpTarget[];
+  /** Local only: false starts the shell without its prompt marks (Settings → Terminal). */
+  shellIntegration?: boolean;
 }
 
 /** One kind of terminal session (local PTY, SSH, ...) behind the Rust commands. */
@@ -54,20 +56,24 @@ function commands(prefix: "pty" | "ssh") {
 }
 
 /** The PTY request of a local target; blank fields are left out so the backend uses its defaults. */
-function localRequest({ program, args, cwd }: LocalTarget, cols: number, rows: number) {
+function localRequest({ program, args, cwd }: LocalTarget, cols: number, rows: number, shellIntegration = true) {
   return {
     ...(program?.trim() ? { program: program.trim() } : {}),
     ...(args?.length ? { args } : {}),
     ...(cwd?.trim() ? { cwd: cwd.trim() } : {}),
     cols,
     rows,
+    ...(shellIntegration ? {} : { shellIntegration: false }),
   };
 }
 
 function localBackend(target: LocalTarget): TerminalBackend {
   return {
-    start: ({ cols, rows }, onEvent) =>
-      invoke<number>("pty_spawn", { request: localRequest(target, cols, rows), onEvent: channelFor(onEvent) }),
+    start: ({ cols, rows, shellIntegration }, onEvent) =>
+      invoke<number>("pty_spawn", {
+        request: localRequest(target, cols, rows, shellIntegration),
+        onEvent: channelFor(onEvent),
+      }),
     ...commands("pty"),
   };
 }

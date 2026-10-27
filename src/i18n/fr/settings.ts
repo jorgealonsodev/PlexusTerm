@@ -103,6 +103,9 @@ export const settings: Messages<typeof en> = {
     startDir: "Dossier de départ des terminaux locaux",
     newTerminalFolder: "Le nouveau terminal (+) s'ouvre dans",
     devNewTerminalFolder: "En mode DEV, le + s'ouvre dans",
+    shellIntegration: "Intégration du shell",
+    shellIntegrationHelp:
+      "Les shells locaux marquent la fin de leur invite et la façon dont chaque commande s'est terminée (OSC 133), afin que les suggestions, l'historique et la couleur des erreurs suivent exactement ce que vous tapez. bash, zsh et fish chargent un petit script après vos propres fichiers de démarrage ; PowerShell, Git Bash et cmd reçoivent une invite enveloppée. Désactivez-la pour lancer les shells tels quels (sous Windows, ils indiquent toujours leur dossier à l'Explorateur). S'applique aux terminaux ouverts à partir de maintenant.",
     newTerminalStart: "Le dossier de départ",
     newTerminalHere: "Le dossier du terminal actif",
     copyOnSelect: "Copier à la sélection",

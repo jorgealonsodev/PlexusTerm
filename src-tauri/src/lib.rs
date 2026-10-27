@@ -766,6 +766,12 @@ pub fn run() {
         .setup(move |app| {
             launch::listen(app.handle().clone());
             if let Ok(dir) = app.path().app_config_dir() {
+                if let Err(e) = app
+                    .state::<PtyManager>()
+                    .set_scripts_dir(dir.join("shell-integration"))
+                {
+                    diaglog::warn(&format!("shell integration scripts not written: {e}"));
+                }
                 app.state::<share::ShareManager>().set_dir(dir);
             }
             let handle = app.handle().clone();
