@@ -23,6 +23,11 @@ export const terminal: Messages<typeof en> = {
   commandDot: {
     exit: "終了コード {code}",
     exitTime: "終了コード {code} · {duration}",
+    askAi: "クリックすると失敗の理由を AI に質問します",
+    attached: "コマンド `{command}` は終了コード {code} で終了しました。出力:",
+    outputGone: "（出力はもうターミナルにありません）",
+    noOutput: "（何も出力されませんでした）",
+    question: "このコマンドはなぜ失敗したのか、どう直せばよいですか？",
   },
   commandDone: {
     finished: "コマンドが終了しました",

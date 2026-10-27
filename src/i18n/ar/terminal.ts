@@ -30,6 +30,11 @@ export const terminal: Messages<typeof en> = {
   commandDot: {
     exit: "رمز الخروج {code}",
     exitTime: "رمز الخروج {code} · {duration}",
+    askAi: "انقر لسؤال الذكاء الاصطناعي عن سبب الفشل",
+    attached: "انتهى الأمر `{command}` برمز الخروج {code}. مخرجاته:",
+    outputGone: "(لم تعد مخرجاته في الطرفية)",
+    noOutput: "(لم يطبع شيئًا)",
+    question: "لماذا فشل هذا الأمر، وكيف أصلحه؟",
   },
   commandDone: {
     finished: "اكتمل الأمر",

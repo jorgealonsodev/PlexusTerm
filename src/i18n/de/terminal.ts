@@ -23,6 +23,11 @@ export const terminal: Messages<typeof en> = {
   commandDot: {
     exit: "Exit-Code {code}",
     exitTime: "Exit-Code {code} · {duration}",
+    askAi: "Klicken, um die KI zu fragen, warum er fehlschlug",
+    attached: "Der Befehl `{command}` endete mit Exit-Code {code}. Seine Ausgabe:",
+    outputGone: "(seine Ausgabe ist nicht mehr im Terminal)",
+    noOutput: "(er hat nichts ausgegeben)",
+    question: "Warum ist dieser Befehl fehlgeschlagen, und wie behebe ich das?",
   },
   commandDone: {
     finished: "Befehl beendet",

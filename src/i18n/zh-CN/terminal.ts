@@ -23,6 +23,11 @@ export const terminal: Messages<typeof en> = {
   commandDot: {
     exit: "退出码 {code}",
     exitTime: "退出码 {code} · {duration}",
+    askAi: "点击询问 AI 失败原因",
+    attached: "命令 `{command}` 以退出码 {code} 结束。其输出：",
+    outputGone: "（其输出已不在终端中）",
+    noOutput: "（没有任何输出）",
+    question: "这条命令为什么失败，我该如何修复？",
   },
   commandDone: {
     finished: "命令已完成",

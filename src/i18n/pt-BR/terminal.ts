@@ -27,6 +27,11 @@ export const terminal: Messages<typeof en> = {
   commandDot: {
     exit: "Código de saída {code}",
     exitTime: "Código de saída {code} · {duration}",
+    askAi: "Clique para perguntar à IA por que falhou",
+    attached: "O comando `{command}` terminou com o código de saída {code}. A saída dele:",
+    outputGone: "(a saída dele não está mais no terminal)",
+    noOutput: "(não imprimiu nada)",
+    question: "Por que este comando falhou e como eu corrijo?",
   },
   commandDone: {
     finished: "Comando concluído",

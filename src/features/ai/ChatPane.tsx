@@ -29,8 +29,8 @@ const providerName = (provider: TerminalSettings["aiProvider"]) =>
 export interface ChatTarget {
   /** Files dropped on the chat (S6). */
   attachFiles: (drag: PathDrag) => void;
-  /** Selected terminal text from "Ask the AI" (S7); replaces the selection chip. */
-  attachSelection: (text: string) => void;
+  /** Selected terminal text from "Ask the AI" (S7); replaces the selection chip. `question` fills an empty input. */
+  attachSelection: (text: string, question?: string) => void;
 }
 
 /** What the chat knows about its linked terminal. Terminal output is never part of it. */
@@ -50,6 +50,8 @@ interface ChatPaneProps {
   context: ChatContext;
   /** The linked terminal's selection when the chat opened, offered with the first question. */
   selection: string;
+  /** A question already typed when the chat opens (a failed command to explain). */
+  question?: string;
   /** The pane has the keyboard focus in its tab: the input takes it. */
   focused: boolean;
   /** Types a command into the linked terminal without Enter. */
@@ -122,10 +124,10 @@ function CommandBox({
  * The AI chat pane under a terminal (S9): any question, answers as in S8, follow-ups with the
  * earlier turns as context, and one OpenCode session per pane. A command runs only when Run is clicked.
  */
-export function ChatPane({ conversationKey, settings, context, selection, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel, registerDropTarget, history = chatHistory }: ChatPaneProps) {
+export function ChatPane({ conversationKey, settings, context, selection, question, focused, onInsert, onRun, onOpenSettings, onClose, onSelectModel, registerDropTarget, history = chatHistory }: ChatPaneProps) {
   const t = useT();
   const [sessionId, setSessionId] = useState(() => recallChat(conversationKey)?.sessionId ?? newAiSessionId());
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(question ?? "");
   /** The selection still attached to the next question; dropped once sent or removed. */
   const [chip, setChip] = useState(() => truncateSelection(selection));
   /** Files dropped on the chat, sent with the next question (S6). */
@@ -218,8 +220,9 @@ export function ChatPane({ conversationKey, settings, context, selection, focuse
     () =>
       registerDropTarget?.({
         attachFiles: (drag) => void attachRef.current(drag),
-        attachSelection: (text) => {
+        attachSelection: (text, question) => {
           if (text) setChip(truncateSelection(text));
+          if (question) setInput((current) => (current.trim() ? current : question));
           inputRef.current?.focus();
         },
       }),

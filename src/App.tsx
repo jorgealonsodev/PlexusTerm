@@ -1084,6 +1084,20 @@ function AppContent() {
     openAssistantFor({ ...tab, focusedPane: paneId });
   };
 
+  /** A failed command's dot: that pane's chat, with the command and its output attached and a question typed. */
+  const explainFailure = (tab: Tab, paneId: string, text: string, question: string) => {
+    const open = Object.keys(tab.chats).find((id) => tab.chats[id].terminalPaneId === paneId);
+    if (open) {
+      dispatch({ type: "focusPane", key: tab.key, paneId: open });
+      chatDrops.get(open)?.attachSelection(text, question);
+      return;
+    }
+    if (chatAction({ ...tab, focusedPane: paneId }).kind === "full") return setNotice(t("app.notice.tabFull", { max: MAX_PANES }));
+    void commandHistory.ready();
+    dispatch({ type: "focusPane", key: tab.key, paneId });
+    dispatch({ type: "openChat", key: tab.key, selection: truncateSelection(text), question });
+  };
+
   /**
    * The X (S5, S9): opens the focused terminal's AI chat like the shortcut, and when that chat is
    * already open (the chat or its terminal has the focus) closes it; both spin the X.
@@ -1989,6 +2003,7 @@ function AppContent() {
                                 settings={settings}
                                 context={chatContextOf(tab, link.terminalPaneId)}
                                 selection={link.selection}
+                                question={link.question}
                                 focused={active && paneId === tab.focusedPane}
                                 onInsert={(command) => insertFromChat(tab, link, command)}
                                 onRun={(command) => runFromChat(tab, link, command)}
@@ -2055,6 +2070,7 @@ function AppContent() {
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}
                             onAskAi={() => askAiFrom(tab, paneId)}
+                            onExplainFailure={(text, question) => explainFailure(tab, paneId, text, question)}
                             onAttention={(notice) => attend(tab, paneId, notice)}
                             onPrompt={(mark) => {
                               promptCameBack(paneId);

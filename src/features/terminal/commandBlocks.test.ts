@@ -76,8 +76,8 @@ class FakeTerminal implements BlockTerminal {
     this.cursor = { y: this.cursor.y + 1, x: 0 };
     this.rows[this.cursor.y] ??= ["", false];
   }
-  mark(payload: string) {
-    blocksOf.get(this)!.mark(parseOsc133(payload)!);
+  mark(payload: string, command?: string) {
+    blocksOf.get(this)!.mark(parseOsc133(payload)!, command);
   }
   /** A whole command: prompt, typed line, output rows and its exit code. */
   run(command: string, output: string[], exit: number) {
@@ -85,7 +85,7 @@ class FakeTerminal implements BlockTerminal {
     this.print(`$ ${command}`);
     this.mark("B");
     this.newline();
-    this.mark("C");
+    this.mark("C", command);
     if (output.length > 0) {
       this.print(...output);
       this.newline();
@@ -98,6 +98,8 @@ class FakeTerminal implements BlockTerminal {
 const blocksOf = new Map<FakeTerminal, ReturnType<typeof attachCommandBlocks>>();
 /** The test clock: `run` advances it by a second between a command's C and D marks. */
 const clock = { now: 0 };
+/** What a click on a failed command's dot reported. */
+const clicked: { command: string; exit: number; output: string | null; ms: number | null }[] = [];
 const setup = (maxBlocks?: number) => {
   const term = new FakeTerminal();
   term.rows[0] = ["", false];
@@ -105,6 +107,7 @@ const setup = (maxBlocks?: number) => {
     failedColor: () => "#ff0000",
     jumpColor: () => "#334455",
     failedTitle: (exit, ms) => `exit ${exit} after ${ms} ms`,
+    onFailedClick: (failure) => clicked.push(failure),
     now: () => clock.now,
     maxBlocks,
   });
@@ -194,6 +197,16 @@ describe("failed commands", () => {
     // The dot itself takes the pointer, to say how the command ended.
     expect(dot.style.pointerEvents).toBe("auto");
     expect(dot.title).toBe("exit 1 after 1000 ms");
+  });
+
+  it("tell, when their dot is clicked, the command, its exit code, its output and how long it ran", () => {
+    clicked.length = 0;
+    const { term } = setup();
+    term.run("make", ["cc main.c", "error: missing ;"], 2);
+    const dot = term.decorations[0].element.firstElementChild as HTMLElement;
+    expect(dot.style.cursor).toBe("pointer");
+    dot.click();
+    expect(clicked).toEqual([{ command: "make", exit: 2, output: "cc main.c\nerror: missing ;", ms: 1000 }]);
   });
 
   it("are marked once when the shell sends its marks twice (fish 4 and ours)", () => {

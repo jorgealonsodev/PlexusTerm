@@ -21,6 +21,11 @@ export const terminal = {
   commandDot: {
     exit: "Exit code {code}",
     exitTime: "Exit code {code} · {duration}",
+    askAi: "Click to ask the AI why it failed",
+    attached: "The command `{command}` failed with exit code {code}. Its output:",
+    outputGone: "(its output is no longer in the terminal)",
+    noOutput: "(it printed nothing)",
+    question: "Why did this command fail, and how do I fix it?",
   },
   commandDone: {
     finished: "Command finished",

@@ -99,6 +99,8 @@ interface TerminalViewProps {
   registerAssistTarget?: (target: AssistTarget) => () => void;
   /** Opens this pane's AI chat with its selection attached; without it the menu has no "Ask the AI". */
   onAskAi?: () => void;
+  /** A failed command's dot was clicked: ask the AI about `text` (the command and its output) with `question`. */
+  onExplainFailure?: (text: string, question: string) => void;
   /**
    * A program asks for attention: the bell, or a desktop notification sequence (OSC 9, 777, 99)
    * such as Claude Code and Codex send when they finish or wait for the user.
@@ -296,6 +298,7 @@ export function TerminalView({
   history = commandHistory,
   registerAssistTarget,
   onAskAi,
+  onExplainFailure,
   onAttention,
   onPrompt,
   onCommand,
@@ -371,8 +374,8 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure };
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -478,9 +481,18 @@ export function TerminalView({
       failedColor: () => errorColor(themeById(settingsRef.current.theme).theme),
       jumpColor: () => jumpColor(themeById(settingsRef.current.theme).theme),
       failedTitle: (code, ms) =>
-        ms === null
+        (ms === null
           ? t("terminal.commandDot.exit", { code })
-          : t("terminal.commandDot.exitTime", { code, duration: formatDuration(ms) }),
+          : t("terminal.commandDot.exitTime", { code, duration: formatDuration(ms) })) +
+        (callbacks.current.onExplainFailure ? `\n${t("terminal.commandDot.askAi")}` : ""),
+      onFailedClick: ({ command, exit, output }) =>
+        callbacks.current.onExplainFailure?.(
+          [
+            t("terminal.commandDot.attached", { command: command || "?", code: exit }),
+            output === null ? t("terminal.commandDot.outputGone") : output || t("terminal.commandDot.noOutput"),
+          ].join("\n"),
+          t("terminal.commandDot.question"),
+        ),
     });
     blocksRef.current = blocks;
     let errorsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1080,7 +1092,7 @@ export function TerminalView({
       term.parser.registerOscHandler(133, (data) => {
         const mark = parseOsc133(data);
         if (!mark) return true;
-        blocks.mark(mark);
+        blocks.mark(mark, mark.kind === "C" ? lastSent : undefined);
         if (mark.kind === "C") commandRunning = true;
         else if (mark.kind === "A" || mark.kind === "D") commandRunning = false;
         if (mark.kind === "C") commandTimer.started(lastSent);

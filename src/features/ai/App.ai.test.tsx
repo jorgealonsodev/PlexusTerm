@@ -25,6 +25,7 @@ interface StubProps {
   registerAssistTarget?: (target: AssistTarget) => () => void;
   aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
   onAskAi?: () => void;
+  onExplainFailure?: (text: string, question: string) => void;
 }
 
 /** What the fake terminals were sent (by terminal number), their selection, and the latest aiSuggest. */
@@ -49,6 +50,7 @@ vi.mock("../terminal/TerminalView", () => ({
     registerAssistTarget,
     aiSuggest,
     onAskAi,
+    onExplainFailure,
   }: StubProps) {
     const [id] = useState(() => pane.next++);
     pane.aiSuggest = aiSuggest ?? null;
@@ -74,6 +76,7 @@ vi.mock("../terminal/TerminalView", () => ({
         <button onClick={() => onInput?.(`typed in ${id}`)}>type in {id}</button>
         <button onClick={() => onExit?.(0)}>exit {id}</button>
         <button onClick={() => onAskAi?.()}>ask ai in {id}</button>
+        <button onClick={() => onExplainFailure?.("make failed:\nerror: missing ;", "Why did it fail?")}>explain failure in {id}</button>
       </div>
     );
   },
@@ -567,6 +570,15 @@ describe("AI chat pane (S3, S5, S9)", () => {
     await settle();
     expect(chats()).toHaveLength(1);
     expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("permission denied");
+  });
+
+  it("a failed command's dot opens the chat with the command and its output attached and the question typed", async () => {
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "explain failure in 1" }));
+    await settle();
+    expect(chats()).toHaveLength(1);
+    expect(within(chat()).getByLabelText("Selected text to send").textContent).toBe("make failed:\nerror: missing ;");
+    expect((within(chat()).getByRole("textbox") as HTMLTextAreaElement).value).toBe("Why did it fail?");
   });
 
   it("sends an attached selection alone, asking to explain it (L13)", async () => {

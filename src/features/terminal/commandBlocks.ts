@@ -53,15 +53,26 @@ interface Block {
   output: Marker | null;
   /** When the command started running (C), by `now`. */
   startedAt: number | null;
+  /** The command line that ran ("" when not known). */
+  command: string;
   /** Where the command finished (D): the output ends before this column of this row. */
   end: { marker: Marker; col: number } | null;
   /** The dot beside a failed command's prompt. */
   failed: Decoration | null;
 }
 
+/** A failed command, as a click on its dot reports it. */
+export interface FailedCommand {
+  command: string;
+  exit: number;
+  /** What it printed; null when it scrolled out of the buffer. */
+  output: string | null;
+  ms: number | null;
+}
+
 export interface CommandBlocks {
-  /** Takes one shell mark at the cursor. */
-  mark(mark: ShellMark): void;
+  /** Takes one shell mark at the cursor; with C, the command line that runs. */
+  mark(mark: ShellMark, command?: string): void;
   /**
    * Whether there are prompts to jump to (of failed commands, with `failedOnly`): the shell marks
    * its commands and no full-screen program is up.
@@ -119,6 +130,8 @@ export function attachCommandBlocks(
     jumpColor: () => string;
     /** What the dot of a failed command says on hover: its exit code and how long it ran (ms, null if unknown). */
     failedTitle?: (exit: number, ms: number | null) => string;
+    /** A failed command's dot was clicked (to ask the AI about it). */
+    onFailedClick?: (failure: FailedCommand) => void;
     now?: () => number;
     maxBlocks?: number;
   },
@@ -160,7 +173,8 @@ export function attachCommandBlocks(
     // A command that never ran (an empty line, Ctrl+C at the prompt) has no output to mark.
     if (exit === null || exit === 0 || !block.output) return;
     const color = options.failedColor();
-    const title = options.failedTitle?.(exit, block.startedAt === null ? null : now() - block.startedAt) ?? "";
+    const ms = block.startedAt === null ? null : now() - block.startedAt;
+    const title = options.failedTitle?.(exit, ms) ?? "";
     const decoration = term.registerDecoration({ marker: block.prompt, x: 0, width: 1, layer: "top" });
     decoration?.onRender((element) => {
       element.classList.add("command-failed");
@@ -182,12 +196,23 @@ export function attachCommandBlocks(
       // The dot alone takes the pointer, to say how the command ended.
       dot.style.pointerEvents = "auto";
       dot.title = title;
+      if (options.onFailedClick) {
+        dot.style.cursor = "pointer";
+        dot.addEventListener("click", () =>
+          options.onFailedClick?.({
+            command: block.command,
+            exit,
+            output: block.prompt.isDisposed ? null : outputAt(block.prompt.line),
+            ms,
+          }),
+        );
+      }
       element.appendChild(dot);
     });
     block.failed = decoration ?? null;
   };
 
-  const mark = (shellMark: ShellMark) => {
+  const mark = (shellMark: ShellMark, command = "") => {
     // Marks a program prints in the alternate screen (a full-screen app) are not the shell's.
     if (term.buffer.active.type !== "normal") return;
     const current = last(live());
@@ -197,7 +222,7 @@ export function attachCommandBlocks(
         if (current && !current.output && current.prompt.line === cursorRow()) return;
         const prompt = term.registerMarker(0);
         if (!prompt) return;
-        blocks.push({ prompt, output: null, startedAt: null, end: null, failed: null });
+        blocks.push({ prompt, output: null, startedAt: null, command: "", end: null, failed: null });
         while (blocks.length > maxBlocks) disposeBlock(blocks.shift()!);
         return;
       }
@@ -205,6 +230,7 @@ export function attachCommandBlocks(
         if (current && !current.output && !current.end) {
           current.output = term.registerMarker(0) ?? null;
           current.startedAt = now();
+          current.command = command;
         }
         return;
       case "D":
