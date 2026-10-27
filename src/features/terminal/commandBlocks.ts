@@ -157,13 +157,13 @@ export function attachCommandBlocks(
       // Clicks on the prompt's first cell still select text.
       element.style.pointerEvents = "none";
       if (element.firstChild) return;
-      // A dot in the pane's padding, left of the prompt, so it never covers the first character.
-      // Fonts leave their spare room above the letters, so it sits below the row's middle, beside them.
+      // A dot centred in the pane's 12 px left padding (App.css), level with the row's middle, so
+      // it never covers the first character.
       const dot = document.createElement("div");
       Object.assign(dot.style, {
         position: "absolute",
-        left: "-6px",
-        top: "calc(58% - 2.5px)",
+        left: "-8.5px",
+        top: "calc(50% - 2.5px)",
         width: "5px",
         height: "5px",
         borderRadius: "50%",

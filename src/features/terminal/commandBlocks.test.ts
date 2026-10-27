@@ -179,7 +179,7 @@ describe("failed commands", () => {
     const dot = term.decorations[0].element.firstElementChild as HTMLElement;
     expect(dot.style.background).toBe("rgb(255, 0, 0)");
     expect(dot.style.borderRadius).toBe("50%");
-    expect(dot.style.left).toBe("-6px");
+    expect(dot.style.left).toBe("-8.5px");
     expect(term.decorations[0].element.style.pointerEvents).toBe("none");
   });
 

@@ -248,7 +248,8 @@ textarea::placeholder {
 .terminal-host {
   position: absolute;
   inset: 0;
-  padding: 6px;
+  /* The wider left side holds the dot of a failed command (commandBlocks.ts). */
+  padding: 6px 6px 6px 12px;
   /* xterm's FitAddon reads this element's height and width as the room for the rows and
      columns: with border-box they would count the padding, and the last row would overlap
      the bar under the terminal. */
