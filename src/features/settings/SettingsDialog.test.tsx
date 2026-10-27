@@ -93,7 +93,8 @@ describe("SettingsDialog", () => {
     fireEvent.keyDown(search, { key: "Escape" });
     expect((search as HTMLInputElement).value).toBe("");
     expect(onCancel).not.toHaveBeenCalled();
-    expect(shown(screen.getByLabelText("Hide the sidebar completely when folded"))).toBe(true);
+    // Back to General, the open section: its options show again, Appearance's are hidden.
+    expect(shown(screen.getByLabelText("Check for updates at startup"))).toBe(true);
     expect(shown(screen.getByLabelText("Show only icons in the toolbar"))).toBe(false);
     fireEvent.keyDown(search, { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -262,9 +263,31 @@ describe("SettingsDialog", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, devCommands: ["claude", "aider", "codex"] });
   });
 
+  it("groups every option with the ones it belongs with, so searching a group's name shows all of them", () => {
+    setup();
+    const shown = (el: Element) => !el.closest("[hidden], [data-search-hidden]");
+    const search = screen.getByRole("searchbox", { name: "Search settings" });
+    const groupShows = (group: string, inside: string[], outside: string[]) => {
+      fireEvent.change(search, { target: { value: group } });
+      for (const label of inside) expect(shown(screen.getByLabelText(label)), `${label} in ${group}`).toBe(true);
+      for (const label of outside) expect(shown(screen.getByLabelText(label)), `${label} not in ${group}`).toBe(false);
+    };
+    // The AI options after the plan usage key used to fall under its heading.
+    groupShows("Command suggestions", ["AI suggestions", "History commands sent as context"], ["Keep AI conversations after closing PlexusTerm"]);
+    groupShows("Chat", ["Keep AI conversations after closing PlexusTerm"], ["History commands sent as context"]);
+    groupShows("Notifications", [
+      "Desktop notifications when a terminal needs attention",
+      "Notify when a command takes longer than (seconds)",
+    ], ["Show size and date in file lists"]);
+    groupShows("Commands and folders", ["In DEV mode, the + opens in"], ["Hide the sidebar completely when folded"]);
+    groupShows("Window and panes", ["Hide the sidebar completely when folded", "Show only icons in the toolbar"], ["In DEV mode, the + opens in"]);
+    groupShows("Viewer and editor", ["Open the file viewer"], ["Show size and date in file lists"]);
+  });
+
   it("keeps an OpenCode Go key for the usage apart from the AI one, and hides it with the usage", async () => {
     const { onSave } = setup();
-    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+    // With the rest of the bar under the terminal, in DEV mode.
+    fireEvent.click(screen.getByRole("tab", { name: "DEV mode" }));
     const usageKey = () => screen.getByLabelText("OpenCode Go API key for the usage") as HTMLInputElement;
     const usageField = () => within(usageKey().closest(".field") as HTMLElement);
     expect(await usageField().findByText("No key saved")).toBeTruthy();

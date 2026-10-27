@@ -519,7 +519,7 @@ impl AiClient {
             None => load_key(secrets, provider).await?.ok_or_else(|| {
                 AiError::new(
                     AiErrorKind::NoKey,
-                    "No OpenCode Go API key is saved. Add one in Settings > Terminal (usage) or Settings > AI.",
+                    "No OpenCode Go API key is saved. Add one in Settings > DEV mode (bar under the terminal) or Settings > AI.",
                 )
             })?,
         };
