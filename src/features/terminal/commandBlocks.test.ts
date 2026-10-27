@@ -209,6 +209,16 @@ describe("failed commands", () => {
     expect(clicked).toEqual([{ command: "make", exit: 2, output: "cc main.c\nerror: missing ;", ms: 1000 }]);
   });
 
+  it("remember the last command that failed, to run it again", () => {
+    const { term, blocks } = setup();
+    expect(blocks.lastFailedCommand()).toBeNull();
+    term.run("make", [], 2);
+    term.run("ls", [], 0);
+    expect(blocks.lastFailedCommand()).toBe("make");
+    term.run("npm test", [], 1);
+    expect(blocks.lastFailedCommand()).toBe("npm test");
+  });
+
   it("are marked once when the shell sends its marks twice (fish 4 and ours)", () => {
     const { term } = setup();
     term.mark("A");

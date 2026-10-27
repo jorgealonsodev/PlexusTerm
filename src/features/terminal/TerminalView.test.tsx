@@ -1780,6 +1780,33 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual(["du -sh * | sort -h"]);
     });
 
+    it("runs the last failed command again with its bound key, only at the prompt", async () => {
+      const history = historyWith();
+      await renderView({ history, settings: { ...DEFAULT_SETTINGS, shortcuts: { rerunFailedCommand: "Alt+R" } } });
+      const press = () =>
+        act(() => void term().keyHandler({ type: "keydown", key: "r", ctrlKey: false, shiftKey: false, altKey: true, metaKey: false }));
+      act(() => {
+        term().osc(133, "A");
+        term().line = "$ ";
+        term().osc(133, "B");
+      });
+      typeAt("$ ", "make");
+      act(() => {
+        term().type("\r");
+        term().osc(133, "C");
+      });
+      // While it runs, the key does nothing.
+      press();
+      expect(backend.write).not.toHaveBeenLastCalledWith(7, expect.stringContaining("make\r"));
+      act(() => {
+        term().osc(133, "D;2");
+        term().osc(133, "A");
+      });
+      backend.write.mockClear();
+      press();
+      expect(backend.write).toHaveBeenLastCalledWith(7, "\x05\x15make\r");
+    });
+
     it("runs a command from the AI chat: clears what was typed, sends it with Enter and records it", async () => {
       const history = historyWith();
       const onInput = vi.fn();

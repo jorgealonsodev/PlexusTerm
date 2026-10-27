@@ -280,6 +280,7 @@ export const settings = {
       copyCommandOutput: "Copy the last command's output",
       previousFailedCommand: "Scroll to the previous failed command",
       nextFailedCommand: "Scroll to the next failed command",
+      rerunFailedCommand: "Run the last failed command again",
       clear: "Clear the terminal",
       saveOutput: "Save output to a file",
       toggleLogging: "Start or stop logging",

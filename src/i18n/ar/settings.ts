@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       copyCommandOutput: "نسخ مخرجات آخر أمر",
       previousFailedCommand: "الانتقال إلى الأمر الفاشل السابق",
       nextFailedCommand: "الانتقال إلى الأمر الفاشل التالي",
+      rerunFailedCommand: "إعادة تشغيل آخر أمر فاشل",
       clear: "مسح الطرفية",
       saveOutput: "حفظ المخرجات في ملف",
       toggleLogging: "بدء التسجيل أو إيقافه",

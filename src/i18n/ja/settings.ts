@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       copyCommandOutput: "最後のコマンドの出力をコピー",
       previousFailedCommand: "前の失敗したコマンドへ移動",
       nextFailedCommand: "次の失敗したコマンドへ移動",
+      rerunFailedCommand: "最後に失敗したコマンドを再実行",
       clear: "ターミナルをクリア",
       saveOutput: "出力をファイルに保存",
       toggleLogging: "ログ記録の開始/停止",

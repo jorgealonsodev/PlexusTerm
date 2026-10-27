@@ -88,6 +88,8 @@ export interface CommandBlocks {
    * that ran when `row` is omitted; null when there is no such command or it printed nothing yet.
    */
   outputAt(row?: number): string | null;
+  /** The command line of the last command that failed, to run it again; null when none did. */
+  lastFailedCommand(): string | null;
   dispose(): void;
 }
 
@@ -306,6 +308,7 @@ export function attachCommandBlocks(
       term.buffer.active.type === "normal" && live().some((block) => !failedOnly || block.failed !== null),
     jump,
     outputAt,
+    lastFailedCommand: () => last(live().filter((block) => block.failed !== null && block.command !== ""))?.command ?? null,
     dispose: () => {
       endFlash();
       blocks.forEach(disposeBlock);

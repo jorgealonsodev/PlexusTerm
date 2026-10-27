@@ -1490,6 +1490,7 @@ function AppContent() {
         case "copyCommandOutput":
         case "previousFailedCommand":
         case "nextFailedCommand":
+        case "rerunFailedCommand":
           if (fromPalette && activeTab) paneShortcuts.get(activeTab.focusedPane)?.(shortcut);
           return;
       }

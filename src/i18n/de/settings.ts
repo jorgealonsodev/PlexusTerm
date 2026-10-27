@@ -282,6 +282,7 @@ export const settings: Messages<typeof en> = {
       copyCommandOutput: "Ausgabe des letzten Befehls kopieren",
       previousFailedCommand: "Zum vorherigen fehlgeschlagenen Befehl springen",
       nextFailedCommand: "Zum nächsten fehlgeschlagenen Befehl springen",
+      rerunFailedCommand: "Letzten fehlgeschlagenen Befehl erneut ausführen",
       clear: "Terminal leeren",
       saveOutput: "Ausgabe in eine Datei speichern",
       toggleLogging: "Protokollierung starten oder beenden",

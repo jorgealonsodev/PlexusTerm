@@ -323,6 +323,8 @@ export function TerminalView({
   const compiledRulesRef = useRef(compileRules(settings.highlightRules));
   /** The commands the shell's marks delimit; empty without shell integration. */
   const blocksRef = useRef<CommandBlocks | null>(null);
+  /** Runs the last failed command again, at the prompt. */
+  const rerunFailedRef = useRef(() => {});
   const searchRef = useRef<SearchAddon | null>(null);
   /** The WebGL renderer while it draws this terminal; null means xterm's own (DOM) renderer. */
   const webglRef = useRef<WebglAddon | null>(null);
@@ -983,6 +985,24 @@ export function TerminalView({
       },
     });
 
+    /** Replaces the typed line with `text` and sends it with Enter; refused where keys would go astray. */
+    const runLine = (text: string) => {
+      // One plain line only: a line break or control character would press keys of its own.
+      // eslint-disable-next-line no-control-regex
+      if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(text)) return false;
+      if (fullScreen() || atSecretPrompt()) return false;
+      // Clear the line first: whatever was half typed (even after Tab or arrows) is removed,
+      // so the line sent is exactly the command.
+      write(`${clearLineKeys(platformRef.current, target.type, runningShellOf(target, shellsRef.current))}${text}\r`);
+      line = EMPTY_LINE;
+      track(`${text}\r`);
+      return true;
+    };
+    // Again at the prompt only: while a command runs, its keys belong to it.
+    rerunFailedRef.current = () => {
+      const command = blocks.lastFailedCommand();
+      if (command && !commandRunning) runLine(command);
+    };
     const unregisterAssistTarget = callbacks.current.registerAssistTarget?.({
       selection: () => (term.hasSelection() ? term.getSelection() : ""),
       focus: () => term.focus(),
@@ -990,18 +1010,7 @@ export function TerminalView({
         write(text);
         track(text);
       },
-      run: (text) => {
-        // One plain line only: a line break or control character would press keys of its own.
-        // eslint-disable-next-line no-control-regex
-        if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(text)) return false;
-        if (fullScreen() || atSecretPrompt()) return false;
-        // Clear the line first: whatever was half typed (even after Tab or arrows) is removed,
-        // so the line sent is exactly the command.
-        write(`${clearLineKeys(platformRef.current, target.type, runningShellOf(target, shellsRef.current))}${text}\r`);
-        line = EMPTY_LINE;
-        track(`${text}\r`);
-        return true;
-      },
+      run: runLine,
       lineEmpty: () => {
         if (fullScreen() || atSecretPrompt()) return false;
         const marked = markedLine();
@@ -1467,6 +1476,7 @@ export function TerminalView({
     else if (shortcut.type === "nextCommand") blocksRef.current?.jump("next");
     else if (shortcut.type === "previousFailedCommand") blocksRef.current?.jump("previous", true);
     else if (shortcut.type === "nextFailedCommand") blocksRef.current?.jump("next", true);
+    else if (shortcut.type === "rerunFailedCommand") rerunFailedRef.current();
     else if (shortcut.type === "copyCommandOutput") copyCommandOutput();
   };
 
