@@ -157,15 +157,15 @@ export function attachCommandBlocks(
       // Clicks on the prompt's first cell still select text.
       element.style.pointerEvents = "none";
       if (element.firstChild) return;
-      // A dot centred in the pane's 12 px left padding (App.css), level with the row's middle, so
-      // it never covers the first character.
+      // A dot centred in the pane's 12 px left padding (App.css), so it never covers the first
+      // character, and a little below the row's middle: level with the middle of lowercase letters.
       const dot = document.createElement("div");
       Object.assign(dot.style, {
         position: "absolute",
-        left: "-8.5px",
-        top: "calc(50% - 2.5px)",
-        width: "5px",
-        height: "5px",
+        left: "-9.5px",
+        top: "calc(56% - 3.5px)",
+        width: "7px",
+        height: "7px",
         borderRadius: "50%",
         background: color,
       });
