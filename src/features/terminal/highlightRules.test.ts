@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   compileRules,
+  EXAMPLE_RULE,
   DEFAULT_RULE_COLOR,
   MAX_RULES,
   parseHighlightRules,
@@ -41,6 +42,15 @@ describe("ruleError", () => {
   it("explains a regular expression that cannot be used, and accepts the others", () => {
     expect(ruleError(rule("ERROR|WARN"))).toBeNull();
     expect(ruleError(rule("(unclosed"))).toMatch(/.+/);
+  });
+});
+
+describe("the example rule", () => {
+  it("finds IPv4 addresses, not version numbers", () => {
+    const rules = compileRules([EXAMPLE_RULE]);
+    const found = (text: string) => ruleMatches(text, rules).map((m) => text.slice(m.start, m.end));
+    expect(found("ping 192.168.1.20 from 10.0.0.1")).toEqual(["192.168.1.20", "10.0.0.1"]);
+    expect(found("node v20.11.1 and 1.2.3")).toEqual([]);
   });
 });
 

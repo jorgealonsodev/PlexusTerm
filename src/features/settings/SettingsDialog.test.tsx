@@ -9,6 +9,7 @@ import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, type TerminalSettings } from "./
 import { ShellsContext } from "../platform/useShells";
 import { UpdateInstallationProvider } from "../updates/UpdateInstallation";
 import type { ReactNode } from "react";
+import { EXAMPLE_RULE } from "../terminal/highlightRules";
 
 const render = (ui: ReactNode) => renderUi(<UpdateInstallationProvider>{ui}</UpdateInstallationProvider>);
 
@@ -287,22 +288,24 @@ describe("SettingsDialog", () => {
   it("edits the highlight rules in Terminal: add, explain an invalid expression, remove, and drop empty ones", () => {
     const { onSave } = setup();
     fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+    // The example rule is there to start with.
+    expect((screen.getByLabelText("Regular expression of rule 1") as HTMLInputElement).value).toBe(EXAMPLE_RULE.pattern);
     const add = () => fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
     add();
     add();
     add();
-    fireEvent.change(screen.getByLabelText("Regular expression of rule 1"), { target: { value: "ERROR|FATAL" } });
-    fireEvent.change(screen.getByLabelText("Colour of rule 1"), { target: { value: "#ff8800" } });
-    fireEvent.click(within(screen.getByLabelText("Regular expression of rule 1").closest(".rules__row") as HTMLElement).getByLabelText("Notify"));
-    fireEvent.change(screen.getByLabelText("Regular expression of rule 2"), { target: { value: "(unclosed" } });
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 2"), { target: { value: "ERROR|FATAL" } });
+    fireEvent.change(screen.getByLabelText("Colour of rule 2"), { target: { value: "#ff8800" } });
+    fireEvent.click(within(screen.getByLabelText("Regular expression of rule 2").closest(".rules__row") as HTMLElement).getByLabelText("Notify"));
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 3"), { target: { value: "(unclosed" } });
     expect(screen.getByRole("alert").textContent).toMatch(/^This expression cannot be used: /);
-    fireEvent.click(screen.getByRole("button", { name: "Remove rule 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove rule 3" }));
     expect(screen.queryByRole("alert")).toBeNull();
-    // Rule 3 (now 2) has no expression: it is dropped on save.
+    // Rule 4 (now 3) has no expression: it is dropped on save.
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        highlightRules: [{ pattern: "ERROR|FATAL", color: "#ff8800", matchCase: false, notify: true }],
+        highlightRules: [EXAMPLE_RULE, { pattern: "ERROR|FATAL", color: "#ff8800", matchCase: false, notify: true }],
       }),
     );
   });

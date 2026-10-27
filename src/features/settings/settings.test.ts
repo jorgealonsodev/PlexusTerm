@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EXAMPLE_RULE } from "../terminal/highlightRules";
 import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
@@ -56,7 +57,7 @@ describe("parseSettings", () => {
       shiftEnterNewline: true,
       attentionNotifications: true,
       commandNotifySeconds: 10,
-      highlightRules: [],
+      highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -190,7 +191,7 @@ describe("parseSettings", () => {
       shiftEnterNewline: true,
       attentionNotifications: true,
       commandNotifySeconds: 10,
-      highlightRules: [],
+      highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -572,6 +573,14 @@ describe("interface and chat text sizes", () => {
     expect(stepChatFontSize(24, "increase")).toBe(24);
     expect(stepChatFontSize(10, "decrease")).toBe(10);
     expect(stepChatFontSize(20, "reset")).toBe(13);
+  });
+});
+
+describe("highlight rules", () => {
+  it("start with the example rule, and keep an emptied list empty", () => {
+    expect(parseSettings(null).highlightRules).toEqual([EXAMPLE_RULE]);
+    expect(parseSettings(JSON.stringify({ version: 2, fontSize: 14 })).highlightRules).toEqual([EXAMPLE_RULE]);
+    expect(parseSettings(JSON.stringify({ highlightRules: [] })).highlightRules).toEqual([]);
   });
 });
 

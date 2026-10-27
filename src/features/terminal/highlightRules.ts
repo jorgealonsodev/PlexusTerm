@@ -22,6 +22,14 @@ export const MAX_LINE = 4096;
 const hexColor = (value: unknown) =>
   typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim()) ? value.trim().toLowerCase() : DEFAULT_RULE_COLOR;
 
+/** The rule a new install starts with, as an example to copy: IPv4 addresses in cyan. */
+export const EXAMPLE_RULE: HighlightRule = {
+  pattern: "\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b",
+  color: "#56b6c2",
+  matchCase: false,
+  notify: false,
+};
+
 /** The rules kept in settings.json; ones without a pattern are dropped. */
 export function parseHighlightRules(value: unknown): HighlightRule[] {
   if (!Array.isArray(value)) return [];

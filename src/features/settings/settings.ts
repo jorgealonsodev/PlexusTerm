@@ -12,7 +12,7 @@ import { isValidShortcut } from "./shortcutCapture";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPacks";
-import { parseHighlightRules, type HighlightRule } from "../terminal/highlightRules";
+import { EXAMPLE_RULE, parseHighlightRules, type HighlightRule } from "../terminal/highlightRules";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -273,7 +273,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shiftEnterNewline: true,
   attentionNotifications: true,
   commandNotifySeconds: 10,
-  highlightRules: [],
+  // One rule to show how they work; removing it keeps the list empty.
+  highlightRules: [EXAMPLE_RULE],
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
@@ -530,7 +531,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
     commandNotifySeconds: size(value.commandNotifySeconds, clampCommandNotifySeconds, d.commandNotifySeconds),
-    highlightRules: parseHighlightRules(value.highlightRules),
+    highlightRules: Array.isArray(value.highlightRules) ? parseHighlightRules(value.highlightRules) : d.highlightRules,
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
