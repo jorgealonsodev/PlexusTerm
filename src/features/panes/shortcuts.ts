@@ -26,6 +26,13 @@ export type Shortcut =
   | { type: "copy" }
   | { type: "paste" }
   | { type: "selectAll" }
+  /** Command blocks: the prompt before or after, and the last command's output (shell integration). */
+  | { type: "previousCommand" }
+  | { type: "nextCommand" }
+  | { type: "copyCommandOutput" }
+  | { type: "previousFailedCommand" }
+  | { type: "nextFailedCommand" }
+  | { type: "rerunFailedCommand" }
   | { type: "clear" }
   | { type: "saveOutput" }
   | { type: "toggleLogging" }
@@ -47,6 +54,10 @@ export type Shortcut =
   | { type: "tool"; tool: ToolId }
   | { type: "toggleRemoteMonitor" }
   | { type: "openSettings" }
+  /** One box to reach every action, saved session, macro, tab and Settings section. */
+  | { type: "commandPalette" }
+  /** The commands run before on the focused terminal's computer, to type one again. */
+  | { type: "searchHistory" }
   /** The active tab's DEV mode on or off (S10). */
   | { type: "toggleDevMode" }
   /** Folds DEV mode's tab column to its icons (or hides it) and opens it again. */
@@ -89,6 +100,12 @@ export const SHORTCUT_ACTIONS = {
   copy: { shortcut: { type: "copy" }, group: "terminal", defaults: ["Ctrl+Shift+C"] },
   paste: { shortcut: { type: "paste" }, group: "terminal", defaults: ["Ctrl+Shift+V"] },
   selectAll: { shortcut: { type: "selectAll" }, group: "terminal", defaults: [] },
+  previousCommand: { shortcut: { type: "previousCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowUp"] },
+  nextCommand: { shortcut: { type: "nextCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowDown"] },
+  copyCommandOutput: { shortcut: { type: "copyCommandOutput" }, group: "terminal", defaults: [] },
+  previousFailedCommand: { shortcut: { type: "previousFailedCommand" }, group: "terminal", defaults: [] },
+  nextFailedCommand: { shortcut: { type: "nextFailedCommand" }, group: "terminal", defaults: [] },
+  rerunFailedCommand: { shortcut: { type: "rerunFailedCommand" }, group: "terminal", defaults: [] },
   clear: { shortcut: { type: "clear" }, group: "terminal", defaults: [] },
   saveOutput: { shortcut: { type: "saveOutput" }, group: "terminal", defaults: [] },
   toggleLogging: { shortcut: { type: "toggleLogging" }, group: "terminal", defaults: [] },
@@ -116,6 +133,8 @@ export const SHORTCUT_ACTIONS = {
   wakeOnLan: { shortcut: { type: "tool", tool: "wakeOnLan" }, group: "tools", defaults: [] },
   toggleRemoteMonitor: { shortcut: { type: "toggleRemoteMonitor" }, group: "tools", defaults: [] },
   openSettings: { shortcut: { type: "openSettings" }, group: "tools", defaults: [] },
+  commandPalette: { shortcut: { type: "commandPalette" }, group: "tools", defaults: ["Ctrl+Shift+P"] },
+  searchHistory: { shortcut: { type: "searchHistory" }, group: "terminal", defaults: ["Ctrl+Shift+H"] },
 } satisfies Record<string, ShortcutAction>;
 
 export type ShortcutActionId = keyof typeof SHORTCUT_ACTIONS;

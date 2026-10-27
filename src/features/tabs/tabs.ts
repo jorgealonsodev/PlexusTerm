@@ -19,6 +19,8 @@ export interface ChatLink {
   terminalPaneId: string;
   /** Terminal selection when the chat opened, offered with its first question ("" for none). */
   selection: string;
+  /** A question already typed in the chat when it opens (a failed command to explain). */
+  question?: string;
 }
 
 /** A file viewer pane: the file it shows and the terminal pane it opened next to. */
@@ -102,7 +104,7 @@ export type TabsAction =
   | { type: "setColor"; key: string; color: string | null }
   | { type: "split"; key: string; direction: SplitDirection }
   /** The AI chat key (S9): see `chatAction`. */
-  | { type: "openChat"; key: string; selection: string }
+  | { type: "openChat"; key: string; selection: string; question?: string }
   /** Shows a file in the viewer of the focused terminal, opening one at its left if it has none. */
   /** `position` places a new viewer next to its terminal; "left" when omitted. */
   | { type: "openViewer"; key: string; path: string; origin: PathOrigin; position?: ViewerPosition }
@@ -221,7 +223,9 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
       const pane = `pane-${state.nextPaneSeq}`;
       const layout = splitPane(tab.layout, next.terminalPaneId, "column", pane);
       if (layout === tab.layout) return state;
-      const chats = { ...tab.chats, [pane]: { terminalPaneId: next.terminalPaneId, selection: action.selection } };
+      const link: ChatLink = { terminalPaneId: next.terminalPaneId, selection: action.selection };
+      if (action.question) link.question = action.question;
+      const chats = { ...tab.chats, [pane]: link };
       return {
         ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, chats })),
         nextPaneSeq: state.nextPaneSeq + 1,

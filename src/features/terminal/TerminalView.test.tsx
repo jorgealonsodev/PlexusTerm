@@ -134,6 +134,10 @@ vi.mock("@xterm/xterm", () => ({
       const marker = { line: 0, isDisposed: false, dispose: () => void (marker.isDisposed = true) };
       return marker;
     }
+    /** The dot beside a failed command's prompt (commandBlocks.ts). */
+    registerDecoration() {
+      return { onRender: () => ({ dispose() {} }), dispose() {} };
+    }
     dataHandlers: ((data: string) => void)[] = [];
     type(data: string) {
       this.dataHandlers.forEach((handler) => handler(data));
@@ -877,6 +881,24 @@ describe("TerminalView", () => {
         expect(onPrompt).toHaveBeenCalled();
       });
 
+      it("ignores the folder a running program reports, and takes the shell's at its prompt", () => {
+        const onCwd = vi.fn();
+        renderView({ onCwd });
+        // gentle-shell, an AI tool, reported its own folder while it ran (the Explorer jumped there).
+        term().osc(133, "A");
+        term().osc(133, "B");
+        term().osc(133, "C");
+        term().osc(7, "file://host/home/me/.gentle-shell/gentle-ai");
+        term().osc(9, "9;C:\\Users\\me\\tool");
+        expect(onCwd).not.toHaveBeenCalled();
+        // Back at the prompt, the shell's own report counts.
+        term().osc(133, "D;0");
+        term().osc(7, "file://host/home/me/project");
+        term().osc(133, "A");
+        expect(onCwd).toHaveBeenCalledTimes(1);
+        expect(onCwd).toHaveBeenCalledWith("/home/me/project");
+      });
+
       it("still keeps the folder reported through OSC 7", () => {
         const onCwd = vi.fn();
         renderView({ onCwd });
@@ -1107,6 +1129,114 @@ describe("TerminalView", () => {
       expect(term().clear).toHaveBeenCalled();
     });
 
+    it("copies a command's output from the menu or its shortcut once the shell marks its commands", async () => {
+      clipboard.writeText.mockClear();
+      const { container } = renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { copyCommandOutput: "Alt+O" } } });
+      const items = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+      const press = (key: string, mods: Partial<KeyboardEvent>) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      rightClick(container, { ctrlKey: true });
+      expect(items()).not.toContain("Copy command output");
+      fireEvent.keyDown(screen.getAllByRole("menuitem")[0], { key: "Escape" });
+      act(() => void press("o", { altKey: true }));
+      expect(clipboard.writeText).not.toHaveBeenCalled();
+
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "B");
+        term().osc(133, "C");
+        term().line = "hello";
+        term().osc(133, "D;0");
+      });
+      rightClick(container, { ctrlKey: true });
+      fireEvent.click(screen.getByRole("menuitem", { name: "Copy command output" }));
+      expect(clipboard.writeText).toHaveBeenLastCalledWith("hello");
+      clipboard.writeText.mockClear();
+      act(() => void press("o", { altKey: true }));
+      expect(clipboard.writeText).toHaveBeenCalledWith("hello");
+    });
+
+    it("moves between failed commands with their bound keys, and leaves the keys to the program while none failed", () => {
+      renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { previousFailedCommand: "Alt+F" } } });
+      const press = () =>
+        term().keyHandler({ type: "keydown", key: "f", ctrlKey: false, shiftKey: false, altKey: true, metaKey: false });
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "C");
+        term().osc(133, "D;0");
+      });
+      expect(press()).toBe(true);
+      act(() => {
+        term().osc(133, "A");
+        term().osc(133, "C");
+        term().osc(133, "D;2");
+      });
+      expect(press()).toBe(false);
+    });
+
+    it("takes Ctrl+Shift+Up and Ctrl+Shift+Down to move between prompts only while the shell marks them", () => {
+      renderView();
+      const press = (key: string) =>
+        term().keyHandler({ type: "keydown", key, ctrlKey: true, shiftKey: true, altKey: false, metaKey: false });
+      // No marks (a remote shell, integration off): the keys reach the program.
+      expect(press("ArrowUp")).toBe(true);
+      expect(press("ArrowDown")).toBe(true);
+      act(() => void term().osc(133, "A"));
+      expect(press("ArrowUp")).toBe(false);
+      expect(press("ArrowDown")).toBe(false);
+      // A full-screen program (vim, tmux) keeps them.
+      term().bufferType = "alternate";
+      expect(press("ArrowUp")).toBe(true);
+    });
+
+    it("says when a command the shell marks ran past the threshold, with its exit and duration", () => {
+      const onAttention = vi.fn();
+      let now = 0;
+      const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+      try {
+        renderView({ onAttention, settings: { ...DEFAULT_SETTINGS, commandNotifySeconds: 10 } });
+        const run = (command: string, seconds: number, exit: number) =>
+          act(() => {
+            term().osc(133, "A");
+            term().line = "$ ";
+            term().osc(133, "B");
+            term().type(command);
+            // The shell echoes it: with the marks, Enter takes the command line from the screen.
+            term().line = `$ ${command}`;
+            term().type("\r");
+            term().osc(133, "C");
+            now += seconds * 1000;
+            term().osc(133, `D;${exit}`);
+          });
+        run("ls", 2, 0);
+        expect(onAttention).not.toHaveBeenCalled();
+        run("make", 15, 2);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Command failed (exit 2)", body: "make · 15 s" });
+        run("npm test", 134, 0);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Command finished", body: "npm test · 2 min 14 s" });
+        expect(onAttention).toHaveBeenCalledTimes(2);
+      } finally {
+        clock.mockRestore();
+      }
+    });
+
+    it("says nothing about long commands when the threshold is 0", () => {
+      const onAttention = vi.fn();
+      let now = 0;
+      const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+      try {
+        renderView({ onAttention, settings: { ...DEFAULT_SETTINGS, commandNotifySeconds: 0 } });
+        act(() => {
+          term().osc(133, "C");
+          now += 600_000;
+          term().osc(133, "D;0");
+        });
+        expect(onAttention).not.toHaveBeenCalled();
+      } finally {
+        clock.mockRestore();
+      }
+    });
+
     it("hands the assistant the pane's selection and a way to focus it back (S3)", () => {
       let assist: { selection: () => string; focus: () => void } | null = null;
       const unregister = vi.fn();
@@ -1147,7 +1277,11 @@ describe("TerminalView", () => {
       expect(t.linkProviders).toHaveLength(1);
     });
 
-    it("logs received output to the chosen file without escape sequences", async () => {
+    /** Logs one bold line with `logTimestamps` and returns what was appended to the file. */
+    const logOneLine = async (logTimestamps: boolean) => {
+      // A pane closed by an earlier test may still be flushing its log.
+      await settle();
+      vi.mocked(invoke).mockClear();
       let emit: (msg: { event: string; data: unknown }) => void = () => {};
       backend.start.mockImplementationOnce((_options, onEvent) => {
         emit = onEvent as typeof emit;
@@ -1155,7 +1289,7 @@ describe("TerminalView", () => {
       });
       const onLogging = vi.fn();
       const { container, unmount } = renderView({
-        settings: { ...DEFAULT_SETTINGS, rightClickPastes: false },
+        settings: { ...DEFAULT_SETTINGS, rightClickPastes: false, logTimestamps },
         onLogging,
       });
       await settle();
@@ -1164,9 +1298,22 @@ describe("TerminalView", () => {
       await vi.waitFor(() => expect(onLogging).toHaveBeenCalledWith("/tmp/session.log"));
       act(() => emit({ event: "output", data: "\x1b[1mbold\x1b[0m\r\n" }));
       unmount(); // closing the pane flushes the log
-      await vi.waitFor(() =>
-        expect(vi.mocked(invoke)).toHaveBeenCalledWith("append_text_file", { path: "/tmp/session.log", contents: "bold\n" }),
-      );
+      let contents = "";
+      await vi.waitFor(() => {
+        const call = vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "append_text_file").pop();
+        expect(call).toBeTruthy();
+        contents = (call![1] as { path: string; contents: string }).contents;
+      });
+      return contents;
+    };
+
+    it("logs received output to the chosen file without escape sequences", async () => {
+      expect(await logOneLine(false)).toBe("bold\n");
+    });
+
+    it("starts each logged line with its date and time when Settings ask for it (the default)", async () => {
+      expect(DEFAULT_SETTINGS.logTimestamps).toBe(true);
+      expect(await logOneLine(true)).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] bold\n$/);
     });
   });
 
@@ -1631,6 +1778,33 @@ describe("TerminalView", () => {
       expect(history.recent("local", 5)).toEqual([]);
       act(() => term().type("\r"));
       expect(history.recent("local", 5)).toEqual(["du -sh * | sort -h"]);
+    });
+
+    it("runs the last failed command again with its bound key, only at the prompt", async () => {
+      const history = historyWith();
+      await renderView({ history, settings: { ...DEFAULT_SETTINGS, shortcuts: { rerunFailedCommand: "Alt+R" } } });
+      const press = () =>
+        act(() => void term().keyHandler({ type: "keydown", key: "r", ctrlKey: false, shiftKey: false, altKey: true, metaKey: false }));
+      act(() => {
+        term().osc(133, "A");
+        term().line = "$ ";
+        term().osc(133, "B");
+      });
+      typeAt("$ ", "make");
+      act(() => {
+        term().type("\r");
+        term().osc(133, "C");
+      });
+      // While it runs, the key does nothing.
+      press();
+      expect(backend.write).not.toHaveBeenLastCalledWith(7, expect.stringContaining("make\r"));
+      act(() => {
+        term().osc(133, "D;2");
+        term().osc(133, "A");
+      });
+      backend.write.mockClear();
+      press();
+      expect(backend.write).toHaveBeenLastCalledWith(7, "\x05\x15make\r");
     });
 
     it("runs a command from the AI chat: clears what was typed, sends it with Enter and records it", async () => {

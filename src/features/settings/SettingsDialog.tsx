@@ -34,6 +34,8 @@ import {
   MAX_CHAT_FONT_SIZE,
   MIN_VIEWER_FONT_SIZE,
   clampRecentFolderLimit,
+  clampCommandNotifySeconds,
+  MAX_COMMAND_NOTIFY_SECONDS,
   MAX_VIEWER_FONT_SIZE,
   cleanAiBaseUrl,
   cleanShareUrl,
@@ -72,6 +74,9 @@ import { AuditLogDialog } from "../share/AuditLogDialog";
 import { HelpTip } from "../sidebar/HelpTip";
 import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
+import { HighlightRulesEditor } from "./HighlightRulesEditor";
+import { parseHighlightRules } from "../terminal/highlightRules";
+import type { SyncStatus } from "../sessions/useSessionSync";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -83,6 +88,8 @@ interface SettingsDialogProps {
   initialSection?: SettingsSection;
   /** Applies and saves a language at once (the rescue buttons, S3). */
   onLanguageNow?: (language: LanguageSetting) => void;
+  /** How the sync of the saved sessions went last (Connections). */
+  syncStatus?: SyncStatus;
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -142,6 +149,9 @@ const SECTIONS: { id: Section; icon: LucideIcon }[] = [
   { id: "shortcuts", icon: Keyboard },
   { id: "about", icon: Info },
 ];
+
+/** The sections in the order the side menu lists them (the command palette lists them too). */
+export const SETTINGS_SECTIONS: readonly SettingsSection[] = SECTIONS.map((s) => s.id);
 
 /** A section's name in the current language. */
 const sectionLabel = (id: Section) => translate(`settings.sections.${id}`);
@@ -327,7 +337,7 @@ const WEIGHT_NAMES: Record<number, AppKey> = {
   600: "settings.appearance.weightSemibold",
 };
 
-export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
   const platform = usePlatform();
@@ -351,8 +361,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
   const [errorHighlight, setErrorHighlight] = useState(settings.errorHighlight);
   const [shellIntegration, setShellIntegration] = useState(settings.shellIntegration);
+  const [logTimestamps, setLogTimestamps] = useState(settings.logTimestamps);
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
+  const [commandNotifySeconds, setCommandNotifySeconds] = useState(String(settings.commandNotifySeconds));
+  const [highlightRules, setHighlightRules] = useState(settings.highlightRules);
+  const [syncFolder, setSyncFolder] = useState(settings.syncFolder);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
@@ -478,6 +492,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
     const recentLimit = Number.parseFloat(recentFolderLimit);
+    const notifySeconds = Number.parseFloat(commandNotifySeconds);
     const context = Number.parseFloat(aiHistoryContext);
     return {
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
@@ -497,6 +512,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       confirmMultilinePaste,
       errorHighlight,
       shellIntegration,
+      logTimestamps,
+      syncFolder: syncFolder.trim(),
       theme,
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
@@ -539,6 +556,11 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       shortcuts,
       shiftEnterNewline,
       attentionNotifications,
+      // Rules left without an expression are dropped.
+      highlightRules: parseHighlightRules(highlightRules),
+      commandNotifySeconds: Number.isFinite(notifySeconds)
+        ? clampCommandNotifySeconds(notifySeconds)
+        : settings.commandNotifySeconds,
       gpuAcceleration,
       devCommands: parseDevCommands(devCommands),
       recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
@@ -650,6 +672,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </nav>
 
           <div {...panel("general")}>
+            <h3 className="settings__group">{t("settings.groups.language")}</h3>
             <div className="field">
               <label htmlFor="settings-language">{t("settings.language.label")}</label>
               <div className="form-row">
@@ -676,16 +699,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 </button>
               </div>
             </div>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={sidebarHideWhenCollapsed}
-                onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
-              />
-              <span className="setting-title">
-                {t("settings.appearance.hideSidebar")} <HelpTip text={sidebarShortcut ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut }) : t("settings.appearance.sidebarHelpNoShortcut")} />
-              </span>
-            </label>
+            <h3 className="settings__group">{t("settings.groups.startup")}</h3>
             <label className="field">
               {t("settings.appearance.sidebarAtStartup")}
               <select value={sidebarAtStartup} onChange={(e) => setSidebarAtStartup(e.target.value as SidebarAtStartup)}>
@@ -703,10 +717,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
           </div>
 
           <div {...panel("appearance")}>
-            <label className="check">
-              <input type="checkbox" checked={toolbarIconsOnly} onChange={(e) => setToolbarIconsOnly(e.target.checked)} />
-              <span>{t("settings.appearance.toolbarIconsOnly")}</span>
-            </label>
             <h3 className="settings__group">{t("settings.groups.colours")}</h3>
             <label className="field">
               {t("settings.appearance.colourScheme")}
@@ -728,7 +738,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </select>
             </label>
             <ThemePreview entry={themeById(theme)} fontFamily={cleanFontFamily(fontFamily)} />
-            <h3 className="settings__group">{t("settings.groups.fonts")}</h3>
+            <h3 className="settings__group">{t("settings.groups.terminalFont")}</h3>
             <label className="field">
               {t("settings.appearance.font")}
               <select value={catalogChoice(fontFamily, installedFonts)} onChange={(e) => e.target.value && setFontFamily(e.target.value)}>
@@ -798,6 +808,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setFontSize(e.target.value)}
               />
             </label>
+            <h3 className="settings__group">{t("settings.groups.textSizes")}</h3>
             <label className="field field--size">
               <span className="setting-title">
                 {t("settings.appearance.uiFontSize")} <HelpTip text={t("settings.appearance.uiFontSizeHelp")} />
@@ -834,7 +845,21 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setViewerFontSize(e.target.value)}
               />
             </label>
-            <h3 className="settings__group">{t("settings.groups.panes")}</h3>
+            <h3 className="settings__group">{t("settings.groups.layout")}</h3>
+            <label className="check">
+              <input type="checkbox" checked={toolbarIconsOnly} onChange={(e) => setToolbarIconsOnly(e.target.checked)} />
+              <span>{t("settings.appearance.toolbarIconsOnly")}</span>
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={sidebarHideWhenCollapsed}
+                onChange={(e) => setSidebarHideWhenCollapsed(e.target.checked)}
+              />
+              <span className="setting-title">
+                {t("settings.appearance.hideSidebar")} <HelpTip text={sidebarShortcut ? t("settings.appearance.sidebarHelp", { shortcut: sidebarShortcut }) : t("settings.appearance.sidebarHelpNoShortcut")} />
+              </span>
+            </label>
             <div className="field">
               <span className="setting-title">
                 {t("settings.appearance.focusBorder")} <HelpTip text={t("settings.appearance.focusBorderHelp")} />
@@ -927,17 +952,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
               </select>
             </label>
-            <label className="field">
-              {t("settings.terminal.devNewTerminalFolder")}
-              <select value={devNewTerminalFolder} onChange={(e) => setDevNewTerminalFolder(e.target.value as NewTerminalFolder)}>
-                <option value="start">{t("settings.terminal.newTerminalStart")}</option>
-                <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
-              </select>
-            </label>
             <label className="check">
               <input type="checkbox" checked={shellIntegration} onChange={(e) => setShellIntegration(e.target.checked)} />
               <span className="setting-title">
                 {t("settings.terminal.shellIntegration")} <HelpTip text={t("settings.terminal.shellIntegrationHelp")} />
+              </span>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={logTimestamps} onChange={(e) => setLogTimestamps(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.logTimestamps")} <HelpTip text={t("settings.terminal.logTimestampsHelp")} />
               </span>
             </label>
             <h3 className="settings__group">{t("settings.groups.input")}</h3>
@@ -977,6 +1001,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </span>
             </label>
             <label className="check">
+              <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.gpuAcceleration")} <HelpTip text={t("settings.terminal.gpuAccelerationHelp")} />
+              </span>
+            </label>
+            <h3 className="settings__group">{t("settings.groups.notifications")}</h3>
+            <label className="check">
               <input
                 type="checkbox"
                 checked={attentionNotifications}
@@ -986,15 +1017,24 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.terminal.attentionNotifications")} <HelpTip text={t("settings.terminal.attentionNotificationsHelp")} />
               </span>
             </label>
-            <label className="check">
-              <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />
+            <label className="field field--size">
               <span className="setting-title">
-                {t("settings.terminal.gpuAcceleration")} <HelpTip text={t("settings.terminal.gpuAccelerationHelp")} />
+                {t("settings.terminal.commandNotifySeconds")} <HelpTip text={t("settings.terminal.commandNotifySecondsHelp")} />
               </span>
+              <input
+                type="number"
+                min={0}
+                max={MAX_COMMAND_NOTIFY_SECONDS}
+                value={commandNotifySeconds}
+                onChange={(e) => setCommandNotifySeconds(e.target.value)}
+              />
             </label>
+            <h3 className="settings__group">{t("settings.groups.highlightRules")}</h3>
+            <HighlightRulesEditor rules={highlightRules} onChange={setHighlightRules} />
           </div>
 
           <div {...panel("dev")}>
+            <h3 className="settings__group">{t("settings.groups.devCommands")}</h3>
             <div className="field">
               <label htmlFor="settings-dev-commands"><span className="setting-title">{t("settings.terminal.devCommands")} <HelpTip text={t("settings.terminal.devCommandsHelp")} /></span></label>
               <input
@@ -1005,11 +1045,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setDevCommands(e.target.value)}
               />
             </div>
-            <label className="check">
-              <input type="checkbox" checked={devFolderInFooter} onChange={(e) => setDevFolderInFooter(e.target.checked)} />
-              <span className="setting-title">
-                {t("settings.terminal.devFolderInFooter")} <HelpTip text={t("settings.terminal.devFolderInFooterHelp")} />
-              </span>
+            <label className="field">
+              {t("settings.terminal.devNewTerminalFolder")}
+              <select value={devNewTerminalFolder} onChange={(e) => setDevNewTerminalFolder(e.target.value as NewTerminalFolder)}>
+                <option value="start">{t("settings.terminal.newTerminalStart")}</option>
+                <option value="terminal">{t("settings.terminal.newTerminalHere")}</option>
+              </select>
             </label>
             <label className="field field--size">
               <span className="setting-title">
@@ -1023,6 +1064,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setRecentFolderLimit(e.target.value)}
               />
             </label>
+            <h3 className="settings__group">{t("settings.groups.devColumn")}</h3>
             <label className="check">
               <input
                 type="checkbox"
@@ -1041,7 +1083,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
               </select>
             </label>
-            <h3 className="settings__group">{t("settings.groups.aiUsage")}</h3>
+            <h3 className="settings__group">{t("settings.groups.bar")}</h3>
+            <label className="check">
+              <input type="checkbox" checked={devFolderInFooter} onChange={(e) => setDevFolderInFooter(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.devFolderInFooter")} <HelpTip text={t("settings.terminal.devFolderInFooterHelp")} />
+              </span>
+            </label>
             <label className="check">
               <input type="checkbox" checked={aiUsageInFooter} onChange={(e) => setAiUsageInFooter(e.target.checked)} />
               <span className="setting-title">
@@ -1063,6 +1111,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <option value="off">{t("app.usage.off")}</option>
               </select>
             </label>
+            {aiUsageInFooter && <ApiKeyField provider="opencode-go" usage />}
           </div>
 
           <div {...panel("ssh")}>
@@ -1072,28 +1121,50 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.ssh.remoteMonitor")} <HelpTip text={t("settings.ssh.remoteMonitorHelp")} />
               </span>
             </label>
+            <h3 className="settings__group">{t("settings.groups.sessionSync")}</h3>
+            <div className="field">
+              <label htmlFor="settings-sync-folder">
+                <span className="setting-title">
+                  {t("settings.ssh.syncFolder")} <HelpTip text={t("settings.ssh.syncFolderHelp")} />
+                </span>
+              </label>
+              <div className="form-row field__picker">
+                <input
+                  id="settings-sync-folder"
+                  value={syncFolder}
+                  placeholder={t("settings.ssh.syncFolderPlaceholder")}
+                  spellCheck={false}
+                  onChange={(e) => setSyncFolder(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={t("settings.ssh.chooseSyncFolder")}
+                  onClick={() =>
+                    void open({ title: t("settings.ssh.chooseSyncFolder"), multiple: false, directory: true })
+                      .then((dir) => typeof dir === "string" && setSyncFolder(dir))
+                      .catch(() => {})
+                  }
+                >
+                  {t("common.browse")}
+                </button>
+              </div>
+              {syncStatus && syncFolder.trim() === settings.syncFolder && syncFolder.trim() !== "" && (
+                <span className={syncStatus.state === "error" ? "form-error" : "muted"} role="status">
+                  {syncStatus.state === "synced"
+                    ? t("settings.ssh.syncedAt", { time: new Date(syncStatus.at).toLocaleTimeString() })
+                    : syncStatus.state === "error"
+                      ? syncStatus.foreign
+                        ? t("settings.ssh.syncForeign")
+                        : t("settings.ssh.syncError", { error: syncStatus.message })
+                      : t("settings.ssh.syncing")}
+                </span>
+              )}
+            </div>
           </div>
 
           <div {...panel("files")}>
-            <div className="field">
-              <label htmlFor="settings-text-editor"><span className="setting-title">{t("settings.files.textEditor")} <HelpTip text={`${editorHelpBefore}code --wait${editorHelpAfter}`} /></span></label>
-              <div className="form-row field__picker">
-                <input
-                  id="settings-text-editor"
-                  value={textEditor}
-                  placeholder={t("settings.files.systemDefault")}
-                  maxLength={MAX_TEXT_EDITOR_LENGTH}
-                  spellCheck={false}
-                  onChange={(e) => setTextEditor(e.target.value)}
-                />
-                <button type="button" className="btn" onClick={() => void browseTextEditor()}>
-                  {t("common.browse")}
-                </button>
-                <button type="button" className="btn" disabled={!textEditor} onClick={() => setTextEditor("")}>
-                  {t("settings.files.useSystemDefault")}
-                </button>
-              </div>
-            </div>
+            <h3 className="settings__group">{t("settings.groups.fileLists")}</h3>
             <label className="check">
               <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
               {t("settings.files.details")}
@@ -1102,12 +1173,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={gitFileStatus} onChange={(e) => setGitFileStatus(e.target.checked)} />
               <span className="setting-title">
                 {t("settings.files.gitStatus")} <HelpTip text={t("settings.files.gitStatusHelp")} />
-              </span>
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={viewerAutoSave} onChange={(e) => setViewerAutoSave(e.target.checked)} />
-              <span className="setting-title">
-                {t("settings.files.autoSave")} <HelpTip text={t("settings.files.autoSaveHelp")} />
               </span>
             </label>
             <label className="field">
@@ -1132,14 +1197,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 ))}
               </select>
             </label>
-            <label className="field">
-              {t("settings.files.viewerPosition")}
-              <select value={viewerPosition} onChange={(e) => setViewerPosition(e.target.value as ViewerPosition)}>
-                <option value="left">{t("settings.files.viewerLeft")}</option>
-                <option value="right">{t("settings.files.viewerRight")}</option>
-                <option value="below">{t("settings.files.viewerBelow")}</option>
-              </select>
-            </label>
             <label className="check">
               <input
                 type="checkbox"
@@ -1150,9 +1207,44 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.files.terminalFollows")} <HelpTip text={t("settings.files.terminalFollowsHelp")} />
               </span>
             </label>
+            <h3 className="settings__group">{t("settings.groups.viewer")}</h3>
+            <label className="field">
+              {t("settings.files.viewerPosition")}
+              <select value={viewerPosition} onChange={(e) => setViewerPosition(e.target.value as ViewerPosition)}>
+                <option value="left">{t("settings.files.viewerLeft")}</option>
+                <option value="right">{t("settings.files.viewerRight")}</option>
+                <option value="below">{t("settings.files.viewerBelow")}</option>
+              </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={viewerAutoSave} onChange={(e) => setViewerAutoSave(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.files.autoSave")} <HelpTip text={t("settings.files.autoSaveHelp")} />
+              </span>
+            </label>
+            <div className="field">
+              <label htmlFor="settings-text-editor"><span className="setting-title">{t("settings.files.textEditor")} <HelpTip text={`${editorHelpBefore}code --wait${editorHelpAfter}`} /></span></label>
+              <div className="form-row field__picker">
+                <input
+                  id="settings-text-editor"
+                  value={textEditor}
+                  placeholder={t("settings.files.systemDefault")}
+                  maxLength={MAX_TEXT_EDITOR_LENGTH}
+                  spellCheck={false}
+                  onChange={(e) => setTextEditor(e.target.value)}
+                />
+                <button type="button" className="btn" onClick={() => void browseTextEditor()}>
+                  {t("common.browse")}
+                </button>
+                <button type="button" className="btn" disabled={!textEditor} onClick={() => setTextEditor("")}>
+                  {t("settings.files.useSystemDefault")}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div {...panel("ai")}>
+            <h3 className="settings__group">{t("settings.groups.suggestions")}</h3>
             <label className="check">
               <input
                 type="checkbox"
@@ -1181,6 +1273,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.ai.aiSuggestions")} <HelpTip text={t("settings.ai.aiSuggestionsHelp")} />
               </span>
             </label>
+            <label className="field field--number">
+              {t("settings.ai.historyContext")}
+              <input
+                type="number"
+                min={0}
+                max={MAX_AI_HISTORY_CONTEXT}
+                value={aiHistoryContext}
+                onChange={(e) => setAiHistoryContext(e.target.value)}
+              />
+            </label>
+            <h3 className="settings__group">{t("settings.groups.provider")}</h3>
             <label className="field">
               {t("settings.ai.provider")}
               <select value={aiProvider} onChange={(e) => changeProvider(e.target.value)}>
@@ -1220,22 +1323,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </label>
             )}
             <ApiKeyField provider={aiProvider} />
-            {aiUsageInFooter && (
-              <>
-                <h3 className="settings__group">{t("settings.groups.planUsage")}</h3>
-                <ApiKeyField provider="opencode-go" usage />
-              </>
-            )}
-            <label className="field field--number">
-              {t("settings.ai.historyContext")}
-              <input
-                type="number"
-                min={0}
-                max={MAX_AI_HISTORY_CONTEXT}
-                value={aiHistoryContext}
-                onChange={(e) => setAiHistoryContext(e.target.value)}
-              />
-            </label>
+            <h3 className="settings__group">{t("settings.groups.chat")}</h3>
             <label className="check">
               <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />
               <span className="setting-title">

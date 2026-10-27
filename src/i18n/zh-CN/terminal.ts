@@ -19,7 +19,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "不再询问",
     paste: "粘贴",
   },
+  ruleMatched: "匹配 {pattern}",
+  commandDot: {
+    exit: "退出码 {code}",
+    exitTime: "退出码 {code} · {duration}",
+    askAi: "点击询问 AI 失败原因",
+    attached: "命令 `{command}` 以退出码 {code} 结束。其输出：",
+    outputGone: "（其输出已不在终端中）",
+    noOutput: "（没有任何输出）",
+    question: "这条命令为什么失败，我该如何修复？",
+  },
+  commandDone: {
+    finished: "命令已完成",
+    failed: "命令失败（退出码 {code}）",
+  },
   menu: {
+    copyOutput: "复制命令输出",
     askAi: "询问 AI",
     typeSelection: "输入到命令行",
     findSelection: "在终端中查找",

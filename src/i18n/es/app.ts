@@ -2,6 +2,21 @@ import type { app as en } from "../en/app";
 import type { Messages } from "../types";
 
 export const app: Messages<typeof en> = {
+  palette: {
+    title: "Paleta de comandos",
+    placeholder: "Escribe una acción, sesión, macro, pestaña o ajuste…",
+    noResults: "No hay coincidencias.",
+    historyTitle: "Historial de comandos",
+    historyPlaceholder: "Escribe parte de un comando que ejecutaste antes en este equipo…",
+    groups: {
+      actions: "Acción",
+      sessions: "Sesión",
+      macros: "Macro",
+      tabs: "Pestaña",
+      settings: "Ajustes",
+      history: "Historial",
+    },
+  },
   toolbar: {
     aiAssistant: "Asistente de IA",
     aiAssistantTitle: "Asistente de IA ({shortcut})",
@@ -46,6 +61,7 @@ export const app: Messages<typeof en> = {
     moshSessionGone: 'La sesión SSH de "{name}" ya no existe; edítala para elegir otra.',
     sshSessionGone: "Esa sesión SSH ya no existe.",
     noTerminalForAi: "Abre un terminal para chatear con la IA.",
+    noTerminalForHistory: "Abre un terminal para buscar en su historial de comandos.",
     tabFull: "Esta pestaña ya tiene {max} paneles; cierra uno para abrir el chat de IA.",
     commandNotRun:
       "No se ejecutó el comando: el terminal está en una petición de contraseña o en un programa a pantalla completa.",

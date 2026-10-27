@@ -19,7 +19,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "다시 묻지 않음",
     paste: "붙여넣기",
   },
+  ruleMatched: "{pattern} 일치",
+  commandDot: {
+    exit: "종료 코드 {code}",
+    exitTime: "종료 코드 {code} · {duration}",
+    askAi: "클릭하면 실패 원인을 AI에 물어봅니다",
+    attached: "명령 `{command}`이(가) 종료 코드 {code}(으)로 끝났습니다. 출력:",
+    outputGone: "(출력이 더 이상 터미널에 없습니다)",
+    noOutput: "(아무것도 출력하지 않았습니다)",
+    question: "이 명령은 왜 실패했고 어떻게 고치나요?",
+  },
+  commandDone: {
+    finished: "명령 완료",
+    failed: "명령 실패 (종료 코드 {code})",
+  },
   menu: {
+    copyOutput: "명령 출력 복사",
     askAi: "AI에게 묻기",
     typeSelection: "프롬프트에 입력",
     findSelection: "터미널에서 찾기",

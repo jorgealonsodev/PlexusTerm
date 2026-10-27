@@ -19,7 +19,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Nicht mehr fragen",
     paste: "Einfügen",
   },
+  ruleMatched: "Treffer für {pattern}",
+  commandDot: {
+    exit: "Exit-Code {code}",
+    exitTime: "Exit-Code {code} · {duration}",
+    askAi: "Klicken, um die KI zu fragen, warum er fehlschlug",
+    attached: "Der Befehl `{command}` endete mit Exit-Code {code}. Seine Ausgabe:",
+    outputGone: "(seine Ausgabe ist nicht mehr im Terminal)",
+    noOutput: "(er hat nichts ausgegeben)",
+    question: "Warum ist dieser Befehl fehlgeschlagen, und wie behebe ich das?",
+  },
+  commandDone: {
+    finished: "Befehl beendet",
+    failed: "Befehl fehlgeschlagen (Code {code})",
+  },
   menu: {
+    copyOutput: "Befehlsausgabe kopieren",
     askAi: "Die KI dazu fragen",
     typeSelection: "An der Eingabeaufforderung eingeben",
     findSelection: "Im Terminal suchen",

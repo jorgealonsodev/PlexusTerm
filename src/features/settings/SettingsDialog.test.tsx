@@ -9,6 +9,7 @@ import { DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, type TerminalSettings } from "./
 import { ShellsContext } from "../platform/useShells";
 import { UpdateInstallationProvider } from "../updates/UpdateInstallation";
 import type { ReactNode } from "react";
+import { EXAMPLE_RULE } from "../terminal/highlightRules";
 
 const render = (ui: ReactNode) => renderUi(<UpdateInstallationProvider>{ui}</UpdateInstallationProvider>);
 
@@ -93,7 +94,8 @@ describe("SettingsDialog", () => {
     fireEvent.keyDown(search, { key: "Escape" });
     expect((search as HTMLInputElement).value).toBe("");
     expect(onCancel).not.toHaveBeenCalled();
-    expect(shown(screen.getByLabelText("Hide the sidebar completely when folded"))).toBe(true);
+    // Back to General, the open section: its options show again, Appearance's are hidden.
+    expect(shown(screen.getByLabelText("Check for updates at startup"))).toBe(true);
     expect(shown(screen.getByLabelText("Show only icons in the toolbar"))).toBe(false);
     fireEvent.keyDown(search, { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -262,9 +264,70 @@ describe("SettingsDialog", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, devCommands: ["claude", "aider", "codex"] });
   });
 
+  it("groups every option with the ones it belongs with, so searching a group's name shows all of them", () => {
+    setup();
+    const shown = (el: Element) => !el.closest("[hidden], [data-search-hidden]");
+    const search = screen.getByRole("searchbox", { name: "Search settings" });
+    const groupShows = (group: string, inside: string[], outside: string[]) => {
+      fireEvent.change(search, { target: { value: group } });
+      for (const label of inside) expect(shown(screen.getByLabelText(label)), `${label} in ${group}`).toBe(true);
+      for (const label of outside) expect(shown(screen.getByLabelText(label)), `${label} not in ${group}`).toBe(false);
+    };
+    // The AI options after the plan usage key used to fall under its heading.
+    groupShows("Command suggestions", ["AI suggestions", "History commands sent as context"], ["Keep AI conversations after closing PlexusTerm"]);
+    groupShows("Chat", ["Keep AI conversations after closing PlexusTerm"], ["History commands sent as context"]);
+    groupShows("Notifications", [
+      "Desktop notifications when a terminal needs attention",
+      "Notify when a command takes longer than (seconds)",
+    ], ["Show size and date in file lists"]);
+    groupShows("Commands and folders", ["In DEV mode, the + opens in"], ["Hide the sidebar completely when folded"]);
+    groupShows("Window and panes", ["Hide the sidebar completely when folded", "Show only icons in the toolbar"], ["In DEV mode, the + opens in"]);
+    groupShows("Viewer and editor", ["Open the file viewer"], ["Show size and date in file lists"]);
+  });
+
+  it("edits the highlight rules in Terminal: add, explain an invalid expression, remove, and drop empty ones", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+    // The example rule is there to start with.
+    expect((screen.getByLabelText("Regular expression of rule 1") as HTMLInputElement).value).toBe(EXAMPLE_RULE.pattern);
+    const add = () => fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
+    add();
+    add();
+    add();
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 2"), { target: { value: "ERROR|FATAL" } });
+    fireEvent.change(screen.getByLabelText("Colour of rule 2"), { target: { value: "#ff8800" } });
+    fireEvent.click(within(screen.getByLabelText("Regular expression of rule 2").closest(".rules__row") as HTMLElement).getByLabelText("Notify"));
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 3"), { target: { value: "(unclosed" } });
+    expect(screen.getByRole("alert").textContent).toMatch(/^This expression cannot be used: /);
+    fireEvent.click(screen.getByRole("button", { name: "Remove rule 3" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    // Rule 4 (now 3) has no expression: it is dropped on save.
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        highlightRules: [EXAMPLE_RULE, { pattern: "ERROR|FATAL", color: "#ff8800", matchCase: false, notify: true }],
+      }),
+    );
+  });
+
+  it("sets the sessions' synced folder in Connections and tells how the last sync went", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={() => {}} initialSection="ssh" />);
+    const field = screen.getByLabelText(/^Synced folder/) as HTMLInputElement;
+    expect(field.value).toBe("");
+    fireEvent.change(field, { target: { value: "  /home/me/Sync  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ syncFolder: "/home/me/Sync" }));
+    cleanup();
+    const synced = { ...DEFAULT_SETTINGS, syncFolder: "/home/me/Sync" };
+    render(<SettingsDialog settings={synced} onSave={onSave} onCancel={() => {}} initialSection="ssh" syncStatus={{ state: "error", message: "x", foreign: true }} />);
+    expect(screen.getByRole("status").textContent).toMatch(/not a PlexusTerm sessions file/);
+  });
+
   it("keeps an OpenCode Go key for the usage apart from the AI one, and hides it with the usage", async () => {
     const { onSave } = setup();
-    fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+    // With the rest of the bar under the terminal, in DEV mode.
+    fireEvent.click(screen.getByRole("tab", { name: "DEV mode" }));
     const usageKey = () => screen.getByLabelText("OpenCode Go API key for the usage") as HTMLInputElement;
     const usageField = () => within(usageKey().closest(".field") as HTMLElement);
     expect(await usageField().findByText("No key saved")).toBeTruthy();

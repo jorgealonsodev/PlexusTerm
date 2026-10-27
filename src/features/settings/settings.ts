@@ -12,6 +12,7 @@ import { isValidShortcut } from "./shortcutCapture";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPacks";
+import { EXAMPLE_RULE, parseHighlightRules, type HighlightRule } from "../terminal/highlightRules";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -54,6 +55,8 @@ export interface TerminalSettings {
   lineHeight: number;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
+  /** The folder the saved sessions are synced through (Syncthing, Drive…); "" when they are not. */
+  syncFolder: string;
   /**
    * Program that "Open with default text editor" uses: a program path, or a command line
    * with arguments; empty uses the system's default text editor.
@@ -117,6 +120,15 @@ export interface TerminalSettings {
    * while PlexusTerm is in the background; the tab is marked either way.
    */
   attentionNotifications: boolean;
+  /**
+   * A command the shell marks (shell integration) that runs at least this many seconds says when it
+   * finishes, like a program asking for attention; 0 turns it off.
+   */
+  commandNotifySeconds: number;
+  /** Logs to a file (Log to file…) start each line with its date and time. */
+  logTimestamps: boolean;
+  /** The user's highlight rules: expressions coloured in every terminal, optionally asking for attention. */
+  highlightRules: HighlightRule[];
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
   gpuAcceleration: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
@@ -238,6 +250,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   fontWeight: 400,
   lineHeight: 1,
   remoteMonitor: true,
+  syncFolder: "",
   textEditor: "",
   fileDetails: false,
   terminalFollowsBrowser: true,
@@ -264,6 +277,10 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shortcuts: {},
   shiftEnterNewline: true,
   attentionNotifications: true,
+  commandNotifySeconds: 10,
+  logTimestamps: true,
+  // One rule to show how they work; removing it keeps the list empty.
+  highlightRules: [EXAMPLE_RULE],
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
@@ -294,7 +311,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   recentFolderLimit: DEFAULT_RECENT_FOLDERS,
   devFolderInFooter: true,
   aiUsageInFooter: true,
-  aiUsageProvider: "auto",
+  aiUsageProvider: "off",
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -302,6 +319,10 @@ export const clampUiFontSize = (size: number) => Math.min(MAX_UI_FONT_SIZE, Math
 export const clampChatFontSize = (size: number) =>
   Math.min(MAX_CHAT_FONT_SIZE, Math.max(MIN_CHAT_FONT_SIZE, Math.round(size)));
 export const clampRecentFolderLimit = (count: number) => Math.min(MAX_RECENT_FOLDERS, Math.max(1, Math.round(count)));
+/** Longest wait a command notice can ask for: an hour. */
+export const MAX_COMMAND_NOTIFY_SECONDS = 3600;
+export const clampCommandNotifySeconds = (seconds: number) =>
+  Math.min(MAX_COMMAND_NOTIFY_SECONDS, Math.max(0, Math.round(seconds)));
 export const clampViewerFontSize = (size: number) =>
   Math.min(MAX_VIEWER_FONT_SIZE, Math.max(MIN_VIEWER_FONT_SIZE, Math.round(size)));
 const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
@@ -429,18 +450,16 @@ const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
  */
 const SETTINGS_VERSION = 2;
 
-export function parseSettings(json: string | null, platform: { linux?: boolean } = {}): TerminalSettings {
-  const linux = platform.linux === true;
+export function parseSettings(json: string | null): TerminalSettings {
   let raw: unknown = null;
   try {
     raw = json === null ? null : JSON.parse(json);
   } catch {
     raw = null;
   }
-  const d = linux ? { ...DEFAULT_SETTINGS, gpuAcceleration: false } : DEFAULT_SETTINGS;
+  const d = DEFAULT_SETTINGS;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return { ...d };
   const value = raw as Record<string, unknown>;
-  const fromBefore = !(typeof value.version === "number" && value.version >= SETTINGS_VERSION);
   const aiProvider = isAiProvider(value.aiProvider) ? value.aiProvider : d.aiProvider;
   // The assistant and the overrides must not share a combination: the assistant keeps its own
   // unless an override makes it clash, and then the overrides are checked against the default.
@@ -464,6 +483,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,
     lineHeight: LINE_HEIGHTS.includes(value.lineHeight as number) ? (value.lineHeight as number) : d.lineHeight,
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
+    syncFolder: typeof value.syncFolder === "string" ? value.syncFolder.trim() : d.syncFolder,
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
     terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),
@@ -517,7 +537,10 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     shortcuts,
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
-    gpuAcceleration: linux && fromBefore ? false : bool(value.gpuAcceleration, d.gpuAcceleration),
+    commandNotifySeconds: size(value.commandNotifySeconds, clampCommandNotifySeconds, d.commandNotifySeconds),
+    logTimestamps: bool(value.logTimestamps, d.logTimestamps),
+    highlightRules: Array.isArray(value.highlightRules) ? parseHighlightRules(value.highlightRules) : d.highlightRules,
+    gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
     viewerPosition: (VIEWER_POSITIONS as readonly unknown[]).includes(value.viewerPosition)

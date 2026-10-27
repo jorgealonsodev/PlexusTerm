@@ -54,5 +54,20 @@ export function useSessionLibrary() {
     [status.state],
   );
 
-  return { library, status, saveError, dispatch };
+  /** Replaces the whole library (sessions merged from another computer) and saves it. */
+  const replace = useCallback(
+    (next: SessionLibrary) => {
+      if (status.state !== "ready") return;
+      libraryRef.current = next;
+      setLibrary(next);
+      const contents = serializeLibrary(next);
+      saveQueue.current = saveQueue.current
+        .then(() => invoke("sessions_save", { contents }))
+        .then(() => setSaveError(null))
+        .catch((err) => setSaveError(String(err)));
+    },
+    [status.state],
+  );
+
+  return { library, status, saveError, dispatch, replace };
 }

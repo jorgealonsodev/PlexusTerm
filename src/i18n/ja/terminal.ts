@@ -19,7 +19,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "今後は確認しない",
     paste: "貼り付け",
   },
+  ruleMatched: "{pattern} に一致",
+  commandDot: {
+    exit: "終了コード {code}",
+    exitTime: "終了コード {code} · {duration}",
+    askAi: "クリックすると失敗の理由を AI に質問します",
+    attached: "コマンド `{command}` は終了コード {code} で終了しました。出力:",
+    outputGone: "（出力はもうターミナルにありません）",
+    noOutput: "（何も出力されませんでした）",
+    question: "このコマンドはなぜ失敗したのか、どう直せばよいですか？",
+  },
+  commandDone: {
+    finished: "コマンドが終了しました",
+    failed: "コマンドが失敗しました（終了コード {code}）",
+  },
   menu: {
+    copyOutput: "コマンドの出力をコピー",
     askAi: "AI に質問",
     typeSelection: "プロンプトに入力",
     findSelection: "端末内を検索",
