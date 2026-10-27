@@ -115,6 +115,38 @@ describe("session sync", () => {
     expect(names(result.library)).toEqual(["web renamed", "only on B"]);
   });
 
+  it("drops a jump host deleted on another computer from the sessions that went through it", () => {
+    const file = { text: null as string | null };
+    const jump = ssh("j", "bastion");
+    const target: LibrarySession = { ...ssh("s", "inner"), jumpIds: ["j"] } as LibrarySession;
+    const a = new Computer(lib([jump, target]));
+    a.sync(file, 1000);
+    const b = new Computer();
+    b.sync(file, 1100);
+    a.edit({ type: "deleteSession", id: "j" }, 2000);
+    b.edit({ type: "saveSession", session: { ...target, name: "inner renamed" } as LibrarySession }, 3000);
+    a.sync(file, 3100);
+    b.sync(file, 3200);
+    const inner = b.library.sessions.find((s) => s.id === "s") as { jumpIds?: string[]; name: string };
+    expect(inner.name).toBe("inner renamed");
+    expect(inner.jumpIds ?? []).toEqual([]);
+  });
+
+  it("settles a tie between two different versions the same way on every computer", () => {
+    const file = { text: null as string | null };
+    const a = new Computer(lib([ssh("1", "a's copy")]));
+    const b = new Computer(lib([ssh("1", "b's copy")]));
+    a.state = noteLocal(a.library, emptySyncState, 0);
+    b.state = noteLocal(b.library, emptySyncState, 0);
+    a.sync(file, 1000);
+    b.sync(file, 1100);
+    a.sync(file, 1200);
+    const settled = file.text;
+    b.sync(file, 1300);
+    expect(names(a.library)).toEqual(names(b.library));
+    expect(file.text).toBe(settled);
+  });
+
   it("changes nothing in a library that is already in step, and writes no session the user did not have", () => {
     const file = { text: null as string | null };
     const a = new Computer(lib([ssh("1", "web")]));

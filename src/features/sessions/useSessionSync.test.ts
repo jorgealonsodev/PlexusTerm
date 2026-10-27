@@ -104,3 +104,32 @@ describe("useSessionSync", () => {
     expect(JSON.parse(doc.sessions["1"].value!).name).toBe("web renamed");
   });
 });
+
+describe("useSessionSync, the first sync", () => {
+  it("still defers to the shared file when its first try did not finish (folder not ready yet)", async () => {
+    // Another computer renamed session 1; this one has an old copy and never synced.
+    shared = serializeSyncDoc({ version: 1, sessions: { "1": { at: 500, value: JSON.stringify(ssh("1", "edited on A")) } }, folders: {} });
+    let failNext = true;
+    const backend = vi.mocked(invoke).getMockImplementation()!;
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: unknown) => {
+      if (command === "sessions_sync_read" && failNext) {
+        failNext = false;
+        throw new Error("the folder is not mounted yet");
+      }
+      return backend(command, args as Parameters<typeof backend>[1]);
+    });
+    const replace = vi.fn();
+    const library = libOf(ssh("1", "old local copy"));
+    const { result } = renderHook(() => useSessionSync({ library, status: { state: "ready" }, replace }, "/sync", () => 1000));
+    await settle();
+    expect(result.current).toMatchObject({ state: "error" });
+    // It tries again (here: the window gets the focus).
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0].sessions.map((s: LibrarySession) => s.name)).toEqual(["edited on A"]);
+    expect(JSON.parse(parseSyncDoc(shared!)!.sessions["1"].value!).name).toBe("edited on A");
+  });
+});

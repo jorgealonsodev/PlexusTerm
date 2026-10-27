@@ -41,6 +41,8 @@ export function useSessionSync(sessions: Sessions, folder: string, now: () => nu
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
   const stateRef = useRef<SyncState | null>(null);
+  /** This computer never finished a sync: its sessions count as the oldest until one does. */
+  const firstSync = useRef(false);
   const running = useRef<Promise<void> | null>(null);
   const again = useRef(false);
 
@@ -48,17 +50,17 @@ export function useSessionSync(sessions: Sessions, folder: string, now: () => nu
   syncNow.current = async () => {
     const { library, status: libraryStatus } = sessionsRef.current;
     if (!folder || libraryStatus.state !== "ready") return;
-    let firstSync = false;
     if (!stateRef.current) {
       const saved = parseState(await invoke<string | null>("sessions_sync_state_load").catch(() => null));
-      firstSync = saved === null;
+      firstSync.current = saved === null;
       stateRef.current = saved ?? emptySyncState;
     }
     setStatus((s) => (s.state === "synced" ? s : { state: "syncing" }));
     const at = now();
     // The first time, this computer's sessions count as the oldest: where the shared file has the
     // same session, its (possibly newer) version wins; sessions only here are still added.
-    const noted = noteLocal(library, stateRef.current, firstSync ? 0 : at);
+    // A first try that did not finish (folder not mounted yet, a bad file) keeps this until one does.
+    const noted = noteLocal(library, stateRef.current, firstSync.current ? 0 : at);
     const text = await invoke<string | null>("sessions_sync_read", { folder });
     const remote = text === null ? null : parseSyncDoc(text);
     if (text !== null && remote === null) {
@@ -72,7 +74,9 @@ export function useSessionSync(sessions: Sessions, folder: string, now: () => nu
       return;
     }
     if (serializeLibrary(merged.library) !== serializeLibrary(library)) sessionsRef.current.replace(merged.library);
+    // Merged: from now on this computer's edits carry their time, even if saving the state fails.
     stateRef.current = merged.state;
+    firstSync.current = false;
     await invoke("sessions_sync_state_save", { contents: JSON.stringify(merged.state) });
     const out = serializeSyncDoc(merged.state);
     if (out !== text) await invoke("sessions_sync_write", { folder, contents: out });

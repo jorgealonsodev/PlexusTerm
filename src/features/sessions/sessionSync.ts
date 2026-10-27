@@ -6,7 +6,15 @@
  * computers delete it too, unless it was edited after. Passwords never leave the computer: every
  * session goes through the same sanitizing as sessions.json.
  */
-import { emptyLibrary, normalizeFolder, parseLibrary, sanitizeSession, type LibrarySession, type SessionLibrary } from "./library";
+import {
+  emptyLibrary,
+  isSshSession,
+  normalizeFolder,
+  parseLibrary,
+  sanitizeSession,
+  type LibrarySession,
+  type SessionLibrary,
+} from "./library";
 
 /** The file in the synced folder. */
 export const SYNC_FILE = "plexusterm-sessions-sync.json";
@@ -118,14 +126,17 @@ export function serializeSyncDoc(state: SyncState): string {
   return JSON.stringify({ format: FORMAT, version: 1, sessions, folders }, null, 2);
 }
 
-/** For each key, the newer stamp (the local one on a tie); old tombstones are dropped. */
+/**
+ * For each key, the newer stamp; on a tie, the greater saved form, so every computer settles on the
+ * same one. Old tombstones are dropped.
+ */
 function newer(local: Record<string, Stamp>, remote: Record<string, Stamp>, now: number) {
   const out: Record<string, Stamp> = {};
   const oldest = now - TOMBSTONE_DAYS * DAY_MS;
   for (const key of new Set([...Object.keys(local), ...Object.keys(remote)])) {
     const a = local[key];
     const b = remote[key];
-    const pick = !b || (a && a.at >= b.at) ? a : b;
+    const pick = !b ? a : !a ? b : a.at !== b.at ? (a.at > b.at ? a : b) : (a.value ?? "") >= (b.value ?? "") ? a : b;
     if (pick.value === null && pick.at < oldest) continue;
     out[key] = pick;
   }
@@ -165,6 +176,15 @@ export function mergeSync(
   const kept: string[] = [];
   for (const folder of order) {
     if (folders[folder]?.value === "" && !kept.includes(folder)) kept.push(folder);
+  }
+  // A jump host deleted on another computer leaves the sessions that went through it, as a local
+  // deletion does (the changed sessions go out with the next sync).
+  const live = new Set(merged.map((s) => s.id));
+  for (let i = 0; i < merged.length; i++) {
+    const session = merged[i];
+    if (isSshSession(session) && session.jumpIds?.some((id) => !live.has(id))) {
+      merged[i] = sanitizeSession({ ...session, jumpIds: session.jumpIds.filter((id) => live.has(id)) });
+    }
   }
   // A session's folder (and the folders above it) shows even if another computer deleted it.
   for (const session of merged) {
