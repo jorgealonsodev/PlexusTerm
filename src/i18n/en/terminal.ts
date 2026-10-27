@@ -17,6 +17,7 @@ export const terminal = {
     dontAsk: "Don't ask again",
     paste: "Paste",
   },
+  ruleMatched: "Matched {pattern}",
   commandDone: {
     finished: "Command finished",
     failed: "Command failed (exit {code})",

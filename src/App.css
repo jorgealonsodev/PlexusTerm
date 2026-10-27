@@ -408,6 +408,38 @@ textarea::placeholder {
   font-weight: 600;
 }
 
+/* Highlight rules in Settings > Terminal: one row per rule. */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.rules__intro {
+  margin: 0;
+}
+
+.rules__rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.rules__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rules__pattern {
+  flex: 1;
+  min-width: 180px;
+  font-family: var(--mono, monospace);
+}
+
 /* The command palette: under the toolbar, not in the middle of the window. */
 .overlay--top {
   place-items: start center;

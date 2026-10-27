@@ -19,6 +19,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "不再询问",
     paste: "粘贴",
   },
+  ruleMatched: "匹配 {pattern}",
   commandDone: {
     finished: "命令已完成",
     failed: "命令失败（退出码 {code}）",

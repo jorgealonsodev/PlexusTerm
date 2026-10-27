@@ -26,6 +26,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "عدم السؤال مرة أخرى",
     paste: "لصق",
   },
+  ruleMatched: "مطابقة {pattern}",
   commandDone: {
     finished: "اكتمل الأمر",
     failed: "فشل الأمر (الرمز {code})",

@@ -12,6 +12,7 @@ import { isValidShortcut } from "./shortcutCapture";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPacks";
+import { parseHighlightRules, type HighlightRule } from "../terminal/highlightRules";
 
 /** AI providers (S2, S4). */
 export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
@@ -122,6 +123,8 @@ export interface TerminalSettings {
    * finishes, like a program asking for attention; 0 turns it off.
    */
   commandNotifySeconds: number;
+  /** The user's highlight rules: expressions coloured in every terminal, optionally asking for attention. */
+  highlightRules: HighlightRule[];
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
   gpuAcceleration: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
@@ -270,6 +273,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shiftEnterNewline: true,
   attentionNotifications: true,
   commandNotifySeconds: 10,
+  highlightRules: [],
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
@@ -526,6 +530,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
     commandNotifySeconds: size(value.commandNotifySeconds, clampCommandNotifySeconds, d.commandNotifySeconds),
+    highlightRules: parseHighlightRules(value.highlightRules),
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),

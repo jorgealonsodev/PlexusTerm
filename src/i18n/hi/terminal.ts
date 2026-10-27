@@ -19,6 +19,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "फिर से न पूछें",
     paste: "पेस्ट करें",
   },
+  ruleMatched: "{pattern} से मेल",
   commandDone: {
     finished: "कमांड पूरी हुई",
     failed: "कमांड विफल रही (कोड {code})",

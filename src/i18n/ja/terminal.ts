@@ -19,6 +19,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "今後は確認しない",
     paste: "貼り付け",
   },
+  ruleMatched: "{pattern} に一致",
   commandDone: {
     finished: "コマンドが終了しました",
     failed: "コマンドが失敗しました（終了コード {code}）",

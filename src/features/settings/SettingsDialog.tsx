@@ -74,6 +74,8 @@ import { AuditLogDialog } from "../share/AuditLogDialog";
 import { HelpTip } from "../sidebar/HelpTip";
 import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
+import { HighlightRulesEditor } from "./HighlightRulesEditor";
+import { parseHighlightRules } from "../terminal/highlightRules";
 
 interface SettingsDialogProps {
   settings: TerminalSettings;
@@ -359,6 +361,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
   const [commandNotifySeconds, setCommandNotifySeconds] = useState(String(settings.commandNotifySeconds));
+  const [highlightRules, setHighlightRules] = useState(settings.highlightRules);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
@@ -546,6 +549,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       shortcuts,
       shiftEnterNewline,
       attentionNotifications,
+      // Rules left without an expression are dropped.
+      highlightRules: parseHighlightRules(highlightRules),
       commandNotifySeconds: Number.isFinite(notifySeconds)
         ? clampCommandNotifySeconds(notifySeconds)
         : settings.commandNotifySeconds,
@@ -1011,6 +1016,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setCommandNotifySeconds(e.target.value)}
               />
             </label>
+            <h3 className="settings__group">{t("settings.groups.highlightRules")}</h3>
+            <HighlightRulesEditor rules={highlightRules} onChange={setHighlightRules} />
           </div>
 
           <div {...panel("dev")}>

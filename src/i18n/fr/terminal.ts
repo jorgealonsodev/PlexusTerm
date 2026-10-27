@@ -23,6 +23,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Ne plus demander",
     paste: "Coller",
   },
+  ruleMatched: "Correspondance avec {pattern}",
   commandDone: {
     finished: "Commande terminée",
     failed: "La commande a échoué (code {code})",

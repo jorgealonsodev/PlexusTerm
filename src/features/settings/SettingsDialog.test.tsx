@@ -284,6 +284,29 @@ describe("SettingsDialog", () => {
     groupShows("Viewer and editor", ["Open the file viewer"], ["Show size and date in file lists"]);
   });
 
+  it("edits the highlight rules in Terminal: add, explain an invalid expression, remove, and drop empty ones", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+    const add = () => fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
+    add();
+    add();
+    add();
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 1"), { target: { value: "ERROR|FATAL" } });
+    fireEvent.change(screen.getByLabelText("Colour of rule 1"), { target: { value: "#ff8800" } });
+    fireEvent.click(within(screen.getByLabelText("Regular expression of rule 1").closest(".rules__row") as HTMLElement).getByLabelText("Notify"));
+    fireEvent.change(screen.getByLabelText("Regular expression of rule 2"), { target: { value: "(unclosed" } });
+    expect(screen.getByRole("alert").textContent).toMatch(/^This expression cannot be used: /);
+    fireEvent.click(screen.getByRole("button", { name: "Remove rule 2" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    // Rule 3 (now 2) has no expression: it is dropped on save.
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        highlightRules: [{ pattern: "ERROR|FATAL", color: "#ff8800", matchCase: false, notify: true }],
+      }),
+    );
+  });
+
   it("keeps an OpenCode Go key for the usage apart from the AI one, and hides it with the usage", async () => {
     const { onSave } = setup();
     // With the rest of the bar under the terminal, in DEV mode.

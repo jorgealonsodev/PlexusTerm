@@ -19,6 +19,7 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Nicht mehr fragen",
     paste: "Einfügen",
   },
+  ruleMatched: "Treffer für {pattern}",
   commandDone: {
     finished: "Befehl beendet",
     failed: "Befehl fehlgeschlagen (Code {code})",
