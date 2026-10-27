@@ -1,7 +1,7 @@
 /**
  * Command blocks: the prompt, the output and the exit code of each command, as the shell's OSC 133
  * marks place them in the buffer. They let the pane jump from prompt to prompt, copy one command's
- * output and mark the commands that failed. Without marks (a remote shell, integration off) there
+ * output and mark the commands that failed with a red dot. Without marks (a remote shell, integration off) there
  * are no blocks and every action does nothing.
  */
 import type { ShellMark } from "./shellMarks";
@@ -53,7 +53,7 @@ interface Block {
   output: Marker | null;
   /** Where the command finished (D): the output ends before this column of this row. */
   end: { marker: Marker; col: number } | null;
-  /** The bar beside a failed command's prompt. */
+  /** The dot beside a failed command's prompt. */
   failed: Decoration | null;
 }
 
@@ -108,7 +108,7 @@ export function jumpColor(theme: { selectionBackground?: string; background?: st
 export function attachCommandBlocks(
   term: BlockTerminal,
   options: {
-    /** The colour of the bar beside a failed command's prompt (`#RRGGBB`). */
+    /** The colour of the dot beside a failed command's prompt (`#RRGGBB`). */
     failedColor: () => string;
     /** The background of the prompt row a jump went to, for a moment (`#RRGGBB`). */
     jumpColor: () => string;
@@ -154,10 +154,22 @@ export function attachCommandBlocks(
     const decoration = term.registerDecoration({ marker: block.prompt, x: 0, width: 1, layer: "top" });
     decoration?.onRender((element) => {
       element.classList.add("command-failed");
-      // Drawn in the pane's padding, left of the prompt, so it never covers the first character.
-      element.style.boxShadow = `-4px 0 0 0 ${color}`;
       // Clicks on the prompt's first cell still select text.
       element.style.pointerEvents = "none";
+      if (element.firstChild) return;
+      // A dot in the pane's padding, left of the prompt, so it never covers the first character.
+      // Fonts leave their spare room above the letters, so it sits below the row's middle, beside them.
+      const dot = document.createElement("div");
+      Object.assign(dot.style, {
+        position: "absolute",
+        left: "-6px",
+        top: "calc(58% - 2.5px)",
+        width: "5px",
+        height: "5px",
+        borderRadius: "50%",
+        background: color,
+      });
+      element.appendChild(dot);
     });
     block.failed = decoration ?? null;
   };

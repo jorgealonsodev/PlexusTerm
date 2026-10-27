@@ -167,7 +167,7 @@ describe("outputAt", () => {
 });
 
 describe("failed commands", () => {
-  it("get a bar beside their prompt in the failure colour; commands that succeed or never ran get none", () => {
+  it("get a dot beside their prompt in the failure colour; commands that succeed or never ran get none", () => {
     const { term } = setup();
     term.run("true", [], 0); // row 0
     term.run("false", [], 1); // row 1
@@ -176,7 +176,10 @@ describe("failed commands", () => {
     term.mark("D;130");
     expect(term.decorations.map((d) => d.line)).toEqual([1]);
     expect(term.decorations[0].element.classList.contains("command-failed")).toBe(true);
-    expect(term.decorations[0].element.style.boxShadow).toContain("#ff0000");
+    const dot = term.decorations[0].element.firstElementChild as HTMLElement;
+    expect(dot.style.background).toBe("rgb(255, 0, 0)");
+    expect(dot.style.borderRadius).toBe("50%");
+    expect(dot.style.left).toBe("-6px");
     expect(term.decorations[0].element.style.pointerEvents).toBe("none");
   });
 
@@ -300,7 +303,7 @@ describe("limits", () => {
     expect(blocks.outputAt()).toBe("three");
   });
 
-  it("disposes every marker and bar with the pane", () => {
+  it("disposes every marker and dot with the pane", () => {
     const { term, blocks } = setup();
     term.run("false", ["oops"], 1);
     blocks.dispose();
