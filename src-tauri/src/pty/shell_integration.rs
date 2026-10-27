@@ -591,9 +591,10 @@ mod tests {
             Default::default()
         };
         // A shell that never exits (a startup file waiting for input) fails the test, never hangs it.
-        let (tx, rx) = std::sync::mpsc::channel();
+        let out = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let (done_tx, done) = std::sync::mpsc::channel();
+        let shared = out.clone();
         std::thread::spawn(move || {
-            let mut out = Vec::new();
             let mut chunk = [0u8; 4096];
             let mut prompts = 0;
             while let Ok(n) = reader.read(&mut chunk) {
@@ -603,6 +604,7 @@ mod tests {
                 if chunk[..n].windows(4).any(|w| w == b"\x1b[6n") {
                     let _ = writer.write_all(b"\x1b[1;1R");
                 }
+                let mut out = shared.lock().unwrap();
                 out.extend_from_slice(&chunk[..n]);
                 // A, ended by BEL or (cmd) ESC \\.
                 let seen = out
@@ -616,13 +618,26 @@ mod tests {
                     }
                 }
             }
-            let _ = tx.send(out);
+            let _ = done_tx.send(());
         });
-        let out = rx.recv_timeout(std::time::Duration::from_secs(30));
-        let _ = child.kill();
-        let _ = child.wait();
-        let out = out.unwrap_or_else(|_| panic!("{program} did not exit"));
-        String::from_utf8_lossy(&out).into_owned()
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        let exited = loop {
+            if matches!(child.try_wait(), Ok(Some(_))) {
+                break true;
+            }
+            if std::time::Instant::now() > deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                break false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
+        // ConPTY ends its output only once the pseudo console closes, not when the shell exits.
+        drop(pair.master);
+        let _ = done.recv_timeout(std::time::Duration::from_secs(5));
+        let out = String::from_utf8_lossy(&out.lock().unwrap()).into_owned();
+        assert!(exited, "{program} did not exit; it printed {out:?}");
+        out
     }
 
     #[cfg(unix)]
