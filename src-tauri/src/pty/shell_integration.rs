@@ -655,6 +655,51 @@ mod tests {
         );
     }
 
+    /// The ZDOTDIR a zsh started as PlexusTerm starts it ends up with, as `${(t)ZDOTDIR}=$ZDOTDIR`,
+    /// when the user's .zshenv sets it with `zshenv`. None when zsh is not installed.
+    #[cfg(unix)]
+    fn zdotdir_after(zshenv: &str) -> Option<String> {
+        let program = crate::platform::find_program("zsh", &std::env::var_os("PATH")?)?;
+        let tmp = tempfile::tempdir().unwrap();
+        let scripts = tmp.path().join("scripts");
+        install_scripts(&scripts).unwrap();
+        let home = tmp.path().join("home");
+        std::fs::create_dir_all(home.join("zdot")).unwrap();
+        std::fs::write(home.join(".zshenv"), zshenv).unwrap();
+        std::fs::write(home.join("zdot/.zshrc"), "").unwrap();
+        let program = program.to_string_lossy().into_owned();
+        let it = integration(
+            &program,
+            &[],
+            Inherited {
+                scripts: Some(&scripts),
+                ..Default::default()
+            },
+        );
+        let out = run_in_pty(
+            &program,
+            it.args.unwrap_or_default(),
+            it.env,
+            &home,
+            b"print -r -- \"<${(t)ZDOTDIR}=${ZDOTDIR:t}>\"\rexit\r",
+            true,
+        );
+        let start = out.rfind('<')?;
+        Some(out[start + 1..start + out[start..].find('>')?].to_string())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn zsh_keeps_the_zdotdir_of_the_users_zshenv_exported_only_when_the_user_exports_it() {
+        // Not exported by the user: a zsh started from this one must read ~/.zshenv again.
+        let Some(plain) = zdotdir_after("ZDOTDIR=$HOME/zdot\n") else {
+            eprintln!("zsh is not installed: not checked");
+            return;
+        };
+        assert_eq!(plain, "scalar=zdot");
+        assert_eq!(zdotdir_after("export ZDOTDIR=$HOME/zdot\n").unwrap(), "scalar-export=zdot");
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_fish_prompt_theme_still_sees_how_the_last_command_ended() {
