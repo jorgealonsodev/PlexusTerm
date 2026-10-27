@@ -12,6 +12,7 @@ import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, typ
 import { WebglAddon } from "@xterm/addon-webgl";
 import { diagnosticEntry } from "../diagnostics/useDiagnosticLog";
 import { softwareWebgl } from "./webglProbe";
+import { keepCanvasesExact } from "./exactCanvas";
 import { latencyFrame, latencyMark } from "./latencyLog";
 import "@xterm/xterm/css/xterm.css";
 import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
@@ -313,6 +314,8 @@ export function TerminalView({
   const searchRef = useRef<SearchAddon | null>(null);
   /** The WebGL renderer while it draws this terminal; null means xterm's own (DOM) renderer. */
   const webglRef = useRef<WebglAddon | null>(null);
+  /** Stops keeping the WebGL canvas at its exact size (exactCanvas.ts); null without WebGL. */
+  const exactCanvasRef = useRef<(() => void) | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const historyRef = useRef(history);
@@ -1106,6 +1109,8 @@ export function TerminalView({
       blocksRef.current = null;
       // Disposed with the terminal.
       webglRef.current = null;
+      exactCanvasRef.current?.();
+      exactCanvasRef.current = null;
       if (sessionId !== null) void backend.close(sessionId);
       term.dispose();
     };
@@ -1125,6 +1130,8 @@ export function TerminalView({
     const term = termRef.current;
     if (!term) return;
     if (!gpuAcceleration) {
+      exactCanvasRef.current?.();
+      exactCanvasRef.current = null;
       webglRef.current?.dispose();
       webglRef.current = null;
     } else if (!webglRef.current && !softwareWebgl()) {
@@ -1135,13 +1142,20 @@ export function TerminalView({
         const loaded = addon;
         loaded.onContextLoss(() => {
           diagnosticEntry("warn", "terminal lost its WebGL context (GPU reset or sleep); xterm's renderer takes over");
-          if (webglRef.current === loaded) webglRef.current = null;
+          if (webglRef.current === loaded) {
+            webglRef.current = null;
+            exactCanvasRef.current?.();
+            exactCanvasRef.current = null;
+          }
           loaded.dispose();
           errorsRef.current?.refresh();
           refit();
         });
         term.loadAddon(loaded);
         webglRef.current = loaded;
+        // At a fractional devicePixelRatio (WebKitGTK with Xft.dpi 110) xterm's rounded canvas size
+        // would be resampled, blurring the text.
+        if (term.element) exactCanvasRef.current = keepCanvasesExact(term.element);
       } catch (error) {
         diagnosticEntry("warn", `terminal WebGL renderer failed to start (${String(error)}); xterm's renderer is used`);
         addon?.dispose();
