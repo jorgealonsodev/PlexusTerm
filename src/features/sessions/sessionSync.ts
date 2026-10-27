@@ -153,12 +153,59 @@ const withAncestors = (path: string) => {
  * to show, and the state to keep locally and write to the file. Sessions keep their local order,
  * the ones from other computers follow.
  */
+/** A session's saved form without its id and jump hosts: the same session under other ids. */
+const shapeOf = (value: string) => {
+  const { id: _id, jumpIds: _jumps, ...rest } = JSON.parse(value) as Record<string, unknown>;
+  return JSON.stringify(rest);
+};
+
+/**
+ * Sessions this computer has never synced (stamped at 0 on its first sync) that are, apart from
+ * their ids, sessions of the shared file: two computers that imported the same export. Maps each
+ * local id to the shared one it is a copy of.
+ */
+function copiesOfShared(state: SyncState, remote: SyncState | null): Map<string, string> {
+  const copies = new Map<string, string>();
+  if (!remote) return copies;
+  const shared = new Map<string, string>();
+  for (const [id, stamp] of Object.entries(remote.sessions)) {
+    if (stamp.value !== null && !shared.has(shapeOf(stamp.value))) shared.set(shapeOf(stamp.value), id);
+  }
+  const taken = new Set<string>();
+  for (const [id, stamp] of Object.entries(state.sessions)) {
+    if (stamp.at !== 0 || stamp.value === null || id in remote.sessions) continue;
+    const match = shared.get(shapeOf(stamp.value));
+    if (match && !taken.has(match) && !(match in state.sessions)) {
+      copies.set(id, match);
+      taken.add(match);
+    }
+  }
+  return copies;
+}
+
 export function mergeSync(
   library: SessionLibrary,
   state: SyncState,
   remote: SyncState | null,
   now: number,
 ): { library: SessionLibrary; state: SyncState } {
+  // A first sync drops this computer's copies of shared sessions for the shared ones.
+  const copies = copiesOfShared(state, remote);
+  if (copies.size > 0) {
+    const local = { ...state.sessions };
+    for (const id of copies.keys()) delete local[id];
+    state = { ...state, sessions: local };
+    library = {
+      ...library,
+      sessions: library.sessions
+        .filter((s) => !copies.has(s.id))
+        .map((s) =>
+          isSshSession(s) && s.jumpIds?.some((id) => copies.has(id))
+            ? sanitizeSession({ ...s, jumpIds: s.jumpIds.map((id) => copies.get(id) ?? id) })
+            : s,
+        ),
+    };
+  }
   const sessions = newer(state.sessions, remote?.sessions ?? {}, now);
   const folders = newer(state.folders, remote?.folders ?? {}, now);
 

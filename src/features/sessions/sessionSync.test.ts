@@ -147,6 +147,37 @@ describe("session sync", () => {
     expect(file.text).toBe(settled);
   });
 
+  it("does not duplicate the sessions two computers imported from the same export (new ids on each)", () => {
+    const file = { text: null as string | null };
+    // A imported web and db (and inner through web); so did B, with ids of its own.
+    const imported = (id: string, name: string, jumpIds?: string[]) =>
+      ({ ...ssh(id, name, "", `${name}.example`), ...(jumpIds ? { jumpIds } : {}) }) as LibrarySession;
+    const a = new Computer(lib([imported("a1", "web"), imported("a2", "db"), imported("a3", "inner", ["a1"])]));
+    a.sync(file, 1000);
+    const b = new Computer(lib([imported("b1", "web"), imported("b2", "db"), imported("b3", "inner", ["b1"]), ssh("b9", "only on B")]));
+    b.state = noteLocal(b.library, emptySyncState, 0);
+    b.sync(file, 2000);
+    expect(names(b.library).sort()).toEqual(["db", "inner", "only on B", "web"]);
+    // B's copies were dropped for A's, and B's inner goes through A's web.
+    const inner = b.library.sessions.find((s) => s.name === "inner") as { id: string; jumpIds?: string[] };
+    expect(inner.id).toBe("a3");
+    expect(inner.jumpIds).toEqual(["a1"]);
+    a.sync(file, 3000);
+    expect(names(a.library).sort()).toEqual(["db", "inner", "only on B", "web"]);
+  });
+
+  it("keeps a session that only looks like one in the shared file once this computer synced before", () => {
+    const file = { text: null as string | null };
+    const a = new Computer(lib([ssh("a1", "web")]));
+    a.sync(file, 1000);
+    const b = new Computer();
+    b.sync(file, 1100);
+    // Later, B makes a second session just like it on purpose.
+    b.edit({ type: "saveSession", session: ssh("b1", "web", "", "a1.example") }, 2000);
+    b.sync(file, 2100);
+    expect(b.library.sessions.map((s) => s.id).sort()).toEqual(["a1", "b1"]);
+  });
+
   it("changes nothing in a library that is already in step, and writes no session the user did not have", () => {
     const file = { text: null as string | null };
     const a = new Computer(lib([ssh("1", "web")]));

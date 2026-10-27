@@ -149,7 +149,8 @@ Settings → Connections → **Synced folder** keeps the saved sessions in step 
 
 - When the same session changed on two computers, the change made last wins (by each computer's clock).
 - A session or folder deleted on one computer is deleted on the others too, unless it was changed on another one after the deletion. Deletions are remembered for a year.
-- The first time a computer syncs, a session it has that the folder also has takes the folder's version; sessions only on that computer are added for the others.
+- The first time a computer syncs, a session it has that the folder also has takes the folder's version; sessions only on that computer are added for the others. Sessions both computers imported from the same export (each import gives them new ids) are recognised as the same and are not duplicated.
+- A change goes to the folder about two seconds after you make it. If PlexusTerm's own sync record (`sessions-sync.json` in the app config folder) is deleted, a deletion made in those last seconds can come back from the folder; delete the session again.
 - Passwords never go to the folder (saved ones stay in each computer's keyring), nor do private keys, only their paths: the file is exactly as private as the folder it is in.
 - A file in that folder that is not a PlexusTerm sync file is never changed; Settings says so under the folder. The last sync time, or why it failed, shows there too.
 - Leave the field empty to stop syncing; the sessions stay as they are.
