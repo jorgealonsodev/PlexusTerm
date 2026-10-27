@@ -473,6 +473,10 @@ export function TerminalView({
     const blocks = attachCommandBlocks(term, {
       failedColor: () => errorColor(themeById(settingsRef.current.theme).theme),
       jumpColor: () => jumpColor(themeById(settingsRef.current.theme).theme),
+      failedTitle: (code, ms) =>
+        ms === null
+          ? t("terminal.commandDot.exit", { code })
+          : t("terminal.commandDot.exitTime", { code, duration: formatDuration(ms) }),
     });
     blocksRef.current = blocks;
     let errorsTimer: ReturnType<typeof setTimeout> | null = null;

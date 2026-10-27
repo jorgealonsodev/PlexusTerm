@@ -27,6 +27,10 @@ export const terminal: Messages<typeof en> = {
     paste: "لصق",
   },
   ruleMatched: "مطابقة {pattern}",
+  commandDot: {
+    exit: "رمز الخروج {code}",
+    exitTime: "رمز الخروج {code} · {duration}",
+  },
   commandDone: {
     finished: "اكتمل الأمر",
     failed: "فشل الأمر (الرمز {code})",

@@ -18,6 +18,10 @@ export const terminal = {
     paste: "Paste",
   },
   ruleMatched: "Matched {pattern}",
+  commandDot: {
+    exit: "Exit code {code}",
+    exitTime: "Exit code {code} · {duration}",
+  },
   commandDone: {
     finished: "Command finished",
     failed: "Command failed (exit {code})",

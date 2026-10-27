@@ -24,6 +24,10 @@ export const terminal: Messages<typeof en> = {
     paste: "Coller",
   },
   ruleMatched: "Correspondance avec {pattern}",
+  commandDot: {
+    exit: "Code de sortie {code}",
+    exitTime: "Code de sortie {code} · {duration}",
+  },
   commandDone: {
     finished: "Commande terminée",
     failed: "La commande a échoué (code {code})",

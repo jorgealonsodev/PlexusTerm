@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "粘贴",
   },
   ruleMatched: "匹配 {pattern}",
+  commandDot: {
+    exit: "退出码 {code}",
+    exitTime: "退出码 {code} · {duration}",
+  },
   commandDone: {
     finished: "命令已完成",
     failed: "命令失败（退出码 {code}）",

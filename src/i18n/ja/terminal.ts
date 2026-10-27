@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "貼り付け",
   },
   ruleMatched: "{pattern} に一致",
+  commandDot: {
+    exit: "終了コード {code}",
+    exitTime: "終了コード {code} · {duration}",
+  },
   commandDone: {
     finished: "コマンドが終了しました",
     failed: "コマンドが失敗しました（終了コード {code}）",

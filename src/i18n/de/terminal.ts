@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "Einfügen",
   },
   ruleMatched: "Treffer für {pattern}",
+  commandDot: {
+    exit: "Exit-Code {code}",
+    exitTime: "Exit-Code {code} · {duration}",
+  },
   commandDone: {
     finished: "Befehl beendet",
     failed: "Befehl fehlgeschlagen (Code {code})",

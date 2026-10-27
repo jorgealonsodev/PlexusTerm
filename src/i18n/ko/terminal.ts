@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "붙여넣기",
   },
   ruleMatched: "{pattern} 일치",
+  commandDot: {
+    exit: "종료 코드 {code}",
+    exitTime: "종료 코드 {code} · {duration}",
+  },
   commandDone: {
     finished: "명령 완료",
     failed: "명령 실패 (종료 코드 {code})",

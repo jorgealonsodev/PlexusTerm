@@ -51,6 +51,8 @@ interface Block {
   prompt: Marker;
   /** The row where the output starts (C); null until the command runs. */
   output: Marker | null;
+  /** When the command started running (C), by `now`. */
+  startedAt: number | null;
   /** Where the command finished (D): the output ends before this column of this row. */
   end: { marker: Marker; col: number } | null;
   /** The dot beside a failed command's prompt. */
@@ -112,10 +114,14 @@ export function attachCommandBlocks(
     failedColor: () => string;
     /** The background of the prompt row a jump went to, for a moment (`#RRGGBB`). */
     jumpColor: () => string;
+    /** What the dot of a failed command says on hover: its exit code and how long it ran (ms, null if unknown). */
+    failedTitle?: (exit: number, ms: number | null) => string;
+    now?: () => number;
     maxBlocks?: number;
   },
 ): CommandBlocks {
   const maxBlocks = options.maxBlocks ?? MAX_BLOCKS;
+  const now = options.now ?? (() => performance.now());
   let blocks: Block[] = [];
   /** The prompt the last jump went to, and the screen's top row it left: the next jump starts there. */
   let jumped: { prompt: Marker; viewportY: number } | null = null;
@@ -151,6 +157,7 @@ export function attachCommandBlocks(
     // A command that never ran (an empty line, Ctrl+C at the prompt) has no output to mark.
     if (exit === null || exit === 0 || !block.output) return;
     const color = options.failedColor();
+    const title = options.failedTitle?.(exit, block.startedAt === null ? null : now() - block.startedAt) ?? "";
     const decoration = term.registerDecoration({ marker: block.prompt, x: 0, width: 1, layer: "top" });
     decoration?.onRender((element) => {
       element.classList.add("command-failed");
@@ -169,6 +176,9 @@ export function attachCommandBlocks(
         borderRadius: "50%",
         background: color,
       });
+      // The dot alone takes the pointer, to say how the command ended.
+      dot.style.pointerEvents = "auto";
+      dot.title = title;
       element.appendChild(dot);
     });
     block.failed = decoration ?? null;
@@ -184,12 +194,15 @@ export function attachCommandBlocks(
         if (current && !current.output && current.prompt.line === cursorRow()) return;
         const prompt = term.registerMarker(0);
         if (!prompt) return;
-        blocks.push({ prompt, output: null, end: null, failed: null });
+        blocks.push({ prompt, output: null, startedAt: null, end: null, failed: null });
         while (blocks.length > maxBlocks) disposeBlock(blocks.shift()!);
         return;
       }
       case "C":
-        if (current && !current.output && !current.end) current.output = term.registerMarker(0) ?? null;
+        if (current && !current.output && !current.end) {
+          current.output = term.registerMarker(0) ?? null;
+          current.startedAt = now();
+        }
         return;
       case "D":
         if (current && !current.end) finish(current, shellMark.exit);

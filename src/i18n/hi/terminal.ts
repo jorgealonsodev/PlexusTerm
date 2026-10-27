@@ -20,6 +20,10 @@ export const terminal: Messages<typeof en> = {
     paste: "पेस्ट करें",
   },
   ruleMatched: "{pattern} से मेल",
+  commandDot: {
+    exit: "निकास कोड {code}",
+    exitTime: "निकास कोड {code} · {duration}",
+  },
   commandDone: {
     finished: "कमांड पूरी हुई",
     failed: "कमांड विफल रही (कोड {code})",

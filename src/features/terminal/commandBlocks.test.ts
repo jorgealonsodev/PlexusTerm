@@ -90,15 +90,24 @@ class FakeTerminal implements BlockTerminal {
       this.print(...output);
       this.newline();
     }
+    clock.now += 1000;
     this.mark(`D;${exit}`);
   }
 }
 
 const blocksOf = new Map<FakeTerminal, ReturnType<typeof attachCommandBlocks>>();
+/** The test clock: `run` advances it by a second between a command's C and D marks. */
+const clock = { now: 0 };
 const setup = (maxBlocks?: number) => {
   const term = new FakeTerminal();
   term.rows[0] = ["", false];
-  const blocks = attachCommandBlocks(term, { failedColor: () => "#ff0000", jumpColor: () => "#334455", maxBlocks });
+  const blocks = attachCommandBlocks(term, {
+    failedColor: () => "#ff0000",
+    jumpColor: () => "#334455",
+    failedTitle: (exit, ms) => `exit ${exit} after ${ms} ms`,
+    now: () => clock.now,
+    maxBlocks,
+  });
   blocksOf.set(term, blocks);
   return { term, blocks };
 };
@@ -182,6 +191,9 @@ describe("failed commands", () => {
     expect(dot.style.left).toBe("-9.5px");
     expect(dot.style.width).toBe("7px");
     expect(term.decorations[0].element.style.pointerEvents).toBe("none");
+    // The dot itself takes the pointer, to say how the command ended.
+    expect(dot.style.pointerEvents).toBe("auto");
+    expect(dot.title).toBe("exit 1 after 1000 ms");
   });
 
   it("are marked once when the shell sends its marks twice (fish 4 and ours)", () => {
