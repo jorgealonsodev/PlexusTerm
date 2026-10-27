@@ -1,6 +1,6 @@
 # PlexusTerm shell integration for bash: OSC 133 marks (A prompt, B command line, C command
-# runs, D;exit code finished). Started with --rcfile, so it loads what bash would have loaded.
-if [ -r /etc/bash.bashrc ]; then . /etc/bash.bashrc; fi
+# runs, D;exit code finished). Started with --rcfile, so it loads the ~/.bashrc bash would have
+# loaded; bash reads /etc/bash.bashrc itself where it is built to (Debian, Ubuntu, Arch).
 if [ -r ~/.bashrc ]; then . ~/.bashrc; fi
 
 if [[ $- == *i* && -z ${__plexus_integration-} ]]; then

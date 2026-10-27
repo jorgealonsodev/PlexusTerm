@@ -49,7 +49,7 @@ import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
-import { parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
+import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
@@ -167,10 +167,19 @@ export const ACTIVITY_QUIET_MS = 1500;
 const ECHO_MS = 150;
 
 /** xterm's buffer as the shell marks read it. */
-const rowsOf = (buffer: IBuffer): ScreenRows => ({
+const rowsOf = (buffer: IBuffer, cols: number): ScreenRows => ({
+  cols,
   row: (y) => {
     const line = buffer.getLine(y);
-    return line ? { wrapped: line.isWrapped, text: (start, end, trimRight = false) => line.translateToString(trimRight, start, end) } : null;
+    if (!line) return null;
+    return {
+      wrapped: line.isWrapped,
+      text: (start, end, trimRight = false) => line.translateToString(trimRight, start, end),
+      drawn: (col) => {
+        const cell = line.getCell(col);
+        return cell !== undefined && isDrawnGrey(cell);
+      },
+    };
   },
 });
 /** After a resize, error lines are coloured again once the size has not changed for this long. */
@@ -674,7 +683,7 @@ export function TerminalView({
       if (!inputStart || inputStart.marker.isDisposed || fullScreen()) return null;
       const buffer = term.buffer.active;
       return typedLineAt(
-        rowsOf(buffer),
+        rowsOf(buffer, term.cols),
         { row: inputStart.marker.line, col: inputStart.col },
         { row: buffer.baseY + buffer.cursorY, col: buffer.cursorX },
       );

@@ -106,7 +106,14 @@ vi.mock("@xterm/xterm", () => ({
       const row = {
         isWrapped: false,
         length: line.length,
-        getCell: (x: number) => ({ getChars: () => line[x] ?? "", getWidth: () => 1 }),
+        getCell: (x: number) => ({
+          getChars: () => line[x] ?? "",
+          getWidth: () => 1,
+          isDim: () => 0,
+          isFgPalette: () => false,
+          isFgRGB: () => false,
+          getFgColor: () => -1,
+        }),
         translateToString: (trim?: boolean, start = 0, end?: number) =>
           trim ? line.slice(start, end).trimEnd() : line.slice(start, end),
       };

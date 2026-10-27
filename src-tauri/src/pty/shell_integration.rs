@@ -68,9 +68,13 @@ fn shell_name(program: &str) -> String {
 }
 
 /// Git for Windows' bash, not the `bash.exe` of System32 (which starts WSL).
+/// Elsewhere only a `.exe` (Linux and macOS have no Git Bash: a bash under a `git` folder there is
+/// a plain bash).
 fn is_git_bash(program: &str) -> bool {
     let path = program.to_ascii_lowercase().replace('/', "\\");
-    shell_name(program) == "bash" && path.contains("\\git\\")
+    shell_name(program) == "bash"
+        && path.contains("\\git\\")
+        && (cfg!(windows) || path.ends_with(".exe"))
 }
 
 /// bash's startup script (`--rcfile`), and zsh's in a folder of their own (`ZDOTDIR`).
@@ -238,6 +242,39 @@ pub fn integration(program: &str, args: &[String], inherited: Inherited) -> Inte
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_unix_bash_under_a_git_folder_is_not_git_bash() {
+        let dir = Path::new("/scripts");
+        let it = integration(
+            "/home/me/git/bash-5.2/bash",
+            &[],
+            Inherited {
+                scripts: Some(dir),
+                ..Default::default()
+            },
+        );
+        if cfg!(unix) {
+            assert_eq!(
+                it.args,
+                Some(vec!["--rcfile".to_string(), "/scripts/bash.sh".to_string()])
+            );
+            assert!(it.env.is_empty());
+        }
+    }
+
+    #[test]
+    fn the_bash_script_leaves_the_system_bashrc_to_bash() {
+        // Debian, Ubuntu and Arch build bash to read /etc/bash.bashrc even with --rcfile: sourcing
+        // it again would run it twice.
+        let script = include_str!("scripts/bash.sh");
+        assert!(
+            !script
+                .lines()
+                .any(|l| !l.trim_start().starts_with('#') && l.contains("/etc/bash.bashrc"))
+        );
+        assert!(script.contains(". ~/.bashrc"));
+    }
 
     #[test]
     fn turned_off_leaves_only_the_windows_folder_report() {
