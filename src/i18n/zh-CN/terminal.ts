@@ -19,6 +19,10 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "不再询问",
     paste: "粘贴",
   },
+  commandDone: {
+    finished: "命令已完成",
+    failed: "命令失败（退出码 {code}）",
+  },
   menu: {
     copyOutput: "复制命令输出",
     askAi: "询问 AI",

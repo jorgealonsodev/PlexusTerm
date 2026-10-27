@@ -19,6 +19,10 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "다시 묻지 않음",
     paste: "붙여넣기",
   },
+  commandDone: {
+    finished: "명령 완료",
+    failed: "명령 실패 (종료 코드 {code})",
+  },
   menu: {
     copyOutput: "명령 출력 복사",
     askAi: "AI에게 묻기",

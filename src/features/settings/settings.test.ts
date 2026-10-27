@@ -55,6 +55,7 @@ describe("parseSettings", () => {
       shortcuts: {},
       shiftEnterNewline: true,
       attentionNotifications: true,
+      commandNotifySeconds: 10,
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -187,6 +188,7 @@ describe("parseSettings", () => {
       // So do the settings added for AI command-line tools.
       shiftEnterNewline: true,
       attentionNotifications: true,
+      commandNotifySeconds: 10,
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -384,6 +386,7 @@ describe("serializeSettings", () => {
       shortcuts: { newTerminal: "Ctrl+Alt+N", toggleSidebar: "", nextTab: "Ctrl+PageDown" },
       shiftEnterNewline: false,
       attentionNotifications: false,
+      commandNotifySeconds: 0,
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,

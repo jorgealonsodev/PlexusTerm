@@ -117,6 +117,11 @@ export interface TerminalSettings {
    * while PlexusTerm is in the background; the tab is marked either way.
    */
   attentionNotifications: boolean;
+  /**
+   * A command the shell marks (shell integration) that runs at least this many seconds says when it
+   * finishes, like a program asking for attention; 0 turns it off.
+   */
+  commandNotifySeconds: number;
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
   gpuAcceleration: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
@@ -264,6 +269,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   shortcuts: {},
   shiftEnterNewline: true,
   attentionNotifications: true,
+  commandNotifySeconds: 10,
   gpuAcceleration: true,
   gitFileStatus: true,
   viewerAutoSave: false,
@@ -302,6 +308,10 @@ export const clampUiFontSize = (size: number) => Math.min(MAX_UI_FONT_SIZE, Math
 export const clampChatFontSize = (size: number) =>
   Math.min(MAX_CHAT_FONT_SIZE, Math.max(MIN_CHAT_FONT_SIZE, Math.round(size)));
 export const clampRecentFolderLimit = (count: number) => Math.min(MAX_RECENT_FOLDERS, Math.max(1, Math.round(count)));
+/** Longest wait a command notice can ask for: an hour. */
+export const MAX_COMMAND_NOTIFY_SECONDS = 3600;
+export const clampCommandNotifySeconds = (seconds: number) =>
+  Math.min(MAX_COMMAND_NOTIFY_SECONDS, Math.max(0, Math.round(seconds)));
 export const clampViewerFontSize = (size: number) =>
   Math.min(MAX_VIEWER_FONT_SIZE, Math.max(MIN_VIEWER_FONT_SIZE, Math.round(size)));
 const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
@@ -515,6 +525,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     shortcuts,
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
+    commandNotifySeconds: size(value.commandNotifySeconds, clampCommandNotifySeconds, d.commandNotifySeconds),
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),

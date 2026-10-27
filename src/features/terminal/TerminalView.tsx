@@ -54,6 +54,7 @@ import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRow
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { attachCommandBlocks, jumpColor, type CommandBlocks } from "./commandBlocks";
+import { createCommandTimer, formatDuration, shortCommand, type FinishedCommand } from "./commandTimer";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
@@ -694,6 +695,19 @@ export function TerminalView({
      * command line, so one printed by a program or a file shown with `cat` is ignored.
      */
     let atPrompt = false;
+    /** The last command line sent with Enter (never one typed at a password prompt), for its notice. */
+    let lastSent = "";
+    const commandTimer = createCommandTimer();
+    /** A long command finished: its tab is marked, and the desktop told while the window is away. */
+    const commandNotice = (done: FinishedCommand): AttentionNotice => {
+      const failed = done.exit !== null && done.exit !== 0;
+      const command = shortCommand(done.command);
+      const duration = formatDuration(done.ms);
+      return {
+        title: failed ? t("terminal.commandDone.failed", { code: done.exit! }) : t("terminal.commandDone.finished"),
+        body: command ? `${command} · ${duration}` : duration,
+      };
+    };
     /** The command line as the shell's marks place it on screen, exact after Tab, arrows or Ctrl+R. */
     const markedLine = (): CommandLine | null => {
       if (!inputStart || inputStart.marker.isDisposed || fullScreen()) return null;
@@ -841,6 +855,8 @@ export function TerminalView({
         line = result.state;
         if (!secret) for (const command of result.commits) callbacks.current.onCommand?.(command, prompt);
         if (!secret && recalled && result.commits.length === 0) callbacks.current.onCommand?.(recalled.command, recalled.prompt);
+        if (!secret && result.commits.length > 0) lastSent = result.commits[result.commits.length - 1];
+        else if (!secret && recalled) lastSent = recalled.command;
         if (settingsRef.current.commandHistory && !secret) {
           for (const command of result.commits) if (!command.startsWith(" ")) historyRef.current.record(hostKey, command);
         }
@@ -1034,6 +1050,11 @@ export function TerminalView({
         const mark = parseOsc133(data);
         if (!mark) return true;
         blocks.mark(mark);
+        if (mark.kind === "C") commandTimer.started(lastSent);
+        else if (mark.kind === "D") {
+          const done = commandTimer.finished(mark.exit, settingsRef.current.commandNotifySeconds * 1000);
+          if (done) callbacks.current.onAttention?.(commandNotice(done));
+        }
         inputStart?.marker.dispose();
         inputStart = null;
         if (mark.kind !== "B") atPrompt = mark.kind === "A";

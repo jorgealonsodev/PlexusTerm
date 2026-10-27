@@ -134,6 +134,10 @@ vi.mock("@xterm/xterm", () => ({
       const marker = { line: 0, isDisposed: false, dispose: () => void (marker.isDisposed = true) };
       return marker;
     }
+    /** The dot beside a failed command's prompt (commandBlocks.ts). */
+    registerDecoration() {
+      return { onRender: () => ({ dispose() {} }), dispose() {} };
+    }
     dataHandlers: ((data: string) => void)[] = [];
     type(data: string) {
       this.dataHandlers.forEach((handler) => handler(data));
@@ -1147,6 +1151,54 @@ describe("TerminalView", () => {
       // A full-screen program (vim, tmux) keeps them.
       term().bufferType = "alternate";
       expect(press("ArrowUp")).toBe(true);
+    });
+
+    it("says when a command the shell marks ran past the threshold, with its exit and duration", () => {
+      const onAttention = vi.fn();
+      let now = 0;
+      const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+      try {
+        renderView({ onAttention, settings: { ...DEFAULT_SETTINGS, commandNotifySeconds: 10 } });
+        const run = (command: string, seconds: number, exit: number) =>
+          act(() => {
+            term().osc(133, "A");
+            term().line = "$ ";
+            term().osc(133, "B");
+            term().type(command);
+            // The shell echoes it: with the marks, Enter takes the command line from the screen.
+            term().line = `$ ${command}`;
+            term().type("\r");
+            term().osc(133, "C");
+            now += seconds * 1000;
+            term().osc(133, `D;${exit}`);
+          });
+        run("ls", 2, 0);
+        expect(onAttention).not.toHaveBeenCalled();
+        run("make", 15, 2);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Command failed (exit 2)", body: "make · 15 s" });
+        run("npm test", 134, 0);
+        expect(onAttention).toHaveBeenLastCalledWith({ title: "Command finished", body: "npm test · 2 min 14 s" });
+        expect(onAttention).toHaveBeenCalledTimes(2);
+      } finally {
+        clock.mockRestore();
+      }
+    });
+
+    it("says nothing about long commands when the threshold is 0", () => {
+      const onAttention = vi.fn();
+      let now = 0;
+      const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+      try {
+        renderView({ onAttention, settings: { ...DEFAULT_SETTINGS, commandNotifySeconds: 0 } });
+        act(() => {
+          term().osc(133, "C");
+          now += 600_000;
+          term().osc(133, "D;0");
+        });
+        expect(onAttention).not.toHaveBeenCalled();
+      } finally {
+        clock.mockRestore();
+      }
     });
 
     it("hands the assistant the pane's selection and a way to focus it back (S3)", () => {

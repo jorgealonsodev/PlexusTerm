@@ -23,6 +23,10 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Não perguntar novamente",
     paste: "Colar",
   },
+  commandDone: {
+    finished: "Comando concluído",
+    failed: "O comando falhou (código {code})",
+  },
   menu: {
     copyOutput: "Copiar a saída do comando",
     askAi: "Perguntar à IA",

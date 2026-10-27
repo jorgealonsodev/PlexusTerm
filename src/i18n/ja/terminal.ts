@@ -19,6 +19,10 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "今後は確認しない",
     paste: "貼り付け",
   },
+  commandDone: {
+    finished: "コマンドが終了しました",
+    failed: "コマンドが失敗しました（終了コード {code}）",
+  },
   menu: {
     copyOutput: "コマンドの出力をコピー",
     askAi: "AI に質問",

@@ -116,6 +116,8 @@ export const settings = {
     shiftEnterNewlineHelp: "Shift+Enter sends a line feed (like Ctrl+J), so AI command-line tools such as Claude Code, Codex, Gemini CLI and OpenCode start a new line instead of sending the message. Shells run the command as with Enter. Turn it off to make Shift+Enter send Enter's carriage return.",
     attentionNotifications: "Desktop notifications when a terminal needs attention",
     attentionNotificationsHelp: "When a program rings the bell or sends a notification (as Claude Code and Codex do when they finish or wait for you) in a terminal you are not looking at, its tab is marked until you open it. While PlexusTerm is in the background, a desktop notification shows the message too. Turn this off to keep only the tab mark.",
+    commandNotifySeconds: "Notify when a command takes longer than (seconds)",
+    commandNotifySecondsHelp: "With shell integration, a command that runs at least this long says when it finishes, like a program asking for attention: in a terminal you are not looking at, its tab is marked, and while PlexusTerm is in the background a desktop notification shows the command, how long it took and whether it failed. 0 turns it off.",
     gpuAcceleration: "GPU acceleration",
     gpuAccelerationHelp: "Terminals are drawn with WebGL on the graphics card, which keeps programs that redraw the screen often (AI command-line tools, htop) smooth. When WebGL is not available or the graphics card resets, terminals switch to the standard renderer by themselves. Turn it off if text looks wrong or flickers with your graphics driver. On Linux, if text looks blurry or typing feels slow, turn it off.",
     devCommands: "Commands that turn DEV mode on",

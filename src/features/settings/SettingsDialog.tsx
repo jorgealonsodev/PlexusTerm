@@ -34,6 +34,8 @@ import {
   MAX_CHAT_FONT_SIZE,
   MIN_VIEWER_FONT_SIZE,
   clampRecentFolderLimit,
+  clampCommandNotifySeconds,
+  MAX_COMMAND_NOTIFY_SECONDS,
   MAX_VIEWER_FONT_SIZE,
   cleanAiBaseUrl,
   cleanShareUrl,
@@ -353,6 +355,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [shellIntegration, setShellIntegration] = useState(settings.shellIntegration);
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
+  const [commandNotifySeconds, setCommandNotifySeconds] = useState(String(settings.commandNotifySeconds));
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
@@ -478,6 +481,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
     const recentLimit = Number.parseFloat(recentFolderLimit);
+    const notifySeconds = Number.parseFloat(commandNotifySeconds);
     const context = Number.parseFloat(aiHistoryContext);
     return {
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
@@ -539,6 +543,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       shortcuts,
       shiftEnterNewline,
       attentionNotifications,
+      commandNotifySeconds: Number.isFinite(notifySeconds)
+        ? clampCommandNotifySeconds(notifySeconds)
+        : settings.commandNotifySeconds,
       gpuAcceleration,
       devCommands: parseDevCommands(devCommands),
       recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
@@ -985,6 +992,18 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <span className="setting-title">
                 {t("settings.terminal.attentionNotifications")} <HelpTip text={t("settings.terminal.attentionNotificationsHelp")} />
               </span>
+            </label>
+            <label className="field field--size">
+              <span className="setting-title">
+                {t("settings.terminal.commandNotifySeconds")} <HelpTip text={t("settings.terminal.commandNotifySecondsHelp")} />
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={MAX_COMMAND_NOTIFY_SECONDS}
+                value={commandNotifySeconds}
+                onChange={(e) => setCommandNotifySeconds(e.target.value)}
+              />
             </label>
             <label className="check">
               <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />

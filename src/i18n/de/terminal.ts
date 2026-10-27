@@ -19,6 +19,10 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Nicht mehr fragen",
     paste: "Einfügen",
   },
+  commandDone: {
+    finished: "Befehl beendet",
+    failed: "Befehl fehlgeschlagen (Code {code})",
+  },
   menu: {
     copyOutput: "Befehlsausgabe kopieren",
     askAi: "Die KI dazu fragen",

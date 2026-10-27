@@ -119,6 +119,8 @@ export const settings: Messages<typeof en> = {
     shiftEnterNewlineHelp: "Shift+Enter でラインフィード（Ctrl+J と同じ）を送ります。Claude Code、Codex、Gemini CLI、OpenCode などの AI コマンドラインツールは、メッセージを送信せずに改行します。シェルでは Enter と同じくコマンドを実行します。オフにすると Shift+Enter は Enter と同じキャリッジリターンを送ります。",
     attentionNotifications: "ターミナルが確認を求めたらデスクトップ通知",
     attentionNotificationsHelp: "見ていないターミナルでプログラムがベルを鳴らしたり通知を送ったりすると（Claude Code や Codex は完了時や入力待ちのときに送ります）、そのタブを開くまで印が付きます。PlexusTerm がバックグラウンドにあるときは、デスクトップ通知でもメッセージを表示します。オフにするとタブの印だけになります。",
+    commandNotifySeconds: "コマンドがこの秒数より長くかかったら通知",
+    commandNotifySecondsHelp: "シェル統合が有効なとき、この時間以上かかったコマンドは、注意を求めるプログラムと同じように終了を知らせます。見ていないターミナルではタブに印が付き、PlexusTerm がバックグラウンドのときはデスクトップ通知にコマンド、所要時間、失敗したかどうかが表示されます。0 でオフになります。",
     gpuAcceleration: "GPU アクセラレーション",
     gpuAccelerationHelp: "ターミナルをグラフィックカード上の WebGL で描画し、画面を頻繁に描き直すプログラム（AI コマンドラインツール、htop）を滑らかに表示します。WebGL が使えないときやグラフィックカードがリセットされたときは、自動的に標準のレンダラーに切り替わります。お使いのグラフィックドライバーで文字が崩れたりちらついたりする場合はオフにしてください。Linux で文字がぼやけたり入力が遅く感じられたりする場合はオフにしてください。",
     devCommands: "DEV モードをオンにするコマンド",

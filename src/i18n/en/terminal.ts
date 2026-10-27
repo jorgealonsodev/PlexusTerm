@@ -17,6 +17,10 @@ export const terminal = {
     dontAsk: "Don't ask again",
     paste: "Paste",
   },
+  commandDone: {
+    finished: "Command finished",
+    failed: "Command failed (exit {code})",
+  },
   menu: {
     copyOutput: "Copy command output",
     askAi: "Ask the AI about it",

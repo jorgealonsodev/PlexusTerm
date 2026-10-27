@@ -119,6 +119,8 @@ export const settings: Messages<typeof en> = {
     shiftEnterNewlineHelp: "Shift+Enter가 라인 피드(Ctrl+J와 같음)를 보내므로 Claude Code, Codex, Gemini CLI, OpenCode 같은 AI 명령줄 도구가 메시지를 보내지 않고 새 줄을 시작합니다. 셸에서는 Enter처럼 명령을 실행합니다. 끄면 Shift+Enter가 Enter의 캐리지 리턴을 보냅니다.",
     attentionNotifications: "터미널이 확인을 요청하면 데스크톱 알림",
     attentionNotificationsHelp: "보고 있지 않은 터미널에서 프로그램이 벨을 울리거나 알림을 보내면(Claude Code와 Codex는 작업이 끝나거나 입력을 기다릴 때 보냅니다) 그 탭을 열 때까지 표시가 남습니다. PlexusTerm이 백그라운드에 있으면 데스크톱 알림으로도 메시지를 보여 줍니다. 끄면 탭 표시만 남습니다.",
+    commandNotifySeconds: "명령이 이 시간(초)보다 오래 걸리면 알림",
+    commandNotifySecondsHelp: "셸 통합을 사용하면 이 시간 이상 실행된 명령은 주의를 요청하는 프로그램처럼 끝났을 때 알립니다. 보고 있지 않은 터미널에서는 탭에 표시가 붙고, PlexusTerm이 백그라운드에 있으면 데스크톱 알림에 명령, 걸린 시간, 실패 여부가 표시됩니다. 0이면 끕니다.",
     gpuAcceleration: "GPU 가속",
     gpuAccelerationHelp: "터미널을 그래픽 카드의 WebGL로 그려 화면을 자주 다시 그리는 프로그램(AI 명령줄 도구, htop)도 부드럽게 표시합니다. WebGL을 쓸 수 없거나 그래픽 카드가 재설정되면 터미널이 자동으로 표준 렌더러로 전환됩니다. 그래픽 드라이버에서 글자가 이상하게 보이거나 깜박이면 끄세요. Linux에서 글자가 흐리게 보이거나 입력이 느리게 느껴지면 끄세요.",
     devCommands: "DEV 모드를 켜는 명령",

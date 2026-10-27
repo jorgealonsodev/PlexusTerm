@@ -119,6 +119,8 @@ export const settings: Messages<typeof en> = {
     shiftEnterNewlineHelp: "Shift+Enter 发送换行符（与 Ctrl+J 相同），因此 Claude Code、Codex、Gemini CLI 和 OpenCode 等 AI 命令行工具会另起一行，而不是发送消息。Shell 会像按 Enter 一样执行命令。关闭后，Shift+Enter 发送 Enter 的回车符。",
     attentionNotifications: "终端需要关注时显示桌面通知",
     attentionNotificationsHelp: "当程序在你没有查看的终端中响铃或发送通知时（例如 Claude Code 和 Codex 完成任务或等待你时），其标签页会被标记，直到你打开它。PlexusTerm 在后台时，还会用桌面通知显示消息。关闭后只保留标签页上的标记。",
+    commandNotifySeconds: "命令运行超过此秒数时通知",
+    commandNotifySecondsHelp: "启用 Shell 集成后，运行至少这么久的命令结束时会发出通知，就像请求注意的程序一样：在你未查看的终端中，其标签页会被标记；PlexusTerm 在后台时，桌面通知会显示该命令、耗时以及是否失败。设为 0 即关闭。",
     gpuAcceleration: "GPU 加速",
     gpuAccelerationHelp: "终端在显卡上用 WebGL 绘制，让频繁重绘屏幕的程序（AI 命令行工具、htop）保持流畅。WebGL 不可用或显卡重置时，终端会自动切换到标准渲染器。如果在你的显卡驱动下文字显示异常或闪烁，请关闭此项。在 Linux 上，如果文字模糊或打字感觉迟缓，请关闭此项。",
     devCommands: "开启 DEV 模式的命令",
