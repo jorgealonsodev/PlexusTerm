@@ -429,18 +429,16 @@ const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
  */
 const SETTINGS_VERSION = 2;
 
-export function parseSettings(json: string | null, platform: { linux?: boolean } = {}): TerminalSettings {
-  const linux = platform.linux === true;
+export function parseSettings(json: string | null): TerminalSettings {
   let raw: unknown = null;
   try {
     raw = json === null ? null : JSON.parse(json);
   } catch {
     raw = null;
   }
-  const d = linux ? { ...DEFAULT_SETTINGS, gpuAcceleration: false } : DEFAULT_SETTINGS;
+  const d = DEFAULT_SETTINGS;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return { ...d };
   const value = raw as Record<string, unknown>;
-  const fromBefore = !(typeof value.version === "number" && value.version >= SETTINGS_VERSION);
   const aiProvider = isAiProvider(value.aiProvider) ? value.aiProvider : d.aiProvider;
   // The assistant and the overrides must not share a combination: the assistant keeps its own
   // unless an override makes it clash, and then the overrides are checked against the default.
@@ -517,7 +515,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
     shortcuts,
     shiftEnterNewline: bool(value.shiftEnterNewline, d.shiftEnterNewline),
     attentionNotifications: bool(value.attentionNotifications, d.attentionNotifications),
-    gpuAcceleration: linux && fromBefore ? false : bool(value.gpuAcceleration, d.gpuAcceleration),
+    gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
     viewerPosition: (VIEWER_POSITIONS as readonly unknown[]).includes(value.viewerPosition)
