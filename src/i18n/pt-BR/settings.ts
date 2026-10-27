@@ -105,7 +105,7 @@ export const settings: Messages<typeof en> = {
     devNewTerminalFolder: "No modo DEV, o + abre em",
     shellIntegration: "Integração com o shell",
     shellIntegrationHelp:
-      "Os shells locais marcam onde o prompt termina e como cada comando terminou (OSC 133), para que sugestões, histórico e a cor dos erros sigam exatamente o que você digita. bash, zsh e fish carregam um pequeno script depois dos seus próprios arquivos de inicialização; PowerShell, Git Bash e cmd recebem um prompt envolvido. Desative para iniciar os shells como são (no Windows eles continuam informando a pasta ao Explorador). Vale para os terminais abertos a partir de agora.",
+      "Os shells locais marcam onde o prompt termina e como cada comando terminou (OSC 133), para que sugestões, histórico e a cor dos erros sigam exatamente o que você digita. bash, zsh e fish carregam um pequeno script depois dos seus próprios arquivos de inicialização; PowerShell, Git Bash e cmd recebem um prompt encapsulado. Desative para iniciar os shells sem alterações (no Windows eles continuam informando a pasta ao Explorador). Vale para os terminais abertos a partir de agora.",
     newTerminalStart: "A pasta inicial",
     newTerminalHere: "A pasta do terminal ativo",
     copyOnSelect: "Copiar ao selecionar",
