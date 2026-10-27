@@ -881,6 +881,24 @@ describe("TerminalView", () => {
         expect(onPrompt).toHaveBeenCalled();
       });
 
+      it("ignores the folder a running program reports, and takes the shell's at its prompt", () => {
+        const onCwd = vi.fn();
+        renderView({ onCwd });
+        // gentle-shell, an AI tool, reported its own folder while it ran (the Explorer jumped there).
+        term().osc(133, "A");
+        term().osc(133, "B");
+        term().osc(133, "C");
+        term().osc(7, "file://host/home/me/.gentle-shell/gentle-ai");
+        term().osc(9, "9;C:\\Users\\me\\tool");
+        expect(onCwd).not.toHaveBeenCalled();
+        // Back at the prompt, the shell's own report counts.
+        term().osc(133, "D;0");
+        term().osc(7, "file://host/home/me/project");
+        term().osc(133, "A");
+        expect(onCwd).toHaveBeenCalledTimes(1);
+        expect(onCwd).toHaveBeenCalledWith("/home/me/project");
+      });
+
       it("still keeps the folder reported through OSC 7", () => {
         const onCwd = vi.fn();
         renderView({ onCwd });

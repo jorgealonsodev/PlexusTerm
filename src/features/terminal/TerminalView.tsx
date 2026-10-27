@@ -714,6 +714,8 @@ export function TerminalView({
     let atPrompt = false;
     /** The last command line sent with Enter (never one typed at a password prompt), for its notice. */
     let lastSent = "";
+    /** Between the shell's C and D marks: a command runs, and the folders it reports are not the shell's. */
+    let commandRunning = false;
     const commandTimer = createCommandTimer();
     /** A long command finished: its tab is marked, and the desktop told while the window is away. */
     const commandNotice = (done: FinishedCommand): AttentionNotice => {
@@ -1019,6 +1021,9 @@ export function TerminalView({
     };
     /** The shell reported its folder (OSC 7 or 9;9); shells do it with every prompt. */
     const reportCwd = (path: string) => {
+      // A program running in the terminal (an AI tool, an ssh session) may report its own folder:
+      // with the shell's marks, only the shell's report at its prompt moves the Explorer.
+      if (commandRunning) return;
       cwd = path;
       callbacks.current.onCwd?.(path);
       promptCame(true);
@@ -1068,6 +1073,8 @@ export function TerminalView({
         const mark = parseOsc133(data);
         if (!mark) return true;
         blocks.mark(mark);
+        if (mark.kind === "C") commandRunning = true;
+        else if (mark.kind === "A" || mark.kind === "D") commandRunning = false;
         if (mark.kind === "C") commandTimer.started(lastSent);
         else if (mark.kind === "D") {
           const done = commandTimer.finished(mark.exit, settingsRef.current.commandNotifySeconds * 1000);
