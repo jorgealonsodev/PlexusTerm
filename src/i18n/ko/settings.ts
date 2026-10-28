@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "명령 제안",
     provider: "AI 제공자",
     chat: "채팅",
+    dropDown: "드롭다운 창",
   },
   sections: {
     general: "일반",
@@ -353,6 +354,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "시작할 때 탭 복원",
     restoreTabsHelp: "지난번의 탭, 분할 창, DEV 모드를 다시 엽니다. 저장된 세션은 현재 설정으로 다시 연결되고 로컬 터미널은 마지막 폴더에서 열립니다. 비밀번호와 터미널 출력은 저장되지 않습니다. 폴더나 작업 영역을 지정해 PlexusTerm을 열면 그것만 열립니다.",
+    dropDownShortcut: "드롭다운 단축키",
+    dropDownShortcutHelp: "어떤 애플리케이션에서나 작동하는 키 조합입니다. 포인터가 있는 화면 위쪽에서 PlexusTerm을 전체 너비로 내려 보여 주고, 다시 누르면 숨깁니다. 비워 두면 창은 그대로입니다. Wayland 세션에서는 작동하지 않으며, 다른 애플리케이션이 이미 이 조합을 사용 중일 수 있습니다.",
+    dropDownHeight: "드롭다운 높이 (화면의 %)",
+    dropDownHeightHelp: "드롭다운 창이 차지하는 화면 높이의 비율 (20~100 %).",
+    dropDownWayland: "Wayland 세션에서는 전역 단축키를 사용할 수 없습니다. 데스크톱이 애플리케이션 창 밖의 키 입력을 받지 못하게 합니다.",
+    dropDownFailed: "단축키를 설정할 수 없습니다: {error}",
+    dropDownClear: "드롭다운 단축키 제거",
   },
   about: {
     licenses: "오픈 소스 라이선스",

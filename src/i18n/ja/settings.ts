@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "コマンドの候補",
     provider: "AI プロバイダー",
     chat: "チャット",
+    dropDown: "ドロップダウンウィンドウ",
   },
   sections: {
     general: "一般",
@@ -353,6 +354,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "起動時にタブを復元",
     restoreTabsHelp: "前回のタブ、分割ペイン、DEV モードを再び開きます。保存したセッションは現在の設定で再接続し、ローカルターミナルは最後のフォルダーで開きます。パスワードとターミナルの出力は保存されません。フォルダーやワークスペースを指定して PlexusTerm を開いた場合は、それだけが開きます。",
+    dropDownShortcut: "ドロップダウンのショートカット",
+    dropDownShortcutHelp: "どのアプリケーションでも使えるキーの組み合わせです。ポインターのある画面の上端から PlexusTerm を全幅で表示し、もう一度押すと隠します。空のままにするとウィンドウはそのままです。Wayland セッションでは使えず、他のアプリケーションがすでにその組み合わせを使っている場合もあります。",
+    dropDownHeight: "ドロップダウンの高さ (画面の %)",
+    dropDownHeightHelp: "ドロップダウンウィンドウが画面の高さに占める割合 (20〜100 %)。",
+    dropDownWayland: "Wayland セッションではグローバルショートカットを使えません。デスクトップがウィンドウ外のキー入力をアプリケーションに渡さないためです。",
+    dropDownFailed: "ショートカットを設定できませんでした: {error}",
+    dropDownClear: "ドロップダウンのショートカットを削除",
   },
   about: {
     licenses: "オープンソース ライセンス",

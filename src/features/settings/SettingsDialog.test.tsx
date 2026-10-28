@@ -1067,6 +1067,50 @@ describe("Updates in About", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, restoreTabs: false });
   });
 
+  it("sets a drop-down shortcut and height in General, explained by help tips", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} initialSection="general" />);
+    const field = screen.getByLabelText(/Drop-down shortcut/) as HTMLInputElement;
+    expect(field.value).toBe("");
+    expect(field.closest(".field")!.querySelector(".help-tip")).not.toBeNull();
+    fireEvent.focus(field);
+    fireEvent.keyDown(field, { key: "k" });
+    expect(screen.getByText("Use Ctrl, Alt or Meta with a key.")).toBeTruthy();
+    fireEvent.keyDown(field, { key: "k", ctrlKey: true, altKey: true });
+    expect(field.value).toBe("Ctrl+Alt+K");
+    fireEvent.change(screen.getByLabelText(/Drop-down height/), { target: { value: "150" } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, dropDownShortcut: "Ctrl+Alt+K", dropDownHeight: 100 });
+  });
+
+  it("refuses a drop-down shortcut PlexusTerm already uses, and clears it", () => {
+    const onSave = vi.fn();
+    const settings = { ...DEFAULT_SETTINGS, dropDownShortcut: "Ctrl+Alt+K" };
+    render(<SettingsDialog settings={settings} onSave={onSave} onCancel={vi.fn()} initialSection="general" />);
+    const field = screen.getByLabelText(/Drop-down shortcut/) as HTMLInputElement;
+    fireEvent.focus(field);
+    fireEvent.keyDown(field, { key: " ", ctrlKey: true, shiftKey: true });
+    expect(screen.getByText("Ctrl+Shift+Space is already used by “AI assistant”.")).toBeTruthy();
+    expect(field.value).toBe("Ctrl+Alt+K");
+    fireEvent.click(screen.getByRole("button", { name: "Remove the drop-down shortcut" }));
+    expect(field.value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith(DEFAULT_SETTINGS);
+  });
+
+  it("shows under the drop-down shortcut why the system refused it", () => {
+    render(
+      <SettingsDialog
+        settings={{ ...DEFAULT_SETTINGS, dropDownShortcut: "Ctrl+Alt+K" }}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        initialSection="general"
+        dropDownError={{ kind: "wayland" }}
+      />,
+    );
+    expect(screen.getByText(/not available in a Wayland session/)).toBeTruthy();
+  });
+
   it("turns the diagnostic log on and saves its folder, trimmed", () => {
     const onSave = renderAbout();
     const dir = screen.getByLabelText("Log folder") as HTMLInputElement;

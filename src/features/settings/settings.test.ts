@@ -105,6 +105,8 @@ describe("parseSettings", () => {
       focusBorderColor: "",
       focusBorderStrength: 55,
       paneFooterHeight: 22,
+      dropDownShortcut: "",
+      dropDownHeight: 50,
     });
     expect(DEFAULT_SETTINGS.fontSize).toBe(14);
   });
@@ -245,6 +247,8 @@ describe("parseSettings", () => {
       focusBorderColor: "",
       focusBorderStrength: 55,
       paneFooterHeight: 22,
+      dropDownShortcut: "",
+      dropDownHeight: 50,
     });
   });
 
@@ -456,6 +460,8 @@ describe("serializeSettings", () => {
       focusBorderColor: "#ff8800",
       focusBorderStrength: 30,
       paneFooterHeight: 30,
+      dropDownShortcut: "Ctrl+Alt+K",
+      dropDownHeight: 70,
     };
     const json = serializeSettings(settings);
     expect(JSON.parse(json)).toEqual({ version: 2, ...settings });
@@ -521,6 +527,27 @@ describe("focused pane border", () => {
     expect(parseSettings(JSON.stringify({ paneFooterHeight: "big" })).paneFooterHeight).toBe(22);
     expect(focusBorderCss("", 55)).toBe("color-mix(in srgb, var(--accent) 55%, var(--bg))");
     expect(focusBorderCss("#ff8800", 100)).toBe("color-mix(in srgb, #ff8800 100%, var(--bg))");
+  });
+});
+
+describe("drop-down window", () => {
+  it("is off by default and opens at half the screen's height", () => {
+    expect([DEFAULT_SETTINGS.dropDownShortcut, DEFAULT_SETTINGS.dropDownHeight]).toEqual(["", 50]);
+  });
+
+  it("keeps a valid shortcut, or none", () => {
+    expect(parseSettings(JSON.stringify({ dropDownShortcut: "Ctrl+Alt+K" })).dropDownShortcut).toBe("Ctrl+Alt+K");
+    for (const bad of ["K", "Shift+K", "Ctrl+Bogus+K", 42, null]) {
+      expect(parseSettings(JSON.stringify({ dropDownShortcut: bad })).dropDownShortcut).toBe("");
+    }
+  });
+
+  it("keeps the height within 20-100 % of the screen", () => {
+    const height = (value: unknown) => parseSettings(JSON.stringify({ dropDownHeight: value })).dropDownHeight;
+    expect(height(66.6)).toBe(67);
+    expect(height(5)).toBe(20);
+    expect(height(250)).toBe(100);
+    expect(height("tall")).toBe(50);
   });
 });
 

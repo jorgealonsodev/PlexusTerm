@@ -34,6 +34,7 @@ export const settings = {
     suggestions: "Command suggestions",
     provider: "AI provider",
     chat: "Chat",
+    dropDown: "Drop-down window",
   },
   sections: {
     general: "General",
@@ -351,6 +352,14 @@ export const settings = {
   general: {
     restoreTabs: "Restore tabs at startup",
     restoreTabsHelp: "Reopens the tabs, split panes and DEV mode of the last run: saved sessions reconnect with their current settings and local terminals open in their last folder. Passwords and terminal output are never saved. Opening PlexusTerm with a folder or workspace opens only that.",
+
+    dropDownShortcut: "Drop-down shortcut",
+    dropDownShortcutHelp: "A key combination that works in every application: it brings PlexusTerm down from the top of the screen under the pointer, at full width, and hides it when you press it again. Leave it empty to keep the window as it is. It does not work in a Wayland session, and another application may already use the combination.",
+    dropDownHeight: "Drop-down height (% of the screen)",
+    dropDownHeightHelp: "How much of the screen's height the drop-down window takes, from 20 to 100 %.",
+    dropDownWayland: "Global shortcuts are not available in a Wayland session: the desktop does not let applications listen to keys outside their windows.",
+    dropDownFailed: "Could not set the shortcut: {error}",
+    dropDownClear: "Remove the drop-down shortcut",
   },
   about: {
     licenses: "Open-source licenses",
