@@ -874,7 +874,7 @@ impl SshManager {
         Self::new(platform::known_hosts_path())
     }
 
-    /// Connects without touching saved passwords (tests; the app uses `connect_with`).
+    /// Connects without touching saved passwords (tests; the app uses `connect_reporting_loss`).
     #[cfg(test)]
     pub async fn connect(
         &self,
@@ -885,7 +885,9 @@ impl SshManager {
     }
 
     /// Opens an interactive shell, then saves or forgets the session's
-    /// password as `storage` asks once the login succeeded.
+    /// password as `storage` asks once the login succeeded (tests; the app uses
+    /// `connect_reporting_loss`).
+    #[cfg(test)]
     pub async fn connect_with(
         &self,
         req: ConnectRequest,
