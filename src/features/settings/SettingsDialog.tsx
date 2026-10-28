@@ -368,6 +368,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [confirmMultilinePaste, setConfirmMultilinePaste] = useState(settings.confirmMultilinePaste);
   const [errorHighlight, setErrorHighlight] = useState(settings.errorHighlight);
   const [shellIntegration, setShellIntegration] = useState(settings.shellIntegration);
+  const [zmodem, setZmodem] = useState(settings.zmodem);
   const [logTimestamps, setLogTimestamps] = useState(settings.logTimestamps);
   const [shiftEnterNewline, setShiftEnterNewline] = useState(settings.shiftEnterNewline);
   const [attentionNotifications, setAttentionNotifications] = useState(settings.attentionNotifications);
@@ -523,6 +524,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       confirmMultilinePaste,
       errorHighlight,
       shellIntegration,
+      zmodem,
       logTimestamps,
       syncFolder: syncFolder.trim(),
       settingsSyncFolder: settingsSyncFolder.trim(),
@@ -980,6 +982,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={shellIntegration} onChange={(e) => setShellIntegration(e.target.checked)} />
               <span className="setting-title">
                 {t("settings.terminal.shellIntegration")} <HelpTip text={t("settings.terminal.shellIntegrationHelp")} />
+              </span>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={zmodem} onChange={(e) => setZmodem(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.terminal.zmodem")} <HelpTip text={t("settings.terminal.zmodemHelp")} />
               </span>
             </label>
             <label className="check">

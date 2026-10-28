@@ -1,0 +1,48 @@
+/* The ZMODEM transfer bar: bottom left, so the find bar (bottom right) stays clear. */
+.zmodem-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 4px 8px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-size: calc(12px * var(--ui-scale, 1));
+}
+
+.zmodem-bar--failed {
+  border-color: var(--danger);
+}
+
+.zmodem-bar__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zmodem-bar__progress {
+  width: 120px;
+  flex: none;
+}
+
+.zmodem-bar__btn {
+  flex: none;
+  padding: 2px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.zmodem-bar__btn:hover {
+  border-color: var(--accent);
+}

@@ -3,6 +3,7 @@ import type { JumpTarget, LocalTarget, PasswordStorage, SessionTarget, SshAuth, 
 import { moshBackend } from "../mosh/moshBackend";
 import { serialBackend } from "../serial/serialBackend";
 import { telnetBackend } from "../telnet/telnetBackend";
+import type { ZmodemNotice } from "./zmodem";
 
 export type TerminalEvent =
   /** First event: the session's share tap (see `share_start`). */
@@ -12,7 +13,9 @@ export type TerminalEvent =
   | { event: "sharedOutput"; data: { data: string; seq: number } }
   | { event: "exit"; data: number | null }
   /** SSH only, instead of `exit`: the connection went away under the session (no exit status). */
-  | { event: "lost" };
+  | { event: "lost" }
+  /** A ZMODEM transfer started by `sz`/`rz` on the other end (not in Mosh sessions). */
+  | { event: "zmodem"; data: ZmodemNotice };
 
 export interface StartOptions {
   cols: number;

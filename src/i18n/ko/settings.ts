@@ -146,6 +146,9 @@ export const settings: Messages<typeof en> = {
     logTimestampsHelp: "파일에 기록…이 쓰는 각 줄의 앞에 [2026-10-27 09:05:07]처럼 날짜와 시간을 붙여 언제 무슨 일이 있었는지 알 수 있게 합니다(시리얼 콘솔, 감사 등). 끄면 출력을 들어온 그대로 기록합니다. 이후에 시작한 기록에 적용됩니다.",
     shellIntegrationHelp:
       "로컬 셸이 프롬프트가 끝나는 위치와 각 명령의 종료 상태를 표시하므로(OSC 133) 제안, 기록, 오류 색상이 입력한 내용을 정확히 따릅니다. bash, zsh, fish는 사용자 시작 파일 다음에 작은 스크립트를 불러오고, PowerShell, Git Bash, cmd는 감싼 프롬프트를 사용합니다. 끄면 셸을 그대로 시작합니다 (Windows에서는 탐색기에 폴더를 계속 알려 줍니다). 지금부터 여는 터미널에 적용됩니다.",
+    zmodem: "ZMODEM 전송 (rz/sz)",
+    zmodemHelp:
+      "상대편 프로그램이 sz(파일을 보냄) 또는 rz(파일을 받음)를 실행하면 PlexusTerm이 저장 위치나 보낼 파일을 묻고 세션 안에서 그대로 전송합니다. SFTP가 없는 시리얼 콘솔과 네트워크 장비에서 유용합니다. 로컬, SSH, Telnet, 시리얼 터미널에서 동작합니다(Mosh 제외). 끄면 출력을 텍스트로 표시합니다.",
     newTerminalStart: "시작 폴더",
     newTerminalHere: "활성 터미널의 폴더",
     copyOnSelect: "선택 시 복사",

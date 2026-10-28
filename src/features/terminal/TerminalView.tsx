@@ -49,6 +49,8 @@ import { commandOnScreen, EMPTY_LINE, feedExternal, feedInput, isSecretPrompt, p
 import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
+import { ZmodemBar } from "./ZmodemBar";
+import { answerZmodemOffer, setZmodemEnabled, zmodemCancel, zmodemView, type ZmodemView } from "./zmodem";
 import { createSessionLog, logTimestamp, type SessionLog } from "./sessionLog";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
 import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
@@ -280,6 +282,8 @@ export const CONNECT_WAIT_SHOWN_S = 3;
 export const FONT_WAIT_MS = 1500;
 /** A live SSH connection is checked on window focus at most this often. */
 export const PROBE_EVERY_MS = 10_000;
+/** How long a finished ZMODEM transfer's result stays in its bar. */
+export const ZMODEM_RESULT_MS = 8000;
 
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
 export function TerminalView({
@@ -366,6 +370,10 @@ export function TerminalView({
   const startRef = useRef<(trustedFingerprint?: string) => void>(() => {});
   const [pendingHost, setPendingHost] = useState<PendingHost | null>(null);
   const [askPassword, setAskPassword] = useState<PasswordFor | null>(null);
+  /** The pane's ZMODEM transfer (`sz`/`rz` on the remote), shown in its transfer bar. */
+  const [transfer, setTransfer] = useState<ZmodemView | null>(null);
+  /** The share tap of the running session, which names it to the ZMODEM commands. */
+  const tapRef = useRef<number | null>(null);
   const typedLogin = useRef<TypedLogin | null>(null);
   /** Jump hosts, updated when one of them is trusted or gets a typed password. */
   /** The SSH login of an SSH tab, or the one that starts the server of a Mosh tab. */
@@ -732,7 +740,22 @@ export function TerminalView({
             outputSeq = msg.data.seq;
             msg = { event: "output", data: msg.data.data };
           }
-          if (msg.event === "tap") tap = msg.data;
+          if (msg.event === "tap") tap = tapRef.current = msg.data;
+          else if (msg.event === "zmodem") {
+            const notice = msg.data;
+            setTransfer(zmodemView(notice));
+            if (notice.phase === "offer" && tap !== null) {
+              const title = t(notice.direction === "receive" ? "terminal.zmodem.pickFolder" : "terminal.zmodem.pickFiles");
+              const offerTap = tap;
+              answerZmodemOffer(offerTap, notice.direction, title)
+                .catch((err: unknown) => {
+                  // It could not start (an unreadable file, a folder gone): the remote is told to stop.
+                  void zmodemCancel(offerTap).catch(() => {});
+                  setTransfer({ kind: "failed", direction: notice.direction, message: String(err) });
+                })
+                .finally(() => termRef.current?.focus());
+            }
+          }
           else if (msg.event === "output") {
             latencyMark("O", msg.data.length);
             term.write(msg.data, outputFlow.queued(msg.data.length));
@@ -1335,6 +1358,18 @@ export function TerminalView({
     if (hostRef.current?.offsetParent !== null) fitRef.current?.fit();
   };
 
+  // ZMODEM detection is one switch for every session (Settings → Terminal → ZMODEM transfers).
+  const zmodemOn = settings.zmodem !== false;
+  useEffect(() => {
+    void setZmodemEnabled(zmodemOn).catch(() => {});
+  }, [zmodemOn]);
+  // A finished or cancelled transfer's result goes away by itself; a failure stays until closed.
+  useEffect(() => {
+    if (transfer?.kind !== "done" && transfer?.kind !== "cancelled") return;
+    const timer = setTimeout(() => setTransfer(null), ZMODEM_RESULT_MS);
+    return () => clearTimeout(timer);
+  }, [transfer]);
+
   // GPU acceleration: WebGL draws redraw-heavy programs (AI command-line tools, htop) smoothly. Without
   // WebGL2, or when the GPU drops the context (driver reset, sleep), xterm's own renderer takes over.
   const gpuAcceleration = settings.gpuAcceleration;
@@ -1657,6 +1692,18 @@ export function TerminalView({
         </div>
       )}
       {findOpen && <FindBar key={findSeed} initialText={findText} onFind={find} onClose={closeFind} />}
+      {transfer && (
+        <ZmodemBar
+          view={transfer}
+          onCancel={() => {
+            if (tapRef.current !== null) void zmodemCancel(tapRef.current).catch(() => {});
+          }}
+          onClose={() => {
+            setTransfer(null);
+            focusTerminal();
+          }}
+        />
+      )}
       {menu && (
         <TerminalContextMenu
           x={menu.x}

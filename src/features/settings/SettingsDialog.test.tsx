@@ -145,6 +145,18 @@ describe("SettingsDialog", () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ sidebarWidth: 400, copyOnSelect: false }));
   });
 
+  it("turns ZMODEM transfers off and on from Terminal, with help on what they do", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));
+    const box = screen.getByRole("checkbox", { name: /ZMODEM transfers \(rz\/sz\)/ }) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.closest("label")?.querySelector("[title], [aria-label]")).toBeTruthy();
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ zmodem: false }));
+  });
+
   it("shows the logo, the version and the project in About, light for light schemes", async () => {
     const { unmount } = render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("tab", { name: "About" }));

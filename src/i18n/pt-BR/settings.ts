@@ -146,6 +146,9 @@ export const settings: Messages<typeof en> = {
     logTimestampsHelp: "Registrar em arquivo… começa cada linha que escreve com a data e a hora, como [2026-10-27 09:05:07], para saber quando cada coisa aconteceu (um console serial, uma auditoria). Desative para registrar a saída exatamente como chegou. Vale para os registros iniciados a partir de então.",
     shellIntegrationHelp:
       "Os shells locais marcam onde o prompt termina e como cada comando terminou (OSC 133), para que sugestões, histórico e a cor dos erros sigam exatamente o que você digita. bash, zsh e fish carregam um pequeno script depois dos seus próprios arquivos de inicialização; PowerShell, Git Bash e cmd recebem um prompt encapsulado. Desative para iniciar os shells sem alterações (no Windows eles continuam informando a pasta ao Explorador). Vale para os terminais abertos a partir de agora.",
+    zmodem: "Transferências ZMODEM (rz/sz)",
+    zmodemHelp:
+      "Quando um programa do outro lado executa sz (para enviar arquivos a você) ou rz (para recebê-los), o PlexusTerm pergunta onde salvá-los ou quais arquivos enviar, e os transfere dentro da própria sessão: útil em consoles seriais e equipamentos de rede sem SFTP. Funciona em terminais locais, SSH, Telnet e seriais (não no Mosh). Desative para mostrar a saída deles como texto.",
     newTerminalStart: "A pasta inicial",
     newTerminalHere: "A pasta do terminal ativo",
     copyOnSelect: "Copiar ao selecionar",
