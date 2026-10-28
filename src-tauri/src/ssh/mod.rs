@@ -1787,6 +1787,7 @@ mod tests {
         assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
     }
 
+    #[cfg(unix)]
     fn password_command(command: &str) -> SshAuth {
         SshAuth::PasswordCommand {
             command: command.into(),
@@ -3465,6 +3466,7 @@ mod tests {
         Ok((id, rx))
     }
 
+    #[cfg(unix)]
     fn forwarding() -> ShellOptions {
         ShellOptions {
             forward_agent: true,
@@ -3731,6 +3733,7 @@ mod tests {
 
     /// A proxy command that connects its stdio to `%h:%p` over TCP, from the tools installed
     /// here; None (the test is skipped) when there is none.
+    #[cfg(unix)]
     fn bridge() -> Option<&'static str> {
         let path = std::env::var_os("PATH")?;
         if platform::find_program("socat", &path).is_some() {

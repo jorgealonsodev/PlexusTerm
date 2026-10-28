@@ -1192,6 +1192,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     const ALL_TYPES: [(KeyType, &str, u32, &str); 7] = [
         (KeyType::Ed25519, "ED25519", 256, "ssh-ed25519"),
         (KeyType::Rsa2048, "RSA 2048", 2048, "ssh-rsa"),
@@ -1218,6 +1219,7 @@ mod tests {
     ];
 
     /// `ssh-keygen` with `args`, or `None` when it is not installed.
+    #[cfg(unix)]
     fn ssh_keygen(args: &[&str]) -> Option<std::process::Output> {
         std::process::Command::new("ssh-keygen")
             .args(args)
@@ -1232,6 +1234,7 @@ mod tests {
     }
 
     /// The `type base64` part of a public key line.
+    #[cfg(unix)]
     fn key_part(line: &str) -> String {
         line.split(' ').take(2).collect::<Vec<_>>().join(" ")
     }
