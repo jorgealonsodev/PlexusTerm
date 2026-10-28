@@ -86,6 +86,10 @@ interface FakeTerminal {
   type: (data: string) => void;
   /** Sends an OSC sequence's data to the handler registered for `ident`; false when none is. */
   osc: (ident: number, data: string) => boolean;
+  /** Sends a CSI sequence to the handlers registered for its prefix and final byte; false when none handles it. */
+  csi: (id: { prefix?: string; final: string }, params?: (number | number[])[]) => boolean;
+  /** Sends an ESC sequence (e.g. "c", RIS) to its handlers; false when none handles it. */
+  esc: (final: string) => boolean;
   /** Rings the bell (BEL), as xterm's onBell does. */
   bell: () => void;
   /** Addons loaded into the terminal, in order. */
@@ -104,9 +108,28 @@ vi.mock("@xterm/xterm", () => ({
         this.oscHandlers.set(ident, handler);
         return { dispose: () => this.oscHandlers.delete(ident) };
       },
+      registerCsiHandler: (id: { prefix?: string; final: string }, handler: (params: (number | number[])[]) => boolean) => {
+        const entry = { key: `${id.prefix ?? ""}${id.final}`, handler };
+        this.csiHandlers.push(entry);
+        return { dispose: () => void this.csiHandlers.splice(this.csiHandlers.indexOf(entry), 1) };
+      },
+      registerEscHandler: (id: { final: string }, handler: () => boolean) => {
+        const entry = { key: id.final, handler };
+        this.escHandlers.push(entry);
+        return { dispose: () => void this.escHandlers.splice(this.escHandlers.indexOf(entry), 1) };
+      },
     };
     osc(ident: number, data: string) {
       return this.oscHandlers.get(ident)?.(data) ?? false;
+    }
+    csiHandlers: { key: string; handler: (params: (number | number[])[]) => boolean }[] = [];
+    escHandlers: { key: string; handler: () => boolean }[] = [];
+    csi(id: { prefix?: string; final: string }, params: (number | number[])[] = [0]) {
+      const key = `${id.prefix ?? ""}${id.final}`;
+      return this.csiHandlers.filter((e) => e.key === key).some((e) => e.handler(params));
+    }
+    esc(final: string) {
+      return this.escHandlers.filter((e) => e.key === final).some((e) => e.handler());
     }
     bellHandlers: (() => void)[] = [];
     onBell = (handler: () => void) => {
@@ -1158,6 +1181,150 @@ describe("TerminalView", () => {
       });
     });
 
+    describe("the kitty keyboard protocol, for AI command-line tools (S7)", () => {
+      const press = (key: string, mods: Partial<KeyboardEvent> = {}, type = "keydown") =>
+        term().keyHandler({ type, key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      const connected = async (props: Partial<Parameters<typeof TerminalView>[0]> = {}) => {
+        backend.start.mockImplementationOnce(() => Promise.resolve(7));
+        const view = renderView(props);
+        await settle();
+        return view;
+      };
+      const query = () => term().csi({ prefix: "?", final: "u" });
+      const push = (flags: number) => term().csi({ prefix: ">", final: "u" }, [flags]);
+      /** Turns the protocol on the way Claude Code does: push flag 1. */
+      const turnOn = () => act(() => void push(1));
+
+      it("answers a query with the current flags, to the session only (no macro, no multi-execution)", async () => {
+        const onInput = vi.fn();
+        await connected({ onInput });
+        expect(query()).toBe(true);
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+        expect(push(0b11)).toBe(true);
+        query();
+        // Only flag 1 (disambiguate escape codes) is supported.
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?1u");
+        expect(onInput).not.toHaveBeenCalled();
+      });
+
+      it("pops (CSI < u) and sets (CSI = flags ; mode u) the flags", async () => {
+        await connected();
+        push(1);
+        expect(term().csi({ prefix: "<", final: "u" })).toBe(true);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+        expect(term().csi({ prefix: "=", final: "u" }, [1, 1])).toBe(true);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?1u");
+        term().csi({ prefix: "=", final: "u" }, [1, 3]);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+      });
+
+      it("keeps the alternate screen's flags apart from the main screen's", async () => {
+        await connected();
+        term().bufferType = "alternate";
+        turnOn();
+        expect(press("Enter", { ctrlKey: true })).toBe(false);
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[13;5u");
+        term().bufferType = "normal";
+        backend.write.mockClear();
+        expect(press("Enter", { ctrlKey: true })).toBe(true);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+      });
+
+      it("starts every visit to the alternate screen without flags, so a program that died leaves none", async () => {
+        await connected();
+        term().bufferType = "alternate";
+        turnOn();
+        // The program exits without turning the protocol off; vim opens the alternate screen next.
+        term().bufferType = "normal";
+        press("a");
+        term().bufferType = "alternate";
+        backend.write.mockClear();
+        expect(press("Escape")).toBe(true);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+      });
+
+      it("forgets the flags on a terminal reset (RIS) and lets xterm reset too", async () => {
+        await connected();
+        turnOn();
+        expect(term().esc("c")).toBe(false);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+      });
+
+      it("sends Ctrl+Enter as CSI 13;5u and Shift+Enter as CSI 13;2u, typed like any key", async () => {
+        const onInput = vi.fn();
+        await connected({ onInput });
+        turnOn();
+        let passed = true;
+        act(() => {
+          passed = press("Enter", { ctrlKey: true });
+        });
+        expect(passed).toBe(false);
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[13;5u");
+        expect(onInput).toHaveBeenLastCalledWith("\x1b[13;5u");
+        // Its keypress and keyup are kept from xterm without sending again.
+        expect(press("Enter", { ctrlKey: true }, "keypress")).toBe(false);
+        expect(press("Enter", { ctrlKey: true }, "keyup")).toBe(false);
+        expect(backend.write).toHaveBeenCalledTimes(1);
+        // Shift+Enter is the program's own key now, not the line feed of the setting.
+        act(() => void press("Enter", { shiftKey: true }));
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[13;2u");
+      });
+
+      it("sends Alt+Enter, Ctrl+Backspace, Escape and Shift+Tab as CSI u; plain Enter stays xterm's", async () => {
+        await connected();
+        turnOn();
+        const sends = (key: string, mods: Partial<KeyboardEvent>, sequence: string) => {
+          act(() => void press(key, mods));
+          expect(backend.write).toHaveBeenLastCalledWith(7, sequence);
+        };
+        sends("Enter", { altKey: true }, "\x1b[13;3u");
+        sends("Backspace", { ctrlKey: true }, "\x1b[127;5u");
+        sends("Escape", {}, "\x1b[27u");
+        sends("Tab", { shiftKey: true }, "\x1b[9;2u");
+        backend.write.mockClear();
+        for (const k of ["Enter", "Tab", "Backspace", "a"]) expect(press(k)).toBe(true);
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+
+      it("with the protocol off (every shell), keys are xterm's as before, Shift+Enter's line feed included", async () => {
+        await connected();
+        for (const [k, mods] of [
+          ["Enter", { ctrlKey: true }],
+          ["Enter", { altKey: true }],
+          ["Backspace", { ctrlKey: true }],
+          ["Escape", {}],
+          ["Tab", { shiftKey: true }],
+        ] as const) {
+          expect(press(k, mods)).toBe(true);
+        }
+        expect(backend.write).not.toHaveBeenCalled();
+        act(() => void press("Enter", { shiftKey: true }));
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\n");
+      });
+
+      it("leaves the application's shortcuts to the application", async () => {
+        await connected({ settings: { ...DEFAULT_SETTINGS, shortcuts: { selectAll: "Ctrl+Enter" } } });
+        turnOn();
+        act(() => void press("Enter", { ctrlKey: true }));
+        expect(term().selectAll).toHaveBeenCalled();
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+
+      it("leaves a key being composed by an input method alone", async () => {
+        await connected();
+        turnOn();
+        expect(press("Enter", { ctrlKey: true, isComposing: true })).toBe(true);
+        expect(press("Escape", { isComposing: true })).toBe(true);
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+    });
+
     it("runs the pane actions bound by the user: select all and clear", () => {
       renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { selectAll: "Alt+A", clear: "Alt+L" } } });
       const press = (key: string, mods: Partial<KeyboardEvent>) =>
@@ -1809,6 +1976,16 @@ describe("TerminalView", () => {
       const before = starts.length;
       await advance(120_000);
       expect(starts).toHaveLength(before);
+    });
+
+    it("forgets the kitty keyboard flags of the old session when it reconnects (S7)", async () => {
+      await connected();
+      act(() => void lastTerm().csi({ prefix: ">", final: "u" }, [1]));
+      await lose();
+      await advance(1000);
+      await act(async () => starts[1].resolve(8));
+      lastTerm().csi({ prefix: "?", final: "u" });
+      expect(backend.write).toHaveBeenLastCalledWith(8, "\x1b[?0u");
     });
 
     it("reconnects with the password typed in the pane, never prompting again", async () => {
