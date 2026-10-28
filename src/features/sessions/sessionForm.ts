@@ -112,10 +112,13 @@ export function parseSessionForm(
   if (jumpIds.includes(id)) return { ok: false, error: t("sessions.form.ownJump") };
   const { host, port, username, auth, forwardAgent, tmuxSession } = parsed.target;
 
+  // Typed secrets (password, passphrase) are dropped; commands that print them are kept.
   const saved: SavedAuth =
     auth.method === "key"
-      ? { method: "key", path: auth.path }
-      : { method: auth.method === "agent" ? "agent" : "password" };
+      ? { method: "key", path: auth.path, ...(auth.passphraseCommand ? { passphraseCommand: auth.passphraseCommand } : {}) }
+      : auth.method === "passwordCommand"
+        ? { method: "passwordCommand", command: auth.command }
+        : { method: auth.method === "agent" ? "agent" : "password" };
 
   const session: SavedSession = {
     kind: "ssh",
@@ -193,8 +196,10 @@ function formWithName(session: LibrarySession): SessionForm {
     username: session.username,
     method: session.auth.method,
     password: "",
+    passwordCommand: session.auth.method === "passwordCommand" ? session.auth.command : "",
     keyPath: session.auth.method === "key" ? session.auth.path : "~/.ssh/id_ed25519",
     passphrase: "",
+    passphraseCommand: session.auth.method === "key" ? (session.auth.passphraseCommand ?? "") : "",
     forwardAgent: session.forwardAgent === true,
     tmux: session.tmuxSession !== undefined,
     tmuxSession: session.tmuxSession ?? DEFAULT_TMUX_SESSION,

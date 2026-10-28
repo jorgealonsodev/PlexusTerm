@@ -1,9 +1,17 @@
 import { t } from "../../i18n/i18n";
 import { isTmuxSessionName } from "../ssh/quickConnect";
+import { MAX_COMMAND_LENGTH } from "./passwordCommand";
 import type { LocalTarget, SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
 
-/** Saved auth never contains secrets: passwords are asked at connect time. */
-export type SavedAuth = { method: "password" } | { method: "key"; path: string } | { method: "agent" };
+/**
+ * Saved auth never contains secrets: passwords are asked at connect time, or printed at connect
+ * time by a password manager's command (the command is kept, not what it prints).
+ */
+export type SavedAuth =
+  | { method: "password" }
+  | { method: "key"; path: string; passphraseCommand?: string }
+  | { method: "agent" }
+  | { method: "passwordCommand"; command: string };
 
 /**
  * A saved SSH session. `kind` is absent in files written before serial sessions existed;
@@ -130,8 +138,12 @@ function addFolders(folders: string[], path: string): string[] {
 /** Drops anything that is not part of the saved shape (e.g. a password). */
 function sanitizeAuth(auth: SavedAuth): SavedAuth {
   switch (auth.method) {
-    case "key":
-      return { method: "key", path: auth.path };
+    case "key": {
+      const passphraseCommand = auth.passphraseCommand?.trim();
+      return { method: "key", path: auth.path, ...(passphraseCommand ? { passphraseCommand } : {}) };
+    }
+    case "passwordCommand":
+      return { method: "passwordCommand", command: auth.command.trim() };
     case "password":
     case "agent":
       return { method: auth.method };
@@ -277,10 +289,17 @@ export function libraryReducer(lib: SessionLibrary, action: LibraryAction): Sess
 
 const isString = (v: unknown): v is string => typeof v === "string";
 
+/** A command line within the backend's limit; blank only where `blank` allows it (none set). */
+const isCommand = (v: unknown, blank: boolean): v is string =>
+  isString(v) && v.length <= MAX_COMMAND_LENGTH && (blank || v.trim() !== "");
+
 function isSavedAuth(v: unknown): v is SavedAuth {
   if (typeof v !== "object" || v === null) return false;
   const auth = v as Record<string, unknown>;
-  if (auth.method === "key") return isString(auth.path);
+  if (auth.method === "key") {
+    return isString(auth.path) && (auth.passphraseCommand === undefined || isCommand(auth.passphraseCommand, true));
+  }
+  if (auth.method === "passwordCommand") return isCommand(auth.command, false);
   return auth.method === "password" || auth.method === "agent";
 }
 
