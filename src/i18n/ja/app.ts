@@ -154,6 +154,8 @@ export const app: Messages<typeof en> = {
     download: "ダウンロード",
     close: "更新のお知らせを閉じる",
     visitPage: "ダウンロードページを開く",
+    showChanges: "変更内容を見る",
+    hideChanges: "変更内容を隠す",
     retry: "ダウンロードを再試行",
     checking: "インストール状況を確認中…",
     downloading: "ダウンロード中…",

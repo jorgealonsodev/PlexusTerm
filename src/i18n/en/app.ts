@@ -153,6 +153,8 @@ export const app = {
     download: "Download",
     close: "Close the update notice",
     visitPage: "Visit download page",
+    showChanges: "See what's new",
+    hideChanges: "Hide changes",
     retry: "Retry download",
     checking: "Checking installation…",
     downloading: "Downloading…",

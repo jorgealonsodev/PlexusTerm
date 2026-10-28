@@ -155,6 +155,8 @@ export const app: Messages<typeof en> = {
     download: "Herunterladen",
     close: "Update-Hinweis schließen",
     visitPage: "Downloadseite besuchen",
+    showChanges: "Neuerungen ansehen",
+    hideChanges: "Änderungen ausblenden",
     retry: "Download erneut versuchen",
     checking: "Installation wird geprüft…",
     downloading: "Wird heruntergeladen…",

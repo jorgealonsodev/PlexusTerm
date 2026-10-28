@@ -154,6 +154,8 @@ export const app: Messages<typeof en> = {
     download: "डाउनलोड करें",
     close: "अपडेट सूचना बंद करें",
     visitPage: "डाउनलोड पेज पर जाएँ",
+    showChanges: "नया क्या है देखें",
+    hideChanges: "बदलाव छिपाएँ",
     retry: "डाउनलोड फिर से करें",
     checking: "इंस्टॉलेशन की जाँच हो रही है…",
     downloading: "डाउनलोड हो रहा है…",

@@ -1529,6 +1529,18 @@ body.is-moving-tab {
   font-size: 0.9em;
 }
 
+/* The release's notes under the update actions (notice and Settings → About). */
+.release-notes {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+
+
 .settings__updates {
   display: flex;
   gap: 8px;

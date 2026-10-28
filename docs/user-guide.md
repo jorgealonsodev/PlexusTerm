@@ -615,10 +615,11 @@ The private key never reaches the window: it stays in PlexusTerm's backend until
 
 When PlexusTerm starts it asks GitHub for the latest published release, once. A newer release appears in a card at the bottom right of the window. The close button hides the card until the next start, and a failed startup check (no network, GitHub unavailable) shows nothing. Nothing downloads until you choose **Download**.
 
-The notice and **Settings → About** offer two independent actions:
+The notice and **Settings → About** offer these independent actions:
 
 - **Download** downloads, verifies and installs the package matching your current installation. Linux `.deb` and `.rpm` updates request administrator authorization through the system; Windows installers use UAC. Unknown formats or missing matching packages fail visibly rather than switching formats.
 - **Visit download page** opens that release in your browser for manual installation. It stays available during installation and after an error.
+- **See what's new** shows the release's notes from GitHub under the actions, before or while it downloads; **Hide changes** folds them again. Links in the notes open in your browser. Releases without notes show no such button.
 
 Supported matching formats are Linux `.deb`, `.rpm`, user-owned portable `.tar.gz` and AppImage, plus Windows MSI and NSIS. **pacman/AUR installations stay with their package manager**: when pacman owns the running executable, Download stops with guidance to update using your package manager or AUR helper, without downloading a substitute package or running an installation. Retrying does not bypass this protection. Windows package-manager ownership (including winget) is not inferred from MSI registration. Real Windows, AppImage and ARM acceptance testing remains unavailable.
 

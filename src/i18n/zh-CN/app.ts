@@ -153,6 +153,8 @@ export const app: Messages<typeof en> = {
     download: "下载",
     close: "关闭更新通知",
     visitPage: "访问下载页面",
+    showChanges: "查看更新内容",
+    hideChanges: "隐藏更新内容",
     retry: "重试下载",
     checking: "正在检查安装…",
     downloading: "正在下载…",

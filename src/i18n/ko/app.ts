@@ -153,6 +153,8 @@ export const app: Messages<typeof en> = {
     download: "다운로드",
     close: "업데이트 알림 닫기",
     visitPage: "다운로드 페이지 방문",
+    showChanges: "새로운 기능 보기",
+    hideChanges: "변경 사항 숨기기",
     retry: "다운로드 다시 시도",
     checking: "설치 상태 확인 중…",
     downloading: "다운로드 중…",

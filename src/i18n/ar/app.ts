@@ -158,6 +158,8 @@ export const app: Messages<typeof en> = {
     download: "تنزيل",
     close: "إغلاق إشعار التحديث",
     visitPage: "زيارة صفحة التنزيل",
+    showChanges: "عرض الجديد",
+    hideChanges: "إخفاء التغييرات",
     retry: "إعادة محاولة التنزيل",
     checking: "جارٍ التحقق من التثبيت…",
     downloading: "جارٍ التنزيل…",

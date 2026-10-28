@@ -70,6 +70,26 @@ describe("Update notice at startup", () => {
     expect(screen.queryByText("PlexusTerm 0.2.0 is available.")).toBeNull();
   });
 
+  it("shows what changed in the release, links opening in the browser, and hides it again", async () => {
+    const notes = "## What's new\n\n- SSH tabs reconnect by themselves\n- See the [docs](https://example.com/docs)\n\n<script>alert(1)</script>";
+    await renderApp({}, async () => ({ ...NEWER, latest: { ...NEWER.latest, notes } }));
+    expect(screen.queryByText("SSH tabs reconnect by themselves")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "See what's new" }));
+    expect(screen.getByRole("heading", { name: "What's new" })).toBeTruthy();
+    expect(screen.getByText("SSH tabs reconnect by themselves")).toBeTruthy();
+    expect(document.querySelector(".release-notes script")).toBeNull();
+    fireEvent.click(screen.getByRole("link", { name: "docs" }));
+    expect(opener.openUrl).toHaveBeenCalledWith("https://example.com/docs");
+    fireEvent.click(screen.getByRole("button", { name: "Hide changes" }));
+    expect(screen.queryByText("SSH tabs reconnect by themselves")).toBeNull();
+  });
+
+  it("offers no changes button for a release without notes", async () => {
+    await renderApp({}, async () => ({ ...NEWER, latest: { ...NEWER.latest, notes: "  " } }));
+    expect(screen.getByText("PlexusTerm 0.2.0 is available.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "See what's new" })).toBeNull();
+  });
+
   it("shares progress and single-flight ownership with About, even after notice dismissal and dialog reopening", async () => {
     let finish!: (result: string) => void;
     await renderApp({}, async () => NEWER, () => new Promise((resolve) => { finish = resolve; }));
