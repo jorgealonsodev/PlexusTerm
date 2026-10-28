@@ -3,9 +3,9 @@
 //! `keepassxc-cli show …`).
 //!
 //! A saved session keeps only the command. At every login it runs locally through the
-//! platform shell (`sh -c` on Unix, `cmd /C` on Windows) with stdin closed, so a command that
-//! would prompt gets end-of-file instead of waiting, and is killed after
-//! [`SECRET_COMMAND_TIMEOUT`]. Its standard output, without one trailing line break, is the
+//! platform shell (see [`super::shell`]: `sh -c` on Unix, `cmd /C` on Windows) with stdin
+//! closed, so a command that would prompt gets end-of-file instead of waiting, and is killed
+//! after [`SECRET_COMMAND_TIMEOUT`] with everything it started. Its standard output, without one trailing line break, is the
 //! secret: it is kept in a buffer wiped when dropped, and never logged nor put in an error.
 //! A failure ([`SshError::PasswordCommand`]) carries the exit code and the first lines of the
 //! command's standard error only.
@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use zeroize::Zeroizing;
 
-use super::SshError;
+use super::{SshError, shell};
 
 /// Longest command line accepted (the frontend enforces the same bound).
 pub const MAX_COMMAND_LEN: usize = 2000;
@@ -114,11 +114,10 @@ pub async fn read_secret(
     if command.trim().is_empty() || command.len() > MAX_COMMAND_LEN {
         return Err(fail(CommandFailure::Invalid, None, String::new()));
     }
-    let mut child = shell_command(command)
+    let mut child = shell::command(command)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
         .spawn()
         .map_err(|err| {
             fail(
@@ -141,13 +140,15 @@ pub async fn read_secret(
         );
         if read_out.is_err() || out.len() > MAX_SECRET_LEN {
             // Stop it rather than wait for an output that is not a password anyway.
-            let _ = child.start_kill();
+            shell::kill_tree(&mut child);
         }
         (read_out, child.wait().await)
     })
     .await;
-    // On timeout the child is dropped here, which kills it (`kill_on_drop`).
+    // On timeout the command and everything it started are killed (dropping `child` would
+    // kill only the shell, leaving e.g. a background process holding the output).
     let Ok((read_out, status)) = finished else {
+        shell::kill_tree(&mut child);
         return Err(fail(CommandFailure::Timeout, None, String::new()));
     };
     let stderr = first_lines(&err);
@@ -172,27 +173,6 @@ pub async fn read_secret(
         return Err(fail(CommandFailure::Empty, None, stderr));
     }
     Ok(Zeroizing::new(text.to_owned()))
-}
-
-/// `command` run by the platform shell, without a console window on Windows.
-fn shell_command(command: &str) -> tokio::process::Command {
-    #[cfg(unix)]
-    {
-        let mut shell = std::process::Command::new("sh");
-        shell.arg("-c").arg(command);
-        tokio::process::Command::from(shell)
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let mut shell = std::process::Command::new("cmd.exe");
-        // Passed as typed: `/S` makes cmd strip only the outer quotes added here.
-        shell
-            .raw_arg(format!("/D /S /C \"{command}\""))
-            .creation_flags(CREATE_NO_WINDOW);
-        tokio::process::Command::from(shell)
-    }
 }
 
 /// Reads `source` until its end or `limit` bytes into `into`, which never grows past `limit`.
@@ -334,6 +314,32 @@ mod tests {
         );
         let (failure, _, _) = failure_of(err);
         assert_eq!(failure, CommandFailure::Timeout);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn what_a_command_running_too_long_started_is_killed_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("sleep.pid");
+        // The background `sleep` keeps the output open: only killing it ends the read.
+        let command = format!("sleep 600 & echo $! > {}; wait", pid_file.display());
+        let err = read_secret(&command, SecretKind::Password, Duration::from_millis(500))
+            .await
+            .unwrap_err();
+        assert_eq!(failure_of(err).0, CommandFailure::Timeout);
+        let background: i32 = std::fs::read_to_string(&pid_file)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while super::super::shell::running(background) && std::time::Instant::now() < deadline {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(
+            !super::super::shell::running(background),
+            "what the command started outlived it"
+        );
     }
 
     #[tokio::test]

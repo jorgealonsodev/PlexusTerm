@@ -81,6 +81,9 @@ strip = true
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = "0.13.2"
 zbus = "5.19.0"
+
+# Killing a local command's whole process group (proxy and password commands).
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 # Keeping the system awake while a tab is shared.

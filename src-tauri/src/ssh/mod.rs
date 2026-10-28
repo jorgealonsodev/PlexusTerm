@@ -30,6 +30,7 @@ pub mod cwd;
 mod interop_tests;
 mod proxy;
 pub mod secret_command;
+mod shell;
 #[cfg(test)]
 pub(crate) mod test_server;
 

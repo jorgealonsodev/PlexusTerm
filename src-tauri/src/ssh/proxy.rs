@@ -3,13 +3,14 @@
 //! --hostname %h` or `aws ssm start-session ...`).
 //!
 //! - The command is the user's own (typed in the session or imported, and shown before the
-//!   import), run through the platform shell: `sh -c` on Unix, `cmd /C` on Windows.
+//!   import), run through the platform shell (see [`super::shell`]): `sh -c` on Unix, `cmd /C`
+//!   on Windows.
 //! - `%h`, `%p` and `%r` become the target's host, port and user, `%%` a literal `%`; any other
 //!   `%x` stays as typed. A host or user name with characters a shell would interpret is
 //!   refused rather than substituted (OpenSSH refuses them too).
 //! - The command's stderr is read line by line (see [`spawn`]) so the terminal can show it.
 //! - The command lives as long as the connection: dropping the [`ProxyStream`] (the connection
-//!   ended or never started) kills it, and on Linux every process it started.
+//!   ended or never started) kills it and every process it started.
 
 use std::io;
 use std::pin::Pin;
@@ -17,8 +18,10 @@ use std::process::Stdio;
 use std::task::{Context, Poll};
 
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, BufReader, ReadBuf};
-use tokio::process::{Child, ChildStdin, ChildStdout, Command};
+use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::mpsc;
+
+use super::shell;
 
 /// Longest proxy command accepted, in bytes.
 pub const MAX_PROXY_COMMAND: usize = 2000;
@@ -128,40 +131,8 @@ impl AsyncWrite for ProxyStream {
 
 impl Drop for ProxyStream {
     fn drop(&mut self) {
-        // `id()` is None once the command was reaped, when its pid may belong to someone else.
-        #[cfg(target_os = "linux")]
-        if let Some(pid) = self.child.id().and_then(|pid| i32::try_from(pid).ok()) {
-            // SAFETY: kill(2) only takes integers; `-pid` names the process group the command
-            // leads (it was started with `process_group(0)`), which exists until it is reaped.
-            unsafe {
-                libc::kill(-pid, libc::SIGKILL);
-            }
-        }
-        // The shell itself on every system (`kill_on_drop` also reaps it in the background).
-        let _ = self.child.start_kill();
-    }
-}
-
-/// The platform shell running `command`.
-fn shell(command: &str) -> Command {
-    #[cfg(windows)]
-    {
-        /// No console window flashes up for the command.
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let mut shell = Command::new("cmd");
-        shell
-            .arg("/C")
-            .raw_arg(command)
-            .creation_flags(CREATE_NO_WINDOW);
-        shell
-    }
-    #[cfg(not(windows))]
-    {
-        let mut shell = Command::new("sh");
-        shell.arg("-c").arg(command);
-        #[cfg(unix)]
-        shell.process_group(0);
-        shell
+        // The command and everything it started (`kill_on_drop` also reaps it in the background).
+        shell::kill_tree(&mut self.child);
     }
 }
 
@@ -169,11 +140,10 @@ fn shell(command: &str) -> Command {
 /// line, without control characters, is offered to `stderr` while it has room; the lines are
 /// read (and dropped) even when nobody listens, so the command never blocks on a full pipe.
 pub(crate) fn spawn(command: &str, stderr: mpsc::Sender<String>) -> io::Result<ProxyStream> {
-    let mut child = shell(command)
+    let mut child = shell::command(command)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
         .spawn()?;
     let missing = || io::Error::other("the proxy command's standard streams are not available");
     let stdin = child.stdin.take().ok_or_else(missing)?;
