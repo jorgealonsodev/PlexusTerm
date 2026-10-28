@@ -45,6 +45,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "Raccourci clavier",
     none: "Aucun",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} dans un texte demande sa valeur à chaque lecture de la macro, {{name:default}} la préremplit et {{{{ tape un {{ littéral.",
     escapes:
       "Séquences d'échappement dans le texte : \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C et les autres touches de contrôle ^A–^Z, ^[ et ^?.",
     kindSend: "Envoyer du texte",
@@ -75,6 +76,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "le fichier des macros contient deux macros sur {hotkey}",
   },
   copyName: "{name} (copie)",
+  variables: {
+    title: "Lire « {name} »",
+    message: "Les valeurs ne servent que pour cette lecture et ne sont pas enregistrées.",
+    play: "Lire",
+  },
   player: {
     timedOut: "La macro « {name} » s'est arrêtée à l'étape {step} sur {total} : « {text} » n'est pas apparu en {seconds} s.",
   },

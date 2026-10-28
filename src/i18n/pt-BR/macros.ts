@@ -44,6 +44,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "Tecla de atalho",
     none: "Nenhuma",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} em um texto pede o valor a cada reprodução da macro, {{name:default}} o preenche de antemão e {{{{ digita um {{ literal.",
     escapes: "Sequências de escape no texto: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C e as outras teclas de controle ^A–^Z, ^[ e ^?.",
     kindSend: "Enviar texto",
     kindWait: "Aguardar",
@@ -73,6 +74,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "o arquivo de macros tem duas macros em {hotkey}",
   },
   copyName: "{name} (cópia)",
+  variables: {
+    title: "Reproduzir \"{name}\"",
+    message: "Os valores são usados só nesta reprodução e não são salvos.",
+    play: "Reproduzir",
+  },
   player: {
     timedOut: 'A macro "{name}" parou no passo {step} de {total}: "{text}" não apareceu em {seconds} s.',
   },

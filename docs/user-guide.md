@@ -587,6 +587,16 @@ The editor changes the name, the hotkey and the steps (add, remove, move up or d
 
 Text in send and wait-for steps accepts escapes: `\r` (Enter), `\n`, `\t`, `\e` (Escape), `\\`, `\xHH`, and `^A` to `^Z` (e.g. `^C`), `^[` (Escape) and `^?` (Delete). Anything else is sent as written.
 
+### Variables
+
+Send and wait-for texts can ask for values each time the macro plays, which turns a macro into a snippet such as `docker logs -f {{container}}\r`:
+
+- `{{name}}` is a variable; names start with a letter or `_` and go on with letters, digits, `_` or `-`.
+- `{{name:default}}` prefills the field with `default` (a default cannot contain braces). When a name appears more than once, it is asked once and its first default is used.
+- `{{{{` types a literal `{{`. Braces that do not form a variable (e.g. `{{a b}}` or `{x}`) are sent as written.
+
+Playing a macro with variables, from the Macros tab, its hotkey or the command palette, first opens a dialog with one field per variable, in the order they first appear. The fields show the values you typed the last time you played that macro since PlexusTerm started, or else the defaults. **Play** or Enter plays the macro with the values in place; **Cancel** or Escape plays nothing. Values are typed exactly as entered (escapes such as `\r` in a value are not interpreted) and are **never saved**: `macros.json` keeps only the `{{name}}` placeholders. A macro without variables plays at once, without the dialog.
+
 **Macros are saved as plain text** in `macros.json` in the app config directory (readable only by you). Everything you type while recording is saved, including passwords; nothing is masked or filtered. If the file cannot be read, macros cannot be edited until it is fixed, so it is never overwritten.
 
 ## Tools
@@ -657,7 +667,7 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 
 - **Actions**: every action of Settings → Shortcuts, with its shortcut when it has one (new terminal, split, find, copy the last command's output, the tools…). The terminal's own actions (find, copy, clear…) act on the focused terminal.
 - **Sessions**: your saved sessions, also found by their folder; choosing one connects, as a double-click in the Sessions tab does.
-- **Macros**: plays the macro in the focused terminal.
+- **Macros**: plays the macro in the focused terminal, asking first for the values of its [variables](#variables).
 - **Tabs**: the open tabs, to switch to one.
 - **Settings**: opens Settings at that section.
 

@@ -67,4 +67,9 @@ describe("MacroEditDialog (S16.4)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  it("explains that {{name}} asks for a value when the macro plays (S4)", () => {
+    renderDialog();
+    expect(screen.getByText(/\{\{name\}\} in a text asks for its value each time the macro plays/)).toBeTruthy();
+  });
 });

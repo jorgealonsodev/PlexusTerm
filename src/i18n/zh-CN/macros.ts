@@ -42,6 +42,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "快捷键",
     none: "无",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "文本中的 {{name}} 会在每次播放宏时询问其值，{{name:default}} 会预先填入默认值，{{{{ 输入字面的 {{。",
     escapes: "文本中的转义：\\r Enter、\\n、\\t、\\e Escape、\\\\、\\xHH、^C 及其他 ^A–^Z 控制键、^[ 和 ^?。",
     kindSend: "发送文本",
     kindWait: "等待",
@@ -71,6 +72,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "宏文件中有两个宏使用 {hotkey}",
   },
   copyName: "{name}（副本）",
+  variables: {
+    title: "播放“{name}”",
+    message: "这些值仅用于本次播放，不会保存。",
+    play: "播放",
+  },
   player: {
     timedOut: "宏“{name}”在第 {step} 步（共 {total} 步）停止：“{text}”未在 {seconds} 秒内出现。",
   },

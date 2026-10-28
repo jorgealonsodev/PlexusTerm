@@ -41,6 +41,7 @@ export const macros = {
     hotkey: "Hotkey",
     none: "None",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} in a text asks for its value each time the macro plays, {{name:default}} prefills it, and {{{{ types a literal {{.",
     escapes: "Escapes in text: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C and other ^A–^Z control keys, ^[ and ^?.",
     kindSend: "Send text",
     kindWait: "Wait",
@@ -70,6 +71,11 @@ export const macros = {
     duplicateHotkey: "macros file has two macros on {hotkey}",
   },
   copyName: "{name} (copy)",
+  variables: {
+    title: "Play \"{name}\"",
+    message: "The values are used for this run only and are not saved.",
+    play: "Play",
+  },
   player: {
     timedOut: 'Macro "{name}" stopped at step {step} of {total}: "{text}" did not appear within {seconds} s.',
   },

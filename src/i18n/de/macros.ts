@@ -44,6 +44,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "Tastenkürzel",
     none: "Keines",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} in einem Text fragt bei jedem Abspielen des Makros nach seinem Wert, {{name:default}} füllt ihn vor, und {{{{ schreibt ein wörtliches {{.",
     escapes:
       "Escape-Sequenzen im Text: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C und andere Steuertasten ^A–^Z, ^[ und ^?.",
     kindSend: "Text senden",
@@ -74,6 +75,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "Die Makrodatei enthält zwei Makros auf {hotkey}",
   },
   copyName: "{name} (Kopie)",
+  variables: {
+    title: "„{name}“ abspielen",
+    message: "Die Werte gelten nur für diesen Durchlauf und werden nicht gespeichert.",
+    play: "Abspielen",
+  },
   player: {
     timedOut:
       "Makro „{name}“ wurde bei Schritt {step} von {total} gestoppt: „{text}“ erschien nicht innerhalb von {seconds} s.",

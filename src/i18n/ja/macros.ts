@@ -43,6 +43,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "ホットキー",
     none: "なし",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "テキスト内の {{name}} はマクロを再生するたびに値を尋ねます。{{name:default}} は既定値を入力済みにし、{{{{ はそのままの {{ を入力します。",
     escapes:
       "テキスト内のエスケープ: \\r Enter、\\n、\\t、\\e Escape、\\\\、\\xHH、^C などの ^A–^Z 制御キー、^[ と ^?。",
     kindSend: "テキストを送信",
@@ -73,6 +74,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "マクロファイルに {hotkey} を使用するマクロが 2 つあります",
   },
   copyName: "{name} (コピー)",
+  variables: {
+    title: "「{name}」を再生",
+    message: "値は今回の再生にのみ使われ、保存されません。",
+    play: "再生",
+  },
   player: {
     timedOut:
       "マクロ「{name}」はステップ {step}/{total} で停止しました。{seconds} 秒以内に「{text}」が表示されませんでした。",

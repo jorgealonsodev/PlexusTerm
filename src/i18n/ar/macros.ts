@@ -54,6 +54,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "مفتاح الاختصار",
     none: "بلا",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} في النص يطلب قيمته في كل مرة تُشغَّل فيها الماكرو، و{{name:default}} يملؤها مسبقًا، و{{{{ يكتب {{ حرفيًا.",
     escapes: "رموز الهروب في النص: \\r Enter و\\n و\\t و\\e Escape و\\\\ و\\xHH و^C ومفاتيح التحكم الأخرى ^A–^Z و^[ و^?.",
     kindSend: "إرسال نص",
     kindWait: "انتظار",
@@ -83,6 +84,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "ملف وحدات الماكرو يحتوي على ماكروين على {hotkey}",
   },
   copyName: "{name} (نسخة)",
+  variables: {
+    title: "تشغيل \"{name}\"",
+    message: "تُستخدم القيم لهذا التشغيل فقط ولا تُحفظ.",
+    play: "تشغيل",
+  },
   player: {
     timedOut: 'توقف الماكرو "{name}" عند الخطوة {step} من {total}: لم يظهر "{text}" خلال {seconds} ث.',
   },

@@ -42,6 +42,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "단축키",
     none: "없음",
     hotkeyUsed: "{hotkey}({name})",
+    variablesHint: "텍스트의 {{name}}은 매크로를 재생할 때마다 값을 묻고, {{name:default}}는 값을 미리 채우며, {{{{는 문자 그대로의 {{를 입력합니다.",
     escapes: "텍스트의 이스케이프: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C 및 기타 ^A–^Z 제어 키, ^[ 및 ^?.",
     kindSend: "텍스트 보내기",
     kindWait: "대기",
@@ -71,6 +72,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "매크로 파일에서 두 매크로가 {hotkey}을(를) 사용합니다",
   },
   copyName: "{name}(사본)",
+  variables: {
+    title: "\"{name}\" 재생",
+    message: "값은 이번 재생에만 쓰이며 저장되지 않습니다.",
+    play: "재생",
+  },
   player: {
     timedOut: '매크로 "{name}"이(가) {step}/{total}단계에서 중지되었습니다: {seconds}초 안에 "{text}"이(가) 나타나지 않았습니다.',
   },

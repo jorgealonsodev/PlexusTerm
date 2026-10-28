@@ -75,6 +75,12 @@ vi.mock("../terminal/TerminalView", () => ({
 const stored: Macro[] = [
   { id: "m1", name: "Login", hotkey: 2, steps: [{ kind: "send", text: "whoami\\r" }] },
   { id: "m2", name: "Slow", steps: [{ kind: "waitFor", text: "$ ", timeoutSec: 1 }] },
+  {
+    id: "m3",
+    name: "Logs",
+    hotkey: 3,
+    steps: [{ kind: "send", text: "docker logs -f {{container:web}} --tail {{lines}}\\r" }],
+  },
 ];
 
 beforeEach(() => {
@@ -116,7 +122,7 @@ describe("App macros (S16)", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("macros_save", expect.anything()));
     const save = vi.mocked(invoke).mock.calls.find(([command]) => command === "macros_save");
     const saved = JSON.parse((save?.[1] as { contents: string }).contents);
-    expect(saved.macros[2]).toMatchObject({ name: "List", steps: [{ kind: "send", text: "ls\\r" }] });
+    expect(saved.macros.at(-1)).toMatchObject({ name: "List", steps: [{ kind: "send", text: "ls\\r" }] });
   });
 
   it("plays the hotkey's macro through the input path, multi-execution included (S16.3, S16.4)", async () => {
@@ -127,6 +133,8 @@ describe("App macros (S16)", () => {
     await waitFor(() => expect(sent[2]).toEqual(["whoami\r"]));
     // Mirrored to the other pane by multi-execution.
     expect(sent[1]).toEqual(["whoami\r"]);
+    // A macro without variables asks for nothing.
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("never plays a macro into an AI chat pane (S9)", async () => {
@@ -159,5 +167,70 @@ describe("App macros (S16)", () => {
       expect(notices).toEqual(['Macro "Slow" stopped at step 1 of 1: "$ " did not appear within 1 s.']),
     );
     expect(screen.queryByText(/Running "Slow"/)).toBeNull();
+  });
+
+  describe("variables (S4)", () => {
+    const valuesDialog = () => screen.queryByRole("dialog", { name: 'Play "Logs"' });
+    const field = (name: string) => screen.getByRole("textbox", { name }) as HTMLInputElement;
+
+    it("asks for each variable, prefilled with its default, and plays the values with Play or Enter", async () => {
+      await renderApp();
+      fireEvent.click(screen.getByRole("button", { name: "Play Logs" }));
+      expect(await screen.findByRole("dialog", { name: 'Play "Logs"' })).toBeTruthy();
+      expect([field("container").value, field("lines").value]).toEqual(["web", ""]);
+      expect(sent).toEqual({});
+      fireEvent.change(field("lines"), { target: { value: "50" } });
+      await act(async () => void fireEvent.keyDown(field("lines"), { key: "Enter" }));
+      await waitFor(() => expect(sent[1]).toEqual(["docker logs -f web --tail 50\r"]));
+      expect(valuesDialog()).toBeNull();
+    });
+
+    it("prefills the values used last for that macro", async () => {
+      await renderApp();
+      fireEvent.click(screen.getByRole("button", { name: "Play Logs" }));
+      await screen.findByRole("dialog", { name: 'Play "Logs"' });
+      fireEvent.change(field("container"), { target: { value: "db" } });
+      fireEvent.change(field("lines"), { target: { value: "10" } });
+      await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Play" })));
+      await waitFor(() => expect(sent[1]).toEqual(["docker logs -f db --tail 10\r"]));
+
+      fireEvent.click(screen.getByRole("button", { name: "Play Logs" }));
+      await screen.findByRole("dialog", { name: 'Play "Logs"' });
+      expect([field("container").value, field("lines").value]).toEqual(["db", "10"]);
+    });
+
+    it("plays nothing when cancelled with Cancel or Escape", async () => {
+      await renderApp();
+      fireEvent.click(screen.getByRole("button", { name: "Play Logs" }));
+      await screen.findByRole("dialog", { name: 'Play "Logs"' });
+      await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Cancel" })));
+      expect(valuesDialog()).toBeNull();
+      key("3", { ctrlKey: true, altKey: true });
+      await screen.findByRole("dialog", { name: 'Play "Logs"' });
+      await act(async () => void fireEvent.keyDown(field("container"), { key: "Escape" }));
+      expect(valuesDialog()).toBeNull();
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(sent).toEqual({});
+      expect(screen.queryByText(/Running "Logs"/)).toBeNull();
+    });
+
+    it("asks from every entry point: the panel, the hotkey and the command palette", async () => {
+      await renderApp();
+      const playFromDialog = async () => {
+        await screen.findByRole("dialog", { name: 'Play "Logs"' });
+        await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Play" })));
+        await waitFor(() => expect(valuesDialog()).toBeNull());
+        await waitFor(() => expect(screen.queryByText(/Running "Logs"/)).toBeNull());
+      };
+      key("3", { ctrlKey: true, altKey: true });
+      await playFromDialog();
+      key("P", { ctrlKey: true, shiftKey: true });
+      const palette = screen.getByRole("combobox");
+      fireEvent.change(palette, { target: { value: "Logs" } });
+      fireEvent.keyDown(palette, { key: "Enter" });
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      await playFromDialog();
+      expect(sent[1]).toEqual(["docker logs -f web --tail \r", "docker logs -f web --tail \r"]);
+    });
   });
 });

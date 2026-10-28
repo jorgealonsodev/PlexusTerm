@@ -23,16 +23,27 @@ export interface PromptOptions {
   confirmLabel: string;
 }
 
+export interface FieldsOptions {
+  title?: string;
+  /** Shown above the fields. */
+  message?: string;
+  /** One text field per entry, in order; the first one has the focus. */
+  fields: { label: string; defaultValue?: string }[];
+  confirmLabel: string;
+}
+
 export interface Dialogs {
   /** Resolves true when accepted, false when cancelled (Cancel or Escape). */
   confirm: (options: ConfirmOptions) => Promise<boolean>;
   /** Resolves to the text as typed (untrimmed), or null when cancelled. */
   prompt: (options: PromptOptions) => Promise<string | null>;
+  /** Resolves to the values as typed (untrimmed), in the order of the fields, or null when cancelled. */
+  promptFields: (options: FieldsOptions) => Promise<string[] | null>;
 }
 
 type Request =
   | { id: number; kind: "confirm"; options: ConfirmOptions; resolve: (ok: boolean) => void }
-  | { id: number; kind: "prompt"; options: PromptOptions; resolve: (value: string | null) => void };
+  | { id: number; kind: "fields"; options: FieldsOptions; resolve: (values: string[] | null) => void };
 
 const DialogContext = createContext<Dialogs | null>(null);
 
@@ -45,8 +56,14 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     () => ({
       confirm: (options) =>
         new Promise((resolve) => setQueue((q) => [...q, { id: ++nextId, kind: "confirm", options, resolve }])),
-      prompt: (options) =>
-        new Promise((resolve) => setQueue((q) => [...q, { id: ++nextId, kind: "prompt", options, resolve }])),
+      prompt: ({ title, message, defaultValue, confirmLabel }) =>
+        new Promise((resolve) => {
+          const options = { title, fields: [{ label: message, defaultValue }], confirmLabel };
+          const answer = (values: string[] | null) => resolve(values === null ? null : values[0]);
+          setQueue((q) => [...q, { id: ++nextId, kind: "fields", options, resolve: answer }]);
+        }),
+      promptFields: (options) =>
+        new Promise((resolve) => setQueue((q) => [...q, { id: ++nextId, kind: "fields", options, resolve }])),
     }),
     [],
   );
@@ -62,8 +79,8 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       {current?.kind === "confirm" && (
         <ConfirmDialog key={current.id} options={current.options} onAnswer={(ok) => finish(() => current.resolve(ok))} />
       )}
-      {current?.kind === "prompt" && (
-        <PromptDialog key={current.id} options={current.options} onAnswer={(v) => finish(() => current.resolve(v))} />
+      {current?.kind === "fields" && (
+        <FieldsDialog key={current.id} options={current.options} onAnswer={(v) => finish(() => current.resolve(v))} />
       )}
     </DialogContext.Provider>
   );
@@ -124,34 +141,40 @@ function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswe
   );
 }
 
-function PromptDialog({ options, onAnswer }: { options: PromptOptions; onAnswer: (value: string | null) => void }) {
+function FieldsDialog({ options, onAnswer }: { options: FieldsOptions; onAnswer: (values: string[] | null) => void }) {
   const t = useT();
-  const { title, message, defaultValue = "", confirmLabel } = options;
-  const [value, setValue] = useState(defaultValue);
+  const { title, message, fields, confirmLabel } = options;
+  const [values, setValues] = useState(() => fields.map((f) => f.defaultValue ?? ""));
   return (
-    <div className="overlay overlay--dialogs" onKeyDown={keys(() => onAnswer(null), () => onAnswer(value))}>
+    <div className="overlay overlay--dialogs" onKeyDown={keys(() => onAnswer(null), () => onAnswer(values))}>
       <form
         className="dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={title ?? message}
+        aria-label={title ?? message ?? fields[0]?.label}
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          onAnswer(value);
+          onAnswer(values);
         }}
       >
         {title && <h2>{title}</h2>}
-        <label className="field">
-          {message}
-          <input
-            autoFocus
-            spellCheck={false}
-            value={value}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </label>
+        {message && <p className="app-dialog__message">{message}</p>}
+        {fields.map((field, i) => (
+          <label key={i} className="field">
+            {field.label}
+            <input
+              autoFocus={i === 0}
+              spellCheck={false}
+              value={values[i]}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const value = e.target.value;
+                setValues((prev) => prev.map((v, j) => (j === i ? value : v)));
+              }}
+            />
+          </label>
+        ))}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={() => onAnswer(null)}>
             {t("common.cancel")}

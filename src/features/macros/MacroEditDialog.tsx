@@ -64,6 +64,7 @@ export function MacroEditDialog({ macro, isNew, macros, onSave, onCancel }: Macr
           </label>
         </div>
         <p className="muted">{t("macros.edit.escapes")}</p>
+        <p className="muted">{t("macros.edit.variablesHint")}</p>
         <ol className="macro-steps">
           {form.rows.map((row, i) => {
             const n = i + 1;

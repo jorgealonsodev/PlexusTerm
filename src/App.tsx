@@ -10,6 +10,7 @@ import { MacrosPanel } from "./features/macros/MacrosPanel";
 import { hotkeyLabel, recordedSteps, recorderReduce, type Macro, type Step } from "./features/macros/macros";
 import { createTargetRegistry, playMacro, type MacroRun, type MacroTarget } from "./features/macros/player";
 import { useMacros } from "./features/macros/useMacros";
+import { fillMacro, macroVariables } from "./features/macros/variables";
 import { broadcastTargets, createWriterRegistry, multiExecGroup, type PaneInfo } from "./features/panes/multiExec";
 import { MoshDialog } from "./features/mosh/MoshDialog";
 import { PlatformProvider, usePlatform } from "./features/platform/usePlatform";
@@ -464,6 +465,8 @@ function AppContent() {
   const recorded = useRef<string[]>([]);
   const [running, setRunning] = useState<RunningMacro | null>(null);
   const runRef = useRef<MacroRun | null>(null);
+  /** The values last typed for each macro's variables, by macro id; memory only, never saved (S4). */
+  const macroValues = useRef(new Map<string, Record<string, string>>());
   const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
   const [chatDrops] = useState(() => createTargetRegistry<ChatTarget>());
   /** Each terminal's own actions (find, copy, clear…), for the command palette. */
@@ -778,11 +781,31 @@ function AppContent() {
     else setModal({ kind: "nameMacro", steps });
   };
 
-  /** Plays a macro into the focused pane of the active tab, through its normal input path (S16.3). */
-  const startMacro = (macro: Macro) => {
+  /**
+   * Plays a macro into the focused pane of the active tab, through its normal input path (S16.3).
+   * A macro with variables first asks for their values (S4); cancelling plays nothing.
+   */
+  const startMacro = async (macro: Macro) => {
     if (runRef.current) return setNotice(t("app.notice.macroRunning"));
     const paneId = activeTab?.focusedPane;
-    const target = paneId ? macroTargets.get(paneId) : undefined;
+    if (!paneId || !macroTargets.get(paneId)) return setNotice(t("app.notice.noMacroTarget"));
+    const variables = macroVariables(macro);
+    if (variables.length > 0) {
+      const last = macroValues.current.get(macro.id) ?? {};
+      const answers = await dialogs.promptFields({
+        title: t("macros.variables.title", { name: macro.name }),
+        message: t("macros.variables.message"),
+        fields: variables.map((v) => ({ label: v.name, defaultValue: last[v.name] ?? v.default ?? "" })),
+        confirmLabel: t("macros.variables.play"),
+      });
+      if (answers === null) return;
+      const values = Object.fromEntries(variables.map((v, i) => [v.name, answers[i]]));
+      macroValues.current.set(macro.id, values);
+      macro = fillMacro(macro, values);
+      // The pane or another macro may have changed while the dialog was open.
+      if (runRef.current) return setNotice(t("app.notice.macroRunning"));
+    }
+    const target = macroTargets.get(paneId);
     if (!target) return setNotice(t("app.notice.noMacroTarget"));
     setRunning({ name: macro.name, step: 0, total: macro.steps.length });
     let current: MacroRun | null = null;
@@ -807,7 +830,7 @@ function AppContent() {
 
   const playHotkey = (hotkey: number) => {
     const macro = macros.list.macros.find((m) => m.hotkey === hotkey);
-    if (macro) startMacro(macro);
+    if (macro) void startMacro(macro);
     else setNotice(t("app.notice.noMacroForHotkey", { hotkey: hotkeyLabel(hotkey) }));
   };
 
@@ -1650,7 +1673,7 @@ function AppContent() {
       group: "macros" as const,
       label: macro.name,
       shortcut: macro.hotkey ? hotkeyLabel(macro.hotkey) : undefined,
-      run: () => startMacro(macro),
+      run: () => void startMacro(macro),
     })),
     ...state.tabs.map((tab) => ({
       id: tab.key,
@@ -1967,7 +1990,7 @@ function AppContent() {
                 status={macros.status}
                 saveError={macros.saveError}
                 canPlay={activeTab !== null && running === null}
-                onPlay={startMacro}
+                onPlay={(macro) => void startMacro(macro)}
                 onNew={() =>
                   setModal({ kind: "editMacro", macro: { id: crypto.randomUUID(), name: "", steps: [] }, isNew: true })
                 }

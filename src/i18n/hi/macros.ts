@@ -43,6 +43,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "हॉटकी",
     none: "कोई नहीं",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "टेक्स्ट में {{name}} हर बार मैक्रो चलने पर उसका मान पूछता है, {{name:default}} उसे पहले से भरता है, और {{{{ एक शाब्दिक {{ टाइप करता है।",
     escapes: "टेक्स्ट में एस्केप: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C और अन्य ^A–^Z कंट्रोल कुंजियाँ, ^[ और ^?।",
     kindSend: "टेक्स्ट भेजें",
     kindWait: "प्रतीक्षा करें",
@@ -72,6 +73,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "मैक्रो फ़ाइल में {hotkey} पर दो मैक्रो हैं",
   },
   copyName: "{name} (प्रतिलिपि)",
+  variables: {
+    title: "\"{name}\" चलाएँ",
+    message: "मान केवल इस बार के लिए उपयोग होते हैं और सहेजे नहीं जाते।",
+    play: "चलाएँ",
+  },
   player: {
     timedOut: 'मैक्रो "{name}" चरण {step} / {total} पर रुका: "{text}" {seconds} s के भीतर दिखाई नहीं दिया।',
   },

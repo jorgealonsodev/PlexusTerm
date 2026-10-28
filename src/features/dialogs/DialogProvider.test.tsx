@@ -115,6 +115,44 @@ describe("prompt", () => {
   });
 });
 
+describe("promptFields", () => {
+  it("asks for several values at once, prefilled, and submits them in order with Enter or the button", async () => {
+    const dialogs = setup();
+    const first = await ask(() =>
+      dialogs.promptFields({
+        title: "Play Logs",
+        message: "Values for the macro",
+        fields: [{ label: "container", defaultValue: "web" }, { label: "since" }],
+        confirmLabel: "Play",
+      }),
+    );
+    expect(screen.getByRole("dialog", { name: "Play Logs" })).toBeTruthy();
+    expect(screen.getByText("Values for the macro")).toBeTruthy();
+    const container = screen.getByRole("textbox", { name: "container" }) as HTMLInputElement;
+    const since = screen.getByRole("textbox", { name: "since" }) as HTMLInputElement;
+    expect(document.activeElement).toBe(container);
+    expect([container.value, since.value]).toEqual(["web", ""]);
+    fireEvent.change(since, { target: { value: "1h" } });
+    await act(async () => void fireEvent.keyDown(since, { key: "Enter" }));
+    expect(await first.done).toEqual(["web", "1h"]);
+
+    const second = await ask(() => dialogs.promptFields({ fields: [{ label: "host", defaultValue: "db1" }], confirmLabel: "Play" }));
+    await answer("Play");
+    expect(await second.done).toEqual(["db1"]);
+  });
+
+  it("resolves null on Cancel and on Escape", async () => {
+    const dialogs = setup();
+    const first = await ask(() => dialogs.promptFields({ fields: [{ label: "a" }, { label: "b" }], confirmLabel: "Play" }));
+    await answer("Cancel");
+    expect(await first.done).toBeNull();
+    const second = await ask(() => dialogs.promptFields({ fields: [{ label: "a" }], confirmLabel: "Play" }));
+    await act(async () => void fireEvent.keyDown(screen.getByRole("textbox", { name: "a" }), { key: "Escape" }));
+    expect(await second.done).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
 describe("useDialogs", () => {
   it("needs a DialogProvider", () => {
     function Lonely() {

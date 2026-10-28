@@ -44,6 +44,7 @@ export const macros: Messages<typeof en> = {
     hotkey: "Tecla de acceso rápido",
     none: "Ninguna",
     hotkeyUsed: "{hotkey} ({name})",
+    variablesHint: "{{name}} en un texto pide su valor cada vez que se reproduce la macro, {{name:default}} lo rellena de antemano y {{{{ escribe un {{ literal.",
     escapes: "Secuencias de escape en el texto: \\r Enter, \\n, \\t, \\e Escape, \\\\, \\xHH, ^C y las demás teclas de control ^A–^Z, ^[ y ^?.",
     kindSend: "Enviar texto",
     kindWait: "Esperar",
@@ -73,6 +74,11 @@ export const macros: Messages<typeof en> = {
     duplicateHotkey: "el archivo de macros tiene dos macros en {hotkey}",
   },
   copyName: "{name} (copia)",
+  variables: {
+    title: "Reproducir \"{name}\"",
+    message: "Los valores solo se usan en esta reproducción y no se guardan.",
+    play: "Reproducir",
+  },
   player: {
     timedOut: 'La macro "{name}" se detuvo en el paso {step} de {total}: "{text}" no apareció en {seconds} s.',
   },
