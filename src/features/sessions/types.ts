@@ -3,10 +3,13 @@ import { shellNameOf } from "../terminal/localShell";
 
 export type SshAuth =
   | { method: "password"; password: string }
-  | { method: "key"; path: string; passphrase?: string }
+  /** `passphraseCommand` prints the key's passphrase (a password manager's command line). */
+  | { method: "key"; path: string; passphrase?: string; passphraseCommand?: string }
   | { method: "agent" }
   /** The password saved in the system keyring for this saved session; read by the backend only. */
-  | { method: "storedPassword"; sessionId: string };
+  | { method: "storedPassword"; sessionId: string }
+  /** The password is what `command` prints (a password manager's command line); run by the backend. */
+  | { method: "passwordCommand"; command: string };
 
 /** What the backend does with a session's saved password once a login succeeded. */
 export type PasswordStorage =

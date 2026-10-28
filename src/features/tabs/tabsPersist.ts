@@ -60,12 +60,18 @@ function sanitizeAuth(value: unknown): SshAuth | null {
     // A typed password is never kept: the terminal asks for it again.
     case "password":
       return { method: "password", password: "" };
+    // A typed passphrase is never kept; a command that prints one is not a secret.
     case "key":
-      return isFilled(value.path) ? { method: "key", path: value.path } : null;
+      if (!isFilled(value.path)) return null;
+      return isFilled(value.passphraseCommand)
+        ? { method: "key", path: value.path, passphraseCommand: value.passphraseCommand }
+        : { method: "key", path: value.path };
     case "agent":
       return { method: "agent" };
     case "storedPassword":
       return isFilled(value.sessionId) ? { method: "storedPassword", sessionId: value.sessionId } : null;
+    case "passwordCommand":
+      return isFilled(value.command) ? { method: "passwordCommand", command: value.command } : null;
     default:
       return null;
   }

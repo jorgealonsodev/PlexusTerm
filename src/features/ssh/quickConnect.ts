@@ -1,14 +1,19 @@
 import { t } from "../../i18n/i18n";
+import { MAX_COMMAND_LENGTH } from "../sessions/passwordCommand";
 import type { SshAuth, SshTarget } from "../sessions/types";
 
 export interface QuickConnectForm {
   host: string;
   port: string;
   username: string;
-  method: "password" | "key" | "agent";
+  method: "password" | "key" | "agent" | "passwordCommand";
   password: string;
+  /** Prints the password ("Password from a command"); blank when unset. */
+  passwordCommand?: string;
   keyPath: string;
   passphrase: string;
+  /** Prints the key's passphrase ("Passphrase from a command"); blank when unset. */
+  passphraseCommand?: string;
   forwardAgent: boolean;
   /** Keep the shell in tmux session `tmuxSession` (blank: {@link DEFAULT_TMUX_SESSION}). */
   tmux: boolean;
@@ -39,6 +44,7 @@ export const isProxyCommand = (value: string) =>
 export type QuickConnectResult = { ok: true; target: SshTarget } | { ok: false; error: string };
 
 const fail = (error: string): QuickConnectResult => ({ ok: false, error });
+const commandTooLong = () => t("sessions.passwordCommand.tooLong", { max: MAX_COMMAND_LENGTH });
 
 function parsePort(text: string): number | null {
   if (!/^\d+$/.test(text)) return null;
@@ -79,11 +85,22 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
     case "password":
       auth = { method: "password", password: form.password };
       break;
-    case "key":
+    case "key": {
       if (!form.keyPath.trim()) return fail(t("sessions.form.keyPathRequired"));
+      const passphraseCommand = (form.passphraseCommand ?? "").trim();
+      if (passphraseCommand.length > MAX_COMMAND_LENGTH) return fail(commandTooLong());
       auth = { method: "key", path: form.keyPath.trim() };
       if (form.passphrase) auth.passphrase = form.passphrase;
+      if (passphraseCommand) auth.passphraseCommand = passphraseCommand;
       break;
+    }
+    case "passwordCommand": {
+      const command = (form.passwordCommand ?? "").trim();
+      if (!command) return fail(t("sessions.passwordCommand.required"));
+      if (command.length > MAX_COMMAND_LENGTH) return fail(commandTooLong());
+      auth = { method: "passwordCommand", command };
+      break;
+    }
     case "agent":
       auth = { method: "agent" };
       break;

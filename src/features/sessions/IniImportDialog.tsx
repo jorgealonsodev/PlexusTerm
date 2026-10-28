@@ -1,5 +1,6 @@
 import { isSshSession, type LibrarySession } from "./library";
 import { skippedLabel, type ImportPlan } from "./iniImport";
+import { passwordCommandsOf } from "./passwordCommand";
 import { useT } from "../../i18n/i18n";
 
 export type ImportResult = { ok: true; plan: ImportPlan } | { ok: false; error: string };
@@ -21,6 +22,8 @@ export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogP
   const count = plan?.toAdd.length ?? 0;
   const skipped = plan ? Object.entries(plan.skipped) : [];
   const proxied = (plan?.toAdd ?? []).filter(isSshSession).filter((s) => s.proxyCommand);
+  // A file from someone else must not hide a command that would run on this computer.
+  const commands = plan ? passwordCommandsOf(plan.toAdd) : [];
 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onClose()}>
@@ -54,6 +57,19 @@ export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogP
                   {proxied.map((s) => (
                     <li key={s.id} data-testid="import-proxy-command">
                       {s.name}: <code dir="ltr">{s.proxyCommand}</code>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {commands.length > 0 && (
+              <>
+                <p>{t("sessions.passwordCommand.importCommands")}</p>
+                <ul className="import-skipped">
+                  {commands.map(({ name, command }, index) => (
+                    <li key={index}>
+                      {`${name}: `}
+                      <code dir="ltr">{command}</code>
                     </li>
                   ))}
                 </ul>

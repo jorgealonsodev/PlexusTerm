@@ -1,6 +1,7 @@
 import { DEFAULT_TMUX_SESSION, MAX_PROXY_COMMAND, type QuickConnectForm } from "./quickConnect";
 import { HelpTip } from "../sidebar/HelpTip";
 import { useT } from "../../i18n/i18n";
+import { MAX_COMMAND_LENGTH, PASSWORD_COMMAND_PRESETS } from "../sessions/passwordCommand";
 
 type Setter = (field: keyof QuickConnectForm) => (e: { target: { value: string } }) => void;
 type Flag = "forwardAgent" | "tmux";
@@ -44,8 +45,17 @@ export function SshFields({ form, set, check, withSecrets, autoFocusHost }: SshF
           <option value="password">{t("common.password")}</option>
           <option value="key">{t("sessions.ssh.privateKey")}</option>
           <option value="agent">{t("sessions.ssh.agent")}</option>
+          <option value="passwordCommand">{t("sessions.passwordCommand.method")}</option>
         </select>
       </label>
+      {form.method === "passwordCommand" && (
+        <CommandField
+          label={t("sessions.passwordCommand.command")}
+          help={t("sessions.passwordCommand.help")}
+          value={form.passwordCommand ?? ""}
+          onChange={set("passwordCommand")}
+        />
+      )}
       {withSecrets && form.method === "password" && (
         <label className="field">
           {t("common.password")}
@@ -68,6 +78,14 @@ export function SshFields({ form, set, check, withSecrets, autoFocusHost }: SshF
           {t("sessions.ssh.passphrase")}
           <input type="password" value={form.passphrase} onChange={set("passphrase")} />
         </label>
+      )}
+      {form.method === "key" && (
+        <CommandField
+          label={t("sessions.passwordCommand.passphraseCommand")}
+          help={t("sessions.passwordCommand.passphraseHelp")}
+          value={form.passphraseCommand ?? ""}
+          onChange={set("passphraseCommand")}
+        />
       )}
       <label className="check">
         <input type="checkbox" checked={form.forwardAgent} onChange={check("forwardAgent")} />
@@ -102,6 +120,58 @@ export function SshFields({ form, set, check, withSecrets, autoFocusHost }: SshF
         />
       </label>
     </>
+  );
+}
+
+interface CommandFieldProps {
+  label: string;
+  help: string;
+  value: string;
+  onChange: (e: { target: { value: string } }) => void;
+}
+
+/**
+ * A password manager's command line (not a secret: it is saved with the session), with a menu of
+ * presets that fills it with a template to complete.
+ */
+function CommandField({ label, help, value, onChange }: CommandFieldProps) {
+  const t = useT();
+  return (
+    <div className="form-row">
+      <label className="field field--grow">
+        <span className="setting-title">
+          {label} <HelpTip text={help} />
+        </span>
+        <input
+          value={value}
+          onChange={onChange}
+          maxLength={MAX_COMMAND_LENGTH}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoComplete="off"
+          placeholder={PASSWORD_COMMAND_PRESETS[0].command}
+        />
+      </label>
+      <label className="field">
+        {t("sessions.passwordCommand.presets")}
+        <select
+          value=""
+          onChange={(e) => {
+            const preset = PASSWORD_COMMAND_PRESETS[Number(e.target.value)];
+            if (preset) onChange({ target: { value: preset.command } });
+          }}
+        >
+          <option value="" disabled>
+            …
+          </option>
+          {PASSWORD_COMMAND_PRESETS.map((preset, index) => (
+            <option key={preset.label} value={index}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }
 

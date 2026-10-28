@@ -8,6 +8,17 @@ export type SshError =
   | { kind: "secretMissing" }
   | { kind: "unknownSession"; id: number }
   | { kind: "connection"; message: string }
+  /**
+   * A password or passphrase command gave no usable secret: `code` is its exit code (null when a
+   * signal stopped it), `stderr` the first lines of its error output (never what it printed).
+   */
+  | {
+      kind: "passwordCommand";
+      purpose: "password" | "passphrase";
+      failure: "invalid" | "start" | "exit" | "timeout" | "empty" | "tooLong" | "notText";
+      code: number | null;
+      stderr: string;
+    }
   /** A jump host failed: `hop` is its 1-based position, `error` what went wrong there. */
   | { kind: "hop"; hop: number; name: string; error: SshError };
 
@@ -22,6 +33,27 @@ export function toSshError(err: unknown): SshError {
 /** Shown when the server offers a key type that differs from the ones recorded for it. */
 export function otherKeysWarning(otherKnownKeys: string[]): string {
   return t("sessions.sshError.otherKeys", { keys: otherKnownKeys.join(", ") });
+}
+
+/** How long the backend lets a password command run (`SECRET_COMMAND_TIMEOUT`). */
+const COMMAND_TIMEOUT_SECONDS = 30;
+
+function describeCommandFailure(err: Extract<SshError, { kind: "passwordCommand" }>): string {
+  const what = t(err.purpose === "passphrase" ? "sessions.passwordCommand.passphrase" : "sessions.passwordCommand.password");
+  const failed = (() => {
+    switch (err.failure) {
+      case "exit":
+        return err.code === null
+          ? t("sessions.passwordCommand.error.signal", { what })
+          : t("sessions.passwordCommand.error.exit", { what, code: err.code });
+      case "timeout":
+        return t("sessions.passwordCommand.error.timeout", { what, seconds: COMMAND_TIMEOUT_SECONDS });
+      default:
+        return t(`sessions.passwordCommand.error.${err.failure}` as const, { what });
+    }
+  })();
+  const stderr = err.stderr.split("\n").filter((line) => line.trim() !== "");
+  return [failed, ...stderr].join("\r\n");
 }
 
 export function describeSshError(err: SshError): string {
@@ -46,6 +78,8 @@ export function describeSshError(err: SshError): string {
       return t("sessions.sshError.unknownSession", { id: err.id });
     case "connection":
       return err.message;
+    case "passwordCommand":
+      return describeCommandFailure(err);
     case "hop":
       return t("sessions.sshError.hop", { name: err.name, hop: err.hop, error: describeSshError(err.error) });
   }

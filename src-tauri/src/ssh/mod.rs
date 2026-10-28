@@ -12,7 +12,8 @@
 //! applies the same known_hosts policy and its own authentication. Errors of a
 //! jump host are wrapped in [`SshError::Hop`], which names it.
 //!
-//! Password logins (typed or saved) first try public-key authentication like OpenSSH:
+//! Password logins (typed, saved or printed by a command, see [`secret_command`]) first try
+//! public-key authentication like OpenSSH:
 //! the SSH agent's keys, then the default identity files `id_ed25519`, `id_ecdsa` and
 //! `id_rsa` next to known_hosts (`~/.ssh`), unencrypted only. The password is only sent
 //! when the server rejects all of them (see [`try_default_keys`]).
@@ -28,6 +29,7 @@ pub mod cwd;
 #[cfg(test)]
 mod interop_tests;
 mod proxy;
+pub mod secret_command;
 #[cfg(test)]
 pub(crate) mod test_server;
 
@@ -150,15 +152,25 @@ pub enum SshAuth {
     Password {
         password: String,
     },
+    #[serde(rename_all = "camelCase")]
     Key {
         path: String,
         passphrase: Option<String>,
+        /// Prints the key's passphrase (a password manager's command line); used when no
+        /// passphrase was typed. See [`secret_command`].
+        #[serde(default)]
+        passphrase_command: Option<String>,
     },
     Agent,
     /// The password saved in the system keyring for this saved session.
     #[serde(rename_all = "camelCase")]
     StoredPassword {
         session_id: String,
+    },
+    /// The password is what this command prints (a password manager's command line); the
+    /// command is not a secret, its output is. See [`secret_command`].
+    PasswordCommand {
+        command: String,
     },
 }
 
@@ -181,15 +193,24 @@ impl std::fmt::Debug for SshAuth {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Password { .. } => f.write_str("Password { .. }"),
-            Self::Key { path, passphrase } => f
+            Self::Key {
+                path,
+                passphrase,
+                passphrase_command,
+            } => f
                 .debug_struct("Key")
                 .field("path", path)
                 .field("passphrase", &passphrase.as_ref().map(|_| "<redacted>"))
+                .field("passphrase_command", passphrase_command)
                 .finish(),
             Self::Agent => f.write_str("Agent"),
             Self::StoredPassword { session_id } => f
                 .debug_struct("StoredPassword")
                 .field("session_id", session_id)
+                .finish(),
+            Self::PasswordCommand { command } => f
+                .debug_struct("PasswordCommand")
+                .field("command", command)
                 .finish(),
         }
     }
@@ -218,6 +239,15 @@ pub enum SshError {
     AuthFailed,
     #[error("no password is saved for this session")]
     SecretMissing,
+    /// A password or passphrase command gave no usable secret; `stderr` holds the first lines
+    /// of its standard error, never its output.
+    #[error("{}", secret_command::describe(.purpose, .failure, .code, .stderr))]
+    PasswordCommand {
+        purpose: secret_command::SecretKind,
+        failure: secret_command::CommandFailure,
+        code: Option<i32>,
+        stderr: String,
+    },
     #[error("unknown terminal session {id}")]
     UnknownSession { id: u32 },
     #[error("{message}")]
@@ -763,7 +793,7 @@ async fn connect_hop(
 
     if matches!(
         hop.auth,
-        SshAuth::Password { .. } | SshAuth::StoredPassword { .. }
+        SshAuth::Password { .. } | SshAuth::StoredPassword { .. } | SshAuth::PasswordCommand { .. }
     ) {
         let identity_dir = known_hosts.parent();
         match try_default_keys(&mut handle, &hop.username, agent_socket, identity_dir).await {
@@ -1036,11 +1066,44 @@ async fn authenticate(
                 .map_err(connection)?
                 .success()
         }
-        SshAuth::Key { path, passphrase } => {
-            let key = load_secret_key(platform::expand_home(&path), passphrase.as_deref())
-                .map_err(|err| SshError::Connection {
+        SshAuth::PasswordCommand { command } => {
+            let password = secret_command::read_secret(
+                &command,
+                secret_command::SecretKind::Password,
+                secret_command::SECRET_COMMAND_TIMEOUT,
+            )
+            .await?;
+            handle
+                .authenticate_password(user, password.as_str())
+                .await
+                .map_err(connection)?
+                .success()
+        }
+        SshAuth::Key {
+            path,
+            passphrase,
+            passphrase_command,
+        } => {
+            // A typed passphrase wins; the command only runs when none was given.
+            let from_command = match (&passphrase, &passphrase_command) {
+                (None, Some(command)) => Some(
+                    secret_command::read_secret(
+                        command,
+                        secret_command::SecretKind::Passphrase,
+                        secret_command::SECRET_COMMAND_TIMEOUT,
+                    )
+                    .await?,
+                ),
+                _ => None,
+            };
+            let passphrase = passphrase
+                .as_deref()
+                .or(from_command.as_ref().map(|secret| secret.as_str()));
+            let key = load_secret_key(platform::expand_home(&path), passphrase).map_err(|err| {
+                SshError::Connection {
                     message: format!("cannot load private key {path}: {err}"),
-                })?;
+                }
+            })?;
             let hash = handle
                 .best_supported_rsa_hash()
                 .await
@@ -1715,11 +1778,148 @@ mod tests {
         let auth = SshAuth::Key {
             path: key_path.to_string_lossy().into(),
             passphrase: None,
+            passphrase_command: None,
         };
         mgr.connect(request(server.addr.port(), auth), s)
             .await
             .unwrap();
         assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    fn password_command(command: &str) -> SshAuth {
+        SshAuth::PasswordCommand {
+            command: command.into(),
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_password_command_logs_in_with_what_it_prints() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        let auth = password_command(&format!("printf '%s\\n' {PASSWORD}"));
+        mgr.connect(request(server.addr.port(), auth), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_failing_password_command_fails_the_login_without_sending_a_password() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, _rx) = sink();
+
+        let auth = password_command(&format!("printf {PASSWORD}; echo locked >&2; exit 2"));
+        let err = mgr
+            .connect(request(server.addr.port(), auth), s)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "the password command exited with code 2: locked"
+        );
+        assert!(!serde_json::to_string(&err).unwrap().contains(PASSWORD));
+        assert_eq!(server.password_attempts(), 0, "a password was sent");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_password_command_is_not_run_when_a_default_key_logs_in() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        write_key(&dir.path().join("id_ed25519"), &client_key);
+        let marker = dir.path().join("ran");
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        let auth = password_command(&format!("touch '{}'; printf {PASSWORD}", marker.display()));
+        mgr.connect(request(server.addr.port(), auth), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert_eq!(server.password_attempts(), 0);
+        assert!(!marker.exists(), "the password command ran");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_password_from_a_command_is_never_saved_in_the_keyring() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = MemoryStore::shared();
+        let mgr = with_store(&dir, &server, &store);
+        let (s, _rx) = sink();
+
+        let auth = password_command(&format!("printf {PASSWORD}"));
+        mgr.connect_with(request(server.addr.port(), auth), remember("s1"), s)
+            .await
+            .unwrap();
+        assert_eq!(store.get("s1").unwrap(), None);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_passphrase_command_unlocks_an_encrypted_key() {
+        let client_key = key_from_seed(9);
+        let server = test_server::start(1, Some(client_key.public_key().clone())).await;
+        let dir = tempfile::tempdir().unwrap();
+        let encrypted = client_key
+            .encrypt(
+                &mut russh::keys::ssh_key::rand_core::UnwrapErr(rand::rngs::SysRng),
+                "open sesame",
+            )
+            .unwrap();
+        let key_path = dir.path().join("work_key");
+        let pem = encrypted
+            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+            .unwrap();
+        std::fs::write(&key_path, pem.as_bytes()).unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let (s, mut rx) = sink();
+
+        let auth = SshAuth::Key {
+            path: key_path.to_string_lossy().into(),
+            passphrase: None,
+            passphrase_command: Some("printf 'open sesame\\n'".into()),
+        };
+        mgr.connect(request(server.addr.port(), auth), s)
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    #[test]
+    fn password_command_auth_deserializes_from_the_frontend_shape() {
+        let auth: SshAuth =
+            serde_json::from_str(r#"{"method":"passwordCommand","command":"pass show db"}"#)
+                .unwrap();
+        assert!(
+            matches!(auth, SshAuth::PasswordCommand { ref command } if command == "pass show db")
+        );
+        let key: SshAuth = serde_json::from_str(
+            r#"{"method":"key","path":"~/k","passphraseCommand":"op read op://v/i/p"}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            key,
+            SshAuth::Key { passphrase: None, passphrase_command: Some(ref c), .. } if c == "op read op://v/i/p"
+        ));
+        let plain: SshAuth = serde_json::from_str(r#"{"method":"key","path":"~/k"}"#).unwrap();
+        assert!(matches!(
+            plain,
+            SshAuth::Key {
+                passphrase_command: None,
+                ..
+            }
+        ));
     }
 
     #[tokio::test]
@@ -1800,6 +2000,7 @@ mod tests {
         let key = SshAuth::Key {
             path: "/k".into(),
             passphrase: Some("s3cr3t".into()),
+            passphrase_command: None,
         };
         let dbg = format!("{key:?}");
         assert!(!dbg.contains("s3cr3t") && dbg.contains("/k"), "{dbg}");
@@ -3221,6 +3422,7 @@ mod tests {
         let auth = SshAuth::Key {
             path: key_path.to_string_lossy().into(),
             passphrase: None,
+            passphrase_command: None,
         };
         mgr.connect(request(server.addr.port(), auth), s)
             .await
