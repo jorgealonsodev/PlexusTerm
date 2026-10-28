@@ -668,6 +668,44 @@ async fn sessions_sync_write(folder: String, contents: String) -> Result<(), Sto
     on_disk(move || storage::save(&storage::sync_file(&folder)?, &contents)).await
 }
 
+/// When each shared setting last changed, for the sync of settings.
+const SETTINGS_SYNC_STATE_FILE: &str = "settings-sync.json";
+
+#[tauri::command]
+async fn settings_sync_state_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, SETTINGS_SYNC_STATE_FILE)?;
+    on_disk(move || storage::load(&path)).await
+}
+
+#[tauri::command]
+fn settings_sync_state_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, SETTINGS_SYNC_STATE_FILE)?, &contents)
+}
+
+/// The settings file in the folder the user syncs; None when no computer wrote it yet.
+#[tauri::command]
+async fn settings_sync_read(folder: String) -> Result<Option<String>, StorageError> {
+    on_disk(move || {
+        storage::load(&storage::sync_file_named(
+            &folder,
+            storage::SETTINGS_SYNC_FILE,
+        )?)
+    })
+    .await
+}
+
+/// Replaces the settings file in the synced folder at once.
+#[tauri::command]
+async fn settings_sync_write(folder: String, contents: String) -> Result<(), StorageError> {
+    on_disk(move || {
+        storage::save(
+            &storage::sync_file_named(&folder, storage::SETTINGS_SYNC_FILE)?,
+            &contents,
+        )
+    })
+    .await
+}
+
 /// Upper bound for files picked for import (a sessions .ini file is a few kilobytes).
 const IMPORT_MAX_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -889,6 +927,10 @@ pub fn run() {
             sessions_sync_state_save,
             sessions_sync_read,
             sessions_sync_write,
+            settings_sync_state_load,
+            settings_sync_state_save,
+            settings_sync_read,
+            settings_sync_write,
             import_read_file,
             tunnels_load,
             tunnels_save,

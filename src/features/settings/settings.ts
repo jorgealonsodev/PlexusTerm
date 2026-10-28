@@ -58,6 +58,8 @@ export interface TerminalSettings {
   remoteMonitor: boolean;
   /** The folder the saved sessions are synced through (Syncthing, Drive…); "" when they are not. */
   syncFolder: string;
+  /** The folder the settings are synced through, apart from the ones of each computer; "" when they are not. */
+  settingsSyncFolder: string;
   /**
    * Program that "Open with default text editor" uses: a program path, or a command line
    * with arguments; empty uses the system's default text editor.
@@ -254,6 +256,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   lineHeight: 1,
   remoteMonitor: true,
   syncFolder: "",
+  settingsSyncFolder: "",
   textEditor: "",
   fileDetails: false,
   terminalFollowsBrowser: true,
@@ -488,6 +491,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     lineHeight: LINE_HEIGHTS.includes(value.lineHeight as number) ? (value.lineHeight as number) : d.lineHeight,
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     syncFolder: typeof value.syncFolder === "string" ? value.syncFolder.trim() : d.syncFolder,
+    settingsSyncFolder:
+      typeof value.settingsSyncFolder === "string" ? value.settingsSyncFolder.trim() : d.settingsSyncFolder,
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
     terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),

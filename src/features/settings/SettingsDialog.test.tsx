@@ -311,6 +311,28 @@ describe("SettingsDialog", () => {
     );
   });
 
+  it("sets the settings' own synced folder in Connections and tells how the last sync went", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={() => {}} initialSection="ssh" />);
+    const field = screen.getByLabelText(/^Settings synced folder/) as HTMLInputElement;
+    expect(field.value).toBe("");
+    fireEvent.change(field, { target: { value: "  /home/me/Settings  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ settingsSyncFolder: "/home/me/Settings", syncFolder: "" }));
+    cleanup();
+    const synced = { ...DEFAULT_SETTINGS, settingsSyncFolder: "/home/me/Settings" };
+    render(
+      <SettingsDialog
+        settings={synced}
+        onSave={onSave}
+        onCancel={() => {}}
+        initialSection="ssh"
+        settingsSyncStatus={{ state: "error", message: "x", foreign: true }}
+      />,
+    );
+    expect(screen.getByRole("status").textContent).toMatch(/not a PlexusTerm settings file/);
+  });
+
   it("sets the sessions' synced folder in Connections and tells how the last sync went", () => {
     const onSave = vi.fn();
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={() => {}} initialSection="ssh" />);

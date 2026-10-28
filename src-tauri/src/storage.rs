@@ -37,16 +37,24 @@ pub fn load(path: &Path) -> Result<Option<String>, StorageError> {
 /// The sessions file shared through a folder the user syncs (Syncthing, Drive…).
 pub const SYNC_FILE: &str = "plexusterm-sessions-sync.json";
 
+/// The settings file shared through the same folder.
+pub const SETTINGS_SYNC_FILE: &str = "plexusterm-settings-sync.json";
+
 /// The shared sessions file in `folder`, which must be an existing absolute folder: a relative or
 /// missing one would put the file somewhere the user did not choose.
 pub fn sync_file(folder: &str) -> Result<std::path::PathBuf, StorageError> {
+    sync_file_named(folder, SYNC_FILE)
+}
+
+/// The shared file `name` in `folder`, with the same checks as `sync_file`.
+pub fn sync_file_named(folder: &str, name: &str) -> Result<std::path::PathBuf, StorageError> {
     let dir = Path::new(folder);
     if !dir.is_absolute() || !dir.is_dir() {
         return Err(StorageError::Io(format!(
             "{folder}: the sync folder must be an existing folder"
         )));
     }
-    Ok(dir.join(SYNC_FILE))
+    Ok(dir.join(name))
 }
 
 /// Serializes writes made by this process (see `save`).
@@ -196,6 +204,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let folder = dir.path().to_str().unwrap();
         assert_eq!(sync_file(folder).unwrap(), dir.path().join(SYNC_FILE));
+        assert_eq!(
+            sync_file_named(folder, SETTINGS_SYNC_FILE).unwrap(),
+            dir.path().join(SETTINGS_SYNC_FILE)
+        );
+        assert!(sync_file_named("relative/folder", SETTINGS_SYNC_FILE).is_err());
         assert!(sync_file("relative/folder").is_err());
         assert!(sync_file(dir.path().join("missing").to_str().unwrap()).is_err());
         let file = dir.path().join("a-file");
