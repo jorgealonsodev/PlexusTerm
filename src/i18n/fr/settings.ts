@@ -147,6 +147,9 @@ export const settings: Messages<typeof en> = {
     logTimestampsHelp: "Journaliser dans un fichier… commence chaque ligne écrite par sa date et son heure, comme [2026-10-27 09:05:07], pour savoir quand chaque chose s'est produite (une console série, un audit). Désactivez-la pour journaliser la sortie telle qu'elle est arrivée. S'applique aux journaux démarrés ensuite.",
     shellIntegrationHelp:
       "Les shells locaux marquent la fin de leur invite et la façon dont chaque commande s'est terminée (OSC 133), afin que les suggestions, l'historique et la couleur des erreurs suivent exactement ce que vous tapez. bash, zsh et fish chargent un petit script après vos propres fichiers de démarrage ; PowerShell, Git Bash et cmd reçoivent une invite enveloppée. Désactivez-la pour lancer les shells tels quels (sous Windows, ils indiquent toujours leur dossier à l'Explorateur). S'applique aux terminaux ouverts à partir de maintenant.",
+    zmodem: "Transferts ZMODEM (rz/sz)",
+    zmodemHelp:
+      "Quand un programme de l'autre côté lance sz (pour vous envoyer des fichiers) ou rz (pour en recevoir), PlexusTerm demande où les enregistrer ou quels fichiers envoyer, et les transfère dans la session elle-même : pratique sur les consoles série et les équipements réseau sans SFTP. Fonctionne dans les terminaux locaux, SSH, Telnet et série (pas Mosh). Désactivez-le pour afficher leur sortie comme du texte.",
     newTerminalStart: "Le dossier de départ",
     newTerminalHere: "Le dossier du terminal actif",
     copyOnSelect: "Copier à la sélection",

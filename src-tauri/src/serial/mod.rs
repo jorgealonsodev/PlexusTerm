@@ -13,7 +13,7 @@ use std::time::Duration;
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::platform::{self, SerialPort};
-use crate::terminal::{TerminalSink, Utf8Stream};
+use crate::terminal::TerminalSink;
 
 /// Lists the serial devices present on this machine (`/dev/ttyUSB0`, `COM3`, ...).
 pub fn list_ports() -> Vec<String> {
@@ -186,7 +186,7 @@ impl SerialManager {
 
         let path = req.path;
         std::thread::spawn(move || {
-            let mut decoder = Utf8Stream::default();
+            let mut decoder = sink.decoder();
             let mut buf = [0u8; 4096];
             // Never paused by flow control: a serial device has no backpressure (without RTS/CTS
             // or XON/XOFF its output would overflow the system's few-KB buffer and be lost).

@@ -36,6 +36,13 @@ describe("parseSettings", () => {
     expect(parseSettings(JSON.stringify({ aiProvider: "openai-compatible", aiModel: "meta/llama-4" })).aiModel).toBe("meta/llama-4");
   });
 
+  it("keeps ZMODEM transfers on unless they were turned off", () => {
+    expect(parseSettings(null).zmodem).toBe(true);
+    expect(parseSettings(JSON.stringify({ zmodem: false })).zmodem).toBe(false);
+    expect(parseSettings(JSON.stringify({ zmodem: "no" })).zmodem).toBe(true);
+    expect(parseSettings(serializeSettings({ ...DEFAULT_SETTINGS, zmodem: false })).zmodem).toBe(false);
+  });
+
   it("returns the defaults when there is no settings file", () => {
     expect(parseSettings(null)).toEqual({
       fontSize: 14,
@@ -44,6 +51,7 @@ describe("parseSettings", () => {
       confirmMultilinePaste: true,
       errorHighlight: true,
       shellIntegration: true,
+      zmodem: true,
       theme: "catppuccin-mocha",
       fontFamily: DEFAULT_FONT_FAMILY,
       remoteMonitor: true,
@@ -184,6 +192,7 @@ describe("parseSettings", () => {
       confirmMultilinePaste: false,
       errorHighlight: false,
       shellIntegration: true,
+      zmodem: true,
       theme: "nord",
       fontFamily: "Fira Code",
       remoteMonitor: false,
@@ -426,6 +435,7 @@ describe("serializeSettings", () => {
       restoreTabs: false,
       errorHighlight: false,
       shellIntegration: false,
+      zmodem: false,
       language: "pt-BR" as const,
       shortcuts: { newTerminal: "Ctrl+Alt+N", toggleSidebar: "", nextTab: "Ctrl+PageDown" },
       shiftEnterNewline: false,

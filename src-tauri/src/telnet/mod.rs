@@ -12,7 +12,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-use crate::terminal::{TerminalSink, Utf8Stream};
+use crate::terminal::TerminalSink;
 use protocol::{Telnet, encode_input};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -147,7 +147,7 @@ impl TelnetManager {
 
         let flow = sink.flow();
         tokio::spawn(async move {
-            let mut decoder = Utf8Stream::default();
+            let mut decoder = sink.decoder();
             let mut buf = [0u8; 8192];
             loop {
                 // While the webview catches up; closing (the stop below) still ends the session.

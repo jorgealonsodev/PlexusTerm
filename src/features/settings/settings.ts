@@ -42,6 +42,8 @@ export interface TerminalSettings {
   errorHighlight: boolean;
   /** Local shells mark their prompt and commands (OSC 133); for terminals opened from now on. */
   shellIntegration: boolean;
+  /** `sz`/`rz` on the other end start a ZMODEM file transfer (local, SSH, Telnet, serial). */
+  zmodem: boolean;
   /** Colour scheme id (see TERMINAL_THEMES). */
   theme: string;
   /** Font family: one font name, or a CSS font list. */
@@ -265,6 +267,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   confirmMultilinePaste: true,
   errorHighlight: true,
   shellIntegration: true,
+  zmodem: true,
   theme: DEFAULT_THEME_ID,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontWeight: 400,
@@ -504,6 +507,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     confirmMultilinePaste: bool(value.confirmMultilinePaste, d.confirmMultilinePaste),
     errorHighlight: bool(value.errorHighlight, d.errorHighlight),
     shellIntegration: bool(value.shellIntegration, d.shellIntegration),
+    zmodem: bool(value.zmodem, d.zmodem),
     theme: typeof value.theme === "string" && isThemeId(value.theme) ? value.theme : d.theme,
     fontFamily: cleanFontFamily(value.fontFamily),
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,

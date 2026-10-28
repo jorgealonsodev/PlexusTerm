@@ -55,7 +55,11 @@ vi.mock("./ruleHighlight", async (importOriginal) => {
     },
   };
 });
-vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/session.log") }));
+const dialog = vi.hoisted(() => ({
+  save: vi.fn(async () => "/tmp/session.log"),
+  open: vi.fn(async (_options?: unknown): Promise<string | string[] | null> => null),
+}));
+vi.mock("@tauri-apps/plugin-dialog", () => dialog);
 const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-opener", () => opener);
 
@@ -2713,5 +2717,100 @@ describe("TerminalView", () => {
       act(() => ruleEngine.onAction!(0, { kind: "send", text: "y" }, "line"));
       expect(sentData()).toEqual([]);
     });
+  });
+});
+
+describe("ZMODEM transfers", () => {
+  const started = async (settings = DEFAULT_SETTINGS) => {
+    let emit: (msg: import("./backend").TerminalEvent) => void = () => {};
+    backend.start.mockImplementationOnce((_options, onEvent) => {
+      emit = onEvent as typeof emit;
+      return Promise.resolve(7);
+    });
+    const onExit = vi.fn();
+    const view = render(
+      <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={onExit} settings={settings} />,
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+    act(() => emit({ event: "tap", data: 42 }));
+    return { emit: (msg: import("./backend").TerminalEvent) => act(() => emit(msg)), onExit, view };
+  };
+  const calls = (command: string) => vi.mocked(invoke).mock.calls.filter(([name]) => name === command);
+
+  it("asks for a folder when sz starts and receives into it, without ending the session", async () => {
+    dialog.open.mockResolvedValueOnce("/home/me/Downloads/in");
+    const { emit, onExit } = await started();
+    emit({ event: "zmodem", data: { phase: "offer", direction: "receive" } });
+    await vi.waitFor(() => expect(calls("zmodem_receive")).toEqual([["zmodem_receive", { tap: 42, folder: "/home/me/Downloads/in" }]]));
+    expect(dialog.open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false, title: "Save the files sz sends in" }));
+    expect(onExit).not.toHaveBeenCalled();
+  });
+
+  it("asks for files when rz starts and sends them", async () => {
+    dialog.open.mockResolvedValueOnce(["/a/one.bin", "/a/two.txt"]);
+    const { emit } = await started();
+    emit({ event: "zmodem", data: { phase: "offer", direction: "send" } });
+    await vi.waitFor(() =>
+      expect(calls("zmodem_send")).toEqual([["zmodem_send", { tap: 42, paths: ["/a/one.bin", "/a/two.txt"] }]]),
+    );
+    expect(dialog.open).toHaveBeenCalledWith(expect.objectContaining({ directory: false, multiple: true }));
+  });
+
+  it("declines the transfer when the picker is closed", async () => {
+    dialog.open.mockResolvedValueOnce(null);
+    const { emit } = await started();
+    emit({ event: "zmodem", data: { phase: "offer", direction: "receive" } });
+    await vi.waitFor(() => expect(calls("zmodem_cancel")).toEqual([["zmodem_cancel", { tap: 42 }]]));
+    expect(calls("zmodem_receive")).toEqual([]);
+  });
+
+  it("shows the progress with Cancel, then the result", async () => {
+    const { emit } = await started();
+    emit({ event: "zmodem", data: { phase: "progress", direction: "receive", file: "report.bin", bytes: 512, total: 2048 } });
+    expect(screen.getByRole("status").textContent).toContain("Receiving report.bin · 512 B of 2.0 KB");
+    expect((screen.getByRole("progressbar") as HTMLProgressElement).value).toBe(25);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(calls("zmodem_cancel")).toEqual([["zmodem_cancel", { tap: 42 }]]));
+    emit({ event: "zmodem", data: { phase: "done", direction: "receive", files: ["/home/me/in/report.bin"] } });
+    expect(screen.getByRole("status").textContent).toContain("Received 1 file into /home/me/in");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("declines the transfer and says why when it cannot start", async () => {
+    dialog.open.mockResolvedValueOnce(["/gone.bin"]);
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === "zmodem_send") throw "could not open /gone.bin: No such file or directory";
+      return true;
+    });
+    try {
+      const { emit } = await started();
+      emit({ event: "zmodem", data: { phase: "offer", direction: "send" } });
+      await vi.waitFor(() => expect(calls("zmodem_cancel")).toEqual([["zmodem_cancel", { tap: 42 }]]));
+      expect(screen.getByRole("status").textContent).toContain("Transfer failed: could not open /gone.bin");
+    } finally {
+      vi.mocked(invoke).mockImplementation(async () => true);
+    }
+  });
+
+  it("shows why a transfer failed", async () => {
+    const { emit } = await started();
+    emit({ event: "zmodem", data: { phase: "failed", direction: "send", message: "the other end cancelled the transfer", files: [] } });
+    expect(screen.getByRole("status").textContent).toContain("Transfer failed: the other end cancelled the transfer");
+  });
+
+  it("tells the backend whether ZMODEM is on, as the setting changes", async () => {
+    const { view } = await started();
+    expect(calls("zmodem_enabled").slice(-1)[0]).toEqual(["zmodem_enabled", { enabled: true }]);
+    view.rerender(
+      <TerminalView
+        target={{ type: "local" }}
+        active
+        onTitle={() => {}}
+        onExit={() => {}}
+        settings={{ ...DEFAULT_SETTINGS, zmodem: false }}
+      />,
+    );
+    expect(calls("zmodem_enabled").slice(-1)[0]).toEqual(["zmodem_enabled", { enabled: false }]);
   });
 });

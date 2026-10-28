@@ -144,6 +144,9 @@ export const settings = {
     logTimestampsHelp: "Log to file… starts each line it writes with its date and time, as [2026-10-27 09:05:07], to tell when each thing happened (a serial console, an audit). Turn it off to log the output exactly as it came. Applies to logs started from then on.",
     shellIntegrationHelp:
       "Local shells mark where their prompt ends and how each command ended (OSC 133), so suggestions, history and the error colour follow what you type exactly. bash, zsh and fish load a small script after your own startup files; PowerShell, Git Bash and cmd get a wrapped prompt. Turn it off to start shells exactly as they are (on Windows they still report their folder for the Explorer). Applies to terminals opened from now on.",
+    zmodem: "ZMODEM transfers (rz/sz)",
+    zmodemHelp:
+      "When a program on the other end runs sz (to send you files) or rz (to receive files), PlexusTerm asks where to save them or which files to send, and transfers them inside the session itself: handy on serial consoles and network devices without SFTP. Works in local, SSH, Telnet and serial terminals (not Mosh). Turn it off to show their output as text.",
     newTerminalStart: "The starting folder",
     newTerminalHere: "The active terminal's folder",
     copyOnSelect: "Copy on select",

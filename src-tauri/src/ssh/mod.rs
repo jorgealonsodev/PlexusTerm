@@ -44,7 +44,7 @@ use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use crate::platform;
 use crate::secrets::{self, NoStore, SharedSecrets};
 use crate::sftp::SftpError;
-use crate::terminal::{FlowGate, TerminalSink, Utf8Stream};
+use crate::terminal::{FlowGate, TerminalSink};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// How long saving or forgetting a password may take after a login. A locked
@@ -1193,7 +1193,7 @@ impl SshManager {
         });
 
         tokio::spawn(async move {
-            let mut decoder = Utf8Stream::default();
+            let mut decoder = sink.decoder();
             let mut exit_code = None;
             // The remote ended the channel (or the shell): a clean end, not a lost connection.
             let mut ended_by_remote = false;
