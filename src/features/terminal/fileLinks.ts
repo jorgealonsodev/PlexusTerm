@@ -23,8 +23,8 @@ const PATH = /(?:[A-Za-z]:[\\/]|~[\\/]|\.{1,2}[\\/]|\/)?[\w.@+\-]+(?:[\\/][\w.@+
 /** A file name with an extension (`README.md`), alone: it becomes a link only when the file exists. */
 const BARE = /[\w@+\-]+(?:\.[\w@+\-]+)*\.[A-Za-z][A-Za-z0-9]{0,9}/g;
 
-/** URLs, left to the web links. */
-const URLS = /[a-z][a-z0-9+.-]*:\/\/\S+/gi;
+/** URLs, left to the web links (quick select finds them with this too). */
+export const URLS = /[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 
 /**
  * The paths and file names in a line of terminal text, in order, without line numbers or a
