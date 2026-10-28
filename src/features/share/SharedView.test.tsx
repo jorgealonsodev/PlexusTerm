@@ -80,14 +80,14 @@ vi.mock("@xterm/xterm", () => ({
 }));
 
 import { ImageAddon } from "@xterm/addon-image";
-import { INLINE_IMAGE_OPTIONS } from "../settings/settings";
+import { DEFAULT_SETTINGS, INLINE_IMAGE_OPTIONS, type TerminalSettings } from "../settings/settings";
 import { SharedView } from "./SharedView";
 
 const target = { type: "shared" as const, url: "https://view.example.com/s/abc#key", relayUrl: "wss://relay.example.com", relayHost: "relay.example.com" };
 
-async function opened() {
+async function opened(settings?: TerminalSettings) {
   view.startView.mockResolvedValue(8);
-  render(<SharedView target={target} active />);
+  render(<SharedView target={target} active settings={settings} />);
   await act(async () => {});
   return (event: ViewEvent) => act(async () => view.emit!(event));
 }
@@ -144,6 +144,11 @@ describe("SharedView (P3)", () => {
     // answers (device attributes, sixel graphics attributes).
     expect(term.order.indexOf(image)).toBeLessThan(term.order.indexOf(term.csi[0]));
     expect(term.csi).toEqual(expect.arrayContaining([{ prefix: "?", final: "S" }]));
+  });
+
+  it("shows no images when Settings turn them off (S3.5)", async () => {
+    await opened({ ...DEFAULT_SETTINGS, inlineImages: false });
+    expect(term.order.some((item) => item instanceof ImageAddon)).toBe(false);
   });
 
   it("clears the pane and says why when the share is over for it", async () => {

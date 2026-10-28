@@ -88,16 +88,19 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
       lineHeight: settings.lineHeight,
       scrollback: 10000,
       theme: themeById(settings.theme).theme,
+      // Unicode11Addon and `term.unicode` are proposed API.
+      allowProposedApi: true,
     });
     // Same character widths as the sharer's terminal, or emoji lines would be laid out differently.
     term.loadAddon(new Unicode11Addon());
     term.unicode.activeVersion = "11";
     const search = new SearchAddon();
     term.loadAddon(search);
-    // The sharer's inline images (sixel, iTerm2). Loaded before the handlers below, which xterm
-    // tries first, so the addon's own answers (device attributes, sixel graphics attributes) are
-    // swallowed too; it leaves the window reports off.
-    term.loadAddon(new ImageAddon({ ...INLINE_IMAGE_OPTIONS, enableSizeReports: false }));
+    // The sharer's inline images (sixel, iTerm2), when Settings show them. Loaded before the
+    // handlers below, which xterm tries first, so the addon's own answers (device attributes, sixel
+    // graphics attributes) are swallowed too; it leaves the window reports off. Loading it later
+    // would put its answers first, so a change of the setting applies to viewers opened after it.
+    if (settings.inlineImages) term.loadAddon(new ImageAddon({ ...INLINE_IMAGE_OPTIONS, enableSizeReports: false }));
     // Remote output must not make this terminal answer back (the answer would be typed into the
     // sharer's shell) nor reach this computer's clipboard: device attributes and status reports,
     // window reports, mode and setting reports, graphics attributes (XTSMGRAPHICS), colour queries
