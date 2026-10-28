@@ -766,6 +766,8 @@ PlexusTerm also builds for Windows 10/11. Everything works as on Linux except:
 
 ## Keyboard shortcuts
 
+Menus show each action's shortcut beside it, discreetly at the right: the terminal's right-click menu, the toolbar's drop-down groups and the other menus follow the keys set in Settings → Shortcuts, and show nothing for an action without keys.
+
 | Shortcut | Action |
 | --- | --- |
 | Ctrl+Shift+T | New local terminal tab |

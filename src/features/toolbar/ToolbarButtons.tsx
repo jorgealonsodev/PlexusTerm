@@ -18,6 +18,8 @@ export interface ToolbarActionSpec {
   className?: string;
   /** The bar button shows only its icon. */
   iconOnly?: boolean;
+  /** Its keyboard shortcut, shown beside it in a drop-down group. */
+  shortcut?: string;
 }
 
 /** Each action's spec, or null where it is not offered (Mosh on Windows, DEV column outside DEV mode). */
@@ -44,7 +46,16 @@ export function ToolbarButtons({ layout, specs }: { layout: ToolbarLayout; specs
         const items = entry.items.flatMap((id) => {
           const spec = specs[id];
           return spec
-            ? [{ label: spec.label, icon: <spec.icon size={15} />, onSelect: spec.onSelect, disabled: spec.disabled, checked: spec.pressed }]
+            ? [
+                {
+                  label: spec.label,
+                  icon: <spec.icon size={15} />,
+                  onSelect: spec.onSelect,
+                  disabled: spec.disabled,
+                  checked: spec.pressed,
+                  shortcut: spec.shortcut,
+                },
+              ]
             : [];
         });
         if (items.length === 0) return null;

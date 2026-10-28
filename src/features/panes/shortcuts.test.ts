@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHORTCUT_ACTIONS, shortcutConflict, shortcutFor, shortcutLabel, type KeyLike } from "./shortcuts";
+import { SHORTCUT_ACTIONS, shortcutConflict, shortcutFor, shortcutHint, shortcutLabel, type KeyLike } from "./shortcuts";
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -173,5 +173,20 @@ describe("find in all tabs (S3)", () => {
     for (const combo of SHORTCUT_ACTIONS.findAll.defaults) {
       expect(shortcutConflict(combo, {}, { action: "findAll", assistantShortcut: "Ctrl+Shift+Space" })).toBeNull();
     }
+  });
+});
+
+describe("shortcutHint", () => {
+  it("is an action's default combination", () => {
+    expect(shortcutHint("copy")).toBe("Ctrl+Shift+C");
+  });
+
+  it("is the user's own combination when there is one", () => {
+    expect(shortcutHint("copy", { copy: "Alt+C" })).toBe("Alt+C");
+  });
+
+  it("is nothing for an unbound action", () => {
+    expect(shortcutHint("copy", { copy: "" })).toBeUndefined();
+    expect(shortcutHint("clear")).toBeUndefined();
   });
 });

@@ -120,7 +120,8 @@ export function SessionsPanel(props: SessionsPanelProps) {
   const menuItems = (m: Menu): ContextMenuItem[] => {
     if (m.kind === "session") {
       const { session } = m;
-      const connect = { label: t("common.connect"), onSelect: () => props.onOpen(session) };
+      // Enter connects the selected session too.
+      const connect = { label: t("common.connect"), shortcut: "Enter", onSelect: () => props.onOpen(session) };
       const copy = isSshSession(session)
         ? [{ label: t("sessions.menu.copySshCommand"), onSelect: () => void writeText(sshCommandOf(session)).catch(() => {}) }]
         : [];

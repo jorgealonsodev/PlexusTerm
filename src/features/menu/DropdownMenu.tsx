@@ -7,6 +7,8 @@ export interface DropdownItem {
   disabled?: boolean;
   /** An on/off item: shown ticked while on. */
   checked?: boolean;
+  /** The keys that do the same, shown at the right. */
+  shortcut?: string;
 }
 
 interface DropdownMenuProps {
@@ -55,6 +57,9 @@ export function DropdownMenu({ button, title, items }: DropdownMenuProps) {
               aria-checked={item.checked}
               className={`menu__item${item.checked ? " menu__item--checked" : ""}`}
               disabled={item.disabled}
+              // Named by its label; its keys are announced apart.
+              aria-label={item.shortcut ? item.label : undefined}
+              aria-keyshortcuts={item.shortcut}
               onClick={() => {
                 setOpen(false);
                 item.onSelect();
@@ -62,6 +67,7 @@ export function DropdownMenu({ button, title, items }: DropdownMenuProps) {
             >
               {item.icon}
               {item.label}
+              {item.shortcut && <kbd className="menu__shortcut">{item.shortcut}</kbd>}
             </button>
           ))}
         </div>

@@ -2081,6 +2081,7 @@ export function TerminalView({
           selection={menu.selection}
           commandOutput={menu.output !== null}
           canAskAi={onAskAi !== undefined}
+          shortcuts={settings.shortcuts}
           onAction={runMenuAction}
           onClose={() => {
             setMenu(null);

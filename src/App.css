@@ -2142,6 +2142,15 @@ body.is-moving-tab {
   background: var(--surface-2);
 }
 
+/* The keys that do the same as the item, discreet at its end (S6). */
+.menu__shortcut {
+  margin-inline-start: auto;
+  padding-inline-start: 16px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9em;
+}
+
 .theme-preview {
   margin: 4px 0 10px;
   padding: 8px 10px;

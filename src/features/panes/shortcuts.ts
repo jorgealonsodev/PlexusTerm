@@ -177,6 +177,10 @@ export function bindingsOf(action: ShortcutActionId, overrides: ShortcutOverride
 export const shortcutLabel = (action: ShortcutActionId, overrides: ShortcutOverrides = {}) =>
   bindingsOf(action, overrides)[0] ?? "";
 
+/** The shortcut a menu item shows beside an action (its first combination); undefined when unbound. */
+export const shortcutHint = (action: ShortcutActionId, overrides: ShortcutOverrides = {}): string | undefined =>
+  shortcutLabel(action, overrides) || undefined;
+
 /** The action that answers to `shortcut` with these overrides, leaving out `except`. */
 export function actionUsing(
   shortcut: string,

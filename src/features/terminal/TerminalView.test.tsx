@@ -659,7 +659,7 @@ describe("TerminalView", () => {
         t.hasSelection = () => text !== "";
         t.getSelection = () => text;
       };
-      const items = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+      const items = () => screen.getAllByRole("menuitem").map((item) => item.getAttribute("aria-label") ?? item.textContent);
       select("https://example.com/docs");
       rightClick(container);
       expect(clipboard.readText).not.toHaveBeenCalled();
@@ -1171,7 +1171,7 @@ describe("TerminalView", () => {
     it("copies a command's output from the menu or its shortcut once the shell marks its commands", async () => {
       clipboard.writeText.mockClear();
       const { container } = renderView({ settings: { ...DEFAULT_SETTINGS, shortcuts: { copyCommandOutput: "Alt+O" } } });
-      const items = () => screen.getAllByRole("menuitem").map((item) => item.textContent);
+      const items = () => screen.getAllByRole("menuitem").map((item) => item.getAttribute("aria-label") ?? item.textContent);
       const press = (key: string, mods: Partial<KeyboardEvent>) =>
         term().keyHandler({ type: "keydown", key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
       rightClick(container, { ctrlKey: true });
