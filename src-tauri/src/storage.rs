@@ -109,6 +109,16 @@ pub fn read_bounded(path: &Path, max_bytes: u64) -> Result<Vec<u8>, StorageError
     Ok(bytes)
 }
 
+/// Reads a text file the user picked (e.g. a session recording), refusing anything larger than
+/// `max_bytes`; bytes that are not UTF-8 become U+FFFD.
+pub fn read_text_bounded(path: &Path, max_bytes: u64) -> Result<String, StorageError> {
+    let bytes = read_bounded(path, max_bytes)?;
+    Ok(match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(err) => String::from_utf8_lossy(err.as_bytes()).into_owned(),
+    })
+}
+
 fn too_large(path: &Path, max_bytes: u64) -> StorageError {
     StorageError::Io(format!(
         "{}: contents are too large (limit {max_bytes} bytes)",
@@ -160,6 +170,20 @@ mod tests {
         let err = read_bounded(&path, 1024).unwrap_err().to_string();
         assert!(err.contains("too large"), "{err}");
         assert!(read_bounded(&dir.path().join("missing.ini"), 1024).is_err());
+    }
+
+    #[test]
+    fn read_text_bounded_decodes_utf8_and_replaces_invalid_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.cast");
+        std::fs::write(&path, b"{\"version\":2}\n[1, \"o\", \"\xc3\xa1\xff\"]\n").unwrap();
+        assert_eq!(
+            read_text_bounded(&path, 1024).unwrap(),
+            "{\"version\":2}\n[1, \"o\", \"\u{e1}\u{fffd}\"]\n"
+        );
+        std::fs::write(&path, vec![b'x'; 2048]).unwrap();
+        let err = read_text_bounded(&path, 1024).unwrap_err().to_string();
+        assert!(err.contains("too large"), "{err}");
     }
 
     #[test]
