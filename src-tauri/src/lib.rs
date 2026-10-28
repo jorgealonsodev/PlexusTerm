@@ -1,6 +1,7 @@
 mod ai;
 mod diag;
 mod diaglog;
+mod dropdown;
 mod git;
 mod history;
 mod launch;
@@ -893,6 +894,7 @@ pub fn run() {
         .manage(share::ShareManager::default())
         .manage(share::watch::Watches::default())
         .manage(launch)
+        .manage(dropdown::DropDown::default())
         .setup(move |app| {
             launch::listen(app.handle().clone());
             if let Ok(dir) = app.path().app_config_dir() {
@@ -1071,7 +1073,8 @@ pub fn run() {
             share::commands::view_resolve,
             share::commands::view_start,
             share::commands::view_input,
-            share::commands::view_close
+            share::commands::view_close,
+            dropdown::dropdown_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

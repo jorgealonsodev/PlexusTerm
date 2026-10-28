@@ -59,6 +59,8 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
 futures-util = "0.3"
 # QR codes of share links, drawn as SVG.
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# The drop-down window's system-wide shortcut (Settings → General), registered from Rust only.
+tauri-plugin-global-shortcut = "=2.4.1"
 
 [dev-dependencies]
 # A real relay for the sharing end-to-end tests.
