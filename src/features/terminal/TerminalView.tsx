@@ -14,6 +14,7 @@ import { diagnosticEntry } from "../diagnostics/useDiagnosticLog";
 import { softwareWebgl } from "./webglProbe";
 import { keepCanvasesExact } from "./exactCanvas";
 import { latencyFrame, latencyMark } from "./latencyLog";
+import { createKittyKeyboard, encodeKittyKey, type KittyScreen } from "./kittyKeyboard";
 import "@xterm/xterm/css/xterm.css";
 import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
@@ -216,6 +217,14 @@ const sameGhost = (a: Ghost | null, b: Ghost | null) =>
 /** Shift+Enter alone, not while an input method is composing text. */
 const shiftEnter = (e: KeyboardEvent) =>
   e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !e.isComposing;
+
+/** A CSI parameter (the first value of its sub-parameters), `fallback` when missing or 0 (xterm's default). */
+const param = (params: (number | number[])[], index: number, fallback: number) => {
+  const value = params[index];
+  const n = Array.isArray(value) ? value[0] : value;
+  return n ? n : fallback;
+};
+const firstParam = (params: (number | number[])[], fallback: number) => param(params, 0, fallback);
 
 /** The next word of a suggestion, with the spaces before it (Ctrl+Right). */
 const nextWord = (rest: string) => /^\s*\S+/.exec(rest)?.[0] ?? rest;
@@ -473,6 +482,10 @@ export function TerminalView({
     // Snapshots of a shared pane for the viewers who join.
     const serializer = new SerializeAddon();
     term.loadAddon(serializer);
+    // The kitty keyboard protocol (S7): AI command-line tools turn it on to receive Ctrl+Enter and
+    // Shift+Enter as their own keys; each screen keeps its flags.
+    const kitty = createKittyKeyboard();
+    const kittyScreen = (): KittyScreen => (term.buffer.active.type === "alternate" ? "alternate" : "normal");
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
     // returning false lets the event bubble to the window listener without xterm handling it.
     // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.
@@ -495,6 +508,16 @@ export function TerminalView({
       if (matchesShortcut(e, settingsRef.current.assistantShortcut)) return false;
       const shortcut = shortcutFor(e, settingsRef.current.shortcuts);
       if (shortcut === null) {
+        // With the protocol on, Escape and modified Enter, Tab and Backspace are sent as CSI u, typed
+        // like any key (macros, multi-execution); off, nothing changes.
+        const encoded = encodeKittyKey(e, kitty.flags(kittyScreen()));
+        if (encoded !== null) {
+          if (e.type === "keydown") {
+            e.preventDefault?.();
+            typedRef.current(encoded);
+          }
+          return false;
+        }
         // xterm sends the same CR for Shift+Enter as for Enter, so AI command-line tools would
         // submit; a line feed (Ctrl+J) is their "new line" key and a shell's Enter.
         if (!shiftEnter(e) || !settingsRef.current.shiftEnterNewline) return true;
@@ -723,6 +746,8 @@ export function TerminalView({
 
     const start = (trustedFingerprint?: string) => {
       const seq = ++startSeq;
+      // A new session (or a reconnection) starts with the keys of a fresh terminal.
+      kitty.reset();
       const attempt = reconnectAttempt;
       const jumps = jumpsRef.current.map((j) => j.name).join(", ");
       const say = (plain: AppKey, withJumps: AppKey, where: string) =>
@@ -1300,6 +1325,29 @@ export function TerminalView({
         return true;
       }),
       term.parser.registerOscHandler(777, (data) => attention(parseOsc777(data))),
+      // The kitty keyboard protocol (S7). The query's answer goes to the session only, like xterm's
+      // own replies should: never to macros or other panes.
+      term.parser.registerCsiHandler({ prefix: "?", final: "u" }, () => {
+        write(kitty.query(kittyScreen()));
+        return true;
+      }),
+      term.parser.registerCsiHandler({ prefix: ">", final: "u" }, (params) => {
+        kitty.push(kittyScreen(), firstParam(params, 0));
+        return true;
+      }),
+      term.parser.registerCsiHandler({ prefix: "<", final: "u" }, (params) => {
+        kitty.pop(kittyScreen(), firstParam(params, 1));
+        return true;
+      }),
+      term.parser.registerCsiHandler({ prefix: "=", final: "u" }, (params) => {
+        kitty.set(kittyScreen(), firstParam(params, 0), param(params, 1, 1));
+        return true;
+      }),
+      // RIS (ESC c, e.g. `reset`): the flags go too; false lets xterm do its own reset.
+      term.parser.registerEscHandler({ final: "c" }, () => {
+        kitty.reset();
+        return false;
+      }),
       term.parser.registerOscHandler(99, (data) => attention(readOsc99(data))),
       term.onWriteParsed(scheduleGhost),
       term.onWriteParsed(() => {
@@ -1428,6 +1476,7 @@ export function TerminalView({
       exactCanvasRef.current?.();
       exactCanvasRef.current = null;
       if (sessionId !== null) void backend.close(sessionId);
+      kitty.reset();
       term.dispose();
     };
     // The target of a tab never changes.
