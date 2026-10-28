@@ -57,6 +57,7 @@ describe("parseSettings", () => {
       devNewTerminalFolder: "terminal" as const,
       sidebarWidth: null,
       checkUpdates: true,
+      restoreTabs: true,
       aiSaveChats: true,
       fileDetails: false,
       terminalFollowsBrowser: true,
@@ -194,6 +195,7 @@ describe("parseSettings", () => {
       devNewTerminalFolder: "terminal",
       sidebarWidth: 320,
       checkUpdates: false,
+      restoreTabs: true,
       aiSaveChats: false,
       fileDetails: true,
       terminalFollowsBrowser: false,
@@ -408,6 +410,7 @@ describe("serializeSettings", () => {
       sidebarAtStartup: "last" as const,
       sidebarWidth: 480,
       checkUpdates: false,
+      restoreTabs: false,
       errorHighlight: false,
       shellIntegration: false,
       language: "pt-BR" as const,
@@ -541,6 +544,14 @@ describe("diagnostic log settings", () => {
     const bad = parseSettings(JSON.stringify({ diagnosticLog: "yes", diagnosticLogDir: 7 }));
     expect(bad.diagnosticLog).toBe(false);
     expect(bad.diagnosticLogDir).toBe("");
+  });
+});
+
+describe("restore tabs setting", () => {
+  it("is on by default and keeps only a saved boolean", () => {
+    expect(DEFAULT_SETTINGS.restoreTabs).toBe(true);
+    expect(parseSettings(JSON.stringify({ restoreTabs: false })).restoreTabs).toBe(false);
+    expect(parseSettings(JSON.stringify({ restoreTabs: "no" })).restoreTabs).toBe(true);
   });
 });
 

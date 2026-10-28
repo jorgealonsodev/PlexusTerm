@@ -1036,6 +1036,17 @@ describe("Updates in About", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, checkUpdates: false });
   });
 
+  it("saves the restore tabs choice from General, explained by a help tip", () => {
+    const onSave = vi.fn();
+    render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={vi.fn()} initialSection="general" />);
+    const box = screen.getByLabelText(/Restore tabs at startup/) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.closest("label")!.querySelector(".help-tip")).not.toBeNull();
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, restoreTabs: false });
+  });
+
   it("turns the diagnostic log on and saves its folder, trimmed", () => {
     const onSave = renderAbout();
     const dir = screen.getByLabelText("Log folder") as HTMLInputElement;

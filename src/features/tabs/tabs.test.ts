@@ -320,3 +320,22 @@ describe("tab colours", () => {
   });
 });
 
+
+describe("restore", () => {
+  it("adds restored tabs after the open ones and refuses ids already in use", () => {
+    const state = open(initialTabs);
+    const restored = { ...state.tabs[0], key: "tab-2", layout: { kind: "pane" as const, id: "pane-2" }, focusedPane: "pane-2" };
+    const next = tabsReducer(state, { type: "restore", tabs: [restored], activeKey: "tab-2" });
+    expect(next.tabs.map((t) => t.key)).toEqual(["tab-1", "tab-2"]);
+    expect(next.activeKey).toBe("tab-2");
+    expect(next.nextSeq).toBe(3);
+    expect(next.nextPaneSeq).toBe(3);
+    expect(tabsReducer(state, { type: "restore", tabs: [state.tabs[0]], activeKey: null })).toBe(state);
+  });
+
+  it("keeps the saved session of a duplicated tab", () => {
+    const state = tabsReducer(initialTabs, { type: "open", target: { type: "local" }, savedId: "s1" });
+    const next = tabsReducer(state, { type: "duplicate", key: state.tabs[0].key });
+    expect(next.tabs[1].savedId).toBe("s1");
+  });
+});

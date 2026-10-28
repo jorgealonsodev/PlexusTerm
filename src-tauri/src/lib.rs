@@ -667,6 +667,20 @@ fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, SESSIONS_FILE)?, &contents)
 }
 
+/// The tabs open when PlexusTerm last ran, reopened at startup (no passwords: see tabsPersist.ts).
+const TABS_STATE_FILE: &str = "tabs.json";
+
+#[tauri::command]
+async fn tabs_state_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, TABS_STATE_FILE)?;
+    on_disk(move || storage::load(&path)).await
+}
+
+#[tauri::command]
+fn tabs_state_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, TABS_STATE_FILE)?, &contents)
+}
+
 /// When each session and folder last changed or was deleted, for the sync of sessions.
 const SESSIONS_SYNC_STATE_FILE: &str = "sessions-sync.json";
 
@@ -910,6 +924,8 @@ pub fn run() {
             sftp_write_text,
             sessions_load,
             sessions_save,
+            tabs_state_load,
+            tabs_state_save,
             sessions_sync_state_load,
             sessions_sync_state_save,
             sessions_sync_read,

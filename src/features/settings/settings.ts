@@ -105,6 +105,8 @@ export interface TerminalSettings {
   sidebarWidth: number | null;
   /** Ask GitHub for a newer release when PlexusTerm starts. */
   checkUpdates: boolean;
+  /** Reopen the tabs of the last run at startup, from `tabs.json` (S2). */
+  restoreTabs: boolean;
   /** Keep AI conversations in `ai-chats.json` after closing PlexusTerm (S9). */
   aiSaveChats: boolean;
   /** Interface language; "system" follows the operating system, English when it is not supported. */
@@ -293,6 +295,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   devNewTerminalFolder: "terminal",
   sidebarWidth: null,
   checkUpdates: true,
+  restoreTabs: true,
   aiSaveChats: true,
   language: "system",
   shortcuts: {},
@@ -556,6 +559,7 @@ export function parseSettings(json: string | null): TerminalSettings {
         ? clampSidebarWidth(value.sidebarWidth)
         : d.sidebarWidth,
     checkUpdates: bool(value.checkUpdates, d.checkUpdates),
+    restoreTabs: bool(value.restoreTabs, d.restoreTabs),
     aiSaveChats: bool(value.aiSaveChats, d.aiSaveChats),
     language: isLanguageSetting(value.language) ? value.language : d.language,
     shortcuts,

@@ -52,6 +52,8 @@ export interface Tab {
   viewers?: Record<string, ViewerLink>;
   /** The colour the user gave the tab (#rrggbb), to tell tabs apart. */
   color?: string;
+  /** The saved session the tab was opened from: tabs.json refers to it instead of saving its login. */
+  savedId?: string;
 }
 
 /** A pane that runs a terminal (not an AI chat or a file viewer). */
@@ -90,7 +92,12 @@ export interface TabsState {
 }
 
 export type TabsAction =
-  | { type: "open"; target: SessionTarget }
+  | { type: "open"; target: SessionTarget; savedId?: string }
+  /**
+   * Tabs read back from tabs.json at startup (see `planRestore`), added after the open ones; their
+   * keys and pane ids follow `nextSeq` and `nextPaneSeq`.
+   */
+  | { type: "restore"; tabs: Tab[]; activeKey: string | null }
   | { type: "close"; key: string }
   | { type: "closeOthers"; key: string }
   | { type: "closeRight"; key: string }
@@ -148,12 +155,28 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         focusedPane: pane,
         chats: {},
         viewers: {},
+        ...(action.savedId ? { savedId: action.savedId } : {}),
       };
       return {
         tabs: [...state.tabs, tab],
         activeKey: tab.key,
         nextSeq: state.nextSeq + 1,
         nextPaneSeq: state.nextPaneSeq + 1,
+      };
+    }
+    case "restore": {
+      if (action.tabs.length === 0) return state;
+      const keys = new Set(state.tabs.map((t) => t.key));
+      const panes = new Set(state.tabs.flatMap((t) => paneIds(t.layout)));
+      const added = action.tabs.flatMap((t) => paneIds(t.layout));
+      // Built for another state (ids already in use): nothing is added rather than two tabs sharing an id.
+      if (action.tabs.some((t) => keys.has(t.key)) || added.some((id) => panes.has(id))) return state;
+      const activeKey = action.tabs.some((t) => t.key === action.activeKey) ? action.activeKey : action.tabs[0].key;
+      return {
+        tabs: [...state.tabs, ...action.tabs],
+        activeKey,
+        nextSeq: state.nextSeq + action.tabs.length,
+        nextPaneSeq: state.nextPaneSeq + added.length,
       };
     }
     case "close":
@@ -186,7 +209,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
     case "duplicate": {
       const tab = state.tabs.find((t) => t.key === action.key);
       if (!tab) return state;
-      const next = tabsReducer(state, { type: "open", target: tab.target });
+      const next = tabsReducer(state, { type: "open", target: tab.target, savedId: tab.savedId });
       if (!tab.color) return next;
       const key = next.activeKey!;
       return updateTab(next, key, (t) => ({ ...t, color: tab.color }));
