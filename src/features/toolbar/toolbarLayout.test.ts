@@ -22,7 +22,7 @@ describe("toolbar layout", () => {
       "terminal",
       "ssh",
       "serial",
-      "more[telnet,mosh,openShared]",
+      "more[telnet,mosh,openShared,playRecording]",
       "tools[keyGen,portScan,networkScan,wakeOnLan,remoteMonitor]",
       "splitRight",
       "splitDown",
@@ -70,7 +70,7 @@ describe("toolbar layout", () => {
     expect(ids(layout)[0]).toBe("recordMacro");
     layout = moveAction(layout, "ssh", { zone: "more", index: 0 });
     expect(whereIs(layout, "ssh")).toEqual({ zone: "more", index: 0 });
-    expect(ids(layout)).toContain("more[ssh,telnet,mosh,openShared]");
+    expect(ids(layout)).toContain("more[ssh,telnet,mosh,openShared,playRecording]");
     layout = moveAction(layout, "portScan", { zone: "bar", index: 1 });
     expect(ids(layout).slice(0, 2)).toEqual(["recordMacro", "portScan"]);
     layout = moveAction(layout, "telnet", { zone: "hidden", index: 0 });
@@ -94,7 +94,7 @@ describe("toolbar layout", () => {
     layout = renameGroup(layout, "g1", "My remote ");
     expect(layout.bar.slice(-1)[0]).toMatchObject({ name: "My remote " });
     layout = removeGroup(layout, "more");
-    expect(ids(layout).slice(3, 7)).toEqual(["serial", "telnet", "mosh", "openShared"]);
+    expect(ids(layout).slice(3, 8)).toEqual(["serial", "telnet", "mosh", "openShared", "playRecording"]);
     expect(whereIs(layout, "more" as never)).toBeNull();
   });
 });

@@ -13,7 +13,8 @@ export type MenuAction =
   | "clear"
   | "find"
   | "save"
-  | "log";
+  | "log"
+  | "record";
 
 interface TerminalContextMenuProps {
   /** Pointer position, in viewport coordinates. */
@@ -21,6 +22,8 @@ interface TerminalContextMenuProps {
   y: number;
   /** Whether this pane is being logged to a file. */
   logging: boolean;
+  /** Whether this pane is being recorded to an asciicast file (S6). */
+  recording?: boolean;
   /** The text selected when the menu opened; "" when nothing is selected. */
   selection?: string;
   /** The AI chat can be opened from this pane. */
@@ -42,6 +45,7 @@ export function TerminalContextMenu({
   x,
   y,
   logging,
+  recording = false,
   selection = "",
   canAskAi = false,
   commandOutput = false,
@@ -69,6 +73,7 @@ export function TerminalContextMenu({
     item("find", t("terminal.menu.find")),
     item("save", t("terminal.menu.save")),
     item("log", logging ? t("terminal.menu.stopLogging") : t("terminal.menu.log")),
+    item("record", recording ? t("terminal.menu.stopRecording") : t("terminal.menu.record")),
   ];
   // keepFocus: the terminal keeps its selection (and focus) for Copy.
   return <ContextMenu x={x} y={y} keepFocus items={items} onClose={onClose} />;

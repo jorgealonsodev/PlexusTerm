@@ -838,6 +838,16 @@ async fn append_text_file(path: String, contents: String) -> Result<(), StorageE
     .await
 }
 
+/// Upper bound for a session recording opened in the player (S6).
+const RECORDING_MAX_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Reads an asciicast recording the user picked, for the player.
+#[tauri::command]
+async fn read_recording_file(path: String) -> Result<String, StorageError> {
+    on_disk(move || storage::read_text_bounded(std::path::Path::new(&path), RECORDING_MAX_BYTES))
+        .await
+}
+
 /// Event carrying every tunnel status change.
 const TUNNEL_STATUS_EVENT: &str = "tunnel-status";
 
@@ -999,6 +1009,7 @@ pub fn run() {
             ai_chats_save,
             save_text_file,
             append_text_file,
+            read_recording_file,
             wol_send,
             history::history_load,
             history::history_save,

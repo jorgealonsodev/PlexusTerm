@@ -258,6 +258,51 @@ textarea::placeholder {
 }
 
 /* The grey rest of a suggested command, drawn on xterm's cell grid after the cursor (S1). */
+/* A pane being recorded (S6): a mark in its top right corner; a click stops the recording. */
+.terminal-rec {
+  position: absolute;
+  top: 6px;
+  right: 16px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--danger);
+  font-size: calc(10px * var(--ui-scale, 1));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.terminal-rec:hover {
+  opacity: 1;
+}
+
+.terminal-rec__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: terminal-rec-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes terminal-rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-rec__dot {
+    animation: none;
+  }
+}
+
 .terminal-ghost {
   position: absolute;
   z-index: 1;
@@ -3307,6 +3352,37 @@ body.is-dragging-path {
 .viewer__mode--on {
   background: var(--surface-2);
   color: var(--text);
+}
+
+/* The recording player (S6): the recorded terminal at its own size, scrolled when the pane is smaller. */
+.cast-player__screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 6px 6px 12px;
+}
+
+.cast-player__host {
+  display: inline-block;
+}
+
+.cast-player__controls {
+  gap: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.cast-player__progress {
+  flex: 1 1 auto;
+  min-width: 60px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.cast-player__time {
+  flex: none;
+  color: var(--muted);
+  font-size: calc(11px * var(--ui-scale, 1));
+  font-variant-numeric: tabular-nums;
 }
 
 /* A Markdown file rendered, readable like GitHub's: a measured column, headings, code and tables. */

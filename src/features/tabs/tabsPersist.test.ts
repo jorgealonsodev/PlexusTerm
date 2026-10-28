@@ -45,6 +45,14 @@ const inputOf = (state: TabsState, extra: Partial<PersistInput> = {}): PersistIn
 const terminalLayout = (tab: Tab) => paneIds(tab.layout).filter((id) => !tab.chats[id] && !tab.viewers?.[id]);
 
 describe("tabs.json", () => {
+  it("never saves a recording player (S6): its tab comes back with its terminals only", () => {
+    let state = tabsReducer(initialTabs, { type: "open", target: local });
+    state = tabsReducer(state, { type: "openPlayer", key: state.tabs[0].key, path: "/rec/a.cast" });
+    const doc = parseTabsDocument(serializeTabs(snapshotTabs(inputOf(state))))!;
+    expect(paneIds(doc.tabs[0].layout)).toEqual(["pane-1"]);
+    expect(JSON.stringify(doc)).not.toContain("a.cast");
+  });
+
   it("round-trips the tabs, their order, layouts, colours, the active tab, pane folders and DEV mode", () => {
     const state = twoTabs();
     const first = state.tabs[0];

@@ -51,6 +51,7 @@ import { bufferText, type BufferLine } from "./output";
 import { pastePlan } from "./paste";
 import { PasteConfirm } from "./PasteConfirm";
 import { createSessionLog, logTimestamp, type SessionLog } from "./sessionLog";
+import { createCastRecorder, recordingFileName, type CastRecorder } from "../recording/castRecorder";
 import { TerminalContextMenu, linkOf, type MenuAction } from "./TerminalContextMenu";
 import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRows } from "./shellMarks";
 import { themeById } from "./themes";
@@ -255,6 +256,7 @@ const scrollback = (term: Terminal): BufferLine[] => {
 };
 
 const textFilters = () => [{ name: t("terminal.view.textFiles"), extensions: ["txt", "log"] }];
+const castFilters = () => [{ name: t("terminal.view.castFiles"), extensions: ["cast"] }];
 
 /** Copy mode's cursor, or quick select's labelled matches and the letters typed so far (S7). */
 type KeyMode = { kind: "copy"; cursor: CopyState } | { kind: "quick"; matches: QuickMatch[]; typed: string };
@@ -388,6 +390,9 @@ export function TerminalView({
   const [pendingPaste, setPendingPaste] = useState<PendingPaste | null>(null);
   const logRef = useRef<SessionLog | null>(null);
   const [logPath, setLogPath] = useState<string | null>(null);
+  /** The asciicast recording of this pane's output (S6), while one runs. */
+  const recordRef = useRef<CastRecorder | null>(null);
+  const [recordPath, setRecordPath] = useState<string | null>(null);
   /** Pane-local shortcuts, reached from xterm's key handler. */
   const paneShortcutRef = useRef<(shortcut: Shortcut) => void>(() => {});
   /** The current paste handler, reached from the native paste listener. */
@@ -779,6 +784,7 @@ export function TerminalView({
             latencyMark("O", msg.data.length);
             term.write(msg.data, outputFlow.queued(msg.data.length));
             logRef.current?.write(msg.data);
+            recordRef.current?.output(msg.data);
             // The echo of a key in an idle pane is not a program at work.
             const echo = !activityTimer && performance.now() - lastTyped < ECHO_MS;
             outputListeners.forEach((listener) => listener(msg.data, echo));
@@ -1282,6 +1288,7 @@ export function TerminalView({
       term.onResize(({ cols, rows }) => {
         if (sessionId !== null) void backend.resize(sessionId, cols, rows);
         resizeListeners.forEach((listener) => listener(cols, rows));
+        recordRef.current?.resize(cols, rows);
         // Rows reflow to the new width: colour them again once the size settles (a window drag
         // resizes many times in a row).
         if (errorsTimer) clearTimeout(errorsTimer);
@@ -1360,9 +1367,11 @@ export function TerminalView({
       outputFlow.dispose();
       host.removeEventListener("paste", onPaste, true);
       host.removeEventListener("mouseup", onMouseUp);
-      // Closing the pane writes what the log still holds.
+      // Closing the pane writes what the log and the recording still hold.
       void logRef.current?.stop();
       logRef.current = null;
+      void recordRef.current?.stop();
+      recordRef.current = null;
       clearTimeout(startTimer);
       if (aiTimer) clearTimeout(aiTimer);
       aiSeq++;
@@ -1784,6 +1793,38 @@ export function TerminalView({
       );
     }
     return null;
+  const stopRecording = () => {
+    void recordRef.current?.stop();
+    recordRef.current = null;
+    setRecordPath(null);
+  };
+
+  /** Records the output from now on, with its times, to an asciicast v2 file (S6); typing is not recorded. */
+  const toggleRecording = async () => {
+    if (recordRef.current) return stopRecording();
+    const path = await save({ defaultPath: recordingFileName(), filters: castFilters() });
+    const term = termRef.current;
+    if (!path || recordRef.current || !term) return;
+    const recorder = createCastRecorder(
+      path,
+      {
+        // The header replaces the file (the dialog asked before overwriting it); the events follow it.
+        write: (file, contents) => invoke("save_text_file", { path: file, contents }),
+        append: (file, contents) => invoke("append_text_file", { path: file, contents }),
+      },
+      {
+        cols: term.cols,
+        rows: term.rows,
+        droppedNote: (count) => t("terminal.view.recordingDropped", { count }),
+        onError: (err) => {
+          if (recordRef.current !== recorder) return;
+          termRef.current?.write(red(t("terminal.view.recordingStopped", { error: String(err) })));
+          stopRecording();
+        },
+      },
+    );
+    recordRef.current = recorder;
+    setRecordPath(path);
   };
 
   /** Opens the find bar; with `text` (a selection) it starts again with that text. */
@@ -1834,6 +1875,9 @@ export function TerminalView({
         break;
       case "log":
         void toggleLogging();
+        break;
+      case "record":
+        void toggleRecording();
         break;
     }
     focusTerminal();
@@ -1908,12 +1952,28 @@ export function TerminalView({
         </div>
       )}
       {keyModeOverlay()}
+      {recordPath && (
+        <button
+          type="button"
+          className="terminal-rec"
+          aria-label={t("terminal.menu.stopRecording")}
+          title={t("terminal.view.recordingTo", { path: recordPath })}
+          onClick={() => {
+            stopRecording();
+            focusTerminal();
+          }}
+        >
+          <span className="terminal-rec__dot" aria-hidden="true" />
+          {t("terminal.view.recordingMark")}
+        </button>
+      )}
       {findOpen && <FindBar key={findSeed} initialText={findText} onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu
           x={menu.x}
           y={menu.y}
           logging={logPath !== null}
+          recording={recordPath !== null}
           selection={menu.selection}
           commandOutput={menu.output !== null}
           canAskAi={onAskAi !== undefined}

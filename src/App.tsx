@@ -148,7 +148,10 @@ import {
   Laptop,
   Link,
   Smartphone,
+  Film,
 } from "lucide-react";
+import { open as pickFile } from "@tauri-apps/plugin-dialog";
+import { CastPlayer } from "./features/recording/CastPlayer";
 import { themeById } from "./features/terminal/themes";
 import { useDevMode, type LocateProject } from "./features/devmode/useDevMode";
 import { basename } from "./features/local/localPath";
@@ -1388,10 +1391,24 @@ function AppContent() {
   const viewInTab = (origin: PathOrigin, path: string) => {
     if (!activeTab) return;
     const terminal = terminalPaneOf(activeTab);
-    const hasViewer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal);
+    const hasViewer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal && !v.kind);
     if (!hasViewer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.viewer.full"));
     const position = terminalSettings.settings.viewerPosition;
     void dispatchKeepingEdits({ type: "openViewer", key: activeTab.key, path, origin, position });
+  };
+  /** "Play recording…" (S6): a `.cast` file picked here plays in a player next to the active tab's terminal. */
+  const playRecording = async () => {
+    if (!activeTab) return setNotice(t("terminal.player.noTerminal"));
+    const path = await pickFile({
+      multiple: false,
+      directory: false,
+      filters: [{ name: t("terminal.view.castFiles"), extensions: ["cast"] }],
+    });
+    if (typeof path !== "string") return;
+    const terminal = terminalPaneOf(activeTab);
+    const hasPlayer = Object.values(activeTab.viewers ?? {}).some((v) => v.terminalPaneId === terminal && v.kind === "recording");
+    if (!hasPlayer && paneIds(activeTab.layout).length >= MAX_PANES) return setNotice(t("app.notice.tabFull", { max: MAX_PANES }));
+    dispatch({ type: "openPlayer", key: activeTab.key, path });
   };
   /**
    * "Open in terminal" on a folder of the file lists. The Explorer opens a local terminal with the
@@ -1663,6 +1680,7 @@ function AppContent() {
       shortcut: shortcutLabel(id, settings.shortcuts) || undefined,
       run: () => runShortcutRef.current(SHORTCUT_ACTIONS[id].shortcut as Shortcut, true),
     })),
+    { id: "playRecording", group: "actions" as const, label: t("terminal.player.open"), run: () => void playRecording() },
     ...sessions.library.sessions.map((session) => ({
       id: session.id,
       group: "sessions" as const,
@@ -1734,6 +1752,7 @@ function AppContent() {
     // Mosh has no Windows client (S18.2).
     mosh: platform === "windows" ? null : { label: "Mosh…", icon: Smartphone, onSelect: () => setModal({ kind: "mosh" }) },
     openShared: { label: t("share.view.open"), icon: Link, onSelect: () => setModal({ kind: "openShared" }) },
+    playRecording: { label: t("terminal.player.open"), icon: Film, onSelect: () => void playRecording() },
     keyGen: { label: t("app.tools.keyGenerator"), icon: KeySquare, onSelect: () => setModal({ kind: "keyGen" }) },
     portScan: { label: t("app.tools.portScanner"), icon: ScanSearch, onSelect: () => setModal({ kind: "portScan" }) },
     networkScan: { label: t("app.tools.networkScanner"), icon: Network, onSelect: () => setModal({ kind: "networkScan" }) },
@@ -2109,6 +2128,18 @@ function AppContent() {
                     hidden={tabDev?.hidden}
                     renderPane={(paneId) => {
                       const viewer = tab.viewers?.[paneId];
+                      if (viewer?.kind === "recording") {
+                        return (
+                          <CastPlayer
+                            // Each Play recording… reads the file again.
+                            key={viewer.opened}
+                            path={viewer.path}
+                            load={() => invoke<string>("read_recording_file", { path: viewer.path })}
+                            settings={terminalSettings.settings}
+                            onClose={() => void dispatchKeepingEdits({ type: "closePane", key: tab.key, paneId })}
+                          />
+                        );
+                      }
                       if (viewer) {
                         return (
                           <FileViewer
