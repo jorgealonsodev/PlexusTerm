@@ -21,6 +21,8 @@ pub const NO_START_AFTER: Duration = Duration::from_secs(10);
 pub const NO_START_AFTER: Duration = Duration::from_millis(1500);
 /// At most this much output is kept to show again in that case.
 const UNCLAIMED_MAX: usize = 64 * 1024;
+/// Most bytes kept of a file whose sender gives no size (it could otherwise fill the disk).
+pub const MAX_UNDECLARED: u64 = 1 << 30;
 /// Wire errors in a row (corrupt headers) before the transfer is given up.
 const MAX_ERRORS: u32 = 20;
 
@@ -33,6 +35,19 @@ pub enum Step {
         rest: Vec<u8>,
         early: bool,
     },
+}
+
+/// Whether `n` more bytes may be written to a file with `written` bytes: never more than the
+/// sender announced, nor than MAX_UNDECLARED when it announced no size (it could fill the disk).
+fn room(name: &str, size: Option<u64>, written: u64, n: usize) -> Result<(), String> {
+    let limit = size.unwrap_or(MAX_UNDECLARED);
+    if written.saturating_add(n as u64) <= limit {
+        return Ok(());
+    }
+    Err(match size {
+        Some(size) => format!("{name} is longer than the {size} bytes announced"),
+        None => format!("{name} has no size and passed {MAX_UNDECLARED} bytes"),
+    })
 }
 
 struct Current {
@@ -165,6 +180,10 @@ impl Inbound {
                     let Some(current) = &mut self.current else {
                         return Outcome::Stopped(Some("file data before a file".into()));
                     };
+                    if let Err(message) = room(&current.name, current.size, current.written, n) {
+                        self.rx_abort(writer);
+                        return Outcome::Stopped(Some(message));
+                    }
                     if let Err(err) = current.file.write_all(bytes) {
                         let message = format!("could not write {}: {err}", current.name);
                         self.rx_abort(writer);
@@ -315,4 +334,29 @@ fn notify_progress(current: &Current, emit: &Emit) {
         bytes: current.written,
         total: current.size,
     }));
+}
+
+#[cfg(test)]
+mod room_tests {
+    use super::*;
+
+    #[test]
+    fn a_file_never_grows_past_its_announced_size() {
+        assert!(room("a", Some(10), 0, 10).is_ok());
+        assert!(
+            room("a", Some(10), 4, 7)
+                .unwrap_err()
+                .contains("10 bytes announced")
+        );
+    }
+
+    #[test]
+    fn a_file_without_a_size_stops_at_the_limit() {
+        assert!(room("a", None, MAX_UNDECLARED - 1, 1).is_ok());
+        assert!(
+            room("a", None, MAX_UNDECLARED, 1)
+                .unwrap_err()
+                .contains("has no size")
+        );
+    }
 }

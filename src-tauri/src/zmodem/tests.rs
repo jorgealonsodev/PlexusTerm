@@ -283,6 +283,20 @@ fn declining_an_offer_sends_cans() {
 }
 
 #[test]
+fn after_declining_the_shell_text_shows_at_once_and_only_transfer_bytes_are_dropped() {
+    let h = Harness::new(true);
+    let mut remote = RemoteSz::new(b"x", vec![1, 2, 3]);
+    let (start, _) = remote.run();
+    h.feed(&start);
+    lock(&h.link).cancel().unwrap();
+    // What the remote still had on its way: frames with ZDLE and CANs.
+    assert_eq!(h.feed(b"**\x18B0100000000aa51\r\x8a\x11\x18\x18\x18"), "");
+    // The shell's prompt after `sz` gave up, well within the old one-second drain.
+    assert_eq!(h.feed(b"\r\nuser@host:~$ "), "\r\nuser@host:~$ ");
+    assert_eq!(h.feed(b"ls\r\n"), "ls\r\n");
+}
+
+#[test]
 fn a_send_produces_frames_a_receiver_accepts() {
     let h = Harness::new(true);
     let dir = tempfile::tempdir().unwrap();

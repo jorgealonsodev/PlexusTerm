@@ -120,6 +120,16 @@ pub struct Link {
     drain_until: Option<Instant>,
 }
 
+/// Whether output is the rest of a transfer rather than text: it holds ZDLE or CAN (0x18), or
+/// control bytes no terminal text uses.
+fn looks_like_transfer(bytes: &[u8]) -> bool {
+    bytes.iter().any(|&b| {
+        b == 0x18
+            || (b < 0x20 && !matches!(b, b'\r' | b'\n' | b'\t' | 0x1b | 0x08 | 0x07))
+            || b == 0x7f
+    })
+}
+
 pub fn lock(link: &Mutex<Link>) -> MutexGuard<'_, Link> {
     link.lock().unwrap_or_else(PoisonError::into_inner)
 }
@@ -187,8 +197,10 @@ impl Link {
 
     fn idle_feed(&mut self, bytes: &[u8], text: &mut String) {
         let mut bytes = bytes;
+        // After a cancel, what the other end still had on its way is dropped; the first output
+        // that is plain text (the shell's prompt) ends the drain, however early.
         if let Some(until) = self.drain_until {
-            if Instant::now() < until {
+            if Instant::now() < until && looks_like_transfer(bytes) {
                 return;
             }
             self.drain_until = None;

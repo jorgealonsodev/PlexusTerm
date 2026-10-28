@@ -9,8 +9,38 @@ use std::path::{Path, PathBuf};
 const MAX_NAME: usize = 200;
 /// Names Windows reserves for devices, in any case and with any extension.
 const RESERVED: &[&str] = &[
-    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CONIN$",
+    "CONOUT$",
+    "COM0",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "COM\u{b9}",
+    "COM\u{b2}",
+    "COM\u{b3}",
+    "LPT0",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+    "LPT\u{b9}",
+    "LPT\u{b2}",
+    "LPT\u{b3}",
 ];
 
 /// A plain file name from the name the remote sent: its last path component, without control
@@ -33,7 +63,10 @@ pub fn sanitize(raw: &[u8]) -> String {
         return "file".into();
     }
     let stem = name.split('.').next().unwrap_or_default();
-    if RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem)) {
+    if RESERVED
+        .iter()
+        .any(|r| r.to_uppercase() == stem.to_uppercase())
+    {
         name.insert(0, '_');
     }
     if name.len() > MAX_NAME {
@@ -42,6 +75,12 @@ pub fn sanitize(raw: &[u8]) -> String {
             end -= 1;
         }
         name.truncate(end);
+        // Windows drops a trailing dot or space, which would make it another file's name.
+        let kept = name.trim_end_matches(['.', ' ']).len();
+        name.truncate(kept);
+        if name.is_empty() {
+            return "file".into();
+        }
     }
     name
 }
@@ -79,6 +118,27 @@ pub fn create_unique(folder: &Path, name: &str) -> io::Result<(PathBuf, File)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_windows_device_name_and_a_cut_trailing_dot_are_made_safe() {
+        for name in [
+            "COM0",
+            "lpt0.txt",
+            "COM\u{b9}",
+            "lpt\u{b2}.log",
+            "COM\u{b3}",
+            "CONIN$",
+            "conout$.txt",
+            "Aux",
+        ] {
+            assert!(sanitize(name.as_bytes()).starts_with('_'), "{name}");
+        }
+        // Cut to the longest name, a dot or space would end it: Windows drops those.
+        let long = format!("{}. x", "a".repeat(199));
+        let safe = sanitize(long.as_bytes());
+        assert!(!safe.ends_with('.') && !safe.ends_with(' '), "{safe:?}");
+        assert!(safe.len() <= 200);
+    }
 
     #[test]
     fn keeps_only_the_last_component_of_a_path() {
