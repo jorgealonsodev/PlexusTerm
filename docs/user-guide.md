@@ -127,6 +127,24 @@ Saved password sessions (terminal tabs, Mosh and tunnels) connect first: PlexusT
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
 - Key passphrases are never saved.
 
+#### Passwords from a password manager
+
+Instead of typing or saving a password, a session can take it from a password manager's command-line tool: in the session dialog (or Quick connect), choose **Authentication → Password from a command** and enter the command that prints the password. Key sessions have the same for their passphrase, **Passphrase from a command (optional)**, used when no passphrase is typed. The **Presets** menu next to the field fills it with a template; replace the words in capitals with your own:
+
+| Password manager | Template |
+| --- | --- |
+| 1Password | `op read "op://VAULT/ITEM/password"` |
+| Bitwarden | `bw get password ITEM` |
+| pass | `pass show PATH` |
+| GNOME Keyring / libsecret | `secret-tool lookup service NAME` |
+| KeePassXC | `keepassxc-cli show -s -a Password DATABASE ENTRY` |
+
+- The session keeps only the command. At every connection, reconnections included, PlexusTerm runs it on this computer through the system shell (`sh -c`, on Windows `cmd /C`) and uses what it prints, without its last line break, as the password (or passphrase). The password itself is never saved, logged nor shown, and it is not kept after the login.
+- Like other password logins, your keys are tried first (see [SSH sessions](#ssh-sessions)); the command only runs when the server still asks for a password.
+- The password manager must already be unlocked, because the command cannot ask for anything (nothing can be typed into it): sign in to the 1Password desktop app with its CLI integration turned on, export `BW_SESSION` after `bw unlock` before starting PlexusTerm, keep `gpg-agent` unlocked for `pass`, and unlock the keyring for `secret-tool`. `keepassxc-cli` asks for the database password on its standard input, so with KeePassXC use a key file without a password (`--no-password --key-file FILE`) or another of its unattended options.
+- If the command fails (it exits with an error, prints nothing, or does not finish within 30 seconds and is stopped), the tab shows why in red, with the first lines of what the command wrote as its error. The login is not retried and no password prompt opens: fix the command or unlock the manager, then open the session again.
+- The command is not a secret: it is kept in `sessions.json`, in exports, in synced sessions and in restored tabs. Importing a file lists every command its sessions would run, so a file from someone else cannot hide one; check them before importing.
+
 ### Jump hosts
 
 A saved SSH session can reach its server through up to 3 jump hosts (bastions), like `ssh -J`. In the session's edit dialog, **Jump hosts** lists other saved SSH sessions in the order they are crossed: add them from the list, move them up or down, or remove them. Quick-connect sessions have no jump hosts.

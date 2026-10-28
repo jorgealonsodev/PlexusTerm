@@ -1933,6 +1933,30 @@ describe("TerminalView", () => {
       expect(starts).toHaveLength(2);
     });
 
+    it("a failing password command shows its error in red, stops reconnecting and never prompts (S5)", async () => {
+      const fromCommand = { ...agent, auth: { method: "passwordCommand" as const, command: "bw get password db" } };
+      const failed = { kind: "passwordCommand", purpose: "password", failure: "exit", code: 1, stderr: "You are not logged in." };
+      await connected(fromCommand);
+      await lose();
+      await advance(1000);
+      await reject(failed);
+      expect(sinceLastDrop()).toContain(
+        "\x1b[31mThe password command failed with exit code 1.\r\nYou are not logged in.\x1b[0m",
+      );
+      expect(screen.queryByLabelText("Password")).toBeNull();
+      await advance(600_000);
+      expect(starts).toHaveLength(2);
+    });
+
+    it("a password rejected after a password command is shown, and no prompt opens (S5)", async () => {
+      await mount({ ...agent, auth: { method: "passwordCommand" as const, command: "pass show db" } });
+      await reject({ kind: "authFailed" });
+      expect(text()).toContain("\x1b[31mAuthentication failed.\x1b[0m");
+      expect(screen.queryByLabelText("Password")).toBeNull();
+      await advance(600_000);
+      expect(starts).toHaveLength(1);
+    });
+
     it("a clean end of the shell still closes the pane", async () => {
       const { onExit } = await connected();
       await act(async () => starts[0].emit({ event: "exit", data: null }));
