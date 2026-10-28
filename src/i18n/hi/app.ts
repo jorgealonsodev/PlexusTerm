@@ -23,6 +23,11 @@ export const app: Messages<typeof en> = {
     matchCase: "अक्षरों का केस मिलाएँ",
     noResults: "किसी टर्मिनल में यह टेक्स्ट नहीं है।",
     capped: "पहले {limit} परिणाम दिखाए गए हैं।",
+    count: {
+      one: "{count} परिणाम",
+      other: "{count} परिणाम",
+    },
+    hint: "↑↓ चुनें · Enter जाएँ · Esc बंद करें",
   },
   toolbar: {
     aiAssistant: "AI सहायक",

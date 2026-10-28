@@ -61,11 +61,21 @@ describe("FindAllDialog (S3)", () => {
     expect(screen.getByRole("group", { name: "db" }).textContent).not.toContain("p3 title");
   });
 
+  it("counts the results and says how to use the list", () => {
+    open();
+    expect(screen.getByText("↑↓ choose · Enter go · Esc close")).toBeTruthy();
+    type("GET");
+    expect(screen.getByText("3 results")).toBeTruthy();
+  });
+
   it("searches again with Match case", () => {
     open();
     type("GET");
     expect(options()).toHaveLength(3);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match case" }));
+    const matchCase = screen.getByRole("button", { name: "Match case" });
+    expect(matchCase.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(matchCase);
+    expect(matchCase.getAttribute("aria-pressed")).toBe("true");
     act(() => void vi.advanceTimersByTime(FIND_ALL_DEBOUNCE_MS));
     expect(options()).toHaveLength(3);
     type("get");

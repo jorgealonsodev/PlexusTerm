@@ -23,6 +23,12 @@ export const app: Messages<typeof en> = {
     matchCase: "Diferenciar maiúsculas e minúsculas",
     noResults: "Nenhum terminal tem este texto.",
     capped: "Mostrando os primeiros {limit} resultados.",
+    count: {
+      one: "{count} resultado",
+      many: "{count} resultados",
+      other: "{count} resultados",
+    },
+    hint: "↑↓ escolher · Enter ir · Esc fechar",
   },
   toolbar: {
     aiAssistant: "Assistente de IA",

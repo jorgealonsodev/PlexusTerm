@@ -635,22 +635,68 @@ textarea::placeholder {
 .find-all__bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 10px;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-.find-all__input {
+.find-all__icon {
+  flex: none;
+  color: var(--muted);
+}
+
+/* No field box nor the system's focus ring (GTK themes draw their own colour): the bar is the field. */
+.find-all__input,
+.find-all__input:focus,
+.find-all__input:focus-visible {
   flex: 1;
   min-width: 0;
   margin: 0;
+  padding: 4px 0;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  font-size: 1.05em;
 }
 
 .find-all__case {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   flex: none;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.find-all__case:hover {
+  border-color: var(--border);
+}
+
+.find-all__case--on {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.find-all__count {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.85em;
   white-space: nowrap;
+}
+
+.find-all .palette__list {
+  padding-top: 6px;
+}
+
+.find-all__hint {
+  padding: 6px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8em;
 }
 
 .find-all__group {

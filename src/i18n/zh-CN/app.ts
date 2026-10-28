@@ -23,6 +23,10 @@ export const app: Messages<typeof en> = {
     matchCase: "区分大小写",
     noResults: "没有终端包含此文本。",
     capped: "仅显示前 {limit} 个结果。",
+    count: {
+      other: "{count} 个结果",
+    },
+    hint: "↑↓ 选择 · Enter 跳转 · Esc 关闭",
   },
   toolbar: {
     aiAssistant: "AI 助手",

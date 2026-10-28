@@ -23,6 +23,10 @@ export const app: Messages<typeof en> = {
     matchCase: "大文字と小文字を区別",
     noResults: "このテキストを含むターミナルはありません。",
     capped: "最初の {limit} 件を表示しています。",
+    count: {
+      other: "{count} 件",
+    },
+    hint: "↑↓ 選択 · Enter 移動 · Esc 閉じる",
   },
   toolbar: {
     aiAssistant: "AI アシスタント",

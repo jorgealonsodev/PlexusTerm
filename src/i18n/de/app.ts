@@ -23,6 +23,11 @@ export const app: Messages<typeof en> = {
     matchCase: "Groß-/Kleinschreibung beachten",
     noResults: "Kein Terminal enthält diesen Text.",
     capped: "Die ersten {limit} Ergebnisse werden angezeigt.",
+    count: {
+      one: "{count} Treffer",
+      other: "{count} Treffer",
+    },
+    hint: "↑↓ wählen · Enter springen · Esc schließen",
   },
   toolbar: {
     aiAssistant: "KI-Assistent",

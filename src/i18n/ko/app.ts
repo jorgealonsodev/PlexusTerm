@@ -23,6 +23,10 @@ export const app: Messages<typeof en> = {
     matchCase: "대/소문자 구분",
     noResults: "이 텍스트가 있는 터미널이 없습니다.",
     capped: "처음 {limit}개 결과를 표시합니다.",
+    count: {
+      other: "결과 {count}개",
+    },
+    hint: "↑↓ 선택 · Enter 이동 · Esc 닫기",
   },
   toolbar: {
     aiAssistant: "AI 도우미",

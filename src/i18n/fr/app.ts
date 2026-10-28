@@ -23,6 +23,12 @@ export const app: Messages<typeof en> = {
     matchCase: "Respecter la casse",
     noResults: "Aucun terminal ne contient ce texte.",
     capped: "Les {limit} premiers résultats sont affichés.",
+    count: {
+      one: "{count} résultat",
+      many: "{count} résultats",
+      other: "{count} résultats",
+    },
+    hint: "↑↓ choisir · Entrée aller · Échap fermer",
   },
   toolbar: {
     aiAssistant: "Assistant IA",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Search } from "lucide-react";
 import { useT } from "../../i18n/i18n";
 import { FIND_ALL_LIMIT, type FindResult } from "./findAll";
 
@@ -89,8 +90,9 @@ export function FindAllDialog({ search, onClose }: FindAllDialogProps) {
     <div className="overlay overlay--top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="palette find-all" role="dialog" aria-label={t("app.findAll.title")}>
         <div className="find-all__bar">
+          <Search size={16} className="find-all__icon" aria-hidden="true" />
           <input
-            className="palette__input find-all__input"
+            className="find-all__input"
             role="combobox"
             aria-expanded="true"
             aria-controls="find-all-list"
@@ -102,10 +104,21 @@ export function FindAllDialog({ search, onClose }: FindAllDialogProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
           />
-          <label className="find-all__case">
-            <input type="checkbox" checked={matchCase} onChange={(e) => setMatchCase(e.target.checked)} />
-            {t("app.findAll.matchCase")}
-          </label>
+          <button
+            type="button"
+            className={matchCase ? "find-all__case find-all__case--on" : "find-all__case"}
+            aria-label={t("app.findAll.matchCase")}
+            aria-pressed={matchCase}
+            title={t("app.findAll.matchCase")}
+            onClick={() => setMatchCase(!matchCase)}
+          >
+            Aa
+          </button>
+          {found.query !== "" && results.length > 0 && (
+            <span className="find-all__count" role="status">
+              {t("app.findAll.count", { count: results.length })}
+            </span>
+          )}
         </div>
         <ul className="palette__list" id="find-all-list" role="listbox" ref={listRef}>
           {groups.map((group) => (
@@ -135,6 +148,7 @@ export function FindAllDialog({ search, onClose }: FindAllDialogProps) {
         </ul>
         {found.query !== "" && results.length === 0 && <p className="palette__empty muted">{t("app.findAll.noResults")}</p>}
         {capped && <p className="palette__empty muted">{t("app.findAll.capped", { limit: FIND_ALL_LIMIT })}</p>}
+        <div className="find-all__hint">{t("app.findAll.hint")}</div>
       </div>
     </div>
   );

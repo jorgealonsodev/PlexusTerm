@@ -23,6 +23,15 @@ export const app: Messages<typeof en> = {
     matchCase: "مطابقة حالة الأحرف",
     noResults: "لا توجد طرفية تحتوي على هذا النص.",
     capped: "تُعرض أول {limit} نتيجة.",
+    count: {
+      zero: "لا نتائج",
+      one: "نتيجة واحدة",
+      two: "نتيجتان",
+      few: "{count} نتائج",
+      many: "{count} نتيجة",
+      other: "{count} نتيجة",
+    },
+    hint: "↑↓ للاختيار · Enter للانتقال · Esc للإغلاق",
   },
   toolbar: {
     aiAssistant: "مساعد الذكاء الاصطناعي",

@@ -21,6 +21,11 @@ export const app = {
     matchCase: "Match case",
     noResults: "No terminal has this text.",
     capped: "First {limit} results shown.",
+    count: {
+      one: "{count} result",
+      other: "{count} results",
+    },
+    hint: "↑↓ choose · Enter go · Esc close",
   },
   toolbar: {
     aiAssistant: "AI assistant",
