@@ -278,6 +278,8 @@ export const CONNECT_WAIT_SHOWN_S = 3;
 
 /** The longest a new terminal waits for the fonts before starting its session. */
 export const FONT_WAIT_MS = 1500;
+/** A live SSH connection is checked on window focus at most this often. */
+export const PROBE_EVERY_MS = 10_000;
 
 /** One xterm.js instance bound to one backend session for its whole lifetime. */
 export function TerminalView({
@@ -637,6 +639,25 @@ export function TerminalView({
     };
 
     /** The connection went away under an SSH session: keep the pane and reconnect (S1). */
+    /**
+     * A connection that looks alive may have died with the network (Wi-Fi back on another route,
+     * a laptop waking up): when the network comes back, and on focus at most every
+     * PROBE_EVERY_MS, the server must answer at once, or the backend ends the session as lost
+     * and the pane reconnects without waiting for the keepalives to run out.
+     */
+    let lastProbe = -Infinity;
+    const probeConnection = (force: boolean) => {
+      if (target.type !== "ssh" || sessionId === null || reconnectWait || !backend.probe) return;
+      const now = Date.now();
+      if (!force && now - lastProbe < PROBE_EVERY_MS) return;
+      lastProbe = now;
+      void backend.probe(sessionId).catch(() => {});
+    };
+    const probeOnline = () => probeConnection(true);
+    const probeOnFocus = () => probeConnection(false);
+    window.addEventListener("online", probeOnline);
+    window.addEventListener("focus", probeOnFocus);
+
     const connectionLost = () => {
       if (sessionId !== null) void backend.close(sessionId).catch(() => {});
       sessionId = null;
@@ -1264,6 +1285,8 @@ export function TerminalView({
     return () => {
       disposed = true;
       reconnectWait?.();
+      window.removeEventListener("online", probeOnline);
+      window.removeEventListener("focus", probeOnFocus);
       outputFlow.dispose();
       host.removeEventListener("paste", onPaste, true);
       host.removeEventListener("mouseup", onMouseUp);

@@ -480,6 +480,16 @@ fn ssh_resize(id: u32, cols: u16, rows: u16, ssh: State<'_, SshManager>) -> Resu
     ssh.resize(id, cols, rows)
 }
 
+/// How long a probed SSH server has to answer before its session counts as lost.
+const SSH_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// Whether SSH session `id`'s server still answers; one that does not is ended as lost (the
+/// pane reconnects it). Asked when the network comes back.
+#[tauri::command]
+async fn ssh_probe(id: u32, ssh: State<'_, SshManager>) -> Result<bool, SshError> {
+    ssh.probe(id, SSH_PROBE_TIMEOUT).await
+}
+
 #[tauri::command]
 fn ssh_close(
     id: u32,
@@ -937,6 +947,7 @@ pub fn run() {
             ssh_write,
             ssh_resize,
             ssh_close,
+            ssh_probe,
             ssh_shell_cwd,
             ssh_git_branch,
             git_branch,

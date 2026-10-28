@@ -35,6 +35,11 @@ export interface TerminalBackend {
   write(id: number, data: string): Promise<void>;
   resize(id: number, cols: number, rows: number): Promise<void>;
   close(id: number): Promise<void>;
+  /**
+   * SSH only: whether the server still answers; one that does not is ended as lost (the
+   * `lost` event follows).
+   */
+  probe?(id: number): Promise<boolean>;
 }
 
 /** Pauses or resumes reading the session of share tap `tap` (see `flowControl.ts`). */
@@ -98,6 +103,7 @@ function sshBackend(target: SshTarget): TerminalBackend {
         onEvent: channelFor(onEvent),
       }),
     ...commands("ssh"),
+    probe: (id) => invoke<boolean>("ssh_probe", { id }),
   };
 }
 

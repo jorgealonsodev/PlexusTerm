@@ -8,6 +8,7 @@ const backend = vi.hoisted(() => ({
   write: vi.fn(() => Promise.resolve()),
   resize: vi.fn(() => Promise.resolve()),
   close: vi.fn(() => Promise.resolve()),
+  probe: vi.fn(async (_id: number) => true),
 }));
 
 const flow = vi.hoisted(() => ({ setTerminalFlow: vi.fn(async (_tap: number, _paused: boolean, _pending?: number) => {}) }));
@@ -1572,6 +1573,31 @@ describe("TerminalView", () => {
       act(() => lastTerm().type("\r"));
       expect(starts).toHaveLength(2);
       expect(onExit).not.toHaveBeenCalled();
+    });
+
+    it("checks a live connection at once when the network comes back, and at most every 10 s on focus", async () => {
+      await connected();
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(backend.probe).toHaveBeenCalledTimes(1);
+      expect(backend.probe).toHaveBeenLastCalledWith(7);
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(backend.probe).toHaveBeenCalledTimes(2);
+      act(() => void window.dispatchEvent(new Event("focus")));
+      expect(backend.probe).toHaveBeenCalledTimes(2);
+      await advance(10_000);
+      act(() => void window.dispatchEvent(new Event("focus")));
+      expect(backend.probe).toHaveBeenCalledTimes(3);
+      // The backend ends a session that did not answer as lost: the pane reconnects as usual.
+      await lose();
+      expect(text()).toContain("[Connection lost]");
+    });
+
+    it("checks no connection of a local pane, nor one while it waits to reconnect", async () => {
+      await connected();
+      await lose();
+      backend.probe.mockClear();
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(backend.probe).not.toHaveBeenCalled();
     });
 
     it("Ctrl+C stops reconnecting, and Enter then starts again", async () => {

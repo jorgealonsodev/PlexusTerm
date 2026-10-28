@@ -826,6 +826,8 @@ struct SessionEntry {
     /// The gate the reader waits on while the webview catches up; closed with the session so a
     /// paused reader still sees the end.
     flow: Option<Arc<FlowGate>>,
+    /// Woken when a probe got no answer: the reader ends the session as a lost connection.
+    dead: Arc<tokio::sync::Notify>,
 }
 
 pub struct SshManager {
@@ -966,6 +968,7 @@ impl SshManager {
         let (mut reader, writer) = channel.split();
         let handle = Arc::new(handle);
         let flow = sink.flow();
+        let dead = Arc::new(tokio::sync::Notify::new());
         self.sessions.lock().unwrap().insert(
             id,
             SessionEntry {
@@ -974,6 +977,7 @@ impl SshManager {
                 sftp: SftpSlot::default(),
                 _closed: closed_tx,
                 flow: flow.clone(),
+                dead: dead.clone(),
             },
         );
 
@@ -1046,7 +1050,13 @@ impl SshManager {
                 if let Some(gate) = &flow {
                     gate.wait().await;
                 }
-                let Some(message) = reader.wait().await else {
+                // A probe that got no answer ends the session like a dead link would, without
+                // waiting for the keepalives to run out.
+                let message = tokio::select! {
+                    message = reader.wait() => message,
+                    _ = dead.notified() => None,
+                };
+                let Some(message) = message else {
                     break;
                 };
                 match message {
@@ -1068,10 +1078,14 @@ impl SshManager {
                     _ => {}
                 }
             }
-            let _ = handle
-                .disconnect(russh::Disconnect::ByApplication, "", "en")
-                .await;
-            disconnect_jumps(&jumps).await;
+            // Bounded: over a dead link the goodbye may never leave.
+            let _ = tokio::time::timeout(Duration::from_secs(2), async {
+                let _ = handle
+                    .disconnect(russh::Disconnect::ByApplication, "", "en")
+                    .await;
+                disconnect_jumps(&jumps).await;
+            })
+            .await;
             if !ended_by_remote && !closing.load(Ordering::SeqCst) {
                 on_lost();
             }
@@ -1095,6 +1109,22 @@ impl SshManager {
 
     pub fn resize(&self, id: u32, cols: u16, rows: u16) -> Result<(), SshError> {
         self.send(id, Command::Resize(cols, rows))
+    }
+
+    /// Whether session `id`'s server still answers: a keepalive that must be answered within
+    /// `wait`. Without an answer the session ends as a lost connection (the app reconnects it),
+    /// sooner than the keepalives running out would end it.
+    pub async fn probe(&self, id: u32, wait: Duration) -> Result<bool, SshError> {
+        let (handle, dead) = {
+            let sessions = self.sessions.lock().unwrap();
+            let entry = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
+            (entry.handle.clone(), entry.dead.clone())
+        };
+        let answered = matches!(tokio::time::timeout(wait, handle.send_ping()).await, Ok(Ok(())));
+        if !answered {
+            dead.notify_one();
+        }
+        Ok(answered)
     }
 
     pub fn close(&self, id: u32) -> Result<(), SshError> {
@@ -1686,6 +1716,42 @@ mod tests {
 
         mgr.write(session.id, b"drop").unwrap();
         assert_eq!(session.end().await, Some(true));
+    }
+
+    #[tokio::test]
+    async fn a_probe_of_a_live_session_answers_and_leaves_it_open() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        assert!(mgr.probe(session.id, Duration::from_secs(3)).await.unwrap());
+        mgr.write(session.id, b"exit").unwrap();
+        assert_eq!(session.end().await, Some(false));
+    }
+
+    #[tokio::test]
+    async fn a_probe_the_remote_never_answers_reports_the_session_lost() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        mgr.write(session.id, b"stall").unwrap();
+        // The write goes through the writer task: let the server freeze before the ping leaves.
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        assert!(!mgr.probe(session.id, Duration::from_millis(300)).await.unwrap());
+        assert_eq!(session.end().await, Some(true));
+    }
+
+    #[tokio::test]
+    async fn probing_an_unknown_session_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(dir.path().join("known_hosts"));
+        assert!(matches!(
+            mgr.probe(42, Duration::from_secs(1)).await,
+            Err(SshError::UnknownSession { id: 42 })
+        ));
     }
 
     #[tokio::test]
