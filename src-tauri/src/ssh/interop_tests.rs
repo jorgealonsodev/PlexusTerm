@@ -45,6 +45,7 @@ fn request(t: &Target, trusted_fingerprint: Option<String>) -> ConnectRequest {
         auth: SshAuth::Key {
             path: t.key.clone(),
             passphrase: None,
+            passphrase_command: None,
         },
         cols: 80,
         rows: 24,
@@ -188,6 +189,7 @@ async fn openssh_local_tunnel_reaches_a_service_behind_the_server() {
         auth: SshAuth::Key {
             path: t.key.clone(),
             passphrase: None,
+            passphrase_command: None,
         },
         jumps: vec![],
     };
@@ -227,6 +229,7 @@ async fn openssh_through_a_jump_host() {
     let auth = SshAuth::Key {
         path: t.key.clone(),
         passphrase: None,
+        passphrase_command: None,
     };
     let mut req = request(&t, None);
     req.host = "localhost".into();
