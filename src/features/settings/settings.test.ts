@@ -69,6 +69,7 @@ describe("parseSettings", () => {
       syncFolder: "",
       highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
+      inlineImages: true,
       gitFileStatus: true,
       viewerAutoSave: false,
       viewerPosition: "left" as const,
@@ -206,6 +207,7 @@ describe("parseSettings", () => {
       syncFolder: "",
       highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
+      inlineImages: true,
       gitFileStatus: true,
       viewerAutoSave: false,
       viewerPosition: "left" as const,
@@ -408,6 +410,7 @@ describe("serializeSettings", () => {
       syncFolder: "/home/me/Sync",
       highlightRules: [{ pattern: "ERROR", color: "#ff8800", matchCase: true, notify: true }],
       gpuAcceleration: false,
+      inlineImages: false,
       gitFileStatus: false,
       viewerAutoSave: true,
       viewerPosition: "left" as const,
@@ -608,6 +611,16 @@ describe("GPU acceleration", () => {
     expect(parseSettings(JSON.stringify({ version: 1, gpuAcceleration: true })).gpuAcceleration).toBe(true);
     const off = serializeSettings({ ...DEFAULT_SETTINGS, gpuAcceleration: false });
     expect(parseSettings(off).gpuAcceleration).toBe(false);
+  });
+});
+
+describe("inline images (S3.5)", () => {
+  it("are on by default and keep what was saved", () => {
+    expect(parseSettings(null).inlineImages).toBe(true);
+    expect(parseSettings(JSON.stringify({ version: 1, fontSize: 16 })).inlineImages).toBe(true);
+    expect(parseSettings(JSON.stringify({ version: 1, inlineImages: "no" })).inlineImages).toBe(true);
+    const off = serializeSettings({ ...DEFAULT_SETTINGS, inlineImages: false });
+    expect(parseSettings(off).inlineImages).toBe(false);
   });
 });
 

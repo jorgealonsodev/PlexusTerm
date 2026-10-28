@@ -168,6 +168,8 @@ export const settings = {
     ruleAdd: "Add rule",
     gpuAcceleration: "GPU acceleration",
     gpuAccelerationHelp: "Terminals are drawn with WebGL on the graphics card, which keeps programs that redraw the screen often (AI command-line tools, htop) smooth. When WebGL is not available or the graphics card resets, terminals switch to the standard renderer by themselves. Turn it off if text looks wrong or flickers with your graphics driver. On Linux, if text looks blurry or typing feels slow, turn it off.",
+    inlineImages: "Show images in the terminal",
+    inlineImagesHelp: "Programs can draw images in the terminal with sixel (img2sixel, chafa -f sixels) or iTerm2 inline images (imgcat): plots, thumbnails, previews. Each terminal keeps up to 64 MB of images and drops the oldest beyond that; one image may have up to 16 megapixels. Shared viewers see them too; logs and session snapshots do not include them. Open terminals switch at once; turning it off removes the images they show.",
     devCommands: "Commands that turn DEV mode on",
     devCommandsHelp: "A tab turns to DEV mode when its command line runs one of these programs (the first word of the command, separated by commas or spaces) and back when the shell's prompt returns. DEV mode moves the tabs to a column at the right, shows the git branch, lists the files like VS Code from the project the program started in, and sends desktop notifications for that tab. The DEV button at the right of the bar under the terminal turns it on or off by hand.",
     devFolderInFooter: "Show the terminal's folder in the bar under it in DEV mode",

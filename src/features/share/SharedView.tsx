@@ -3,11 +3,12 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Terminal, type FontWeight } from "@xterm/xterm";
 import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { ImageAddon } from "@xterm/addon-image";
 import { Eye, Keyboard, ShieldAlert } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { useT } from "../../i18n/i18n";
 import type { AppKey } from "../../i18n/catalogs";
-import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
+import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, INLINE_IMAGE_OPTIONS, type TerminalSettings } from "../settings/settings";
 import type { SharedTarget } from "../sessions/types";
 import { themeById } from "../terminal/themes";
 import { writeText } from "../terminal/clipboard";
@@ -93,9 +94,14 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
     term.unicode.activeVersion = "11";
     const search = new SearchAddon();
     term.loadAddon(search);
+    // The sharer's inline images (sixel, iTerm2). Loaded before the handlers below, which xterm
+    // tries first, so the addon's own answers (device attributes, sixel graphics attributes) are
+    // swallowed too; it leaves the window reports off.
+    term.loadAddon(new ImageAddon({ ...INLINE_IMAGE_OPTIONS, enableSizeReports: false }));
     // Remote output must not make this terminal answer back (the answer would be typed into the
     // sharer's shell) nor reach this computer's clipboard: device attributes and status reports,
-    // window reports, mode and setting reports, colour queries and OSC 52 are swallowed.
+    // window reports, mode and setting reports, graphics attributes (XTSMGRAPHICS), colour queries
+    // and OSC 52 are swallowed.
     const swallow = () => true;
     const subs = [
       term.parser.registerCsiHandler({ final: "c" }, swallow),
@@ -107,6 +113,7 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
       term.parser.registerCsiHandler({ intermediates: "$", final: "p" }, swallow),
       term.parser.registerCsiHandler({ prefix: "?", intermediates: "$", final: "p" }, swallow),
       term.parser.registerCsiHandler({ prefix: ">", final: "q" }, swallow),
+      term.parser.registerCsiHandler({ prefix: "?", final: "S" }, swallow),
       term.parser.registerDcsHandler({ intermediates: "$", final: "q" }, swallow),
       ...[4, 10, 11, 12, 52].map((ident) => term.parser.registerOscHandler(ident, swallow)),
     ];

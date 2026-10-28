@@ -1,3 +1,4 @@
+import type { IImageAddonOptions } from "@xterm/addon-image";
 import { isLanguageSetting, type LanguageSetting } from "../../i18n/i18n";
 import { DEFAULT_THEME_ID, isThemeId } from "../terminal/themes";
 import {
@@ -132,6 +133,8 @@ export interface TerminalSettings {
   highlightRules: HighlightRule[];
   /** Terminals draw with WebGL (the GPU); off, or when WebGL fails, xterm's own renderer draws them. */
   gpuAcceleration: boolean;
+  /** Terminals show the images programs print (sixel, iTerm2 inline images). */
+  inlineImages: boolean;
   /** File lists (Explorer, SFTP) colour entries by their git status, like VS Code. */
   gitFileStatus: boolean;
   /** The file viewer saves an edited file by itself a moment after typing stops. */
@@ -241,6 +244,18 @@ export const MAX_AI_BASE_URL_LENGTH = 500;
 export const MAX_SHARE_URL_LENGTH = 500;
 export const DEFAULT_ASSISTANT_SHORTCUT = "Ctrl+Shift+Space";
 
+/**
+ * What terminals do with `inlineImages` on (S3.1, S3.2): sixel and iTerm2 inline images (OSC 1337
+ * File=…), with each terminal's image memory bounded. Beyond `storageLimit` (MB) the oldest images
+ * are dropped; an image of more than `pixelLimit` pixels (16 Mpx, 4096 x 4096) is not shown at all.
+ */
+export const INLINE_IMAGE_OPTIONS: IImageAddonOptions = {
+  sixelSupport: true,
+  iipSupport: true,
+  storageLimit: 64,
+  pixelLimit: 16777216,
+};
+
 export const DEFAULT_SETTINGS: TerminalSettings = {
   fontSize: 14,
   copyOnSelect: true,
@@ -285,6 +300,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   // One rule to show how they work; removing it keeps the list empty.
   highlightRules: [EXAMPLE_RULE],
   gpuAcceleration: true,
+  inlineImages: true,
   gitFileStatus: true,
   viewerAutoSave: false,
   viewerPosition: "left",
@@ -545,6 +561,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     logTimestamps: bool(value.logTimestamps, d.logTimestamps),
     highlightRules: Array.isArray(value.highlightRules) ? parseHighlightRules(value.highlightRules) : d.highlightRules,
     gpuAcceleration: bool(value.gpuAcceleration, d.gpuAcceleration),
+    inlineImages: bool(value.inlineImages, d.inlineImages),
     gitFileStatus: bool(value.gitFileStatus, d.gitFileStatus),
     viewerAutoSave: bool(value.viewerAutoSave, d.viewerAutoSave),
     viewerPosition: (VIEWER_POSITIONS as readonly unknown[]).includes(value.viewerPosition)

@@ -245,6 +245,20 @@ vi.mock("@xterm/addon-webgl", () => ({
     }
   },
 }));
+/** Every fake image addon created, newest last, with the options it was given. */
+const images = vi.hoisted(() => ({ addons: [] as { options: unknown; disposed: boolean }[] }));
+// jsdom has no canvas: the real addon cannot draw here.
+vi.mock("@xterm/addon-image", () => ({
+  ImageAddon: class {
+    disposed = false;
+    constructor(public options: unknown) {
+      images.addons.push(this);
+    }
+    dispose() {
+      this.disposed = true;
+    }
+  },
+}));
 vi.mock("@xterm/addon-web-links", () => ({ WebLinksAddon: class {} }));
 vi.mock("@xterm/addon-search", () => ({
   SearchAddon: class {
@@ -842,6 +856,53 @@ describe("TerminalView", () => {
           level: "warn",
           message: "terminal lost its WebGL context (GPU reset or sleep); xterm's renderer takes over",
         });
+      });
+    });
+
+    describe("inline images (S3.1, S3.2, S3.5)", () => {
+      const view = (settings: Partial<typeof DEFAULT_SETTINGS> = {}) => (
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          settings={{ ...DEFAULT_SETTINGS, ...settings }}
+        />
+      );
+      const lastImage = () => images.addons[images.addons.length - 1];
+
+      it("shows sixel and iTerm2 images by default, within bounded memory, with GPU acceleration on or off", () => {
+        for (const gpuAcceleration of [true, false]) {
+          const before = images.addons.length;
+          render(view({ gpuAcceleration }));
+          expect(images.addons.length).toBe(before + 1);
+          expect(term().addons).toContain(lastImage());
+          expect(lastImage().options).toEqual({ sixelSupport: true, iipSupport: true, storageLimit: 64, pixelLimit: 16777216 });
+          cleanup();
+        }
+      });
+
+      it("loads no image addon when the setting is off, and switches live both ways", () => {
+        const before = images.addons.length;
+        const { rerender } = render(view({ inlineImages: false }));
+        expect(images.addons.length).toBe(before);
+        rerender(view({ inlineImages: true }));
+        expect(images.addons.length).toBe(before + 1);
+        const addon = lastImage();
+        rerender(view({ inlineImages: false }));
+        expect(addon.disposed).toBe(true);
+      });
+
+      it("keeps the other addons and the WebGL renderer whether images are shown or not", () => {
+        for (const inlineImages of [true, false]) {
+          const before = webgl.addons.length;
+          render(view({ inlineImages, gpuAcceleration: true }));
+          expect(webgl.addons.length).toBe(before + 1);
+          // Unicode 11, fit, web links, search and serialize, then WebGL (and the images when on).
+          expect(term().addons.length).toBe(inlineImages ? 7 : 6);
+          expect(term().unicode.activeVersion).toBe("11");
+          cleanup();
+        }
       });
     });
 
