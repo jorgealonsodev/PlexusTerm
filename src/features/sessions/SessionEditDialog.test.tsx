@@ -226,3 +226,48 @@ describe("SessionEditDialog local terminal (local shells S4)", () => {
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }));
   });
 });
+
+describe("SessionEditDialog SSH options", () => {
+  function renderSaving(session: SavedSession) {
+    const onSave = vi.fn();
+    render(<SessionEditDialog session={session} isNew={false} folders={[]} onSave={onSave} onCancel={() => {}} />);
+    return onSave;
+  }
+
+  it("saves agent forwarding and the tmux session ticked in the dialog", () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderSaving(web);
+    expect(screen.queryByLabelText("tmux session name")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Forward SSH agent"));
+    fireEvent.click(screen.getByLabelText("Keep the shell in tmux"));
+    expect(screen.getByLabelText<HTMLInputElement>("tmux session name").value).toBe("plexus");
+    fireEvent.change(screen.getByLabelText("tmux session name"), { target: { value: "work" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ forwardAgent: true, tmuxSession: "work" }));
+  });
+
+  it("shows the options of a saved session and saves them off when unticked", () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderSaving({ ...web, forwardAgent: true, tmuxSession: "work" });
+    expect(screen.getByLabelText<HTMLInputElement>("Forward SSH agent").checked).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>("tmux session name").value).toBe("work");
+    fireEvent.click(screen.getByLabelText("Forward SSH agent"));
+    fireEvent.click(screen.getByLabelText("Keep the shell in tmux"));
+    fireEvent.click(screen.getByText("Save"));
+    const saved = onSave.mock.calls[0][0];
+    expect(saved).not.toHaveProperty("forwardAgent");
+    expect(saved).not.toHaveProperty("tmuxSession");
+  });
+
+  it("refuses an invalid tmux session name with a field error", () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderSaving(web);
+    fireEvent.click(screen.getByLabelText("Keep the shell in tmux"));
+    fireEvent.change(screen.getByLabelText("tmux session name"), { target: { value: "my work" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "The tmux session name may only use letters, digits, dots, underscores and dashes (64 at most)",
+    );
+  });
+});

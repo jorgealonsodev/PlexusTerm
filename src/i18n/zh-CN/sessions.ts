@@ -65,6 +65,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "用户名为必填项",
     portRange: "端口必须是 1 到 65535 之间的数字",
     keyPathRequired: "私钥路径为必填项",
+    tmuxSessionInvalid: "tmux 会话名称只能包含字母、数字、点、下划线和连字符（最多 64 个）",
   },
   jumps: {
     legend: "跳板机",
@@ -129,6 +130,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "私钥",
     agent: "SSH 代理",
     passphrase: "密码短语（可选）",
+    forwardAgent: "转发 SSH 代理",
+    forwardAgentHelp: "让此服务器使用你本地 SSH 代理中的密钥，例如用于 git 或跳转到另一台机器，而无需把密钥复制过去。仅对可信的服务器开启：连接期间，其管理员也能使用你的密钥。跳板机永远不会获得转发。",
+    tmux: "在 tmux 中保持 shell",
+    tmuxHelp: "在服务器上的 tmux 会话（tmux new -A -s <名称>）中启动 shell，重新连接时会回到原来的位置，程序仍在运行。服务器上没有 tmux 时会打开普通 shell。",
+    tmuxSession: "tmux 会话名称",
   },
   hostKey: {
     unknownHost: "未知主机",

@@ -2,7 +2,7 @@ import { t } from "../../i18n/i18n";
 import { emptyMoshForm, type MoshForm } from "../mosh/mosh";
 import { emptyTelnetForm, parseTelnetForm, type TelnetForm } from "../telnet/telnetForm";
 import { defaultSerialForm, formFromSettings, parseSerialForm, type SerialForm } from "../serial/serialSettings";
-import { parseQuickConnect, type QuickConnectForm } from "../ssh/quickConnect";
+import { DEFAULT_TMUX_SESSION, parseQuickConnect, type QuickConnectForm } from "../ssh/quickConnect";
 import { joinArgs, shellNameOf, splitArgs } from "../terminal/localShell";
 import {
   isLocalSession,
@@ -110,7 +110,7 @@ export function parseSessionForm(
   if (jumpIds.length > MAX_JUMPS) return { ok: false, error: t("sessions.form.tooManyJumps", { max: MAX_JUMPS }) };
   if (new Set(jumpIds).size !== jumpIds.length) return { ok: false, error: t("sessions.form.jumpTwice") };
   if (jumpIds.includes(id)) return { ok: false, error: t("sessions.form.ownJump") };
-  const { host, port, username, auth } = parsed.target;
+  const { host, port, username, auth, forwardAgent, tmuxSession } = parsed.target;
 
   const saved: SavedAuth =
     auth.method === "key"
@@ -127,6 +127,8 @@ export function parseSessionForm(
     username,
     auth: saved,
     ...(jumpIds.length ? { jumpIds: [...jumpIds] } : {}),
+    ...(forwardAgent ? { forwardAgent: true } : {}),
+    ...(tmuxSession ? { tmuxSession } : {}),
   };
   if (library && jumpIds.length) {
     // Check the chain as it will be once saved, so loops through other sessions are caught now.
@@ -145,6 +147,9 @@ const emptySsh: QuickConnectForm = {
   password: "",
   keyPath: "~/.ssh/id_ed25519",
   passphrase: "",
+  forwardAgent: false,
+  tmux: false,
+  tmuxSession: DEFAULT_TMUX_SESSION,
 };
 
 /**
@@ -190,6 +195,9 @@ function formWithName(session: LibrarySession): SessionForm {
     password: "",
     keyPath: session.auth.method === "key" ? session.auth.path : "~/.ssh/id_ed25519",
     passphrase: "",
+    forwardAgent: session.forwardAgent === true,
+    tmux: session.tmuxSession !== undefined,
+    tmuxSession: session.tmuxSession ?? DEFAULT_TMUX_SESSION,
     serial: defaultSerialForm,
     jumpIds: session.jumpIds ?? [],
   };

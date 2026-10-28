@@ -221,4 +221,13 @@ describe("session sync", () => {
     const bad = JSON.stringify({ format: "plexusterm-sessions", version: 1, sessions: { x: { at: 1, session: { id: "x" } } }, folders: {} });
     expect(parseSyncDoc(bad)).toBeNull();
   });
+
+  it("brings agent forwarding and the tmux session of a session to the other computer", () => {
+    const file = { text: null as string | null };
+    const a = new Computer(lib([{ ...ssh("1", "web"), forwardAgent: true, tmuxSession: "work" } as LibrarySession]));
+    const b = new Computer();
+    a.sync(file, 1000);
+    b.sync(file, 2000);
+    expect(b.library.sessions[0]).toMatchObject({ forwardAgent: true, tmuxSession: "work" });
+  });
 });

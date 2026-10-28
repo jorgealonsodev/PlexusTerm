@@ -65,6 +65,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "사용자 이름을 입력해야 합니다",
     portRange: "포트는 1에서 65535 사이의 숫자여야 합니다",
     keyPathRequired: "개인 키 경로를 입력해야 합니다",
+    tmuxSessionInvalid: "tmux 세션 이름에는 영문자, 숫자, 마침표, 밑줄, 하이픈만 쓸 수 있습니다(최대 64자)",
   },
   jumps: {
     legend: "점프 호스트",
@@ -129,6 +130,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "개인 키",
     agent: "SSH 에이전트",
     passphrase: "암호 구문(선택 사항)",
+    forwardAgent: "SSH 에이전트 전달",
+    forwardAgentHelp: "이 서버가 로컬 SSH 에이전트의 키를 복사하지 않고 사용할 수 있게 합니다. 예를 들어 git이나 다른 컴퓨터로 접속할 때 씁니다. 신뢰하는 서버에서만 켜세요. 연결되어 있는 동안 그 서버의 관리자도 내 키를 사용할 수 있습니다. 점프 호스트에는 전달되지 않습니다.",
+    tmux: "셸을 tmux에서 유지",
+    tmuxHelp: "서버의 tmux 세션(tmux new -A -s <이름>) 안에서 셸을 시작하므로, 다시 연결하면 실행 중인 프로그램과 함께 하던 곳으로 돌아갑니다. 서버에 tmux가 없으면 일반 셸이 열립니다.",
+    tmuxSession: "tmux 세션 이름",
   },
   hostKey: {
     unknownHost: "알 수 없는 호스트",

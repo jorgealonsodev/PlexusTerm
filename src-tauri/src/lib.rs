@@ -29,7 +29,7 @@ use pty::{PtyError, PtyManager, SpawnRequest};
 use secrets::{KeyringStore, SecretError, SharedSecrets};
 use serial::{SerialError, SerialManager, SerialRequest};
 use sftp::SftpError;
-use ssh::{ConnectRequest, PasswordStorage, SshError, SshManager, SshTarget};
+use ssh::{ConnectRequest, PasswordStorage, ShellOptions, SshError, SshManager, SshTarget};
 use storage::StorageError;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -420,10 +420,12 @@ async fn mosh_connect(
         .await
 }
 
-/// `storage` saves the typed password in the keyring (or forgets the saved one) once logged in.
+/// `storage` saves the typed password in the keyring (or forgets the saved one) once logged in;
+/// `options` (absent: none) forwards the agent and keeps the shell in tmux (see `ShellOptions`).
 #[tauri::command]
 async fn ssh_connect(
     request: ConnectRequest,
+    options: Option<ShellOptions>,
     storage: Option<PasswordStorage>,
     on_event: Channel<TerminalEvent>,
     ssh: State<'_, SshManager>,
@@ -433,7 +435,7 @@ async fn ssh_connect(
     let sink = ChannelSink::new(on_event);
     let on_lost = sink.loss_reporter();
     let result = ssh
-        .connect_reporting_loss(request, storage, sink, on_lost)
+        .connect_reporting_loss(request, options.unwrap_or_default(), storage, sink, on_lost)
         .await;
     match &result {
         Ok(id) => diaglog::info(&format!("ssh session {id} opened to {target}")),

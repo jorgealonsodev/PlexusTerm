@@ -193,4 +193,16 @@ describe("tabs.json", () => {
     ).toEqual({ type: "telnet", host: "h", port: 23 });
     expect(sanitizeTarget({ type: "ssh", host: "h", port: 22, username: "u", auth: { method: "secret" } })).toBeNull();
   });
+
+  it("keeps agent forwarding and the tmux session of an SSH target, and drops an invalid name", () => {
+    const ssh = { type: "ssh", host: "h", port: 22, username: "u", auth: { method: "agent" } };
+    expect(sanitizeTarget({ ...ssh, forwardAgent: true, tmuxSession: "work" })).toEqual({
+      ...ssh,
+      forwardAgent: true,
+      tmuxSession: "work",
+    });
+    expect(sanitizeTarget({ ...ssh, forwardAgent: "yes", tmuxSession: "a b" })).toEqual(ssh);
+    const mosh = sanitizeTarget({ type: "mosh", ssh: { ...ssh, forwardAgent: true, tmuxSession: "work" } });
+    expect(mosh).toEqual({ type: "mosh", ssh: { ...ssh, forwardAgent: true, tmuxSession: "work" } });
+  });
 });

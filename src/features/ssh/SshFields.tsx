@@ -1,17 +1,21 @@
-import type { QuickConnectForm } from "./quickConnect";
+import { DEFAULT_TMUX_SESSION, type QuickConnectForm } from "./quickConnect";
+import { HelpTip } from "../sidebar/HelpTip";
 import { useT } from "../../i18n/i18n";
 
 type Setter = (field: keyof QuickConnectForm) => (e: { target: { value: string } }) => void;
+type Flag = "forwardAgent" | "tmux";
+type CheckSetter = (field: Flag) => (e: { target: { checked: boolean } }) => void;
 
 interface SshFieldsProps {
   form: QuickConnectForm;
   set: Setter;
+  check: CheckSetter;
   /** Show password/passphrase inputs (quick connect); saved sessions never store them. */
   withSecrets: boolean;
   autoFocusHost?: boolean;
 }
 
-export function SshFields({ form, set, withSecrets, autoFocusHost }: SshFieldsProps) {
+export function SshFields({ form, set, check, withSecrets, autoFocusHost }: SshFieldsProps) {
   const t = useT();
   return (
     <>
@@ -65,8 +69,32 @@ export function SshFields({ form, set, withSecrets, autoFocusHost }: SshFieldsPr
           <input type="password" value={form.passphrase} onChange={set("passphrase")} />
         </label>
       )}
+      <label className="check">
+        <input type="checkbox" checked={form.forwardAgent} onChange={check("forwardAgent")} />
+        <span className="setting-title">
+          {t("sessions.ssh.forwardAgent")} <HelpTip text={t("sessions.ssh.forwardAgentHelp")} />
+        </span>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={form.tmux} onChange={check("tmux")} />
+        <span className="setting-title">
+          {t("sessions.ssh.tmux")} <HelpTip text={t("sessions.ssh.tmuxHelp")} />
+        </span>
+      </label>
+      {form.tmux && (
+        <label className="field">
+          {t("sessions.ssh.tmuxSession")}
+          <input value={form.tmuxSession} onChange={set("tmuxSession")} placeholder={DEFAULT_TMUX_SESSION} />
+        </label>
+      )}
     </>
   );
+}
+
+/** Sets a checkbox field of the form. */
+export function checkSetter<T>(setForm: (update: (f: T) => T) => void) {
+  return (field: keyof T) => (e: { target: { checked: boolean } }) =>
+    setForm((f) => ({ ...f, [field]: e.target.checked }));
 }
 
 export function fieldSetter<T>(setForm: (update: (f: T) => T) => void) {

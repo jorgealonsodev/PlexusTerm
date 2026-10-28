@@ -18,6 +18,12 @@
 //! Exec requests fake a remote shell running one command (see [`MOSH_CONNECT_REPLY`]):
 //! `mosh-server ...` prints a `MOSH CONNECT` line, `sleep-forever` never answers, `true`
 //! exits quietly, and anything else fails like a missing program (exit status 127).
+//! An exec of a [`TMUX_EXEC_PREFIX`] command is an interactive shell like a shell request
+//! (it prints `tmux` instead of `welcome`).
+//!
+//! Agent forwarding requests are counted and accepted. `agent?` opens an agent channel to the
+//! client, asks it for its identities and replies `agent-keys=<n>`, or `agent=refused` when the
+//! client refused the channel (or it did not answer like an agent).
 
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
@@ -36,6 +42,9 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use tokio::net::{TcpListener, TcpStream};
 
 pub const PASSWORD: &str = "secret";
+
+/// How the exec command of a tab kept in tmux starts (see `super::tmux_command`).
+pub const TMUX_EXEC_PREFIX: &str = "command -v tmux";
 
 /// What the fake `mosh-server` prints, like the real one (port 60001, a 22-character key).
 pub const MOSH_CONNECT_REPLY: &str = "\r\nMOSH CONNECT 60001 AAAAAAAAAAAAAAAAAAAAAA\r\n\r\nmosh-server (mosh 1.4.0) [build mosh 1.4.0]\r\n";
@@ -57,9 +66,15 @@ pub struct TestServer {
     /// Mosh tests).
     #[cfg_attr(not(unix), allow(dead_code))]
     exec_commands: Arc<Mutex<Vec<String>>>,
+    /// Agent forwarding requests received, over every connection.
+    agent_requests: Arc<AtomicUsize>,
 }
 
 impl TestServer {
+    pub fn agent_requests(&self) -> usize {
+        self.agent_requests.load(Ordering::SeqCst)
+    }
+
     pub fn password_attempts(&self) -> usize {
         self.password_attempts.load(Ordering::SeqCst)
     }
@@ -103,6 +118,7 @@ struct Handler {
     publickey_attempts: Arc<AtomicUsize>,
     open_connections: Arc<AtomicUsize>,
     exec_commands: Arc<Mutex<Vec<String>>>,
+    agent_requests: Arc<AtomicUsize>,
     _connection: Option<Arc<ConnectionGuard>>,
 }
 
@@ -153,12 +169,14 @@ async fn start_inner(
         publickey_attempts: Arc::default(),
         open_connections: Arc::default(),
         exec_commands: Arc::default(),
+        agent_requests: Arc::default(),
         _connection: None,
     };
     let password_attempts = server.password_attempts.clone();
     let publickey_attempts = server.publickey_attempts.clone();
     let open_connections = server.open_connections.clone();
     let exec_commands = server.exec_commands.clone();
+    let agent_requests = server.agent_requests.clone();
     tokio::spawn(async move {
         let _ = server.run_on_socket(config, &socket).await;
     });
@@ -169,6 +187,7 @@ async fn start_inner(
         publickey_attempts,
         open_connections,
         exec_commands,
+        agent_requests,
     }
 }
 
@@ -341,6 +360,15 @@ impl russh::server::Handler for Handler {
         session.data(channel, b"welcome\r\n".to_vec())
     }
 
+    async fn agent_request(
+        &mut self,
+        _channel: ChannelId,
+        _session: &mut Session,
+    ) -> Result<bool, Self::Error> {
+        self.agent_requests.fetch_add(1, Ordering::SeqCst);
+        Ok(true)
+    }
+
     async fn exec_request(
         &mut self,
         channel: ChannelId,
@@ -349,6 +377,12 @@ impl russh::server::Handler for Handler {
     ) -> Result<(), Self::Error> {
         let command = String::from_utf8_lossy(data).into_owned();
         self.exec_commands.lock().unwrap().push(command.clone());
+        if command.starts_with(TMUX_EXEC_PREFIX) {
+            // An interactive shell in tmux: echoed like a shell channel.
+            self.channels.lock().unwrap().remove(&channel);
+            session.channel_success(channel)?;
+            return session.data(channel, b"tmux\r\n".to_vec());
+        }
         // Exec channels are not echoed.
         self.stream_channels.lock().unwrap().insert(channel);
         self.channels.lock().unwrap().remove(&channel);
@@ -409,6 +443,26 @@ impl russh::server::Handler for Handler {
             // Stops this connection's session loop for good: no more input is read and no
             // window is opened again, like a remote that froze.
             b"stall" => std::future::pending().await,
+            b"agent?" => {
+                // The channel opens through the session loop, which this handler holds.
+                let handle = session.handle();
+                tokio::spawn(async move {
+                    let reply = match handle.channel_open_agent().await {
+                        Ok(agent) => {
+                            let mut agent = russh::keys::agent::client::AgentClient::connect(
+                                agent.into_stream(),
+                            );
+                            match agent.request_identities().await {
+                                Ok(keys) => format!("agent-keys={}\r\n", keys.len()),
+                                Err(_) => "agent=refused\r\n".to_string(),
+                            }
+                        }
+                        Err(_) => "agent=refused\r\n".to_string(),
+                    };
+                    let _ = handle.data(channel, reply.into_bytes()).await;
+                });
+                Ok(())
+            }
             b"size?" => {
                 let (cols, rows) = *self.size.lock().unwrap();
                 session.data(channel, format!("size={cols}x{rows}\r\n").into_bytes())

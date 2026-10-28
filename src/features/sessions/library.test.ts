@@ -361,3 +361,31 @@ describe("saved local sessions (local shells S4)", () => {
     expect(isSshSession(local())).toBe(false);
   });
 });
+
+describe("SSH options of saved sessions", () => {
+  const withOptions = session({ forwardAgent: true, tmuxSession: "work" });
+
+  it("keep agent forwarding and the tmux session through save, parse and toTarget", () => {
+    const saved = libraryReducer(emptyLibrary, { type: "saveSession", session: withOptions });
+    const parsed = parseLibrary(serializeLibrary(saved));
+    expect(parsed.ok && parsed.library.sessions[0]).toEqual({ kind: "ssh", ...withOptions });
+    expect(toTarget(withOptions)).toMatchObject({ forwardAgent: true, tmuxSession: "work" });
+  });
+
+  it("drop a false flag and an invalid tmux session name", () => {
+    const saved = libraryReducer(emptyLibrary, {
+      type: "saveSession",
+      session: { ...session(), forwardAgent: false as unknown as true, tmuxSession: "a b" },
+    });
+    expect(saved.sessions[0]).toEqual({ kind: "ssh", ...session() });
+    expect(toTarget(session())).not.toHaveProperty("forwardAgent");
+    expect(toTarget(session())).not.toHaveProperty("tmuxSession");
+  });
+
+  it("refuse a file whose options have the wrong type", () => {
+    const file = (extra: object) =>
+      JSON.stringify({ version: 1, folders: [], sessions: [{ ...session(), ...extra }] });
+    expect(parseLibrary(file({ forwardAgent: "yes" })).ok).toBe(false);
+    expect(parseLibrary(file({ tmuxSession: 3 })).ok).toBe(false);
+  });
+});

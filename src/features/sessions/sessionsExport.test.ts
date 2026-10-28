@@ -4,7 +4,7 @@ import { exportLibrary, planLibraryImport } from "./sessionsExport";
 
 const sessions: LibrarySession[] = [
   { kind: "ssh", id: "b", name: "bastion", folder: "Prod", host: "1.2.3.4", port: 22, username: "admin", auth: { method: "key", path: "~/.ssh/id_b" } },
-  { kind: "ssh", id: "a", name: "app", folder: "Prod", host: "10.0.0.2", port: 2222, username: "root", auth: { method: "password" }, jumpIds: ["b"] },
+  { kind: "ssh", id: "a", name: "app", folder: "Prod", host: "10.0.0.2", port: 2222, username: "root", auth: { method: "password" }, jumpIds: ["b"], forwardAgent: true, tmuxSession: "app" },
   { kind: "mosh", id: "m", name: "app (mosh)", folder: "Prod", sshSessionId: "a" },
   { kind: "telnet", id: "t", name: "switch", folder: "", host: "10.0.0.9", port: 23 },
   { kind: "serial", id: "s", name: "router", folder: "Lab", path: "/dev/ttyUSB0", baud: 9600, dataBits: 8, parity: "none", stopBits: 1, flow: "none" },

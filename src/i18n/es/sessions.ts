@@ -66,6 +66,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "El usuario es obligatorio",
     portRange: "El puerto debe ser un número entre 1 y 65535",
     keyPathRequired: "La ruta de la clave privada es obligatoria",
+    tmuxSessionInvalid: "El nombre de la sesión de tmux solo puede tener letras, dígitos, puntos, guiones bajos y guiones (64 como máximo)",
   },
   jumps: {
     legend: "Hosts de salto",
@@ -144,6 +145,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "Clave privada",
     agent: "Agente SSH",
     passphrase: "Frase de contraseña (opcional)",
+    forwardAgent: "Reenviar el agente SSH",
+    forwardAgentHelp: "Permite que este servidor use las claves de tu agente SSH local, por ejemplo para git o para saltar a otra máquina, sin copiarlas allí. Actívalo solo en servidores de confianza: mientras estés conectado, sus administradores también pueden usar tus claves. Los hosts de salto nunca lo reciben.",
+    tmux: "Mantener la shell en tmux",
+    tmuxHelp: "Inicia la shell dentro de una sesión de tmux en el servidor (tmux new -A -s <nombre>), así al reconectar vuelves a donde estabas, con tus programas en marcha. Si el servidor no tiene tmux, se abre la shell normal.",
+    tmuxSession: "Nombre de la sesión de tmux",
   },
   hostKey: {
     unknownHost: "Host desconocido",

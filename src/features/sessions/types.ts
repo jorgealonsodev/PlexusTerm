@@ -23,6 +23,10 @@ export interface SshTarget {
   storage?: PasswordStorage;
   /** Jump hosts to go through, outermost first (S14). */
   jumps?: JumpTarget[];
+  /** Lets the server use the local SSH agent (`ssh -A`); never given to the jump hosts. */
+  forwardAgent?: boolean;
+  /** The shell runs in this tmux session, which every reconnection resumes; absent: plain shell. */
+  tmuxSession?: string;
 }
 
 /**

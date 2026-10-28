@@ -9,7 +9,17 @@ export interface QuickConnectForm {
   password: string;
   keyPath: string;
   passphrase: string;
+  forwardAgent: boolean;
+  /** Keep the shell in tmux session `tmuxSession` (blank: {@link DEFAULT_TMUX_SESSION}). */
+  tmux: boolean;
+  tmuxSession: string;
 }
+
+/** The tmux session a tab is kept in when its name is left blank. */
+export const DEFAULT_TMUX_SESSION = "plexus";
+
+/** Letters, digits, `.`, `_` and `-`, 64 at most: the names the backend accepts (`valid_tmux_session`). */
+export const isTmuxSessionName = (name: string) => /^[A-Za-z0-9._-]{1,64}$/.test(name);
 
 export type QuickConnectResult = { ok: true; target: SshTarget } | { ok: false; error: string };
 
@@ -64,5 +74,19 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
       break;
   }
 
-  return { ok: true, target: { type: "ssh", host, port, username, auth } };
+  const tmuxSession = form.tmuxSession.trim() || DEFAULT_TMUX_SESSION;
+  if (form.tmux && !isTmuxSessionName(tmuxSession)) return fail(t("sessions.form.tmuxSessionInvalid"));
+
+  return {
+    ok: true,
+    target: {
+      type: "ssh",
+      host,
+      port,
+      username,
+      auth,
+      ...(form.forwardAgent ? { forwardAgent: true } : {}),
+      ...(form.tmux ? { tmuxSession } : {}),
+    },
+  };
 }

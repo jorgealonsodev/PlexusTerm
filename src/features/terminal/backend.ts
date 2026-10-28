@@ -99,6 +99,10 @@ function sshBackend(target: SshTarget): TerminalBackend {
           trustedFingerprint: trustedFingerprint ?? null,
           jumps: jumps ?? target.jumps ?? [],
         },
+        // Left out when neither is asked for, so the backend opens the plain shell as before.
+        ...(target.forwardAgent || target.tmuxSession
+          ? { options: { forwardAgent: target.forwardAgent === true, tmuxSession: target.tmuxSession ?? null } }
+          : {}),
         storage: storage ?? target.storage ?? null,
         onEvent: channelFor(onEvent),
       }),
