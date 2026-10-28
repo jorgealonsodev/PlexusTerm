@@ -1398,6 +1398,207 @@ describe("TerminalView", () => {
     });
   });
 
+  describe("reconnecting a dropped SSH session (S1)", () => {
+    type Emit = (msg: import("./backend").TerminalEvent) => void;
+    const agent = { type: "ssh" as const, host: "10.0.0.1", port: 22, username: "u", auth: { method: "agent" as const } };
+    const saved = { ...agent, auth: { method: "storedPassword" as const, sessionId: "s1" } };
+    /** Every backend start, oldest first, answered by the test. */
+    let starts: { emit: Emit; resolve: (id: number) => void; reject: (err: unknown) => void }[] = [];
+    const unreachable = { kind: "connection", message: "network is unreachable" };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      starts = [];
+      backend.start.mockImplementation(
+        (_options, onEvent) =>
+          new Promise<number>((resolve, reject) => starts.push({ emit: onEvent as Emit, resolve, reject })),
+      );
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      backend.start.mockReset();
+      backend.start.mockImplementation(() => new Promise<number>(() => {}));
+    });
+
+    const advance = (ms: number) => act(async () => void vi.advanceTimersByTime(ms));
+    const text = () => lastTerm().written.join("");
+
+    /** Renders the pane and lets its first start begin (it is answered by the caller). */
+    async function mount(target: import("../sessions/types").SessionTarget = agent, autoReconnect = true) {
+      const onExit = vi.fn();
+      const onSession = vi.fn();
+      render(
+        <TerminalView
+          target={target}
+          active
+          onTitle={() => {}}
+          onExit={onExit}
+          onSession={onSession}
+          settings={{ ...DEFAULT_SETTINGS, sshAutoReconnect: autoReconnect }}
+        />,
+      );
+      await advance(FONT_WAIT_MS + 10);
+      return { onExit, onSession };
+    }
+    async function connected(target?: import("../sessions/types").SessionTarget, autoReconnect = true) {
+      const view = await mount(target, autoReconnect);
+      await act(async () => starts[0].resolve(7));
+      return view;
+    }
+    const lose = (i = starts.length - 1) => act(async () => starts[i].emit({ event: "lost" }));
+    const reject = (err: unknown, i = starts.length - 1) => act(async () => starts[i].reject(err));
+
+    it("keeps the pane after a drop, says when it retries, and reconnects with the same login", async () => {
+      const { onExit, onSession } = await connected();
+      await lose();
+      expect(onExit).not.toHaveBeenCalled();
+      expect(onSession).toHaveBeenLastCalledWith(null);
+      expect(backend.close).toHaveBeenCalledWith(7);
+      expect(text()).toContain("[Connection lost]");
+      expect(text()).toContain("Reconnecting… attempt 1 of 10 in 1 s (Ctrl+C cancels)");
+
+      await advance(999);
+      expect(starts).toHaveLength(1);
+      await advance(1);
+      expect(starts).toHaveLength(2);
+      expect(backend.start.mock.calls[1][0]).toEqual(backend.start.mock.calls[0][0]);
+      expect(text()).toContain("Reconnecting to u@10.0.0.1 (attempt 1 of 10)...");
+
+      await act(async () => starts[1].resolve(8));
+      expect(onSession).toHaveBeenLastCalledWith(8);
+      act(() => lastTerm().type("ls"));
+      expect(backend.write).toHaveBeenCalledWith(8, "ls");
+      // Connected again: the waits are over.
+      const before = starts.length;
+      await advance(120_000);
+      expect(starts).toHaveLength(before);
+    });
+
+    it("reconnects with the password typed in the pane, never prompting again", async () => {
+      await mount(saved);
+      await reject({ kind: "authFailed" });
+      fireEvent.change(screen.getByLabelText("Password"), { target: { value: "typed" } });
+      fireEvent.click(screen.getByText("Connect"));
+      await act(async () => starts[1].resolve(7));
+      await lose();
+      await advance(1000);
+      expect(starts).toHaveLength(3);
+      expect(backend.start.mock.calls[2][0]).toMatchObject({ auth: { method: "password", password: "typed" } });
+      expect(screen.queryByLabelText("Password")).toBeNull();
+    });
+
+    it("backs off 1, 2, 5, 10 and 30 s between failed attempts, gives up after 10, and Enter tries again", async () => {
+      await connected();
+      await lose();
+      for (const [i, seconds] of [1, 2, 5, 10, 30, 30, 30, 30, 30, 30].entries()) {
+        expect(text()).toContain(`attempt ${i + 1} of 10 in ${seconds} s`);
+        await advance(seconds * 1000 - 1);
+        expect(starts).toHaveLength(i + 1);
+        await advance(1);
+        expect(starts).toHaveLength(i + 2);
+        await reject(unreachable);
+      }
+      expect(text()).toContain("[Could not reconnect after 10 attempts. Press Enter to try again.]");
+      await advance(600_000);
+      expect(starts).toHaveLength(11);
+      act(() => lastTerm().type("\r"));
+      expect(starts).toHaveLength(12);
+    });
+
+    it("tries at once when the network comes back or the window regains focus", async () => {
+      await connected();
+      await lose();
+      await advance(1000);
+      await reject(unreachable);
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(starts).toHaveLength(3);
+      await reject(unreachable);
+      act(() => void window.dispatchEvent(new Event("focus")));
+      expect(starts).toHaveLength(4);
+      await reject(unreachable);
+      // The waits cut short do not fire later on top of the next one (10 s now).
+      await advance(9999);
+      expect(starts).toHaveLength(4);
+      await advance(1);
+      expect(starts).toHaveLength(5);
+    });
+
+    it("Ctrl+C stops reconnecting, and Enter then starts again", async () => {
+      await connected();
+      await lose();
+      act(() => lastTerm().type("\x03"));
+      expect(text()).toContain("[Reconnection cancelled. Press Enter to reconnect.]");
+      await advance(600_000);
+      expect(starts).toHaveLength(1);
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(starts).toHaveLength(1);
+      act(() => lastTerm().type("\r"));
+      expect(starts).toHaveLength(2);
+    });
+
+    it("Ctrl+C during an attempt abandons it, closing a connection that opens later", async () => {
+      const { onSession } = await connected();
+      await lose();
+      await advance(1000);
+      act(() => lastTerm().type("\x03"));
+      expect(text()).toContain("[Reconnection cancelled. Press Enter to reconnect.]");
+      await act(async () => starts[1].resolve(9));
+      expect(backend.close).toHaveBeenCalledWith(9);
+      expect(onSession).not.toHaveBeenCalledWith(9);
+      await advance(600_000);
+      expect(starts).toHaveLength(2);
+    });
+
+    it("a rejected login stops reconnecting and asks for the password as usual", async () => {
+      await connected(saved);
+      await lose();
+      await advance(1000);
+      await reject({ kind: "authFailed" });
+      expect(screen.getByLabelText("Password")).toBeTruthy();
+      await advance(600_000);
+      expect(starts).toHaveLength(2);
+    });
+
+    it("a clean end of the shell still closes the pane", async () => {
+      const { onExit } = await connected();
+      await act(async () => starts[0].emit({ event: "exit", data: null }));
+      expect(onExit).toHaveBeenCalledWith(null);
+      await advance(600_000);
+      expect(starts).toHaveLength(1);
+    });
+
+    it("with the setting off, a drop closes the pane as before", async () => {
+      const { onExit } = await connected(agent, false);
+      await lose();
+      expect(onExit).toHaveBeenCalledWith(null);
+      expect(text()).not.toContain("Reconnecting");
+      await advance(600_000);
+      expect(starts).toHaveLength(1);
+    });
+
+    it("leaves how Telnet and serial sessions end as they were", async () => {
+      const telnet = await connected({ type: "telnet", host: "switch.lan", port: 23 });
+      await act(async () => starts[0].emit({ event: "exit", data: null }));
+      expect(telnet.onExit).toHaveBeenCalledWith(null);
+      cleanup();
+      starts = [];
+      const serial = await connected({
+        type: "serial",
+        path: "/dev/ttyUSB9",
+        baud: 115200,
+        dataBits: 8,
+        parity: "none",
+        stopBits: 1,
+        flow: "none",
+      });
+      await act(async () => starts[0].emit({ event: "exit", data: null }));
+      expect(serial.onExit).not.toHaveBeenCalled();
+      expect(text()).toContain("[Session ended. Close this tab or open the port again.]");
+      await advance(600_000);
+      expect(starts).toHaveLength(1);
+    });
+  });
+
   describe("while a host does not answer", () => {
     const target = { type: "ssh" as const, host: "10.9.9.9", port: 22, username: "u", auth: { method: "agent" as const } };
 

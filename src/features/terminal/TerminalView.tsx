@@ -39,6 +39,7 @@ import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
 import { backendFor, setTerminalFlow, type StartOptions } from "./backend";
 import { createOutputFlow } from "./flowControl";
+import { MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
 import { runningShellOf } from "./localShell";
 import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
@@ -508,6 +509,16 @@ export function TerminalView({
     let ended = false;
     /** While a network session is being opened: shows how long it has waited, and Ctrl+C cancels it. */
     let cancelConnect: (() => void) | null = null;
+    /**
+     * Reconnecting a dropped SSH session (S1): the attempt under way or waited for, 0 when not
+     * reconnecting. `reconnectWait` stops the wait for the next attempt; `reconnectOnEnter` is set
+     * once the attempts stopped (Ctrl+C, used up) and Enter starts them again.
+     */
+    let reconnectAttempt = 0;
+    let reconnectWait: (() => void) | null = null;
+    let reconnectOnEnter = false;
+    /** Bumped by every start: what an abandoned start answers later is dropped. */
+    let startSeq = 0;
     /** The session's share tap, and the number of the last output written while it is shared. */
     let tap: number | null = null;
     let outputSeq = 0;
@@ -568,11 +579,78 @@ export function TerminalView({
       }
     };
 
+    /** The attempts stop until Enter (Ctrl+C); one under way is abandoned. */
+    const stopReconnecting = () => {
+      reconnectWait?.();
+      reconnectAttempt = 0;
+      startSeq++;
+      reconnectOnEnter = true;
+      term.write(`\r\n[${t("terminal.view.reconnectCancelled")}]\r\n`);
+    };
+
+    /**
+     * Waits before reconnection attempt `attempt`, counting the seconds down on the cursor line;
+     * the network coming back or the window regaining focus (a laptop waking up) tries at once.
+     */
+    const waitToReconnect = (attempt: number) => {
+      const delay = reconnectDelay(attempt);
+      if (delay === null) {
+        reconnectAttempt = 0;
+        reconnectOnEnter = true;
+        term.write(`\r\n[${t("terminal.view.reconnectGaveUp", { attempts: MAX_RECONNECT_ATTEMPTS })}]\r\n`);
+        return;
+      }
+      reconnectAttempt = attempt;
+      let seconds = delay;
+      const show = () =>
+        term.write(
+          `\x1b[2K\r\x1b[2m${t("terminal.view.reconnectWait", { attempt, max: MAX_RECONNECT_ATTEMPTS, seconds })}\x1b[0m`,
+        );
+      show();
+      const ticker = setInterval(() => {
+        seconds = Math.max(1, seconds - 1);
+        show();
+      }, 1000);
+      const timer = setTimeout(() => tryNow(), delay * 1000);
+      const stop = () => {
+        clearInterval(ticker);
+        clearTimeout(timer);
+        window.removeEventListener("online", tryNow);
+        window.removeEventListener("focus", tryNow);
+        term.write("\x1b[2K\r");
+        reconnectWait = null;
+        cancelConnect = null;
+      };
+      function tryNow() {
+        stop();
+        start();
+      }
+      window.addEventListener("online", tryNow);
+      window.addEventListener("focus", tryNow);
+      reconnectWait = stop;
+      cancelConnect = stopReconnecting;
+    };
+
+    /** The connection went away under an SSH session: keep the pane and reconnect (S1). */
+    const connectionLost = () => {
+      if (sessionId !== null) void backend.close(sessionId).catch(() => {});
+      sessionId = null;
+      callbacks.current.onSession?.(null);
+      term.write(`\r\n[${t("terminal.view.connectionLost")}]\r\n`);
+      waitToReconnect(1);
+    };
+
     const start = (trustedFingerprint?: string) => {
+      const seq = ++startSeq;
+      const attempt = reconnectAttempt;
       const jumps = jumpsRef.current.map((j) => j.name).join(", ");
       const say = (plain: AppKey, withJumps: AppKey, where: string) =>
         term.write(`${jumps ? t(withJumps, { target: where, jumps }) : t(plain, { target: where })}\r\n`);
-      if (target.type === "ssh") say("terminal.view.connecting", "terminal.view.connectingVia", targetTitle(target));
+      if (target.type === "ssh" && attempt > 0) {
+        term.write(
+          `${t("terminal.view.reconnecting", { target: targetTitle(target), attempt, max: MAX_RECONNECT_ATTEMPTS })}\r\n`,
+        );
+      } else if (target.type === "ssh") say("terminal.view.connecting", "terminal.view.connectingVia", targetTitle(target));
       if (target.type === "mosh") {
         say("terminal.view.startingMosh", "terminal.view.startingMoshVia", targetTitle(target.ssh));
       }
@@ -604,7 +682,9 @@ export function TerminalView({
       if (ticker) {
         cancelConnect = () => {
           stopWaiting();
-          endKeepingPane(t("terminal.view.connectCancelled"));
+          // A reconnection attempt stops the attempts; Enter starts them again.
+          if (attempt > 0) stopReconnecting();
+          else endKeepingPane(t("terminal.view.connectCancelled"));
         };
       }
       const options: StartOptions = {
@@ -617,8 +697,9 @@ export function TerminalView({
       };
       backend
         .start(options, (event) => {
-          // A disposed view (e.g. StrictMode's first mount) must not close the live tab.
-          if (disposed) return;
+          // A disposed view (e.g. StrictMode's first mount) must not close the live tab, nor
+          // can an abandoned reconnection attempt.
+          if (disposed || seq !== startSeq) return;
           // Shared output is output like any other, numbered for the snapshots of the share.
           let msg = event;
           if (msg.event === "sharedOutput") {
@@ -646,29 +727,35 @@ export function TerminalView({
                 }, PROMPT_QUIET_MS)
               : null;
           }
-          else if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
-          else if (target.type === "mosh" && msg.data !== 0) {
-            endKeepingPane(
-              msg.data === null
-                ? t("terminal.view.moshExited")
-                : t("terminal.view.moshExitedCode", { code: msg.data }),
-            );
+          else if (msg.event === "lost" && target.type === "ssh" && settingsRef.current.sshAutoReconnect) {
+            connectionLost();
           } else {
-            callbacks.current.onSession?.(null);
-            callbacks.current.onExit(msg.data);
+            // A lost connection without reconnecting ends like an exit without a status.
+            const code = msg.event === "exit" ? msg.data : null;
+            if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
+            else if (target.type === "mosh" && code !== 0) {
+              endKeepingPane(
+                code === null ? t("terminal.view.moshExited") : t("terminal.view.moshExitedCode", { code }),
+              );
+            } else {
+              callbacks.current.onSession?.(null);
+              callbacks.current.onExit(code);
+            }
           }
         })
         .then((id) => {
-          stopWaiting();
-          if (disposed || ended) void backend.close(id).catch(() => {});
+          if (seq === startSeq) stopWaiting();
+          if (disposed || ended || seq !== startSeq) void backend.close(id).catch(() => {});
           else {
+            reconnectAttempt = 0;
             sessionId = id;
             callbacks.current.onSession?.(id);
           }
         })
         .catch((raw) => {
-          stopWaiting();
           // Cancelled with Ctrl+C: the pane already says so.
+          if (seq !== startSeq) return;
+          stopWaiting();
           if (disposed || ended) return;
           // Serial and Telnet errors are `{ kind, message }`.
           if (target.type === "serial" || target.type === "telnet") {
@@ -676,6 +763,15 @@ export function TerminalView({
             return;
           }
           const err = toSshError(raw);
+          if (attempt > 0) {
+            // The network still down: wait for the next attempt. Anything else (a rejected login,
+            // a host key) needs the user, so the attempts stop and the usual prompt or message shows.
+            reconnectAttempt = 0;
+            if (retriesAfter(err)) {
+              term.write(red(describeSshError(err)));
+              return waitToReconnect(attempt + 1);
+            }
+          }
           if (err.kind === "hop") return jumpFailed(err);
           const auth = typedLogin.current?.auth ?? sshLoginOf(target)?.auth ?? null;
           if (auth && shouldAskAgain(auth, err)) {
@@ -918,6 +1014,13 @@ export function TerminalView({
         if (data.includes("\x03")) cancelConnect();
         return;
       }
+      // The reconnection attempts stopped: Enter starts them again, from the first.
+      if (reconnectOnEnter && data.includes("\r")) {
+        reconnectOnEnter = false;
+        reconnectAttempt = 1;
+        start();
+        return;
+      }
       latencyMark("D", data.length);
       lastTyped = performance.now();
       write(data);
@@ -1153,6 +1256,7 @@ export function TerminalView({
 
     return () => {
       disposed = true;
+      reconnectWait?.();
       outputFlow.dispose();
       host.removeEventListener("paste", onPaste, true);
       host.removeEventListener("mouseup", onMouseUp);

@@ -38,6 +38,7 @@ describe("parseSettings", () => {
       theme: "catppuccin-mocha",
       fontFamily: DEFAULT_FONT_FAMILY,
       remoteMonitor: true,
+      sshAutoReconnect: true,
       textEditor: "",
       inlineSuggestions: true,
       commandHistory: true,
@@ -159,7 +160,7 @@ describe("parseSettings", () => {
 
   it("reads saved values", () => {
     const json =
-      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"errorHighlight":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"textEditor":"code --wait",' +
+      '{"version":1,"fontSize":18,"copyOnSelect":false,"rightClickPastes":false,"confirmMultilinePaste":false,"errorHighlight":false,"theme":"nord","fontFamily":"Fira Code","remoteMonitor":false,"sshAutoReconnect":false,"textEditor":"code --wait",' +
       '"inlineSuggestions":false,"commandHistory":false,"aiSuggestions":true,"aiProvider":"openai-compatible",' +
       '"aiBaseUrl":"http://localhost:11434/v1","aiModel":"llama3.1","aiHistoryContext":0,"assistantShortcut":"Ctrl+Alt+K",' +
       '"sidebarCollapsed":true,"sidebarHideWhenCollapsed":true,"sidebarWidth":320,"localShell":" /usr/bin/fish ","localShellArgs":" --login ","localCwd":" ~/projects ","checkUpdates":false,"aiSaveChats":false,"fileDetails":true,"terminalFollowsBrowser":false,"sidebarAtStartup":"collapsed","language":"ja"}';
@@ -173,6 +174,7 @@ describe("parseSettings", () => {
       theme: "nord",
       fontFamily: "Fira Code",
       remoteMonitor: false,
+      sshAutoReconnect: false,
       textEditor: "code --wait",
       inlineSuggestions: false,
       commandHistory: false,
@@ -266,6 +268,12 @@ describe("parseSettings", () => {
     expect(parseSettings(JSON.stringify({ fontFamily: "x".repeat(201) })).fontFamily).toBe(DEFAULT_FONT_FAMILY);
     expect(parseSettings('{"fontFamily":false}').fontFamily).toBe(DEFAULT_FONT_FAMILY);
     expect(parseSettings('{"fontFamily":"  Hack Nerd Font  "}').fontFamily).toBe("Hack Nerd Font");
+  });
+
+  it("reconnects dropped SSH sessions unless turned off, and uses the default for an invalid value", () => {
+    expect(parseSettings("{}").sshAutoReconnect).toBe(true);
+    expect(parseSettings('{"sshAutoReconnect":false}').sshAutoReconnect).toBe(false);
+    expect(parseSettings('{"sshAutoReconnect":"no"}').sshAutoReconnect).toBe(true);
   });
 
   it("uses the default for an invalid remote monitor value", () => {
@@ -375,6 +383,7 @@ describe("serializeSettings", () => {
       theme: "gruvbox-dark",
       fontFamily: "Iosevka",
       remoteMonitor: false,
+      sshAutoReconnect: false,
       textEditor: "/opt/My Editor/editor",
       inlineSuggestions: false,
       commandHistory: true,

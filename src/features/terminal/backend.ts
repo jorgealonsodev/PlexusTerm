@@ -10,7 +10,9 @@ export type TerminalEvent =
   | { event: "output"; data: string }
   /** Output of a shared session, with its number for the pane's snapshots. */
   | { event: "sharedOutput"; data: { data: string; seq: number } }
-  | { event: "exit"; data: number | null };
+  | { event: "exit"; data: number | null }
+  /** SSH only, instead of `exit`: the connection went away under the session (no exit status). */
+  | { event: "lost" };
 
 export interface StartOptions {
   cols: number;

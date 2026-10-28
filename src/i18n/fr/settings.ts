@@ -187,6 +187,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Barre du moniteur distant (onglets SSH)",
+    autoReconnect: "Reconnecter automatiquement les sessions SSH",
+    autoReconnectHelp:
+      "Quand le réseau tombe ou que l'ordinateur sort de veille, un onglet SSH garde son volet et se reconnecte tout seul avec la même connexion, en attendant un peu plus après chaque tentative échouée (10 au maximum). Ctrl+C l'arrête, puis Entrée réessaie. Un onglet partagé cesse d'être partagé quand sa connexion tombe. Les onglets Telnet, série et Mosh ne sont pas concernés.",
     syncFolder: "Dossier synchronisé",
     syncFolderHelp: "Un dossier que vous synchronisez déjà entre vos ordinateurs (Syncthing, Drive, Dropbox…). PlexusTerm y garde ses sessions enregistrées dans plexusterm-sessions-sync.json et reprend les modifications de vos autres ordinateurs : si une session a changé sur deux d'entre eux, la modification la plus récente l'emporte, et une session supprimée sur l'un est supprimée partout. Les mots de passe n'y vont jamais ; ils restent dans le trousseau de chaque ordinateur. Le fichier est aussi privé que le dossier. Laissez vide pour arrêter la synchronisation.",
     syncFolderPlaceholder: "Vide : les sessions ne sont pas synchronisées",

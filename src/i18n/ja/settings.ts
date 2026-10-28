@@ -187,6 +187,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "リモートモニターバー (SSH タブ)",
+    autoReconnect: "SSH セッションを自動的に再接続",
+    autoReconnectHelp:
+      "ネットワークが切れたりコンピューターがスリープから復帰したりすると、SSH タブはペインを残したまま同じログイン情報で自動的に再接続します。失敗するたびに少しずつ待ち時間を延ばします（最大 10 回）。Ctrl+C で停止し、その後 Enter で再試行します。共有中のタブは接続が切れると共有が終了します。Telnet、シリアル、Mosh のタブには影響しません。",
     syncFolder: "同期フォルダー",
     syncFolderHelp: "すでにコンピューター間で同期しているフォルダー（Syncthing、Drive、Dropbox など）。PlexusTerm は保存したセッションをそこに plexusterm-sessions-sync.json として置き、ほかのコンピューターの変更を取り込みます。同じセッションが 2 台で変更された場合は最後の変更が優先され、1 台で削除したセッションはすべてで削除されます。パスワードは置かれず、各コンピューターのキーリングに残ります。ファイルの機密性はフォルダーと同じです。空にすると同期を止めます。",
     syncFolderPlaceholder: "空: セッションは同期されません",

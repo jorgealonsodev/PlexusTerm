@@ -187,6 +187,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Remote-Monitorleiste (SSH-Tabs)",
+    autoReconnect: "SSH-Sitzungen automatisch neu verbinden",
+    autoReconnectHelp:
+      "Wenn das Netzwerk ausfällt oder der Computer aus dem Ruhezustand erwacht, behält ein SSH-Tab seinen Bereich und verbindet sich mit derselben Anmeldung selbst neu; nach jedem fehlgeschlagenen Versuch wartet er etwas länger (höchstens 10 Versuche). Strg+C hält das an, danach versucht Enter es erneut. Ein geteilter Tab wird nicht mehr geteilt, wenn seine Verbindung abbricht. Telnet-, serielle und Mosh-Tabs sind nicht betroffen.",
     syncFolder: "Synchronisierter Ordner",
     syncFolderHelp: "Ein Ordner, den du bereits zwischen deinen Computern synchronisierst (Syncthing, Drive, Dropbox …). PlexusTerm legt dort seine gespeicherten Sitzungen in plexusterm-sessions-sync.json ab und übernimmt die Änderungen deiner anderen Computer: Wurde eine Sitzung auf zweien geändert, gilt die letzte Änderung, und eine auf einem gelöschte wird überall gelöscht. Passwörter kommen nie dorthin; sie bleiben im Schlüsselbund jedes Computers. Die Datei ist so privat wie der Ordner. Leer lassen, um nicht mehr zu synchronisieren.",
     syncFolderPlaceholder: "Leer: Sitzungen werden nicht synchronisiert",

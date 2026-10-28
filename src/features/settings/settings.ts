@@ -56,6 +56,8 @@ export interface TerminalSettings {
   lineHeight: number;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
+  /** A dropped SSH session keeps its pane and reconnects by itself (Settings → Connections). */
+  sshAutoReconnect: boolean;
   /** The folder the saved sessions are synced through (Syncthing, Drive…); "" when they are not. */
   syncFolder: string;
   /**
@@ -253,6 +255,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   fontWeight: 400,
   lineHeight: 1,
   remoteMonitor: true,
+  sshAutoReconnect: true,
   syncFolder: "",
   textEditor: "",
   fileDetails: false,
@@ -487,6 +490,7 @@ export function parseSettings(json: string | null): TerminalSettings {
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,
     lineHeight: LINE_HEIGHTS.includes(value.lineHeight as number) ? (value.lineHeight as number) : d.lineHeight,
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
+    sshAutoReconnect: bool(value.sshAutoReconnect, d.sshAutoReconnect),
     syncFolder: typeof value.syncFolder === "string" ? value.syncFolder.trim() : d.syncFolder,
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),

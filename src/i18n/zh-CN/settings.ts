@@ -187,6 +187,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "远程监视栏（SSH 标签页）",
+    autoReconnect: "自动重新连接 SSH 会话",
+    autoReconnectHelp:
+      "网络中断或电脑从睡眠中唤醒时，SSH 标签页会保留其窗格，并使用相同的登录信息自动重新连接，每次尝试失败后等待时间稍长一些（最多 10 次）。按 Ctrl+C 停止，之后按 Enter 再次尝试。共享中的标签页在连接中断时会停止共享。不影响 Telnet、串口和 Mosh 标签页。",
     syncFolder: "同步文件夹",
     syncFolderHelp: "你已在多台电脑之间同步的文件夹（Syncthing、Drive、Dropbox 等）。PlexusTerm 会把保存的会话存到其中的 plexusterm-sessions-sync.json，并接收其他电脑的更改：同一会话在两台电脑上被修改时，以最后的修改为准；在一台电脑上删除的会话会在所有电脑上删除。密码绝不会放在那里，而是留在各台电脑的密钥环中。该文件的私密程度与文件夹相同。留空即停止同步。",
     syncFolderPlaceholder: "留空：不同步会话",
