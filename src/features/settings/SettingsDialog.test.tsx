@@ -836,6 +836,13 @@ describe("Shortcuts section", () => {
     expect(onSave).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, shortcuts: { newTerminal: "Ctrl+Alt+N", nextTab: "Ctrl+PageDown" } });
   });
 
+  it("refuses the combination the drop-down window uses, for an action and for the assistant", () => {
+    openShortcuts({ ...DEFAULT_SETTINGS, dropDownShortcut: "Ctrl+Alt+F12" });
+    press(field("Close tab"), { key: "F12", ctrlKey: true, altKey: true });
+    expect(screen.getByText("Ctrl+Alt+F12 is already used by “Drop-down window”.")).toBeTruthy();
+    expect(field("Close tab").value).toBe("");
+  });
+
   it("refuses a combination another action, a fixed key or the assistant uses, naming it", () => {
     openShortcuts();
     const input = field("Close tab");

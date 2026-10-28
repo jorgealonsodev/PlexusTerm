@@ -1567,6 +1567,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               assistantShortcut={assistantShortcut}
               onChange={setShortcuts}
               onAssistantChange={setAssistantShortcut}
+              dropDownShortcut={dropDownShortcut}
             />
           </div>
 

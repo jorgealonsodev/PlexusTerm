@@ -68,4 +68,10 @@ describe("settings sync", () => {
     expect(parseSettingsSyncDoc(JSON.stringify({ format: "plexusterm-sessions", version: 1, settings: {} }))).toBeNull();
     expect(parseSettingsSyncDoc(JSON.stringify({ format: "plexusterm-settings", version: 1, settings: { fontSize: { value: 3 } } }))).toBeNull();
   });
+
+  it("keeps the drop-down window's shortcut and height on each computer", () => {
+    const noted = noteLocalSettings(withSettings({ dropDownShortcut: "Ctrl+Alt+F12", dropDownHeight: 70 }), emptySettingsSyncState, 5);
+    expect(noted.settings.dropDownShortcut).toBeUndefined();
+    expect(noted.settings.dropDownHeight).toBeUndefined();
+  });
 });

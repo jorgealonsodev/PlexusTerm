@@ -25,6 +25,9 @@ export const LOCAL_SETTINGS: ReadonlySet<string> = new Set<keyof TerminalSetting
   "sidebarWidth",
   "tabColumnWidth",
   "devColumnCollapsed",
+  // System-wide shortcuts depend on each computer's desktop (and are unavailable on Wayland).
+  "dropDownShortcut",
+  "dropDownHeight",
 ]);
 
 /** When a setting last changed, and its value as JSON. */

@@ -214,7 +214,7 @@ export const settings: Messages<typeof en> = {
     syncError: "동기화하지 못했습니다: {error}",
     syncForeign: "그 폴더의 plexusterm-sessions-sync.json은 PlexusTerm 세션 파일이 아니어서 건드리지 않았습니다.",
     settingsSyncFolder: "설정 동기화 폴더",
-    settingsSyncFolderHelp: "컴퓨터 간에 이미 동기화하는 폴더(Syncthing, Drive, Dropbox…)로, 세션 폴더와 같아도 되고 달라도 됩니다. PlexusTerm은 설정을 그곳의 plexusterm-settings-sync.json에 저장하고 다른 컴퓨터의 변경 사항을 가져옵니다. 설정마다 마지막 변경이 우선합니다. 처음에는 이 컴퓨터가 이미 있는 설정을 따릅니다. 컴퓨터마다 다른 설정은 그 컴퓨터에 남습니다: 로컬 터미널의 셸과 시작 폴더, 텍스트 편집기, 진단 로그 폴더, GPU 가속, 동기화 폴더, 사이드바와 탭 열의 크기와 접힘. API 키는 각 컴퓨터의 키링에 남습니다. 동기화를 멈추려면 비워 두세요.",
+    settingsSyncFolderHelp: "컴퓨터 간에 이미 동기화하는 폴더(Syncthing, Drive, Dropbox…)로, 세션 폴더와 같아도 되고 달라도 됩니다. PlexusTerm은 설정을 그곳의 plexusterm-settings-sync.json에 저장하고 다른 컴퓨터의 변경 사항을 가져옵니다. 설정마다 마지막 변경이 우선합니다. 처음에는 이 컴퓨터가 이미 있는 설정을 따릅니다. 컴퓨터마다 다른 설정은 그 컴퓨터에 남습니다: 로컬 터미널의 셸과 시작 폴더, 텍스트 편집기, 진단 로그 폴더, GPU 가속, 드롭다운 창의 단축키와 높이, 동기화 폴더, 사이드바와 탭 열의 크기와 접힘. API 키는 각 컴퓨터의 키링에 남습니다. 동기화를 멈추려면 비워 두세요.",
     settingsSyncFolderPlaceholder: "비어 있음: 설정을 동기화하지 않음",
     chooseSettingsSyncFolder: "설정을 동기화할 폴더 선택",
     syncSettingsForeign: "그 폴더의 plexusterm-settings-sync.json은 PlexusTerm 설정 파일이 아니어서 건드리지 않았습니다.",

@@ -20,6 +20,8 @@ interface ShortcutsPanelProps {
   assistantShortcut: string;
   onChange: (overrides: ShortcutOverrides) => void;
   onAssistantChange: (shortcut: string) => void;
+  /** The drop-down window's system-wide shortcut ("" when it has none): no action may take it. */
+  dropDownShortcut?: string;
 }
 
 const GROUPS: ShortcutGroup[] = ["tabs", "connections", "terminal", "font", "sidebar", "tools", "ai"];
@@ -89,7 +91,7 @@ function ShortcutCapture({
 }
 
 /** Every application shortcut, customisable, grouped as Settings shows them; then the fixed keys. */
-export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssistantChange }: ShortcutsPanelProps) {
+export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssistantChange, dropDownShortcut = "" }: ShortcutsPanelProps) {
   const t = useT();
   /** A refused reset, shown under its row. */
   const [resetError, setResetError] = useState<{ row: string; message: string } | null>(null);
@@ -107,6 +109,15 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
             : t(`settings.shortcuts.fixed.${conflict.use === "playMacro" ? "playMacro" : "acceptWord"}`),
     });
 
+  /** Why `shortcut` cannot be bound: the drop-down window's, or another use (null when it is free). */
+  const refusal = (shortcut: string, options?: { action: ShortcutActionId; assistantShortcut: string }) => {
+    if (dropDownShortcut && shortcut === dropDownShortcut) {
+      return t("settings.shortcuts.taken", { shortcut, action: t("settings.groups.dropDown") });
+    }
+    const conflict = shortcutConflict(shortcut, overrides, options);
+    return conflict ? describe(shortcut, conflict) : null;
+  };
+
   /** Sets an action's override; matching its defaults exactly removes it (and "" for an unbound default). */
   const bind = (action: ShortcutActionId, shortcut: string) => {
     const defaults = SHORTCUT_ACTIONS[action].defaults;
@@ -116,16 +127,16 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
   };
 
   const captureFor = (action: ShortcutActionId) => (shortcut: string) => {
-    const conflict = shortcutConflict(shortcut, overrides, { action, assistantShortcut });
-    if (conflict) return describe(shortcut, conflict);
+    const refused = refusal(shortcut, { action, assistantShortcut });
+    if (refused) return refused;
     setResetError(null);
     bind(action, shortcut);
     return null;
   };
 
   const captureAssistant = (shortcut: string) => {
-    const conflict = shortcutConflict(shortcut, overrides);
-    if (conflict) return describe(shortcut, conflict);
+    const refused = refusal(shortcut);
+    if (refused) return refused;
     setResetError(null);
     onAssistantChange(shortcut);
     return null;
@@ -133,8 +144,8 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
 
   const reset = (action: ShortcutActionId) => {
     for (const shortcut of SHORTCUT_ACTIONS[action].defaults) {
-      const conflict = shortcutConflict(shortcut, overrides, { action, assistantShortcut });
-      if (conflict) return setResetError({ row: action, message: describe(shortcut, conflict) });
+      const refused = refusal(shortcut, { action, assistantShortcut });
+      if (refused) return setResetError({ row: action, message: refused });
     }
     setResetError(null);
     const { [action]: _old, ...rest } = overrides;
@@ -142,8 +153,8 @@ export function ShortcutsPanel({ overrides, assistantShortcut, onChange, onAssis
   };
 
   const resetAssistant = () => {
-    const conflict = shortcutConflict(DEFAULT_ASSISTANT_SHORTCUT, overrides);
-    if (conflict) return setResetError({ row: "assistant", message: describe(DEFAULT_ASSISTANT_SHORTCUT, conflict) });
+    const refused = refusal(DEFAULT_ASSISTANT_SHORTCUT);
+    if (refused) return setResetError({ row: "assistant", message: refused });
     setResetError(null);
     onAssistantChange(DEFAULT_ASSISTANT_SHORTCUT);
   };

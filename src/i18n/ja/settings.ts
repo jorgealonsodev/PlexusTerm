@@ -214,7 +214,7 @@ export const settings: Messages<typeof en> = {
     syncError: "同期できませんでした: {error}",
     syncForeign: "そのフォルダーの plexusterm-sessions-sync.json は PlexusTerm のセッションファイルではないため、変更していません。",
     settingsSyncFolder: "設定の同期フォルダー",
-    settingsSyncFolderHelp: "コンピューター間ですでに同期しているフォルダー (Syncthing、Drive、Dropbox など)。セッションと同じフォルダーでも別のフォルダーでもかまいません。PlexusTerm は設定をそこの plexusterm-settings-sync.json に保存し、他のコンピューターでの変更を取り込みます。設定ごとに最後に行われた変更が優先されます。初回は、このコンピューターがそこにある設定を採用します。各コンピューター固有の設定はそのコンピューターに残ります: ローカルターミナルのシェルと開始フォルダー、テキストエディター、診断ログのフォルダー、GPU アクセラレーション、同期フォルダー、サイドバーとタブ列のサイズと折りたたみ。API キーは各コンピューターのキーリングに残ります。同期をやめるには空にします。",
+    settingsSyncFolderHelp: "コンピューター間ですでに同期しているフォルダー (Syncthing、Drive、Dropbox など)。セッションと同じフォルダーでも別のフォルダーでもかまいません。PlexusTerm は設定をそこの plexusterm-settings-sync.json に保存し、他のコンピューターでの変更を取り込みます。設定ごとに最後に行われた変更が優先されます。初回は、このコンピューターがそこにある設定を採用します。各コンピューター固有の設定はそのコンピューターに残ります: ローカルターミナルのシェルと開始フォルダー、テキストエディター、診断ログのフォルダー、GPU アクセラレーション、ドロップダウンウィンドウのショートカットと高さ、同期フォルダー、サイドバーとタブ列のサイズと折りたたみ。API キーは各コンピューターのキーリングに残ります。同期をやめるには空にします。",
     settingsSyncFolderPlaceholder: "空: 設定は同期されません",
     chooseSettingsSyncFolder: "設定を同期するフォルダーを選択",
     syncSettingsForeign: "そのフォルダーの plexusterm-settings-sync.json は PlexusTerm の設定ファイルではないため、変更していません。",
