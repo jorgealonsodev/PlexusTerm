@@ -189,6 +189,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "원격 모니터 막대(SSH 탭)",
+    autoReconnect: "SSH 세션 자동 재연결",
+    autoReconnectHelp:
+      "네트워크가 끊기거나 컴퓨터가 절전 모드에서 깨어나면 SSH 탭은 창을 유지한 채 같은 로그인 정보로 자동으로 다시 연결하며, 시도가 실패할 때마다 조금 더 기다립니다(최대 10회). Ctrl+C로 중지하고, 그다음 Enter로 다시 시도합니다. 공유 중인 탭은 연결이 끊기면 공유가 끝납니다. Telnet, 직렬, Mosh 탭에는 적용되지 않습니다.",
     syncFolder: "동기화 폴더",
     syncFolderHelp: "이미 컴퓨터 간에 동기화하는 폴더(Syncthing, Drive, Dropbox 등)입니다. PlexusTerm은 저장된 세션을 그곳의 plexusterm-sessions-sync.json에 두고 다른 컴퓨터의 변경을 가져옵니다. 같은 세션이 두 컴퓨터에서 바뀌면 마지막 변경이 이기고, 한 곳에서 삭제한 세션은 모든 곳에서 삭제됩니다. 비밀번호는 그곳에 가지 않고 각 컴퓨터의 키링에 남습니다. 파일은 폴더만큼만 비공개입니다. 비워 두면 동기화를 멈춥니다.",
     syncFolderPlaceholder: "비어 있음: 세션을 동기화하지 않음",

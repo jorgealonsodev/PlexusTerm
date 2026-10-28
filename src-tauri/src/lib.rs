@@ -51,6 +51,9 @@ enum TerminalEvent {
         seq: u64,
     },
     Exit(Option<u32>),
+    /// Instead of `Exit`: the connection went away under an SSH session (no exit status,
+    /// no close), which the pane reconnects. A live share of the pane ends like on an exit.
+    Lost,
 }
 
 /// Sends a session's events to the webview through a thread that gathers bursts of output
@@ -65,6 +68,8 @@ struct ChannelSink {
     flow: std::sync::Arc<terminal::FlowGate>,
     /// The session's share tap, which names it in the diagnostic log.
     tap: u64,
+    /// Set by [`ChannelSink::loss_reporter`]: the exit that follows is sent as `Lost`.
+    lost: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl ChannelSink {
@@ -75,6 +80,8 @@ impl ChannelSink {
         terminal::flow::gates().register(tap_id, &flow);
         let _ = channel.send(TerminalEvent::Tap(tap_id));
         let gate = flow.clone();
+        let lost = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let was_lost = lost.clone();
         std::thread::spawn(move || {
             coalesce::forward(rx, |event| match event {
                 coalesce::Event::Output(text) => {
@@ -91,11 +98,27 @@ impl ChannelSink {
                 coalesce::Event::Exit(code) => {
                     gate.close();
                     tap.exited();
-                    let _ = channel.send(TerminalEvent::Exit(code));
+                    let _ = channel.send(if was_lost.load(std::sync::atomic::Ordering::SeqCst) {
+                        TerminalEvent::Lost
+                    } else {
+                        TerminalEvent::Exit(code)
+                    });
                 }
             })
         });
-        Self { tx, flow, tap: tap_id }
+        Self {
+            tx,
+            flow,
+            tap: tap_id,
+            lost,
+        }
+    }
+
+    /// What `SshManager::connect_reporting_loss` calls when the connection is lost, just
+    /// before the exit, which then reaches the pane as `Lost`.
+    fn loss_reporter(&self) -> impl FnOnce() + Send + 'static {
+        let lost = self.lost.clone();
+        move || lost.store(true, std::sync::atomic::Ordering::SeqCst)
     }
 }
 
@@ -407,8 +430,10 @@ async fn ssh_connect(
 ) -> Result<u32, SshError> {
     let target = format!("{}@{}:{}", request.username, request.host, request.port);
     diaglog::info(&format!("ssh connecting to {target}"));
+    let sink = ChannelSink::new(on_event);
+    let on_lost = sink.loss_reporter();
     let result = ssh
-        .connect_with(request, storage, ChannelSink::new(on_event))
+        .connect_reporting_loss(request, storage, sink, on_lost)
         .await;
     match &result {
         Ok(id) => diaglog::info(&format!("ssh session {id} opened to {target}")),
@@ -981,4 +1006,51 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tauri::ipc::InvokeResponseBody;
+
+    /// A sink whose events arrive, as the JSON the webview gets, on the returned receiver.
+    fn sink() -> (ChannelSink, std::sync::mpsc::Receiver<String>) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let channel = Channel::new(move |body| {
+            if let InvokeResponseBody::Json(json) = body {
+                let _ = tx.send(json);
+            }
+            Ok(())
+        });
+        (ChannelSink::new(channel), rx)
+    }
+
+    /// The last event sent, once the sink's thread ended (it ends after the exit).
+    fn last_event(rx: std::sync::mpsc::Receiver<String>) -> String {
+        let mut last = String::new();
+        while let Ok(json) = rx.recv_timeout(Duration::from_secs(5)) {
+            last = json;
+        }
+        last
+    }
+
+    #[test]
+    fn a_lost_connection_reaches_the_pane_as_lost() {
+        let (sink, rx) = sink();
+        sink.data("output".into());
+        (sink.loss_reporter())();
+        sink.exit(None);
+        drop(sink);
+        assert_eq!(last_event(rx), r#"{"event":"lost"}"#);
+    }
+
+    #[test]
+    fn an_exit_still_reaches_the_pane_as_exit() {
+        let (sink, rx) = sink();
+        let _unused = sink.loss_reporter();
+        sink.exit(Some(3));
+        drop(sink);
+        assert_eq!(last_event(rx), r#"{"event":"exit","data":3}"#);
+    }
 }

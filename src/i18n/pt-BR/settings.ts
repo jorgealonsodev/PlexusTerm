@@ -189,6 +189,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Barra do monitor remoto (abas SSH)",
+    autoReconnect: "Reconectar as sessões SSH automaticamente",
+    autoReconnectHelp:
+      "Quando a rede cai ou o computador sai da suspensão, uma aba SSH mantém seu painel e se reconecta sozinha com o mesmo login, esperando um pouco mais após cada tentativa malsucedida (no máximo 10). Ctrl+C interrompe, e depois Enter tenta de novo. Uma aba compartilhada deixa de ser compartilhada quando sua conexão cai. Abas Telnet, serial e Mosh não são afetadas.",
     syncFolder: "Pasta sincronizada",
     syncFolderHelp: "Uma pasta que você já sincroniza entre seus computadores (Syncthing, Drive, Dropbox…). O PlexusTerm guarda nela as sessões salvas em plexusterm-sessions-sync.json e recebe as mudanças dos seus outros computadores: se uma sessão mudou em dois deles, vale a mudança mais recente, e uma excluída em um é excluída em todos. As senhas nunca vão para lá; ficam no chaveiro de cada computador. O arquivo é tão privado quanto a pasta. Deixe vazio para parar de sincronizar.",
     syncFolderPlaceholder: "Vazio: as sessões não são sincronizadas",

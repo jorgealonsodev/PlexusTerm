@@ -189,6 +189,9 @@ export const settings: Messages<typeof en> = {
   },
   ssh: {
     remoteMonitor: "Barra de monitor remoto (pestañas SSH)",
+    autoReconnect: "Reconectar las sesiones SSH automáticamente",
+    autoReconnectHelp:
+      "Cuando se corta la red o el equipo sale de la suspensión, una pestaña SSH conserva su panel y se reconecta sola con el mismo inicio de sesión, esperando un poco más tras cada intento fallido (10 como máximo). Ctrl+C lo detiene y después Enter vuelve a intentarlo. Una pestaña compartida deja de compartirse cuando se corta su conexión. No afecta a las pestañas Telnet, serie ni Mosh.",
     syncFolder: "Carpeta sincronizada",
     syncFolderHelp: "Una carpeta que ya sincronizas entre tus equipos (Syncthing, Drive, Dropbox…). PlexusTerm guarda ahí sus sesiones en plexusterm-sessions-sync.json y recoge los cambios de tus otros equipos: si una sesión cambió en dos de ellos, gana el cambio más reciente, y una borrada en uno se borra en todos. Las contraseñas nunca van ahí; se quedan en el llavero de cada equipo. El archivo es tan privado como la carpeta. Déjalo vacío para dejar de sincronizar.",
     syncFolderPlaceholder: "Vacío: las sesiones no se sincronizan",

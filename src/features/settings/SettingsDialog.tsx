@@ -395,6 +395,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   /** The well-known monospaced fonts installed here, looked for once per dialog. */
   const installedFonts = useMemo(() => detectInstalledFonts(), []);
   const [remoteMonitor, setRemoteMonitor] = useState(settings.remoteMonitor);
+  const [sshAutoReconnect, setSshAutoReconnect] = useState(settings.sshAutoReconnect);
   const [sidebarHideWhenCollapsed, setSidebarHideWhenCollapsed] = useState(settings.sidebarHideWhenCollapsed);
   const [sidebarAtStartup, setSidebarAtStartup] = useState(settings.sidebarAtStartup);
   const [devColumnHideWhenCollapsed, setDevColumnHideWhenCollapsed] = useState(settings.devColumnHideWhenCollapsed);
@@ -524,6 +525,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       theme,
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
+      sshAutoReconnect,
       textEditor: cleanTextEditor(textEditor),
       fileDetails,
       gitFileStatus,
@@ -1137,6 +1139,16 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={remoteMonitor} onChange={(e) => setRemoteMonitor(e.target.checked)} />
               <span className="setting-title">
                 {t("settings.ssh.remoteMonitor")} <HelpTip text={t("settings.ssh.remoteMonitorHelp")} />
+              </span>
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={sshAutoReconnect}
+                onChange={(e) => setSshAutoReconnect(e.target.checked)}
+              />
+              <span className="setting-title">
+                {t("settings.ssh.autoReconnect")} <HelpTip text={t("settings.ssh.autoReconnectHelp")} />
               </span>
             </label>
             <h3 className="settings__group">{t("settings.groups.sessionSync")}</h3>

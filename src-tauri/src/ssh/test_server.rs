@@ -4,7 +4,9 @@
 //! shell channel and echoes data back. Servers started with [`start_limited`]
 //! disconnect after that many rejected authentication attempts (like OpenSSH's
 //! `MaxAuthTries`). `size?` replies with the last window
-//! size, and `exit` ends the channel with exit status 7.
+//! size, and `exit` ends the channel with exit status 7. `hangup` closes the channel
+//! without an exit status, and `drop` ends the connection without closing the channel,
+//! like a network that went away.
 //!
 //! Servers started with [`start_with_sftp`] also serve the `sftp` subsystem
 //! from a local directory, which appears to the client as `/`.
@@ -398,6 +400,12 @@ impl russh::server::Handler for Handler {
                 session.eof(channel)?;
                 session.close(channel)
             }
+            b"hangup" => {
+                session.eof(channel)?;
+                session.close(channel)
+            }
+            // Failing the handler ends the session loop and drops the socket at once.
+            b"drop" => Err(russh::Error::Disconnect),
             // Stops this connection's session loop for good: no more input is read and no
             // window is opened again, like a remote that froze.
             b"stall" => std::future::pending().await,

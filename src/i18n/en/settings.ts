@@ -186,6 +186,9 @@ export const settings = {
   },
   ssh: {
     remoteMonitor: "Remote monitor bar (SSH tabs)",
+    autoReconnect: "Reconnect SSH sessions automatically",
+    autoReconnectHelp:
+      "When the network drops or the computer wakes from sleep, an SSH tab keeps its pane and reconnects by itself with the same login, waiting a little longer after each failed attempt (at most 10). Ctrl+C stops it, and Enter then tries again. A shared tab stops being shared when its connection drops. Telnet, serial and Mosh tabs are not affected.",
     syncFolder: "Synced folder",
     syncFolderHelp: "A folder you already sync between your computers (Syncthing, Drive, Dropbox…). PlexusTerm keeps its saved sessions there in plexusterm-sessions-sync.json and takes the changes of your other computers: when a session changed on two of them, the change made last wins, and one deleted on one is deleted on all. Passwords never go there; they stay in each computer's keyring. The file is as private as the folder. Leave it empty to stop syncing.",
     syncFolderPlaceholder: "Empty: sessions are not synced",

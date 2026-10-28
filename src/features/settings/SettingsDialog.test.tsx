@@ -166,6 +166,7 @@ describe("SettingsDialog", () => {
     expect((screen.getByLabelText("Colour scheme") as HTMLSelectElement).value).toBe("catppuccin-mocha");
     expect((screen.getByLabelText("Font family") as HTMLInputElement).value).toBe(DEFAULT_SETTINGS.fontFamily);
     expect((screen.getByLabelText("Remote monitor bar (SSH tabs)") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Reconnect SSH sessions automatically") as HTMLInputElement).checked).toBe(true);
     const editor = screen.getByLabelText("Text editor") as HTMLInputElement;
     expect(editor.value).toBe("");
     expect(editor.placeholder).toBe("System default");
@@ -239,6 +240,7 @@ describe("SettingsDialog", () => {
     fireEvent.change(screen.getByLabelText("Colour scheme"), { target: { value: "solarized-light" } });
     fireEvent.change(screen.getByLabelText("Font family"), { target: { value: " Hack Nerd Font " } });
     fireEvent.click(screen.getByLabelText("Remote monitor bar (SSH tabs)"));
+    fireEvent.click(screen.getByLabelText("Reconnect SSH sessions automatically"));
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onSave).toHaveBeenCalledWith({
       ...DEFAULT_SETTINGS,
@@ -254,6 +256,7 @@ describe("SettingsDialog", () => {
       theme: "solarized-light",
       fontFamily: "Hack Nerd Font",
       remoteMonitor: false,
+      sshAutoReconnect: false,
       textEditor: "",
     });
   });
