@@ -82,6 +82,18 @@ import { useSettingsSync } from "./features/settings/useSettingsSync";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { parseTabsDocument, planRestore, serializeTabs, snapshotTabs, type TabsDocument } from "./features/tabs/tabsPersist";
+import {
+  MAX_TAB_SET_NAME,
+  cleanTabSetName,
+  findTabSet,
+  parseTabSets,
+  putTabSet,
+  removeTabSet,
+  renameTabSet,
+  serializeTabSets,
+  type TabSet,
+} from "./features/tabs/tabSets";
+import { TabSetsDialog } from "./features/tabs/TabSetsDialog";
 import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type TabsAction, type ViewerLink } from "./features/tabs/tabs";
 import { FileViewer } from "./features/viewer/FileViewer";
 import { imageType } from "./features/viewer/markdown";
@@ -150,6 +162,7 @@ import {
   Link,
   Smartphone,
   Film,
+  Layers,
 } from "lucide-react";
 import { open as pickFile } from "@tauri-apps/plugin-dialog";
 import { CastPlayer } from "./features/recording/CastPlayer";
@@ -181,6 +194,8 @@ type Modal =
   | { kind: "shareAudit" }
   /** Paste a share link to open it as a pane (PRD-share P3). */
   | { kind: "openShared" }
+  /** The saved tab sets (S2). */
+  | { kind: "tabSets" }
   | null;
 
 /** Short status of a pane's last failed AI suggestion (S2), with the full message as tooltip. */
@@ -977,34 +992,39 @@ function AppContent() {
   const devOnRestore = useRef(new Map<string, string>());
   /** The folder each restored local pane started in, until its shell reports one (OSC 7). */
   const restoredCwds = useRef(new Map<string, string>());
+  /**
+   * Adds the tabs of `doc` after the open ones (tabs.json at startup, or a tab set), each saved
+   * session as it is saved now; a deleted session's tab is skipped. Resolves to how many were added.
+   */
+  const openTabsDocument = async (doc: TabsDocument, activateFirst: boolean): Promise<number> => {
+    const targets = await Promise.all(
+      doc.tabs.map(({ source }) => {
+        if ("target" in source) return source.target;
+        const session = sessions.library.sessions.find((s) => s.id === source.sessionId);
+        return session ? savedTarget(session).catch(() => null) : null;
+      }),
+    );
+    const plan = planRestore(doc, targets, stateRef.current);
+    if (plan.tabs.length === 0) return 0;
+    for (const tab of plan.tabs) {
+      if (tab.target.type !== "local" || !tab.target.cwd) continue;
+      for (const pane of paneIds(tab.layout)) restoredCwds.current.set(pane, plan.cwds[pane] ?? tab.target.cwd);
+    }
+    for (const [pane, folder] of Object.entries(plan.cwds)) pendingCd.current.set(pane, folder);
+    for (const { key, pane } of plan.dev) devOnRestore.current.set(key, pane);
+    const added = plan.dev.filter((d) => d.folders.length > 0);
+    if (added.length) setWorkspaceFolders((prev) => ({ ...prev, ...Object.fromEntries(added.map((d) => [d.key, d.folders])) }));
+    dispatch({ type: "restore", tabs: plan.tabs, activeKey: activateFirst ? plan.tabs[0].key : plan.activeKey });
+    return plan.tabs.length;
+  };
   // The tabs of the last run reopen once the saved sessions they refer to are known (S2.2): a
   // deleted session's tab is skipped, and with nothing left the usual terminal opens.
   const restoring = useRef(false);
   useEffect(() => {
     if (!pendingRestore || sessions.status.state === "loading" || restoring.current) return;
     restoring.current = true;
-    const doc = pendingRestore;
-    void Promise.all(
-      doc.tabs.map(({ source }) => {
-        if ("target" in source) return source.target;
-        const session = sessions.library.sessions.find((s) => s.id === source.sessionId);
-        return session ? savedTarget(session).catch(() => null) : null;
-      }),
-    ).then((targets) => {
-      const plan = planRestore(doc, targets, stateRef.current);
-      if (plan.tabs.length === 0) {
-        dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
-      } else {
-        for (const tab of plan.tabs) {
-          if (tab.target.type !== "local" || !tab.target.cwd) continue;
-          for (const pane of paneIds(tab.layout)) restoredCwds.current.set(pane, plan.cwds[pane] ?? tab.target.cwd);
-        }
-        for (const [pane, folder] of Object.entries(plan.cwds)) pendingCd.current.set(pane, folder);
-        for (const { key, pane } of plan.dev) devOnRestore.current.set(key, pane);
-        const added = plan.dev.filter((d) => d.folders.length > 0);
-        if (added.length) setWorkspaceFolders((prev) => ({ ...prev, ...Object.fromEntries(added.map((d) => [d.key, d.folders])) }));
-        dispatch({ type: "restore", tabs: plan.tabs, activeKey: plan.activeKey });
-      }
+    void openTabsDocument(pendingRestore, false).then((added) => {
+      if (added === 0) dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
       setPendingRestore(null);
       setStartupDone(true);
     });
@@ -1024,6 +1044,18 @@ function AppContent() {
     }
   }, [state.tabs, paneMeta, dev.state, toggleDev]);
 
+  /** What tabs.json (or a tab set) holds for the tabs open now. */
+  const openTabsSnapshot = () =>
+    snapshotTabs({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      cwdOf: (pane) => paneMeta[pane]?.cwd ?? restoredCwds.current.get(pane) ?? null,
+      devOf: (key) => {
+        const tabDev = dev.state[key];
+        return tabDev && { pane: tabDev.pane, folder: tabDev.folder ?? tabDev.root };
+      },
+      workspaceOf: (key) => workspaceFolders[key],
+    });
   // tabs.json follows the open tabs, a moment after they change, once startup has opened its own (S2.1).
   const { restoreTabs } = terminalSettings.settings;
   const lastSavedTabs = useRef<string | null>(null);
@@ -1045,18 +1077,7 @@ function AppContent() {
       unsavedTabs.current = null;
       return;
     }
-    const contents = serializeTabs(
-      snapshotTabs({
-        tabs: state.tabs,
-        activeKey: state.activeKey,
-        cwdOf: (pane) => paneMeta[pane]?.cwd ?? restoredCwds.current.get(pane) ?? null,
-        devOf: (key) => {
-          const tabDev = dev.state[key];
-          return tabDev && { pane: tabDev.pane, folder: tabDev.folder ?? tabDev.root };
-        },
-        workspaceOf: (key) => workspaceFolders[key],
-      }),
-    );
+    const contents = serializeTabs(openTabsSnapshot());
     // Pane reports that change nothing saved (output, prompts) neither write nor postpone a write.
     if (contents === unsavedTabs.current) return;
     clearTimeout(saveTabsTimer.current);
@@ -1066,6 +1087,7 @@ function AppContent() {
     }
     unsavedTabs.current = contents;
     saveTabsTimer.current = setTimeout(flushTabs, TABS_SAVE_DELAY_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startupDone, restoreTabs, state.tabs, state.activeKey, paneMeta, dev.state, workspaceFolders, flushTabs]);
   // Closing the window does not wait for the delay.
   useEffect(() => {
@@ -1678,6 +1700,71 @@ function AppContent() {
     });
   };
 
+  /** The saved tab sets (S2), from tab-sets.json; kept on this computer, never synced. */
+  const [tabSets, setTabSets] = useState<TabSet[]>([]);
+  const tabSetsRef = useRef(tabSets);
+  /** null while tab-sets.json is read, false when it could not be: nothing is then written over it. */
+  const tabSetsReadable = useRef<boolean | null>(null);
+  useEffect(() => {
+    invoke<string | null>("tab_sets_load").then(
+      (json) => {
+        tabSetsReadable.current = true;
+        tabSetsRef.current = parseTabSets(json);
+        setTabSets(tabSetsRef.current);
+      },
+      () => (tabSetsReadable.current = false),
+    );
+  }, []);
+  /** Keeps `sets` and writes them to tab-sets.json; a failed write is shown as a notice. */
+  const writeTabSets = (sets: TabSet[]) => {
+    tabSetsRef.current = sets;
+    setTabSets(sets);
+    void invoke("tab_sets_save", { contents: serializeTabSets(sets) }).catch((e) => setNotice(String(e)));
+  };
+  /** The name typed for a tab set, trimmed; null when cancelled or refused (a notice says why). */
+  const askTabSetName = async (defaultValue: string | undefined, confirmLabel: string) => {
+    if (tabSetsReadable.current !== true) {
+      setNotice(t("app.tabSets.unreadable"));
+      return null;
+    }
+    const typed = await dialogs.prompt({ message: t("app.tabSets.name"), defaultValue, confirmLabel });
+    if (typed === null) return null;
+    const name = cleanTabSetName(typed);
+    if (!name) setNotice(t("app.tabSets.nameInvalid", { max: MAX_TAB_SET_NAME }));
+    return name;
+  };
+  /** Saves the open tabs as a tab set, exactly as tabs.json keeps them (no secrets). */
+  const saveTabSet = async () => {
+    const doc = openTabsSnapshot();
+    if (doc.tabs.length === 0) return setNotice(t("app.tabSets.nothingToSave"));
+    const name = await askTabSetName(undefined, t("common.save"));
+    if (!name) return;
+    const existing = findTabSet(tabSetsRef.current, name);
+    if (existing) {
+      const message = t("app.tabSets.replace", { name: existing.name });
+      if (!(await dialogs.confirm({ message, confirmLabel: t("app.tabSets.replaceButton") }))) return;
+    }
+    writeTabSets(putTabSet(tabSetsRef.current, name, doc));
+  };
+  /** Adds a tab set's tabs after the open ones and shows the first of them. */
+  const openTabSet = async (set: TabSet) => {
+    setModal(null);
+    if ((await openTabsDocument(set.tabs, true)) === 0) setNotice(t("app.tabSets.nothingLeft", { name: set.name }));
+  };
+  const renameTabSetAsked = async (set: TabSet) => {
+    const name = await askTabSetName(set.name, t("common.rename"));
+    if (!name) return;
+    const renamed = renameTabSet(tabSetsRef.current, set.name, name);
+    if (renamed) writeTabSets(renamed);
+    else setNotice(t("app.tabSets.nameTaken", { name }));
+  };
+  const deleteTabSet = async (set: TabSet) => {
+    const message = t("app.tabSets.confirmDelete", { name: set.name });
+    if (await dialogs.confirm({ message, confirmLabel: t("common.delete"), danger: true })) {
+      writeTabSets(removeTabSet(tabSetsRef.current, set.name));
+    }
+  };
+
   /** What the command palette offers: actions, saved sessions, macros, open tabs and Settings sections. */
   const paletteItems = (): PaletteItem[] => [
     ...SHORTCUT_ACTION_IDS.filter((id) => id !== "commandPalette").map((id) => ({
@@ -1688,6 +1775,14 @@ function AppContent() {
       run: () => runShortcutRef.current(SHORTCUT_ACTIONS[id].shortcut as Shortcut, true),
     })),
     { id: "playRecording", group: "actions" as const, label: t("terminal.player.open"), run: () => void playRecording() },
+    { id: "saveTabSet", group: "actions" as const, label: t("app.tabSets.saveAs"), run: () => void saveTabSet() },
+    { id: "tabSets", group: "actions" as const, label: t("app.tabSets.menu"), run: () => setModal({ kind: "tabSets" }) },
+    ...tabSets.map((set) => ({
+      id: `tabSet:${set.name}`,
+      group: "actions" as const,
+      label: t("app.tabSets.openNamed", { name: set.name }),
+      run: () => void openTabSet(set),
+    })),
     ...sessions.library.sessions.map((session) => ({
       id: session.id,
       group: "sessions" as const,
@@ -1760,6 +1855,7 @@ function AppContent() {
     mosh: platform === "windows" ? null : { label: "Mosh…", icon: Smartphone, onSelect: () => setModal({ kind: "mosh" }) },
     openShared: { label: t("share.view.open"), icon: Link, onSelect: () => setModal({ kind: "openShared" }) },
     playRecording: { label: t("terminal.player.open"), icon: Film, onSelect: () => void playRecording() },
+    tabSets: { label: t("app.tabSets.menu"), icon: Layers, onSelect: () => setModal({ kind: "tabSets" }) },
     keyGen: { label: t("app.tools.keyGenerator"), icon: KeySquare, onSelect: () => setModal({ kind: "keyGen" }) },
     portScan: { label: t("app.tools.portScanner"), icon: ScanSearch, onSelect: () => setModal({ kind: "portScan" }) },
     networkScan: { label: t("app.tools.networkScanner"), icon: Network, onSelect: () => setModal({ kind: "networkScan" }) },
@@ -2585,6 +2681,16 @@ function AppContent() {
         />
       )}
       {modal?.kind === "shareAudit" && <AuditLogDialog onClose={() => setModal(null)} />}
+      {modal?.kind === "tabSets" && (
+        <TabSetsDialog
+          sets={tabSets}
+          onSave={() => void saveTabSet()}
+          onOpen={(set) => void openTabSet(set)}
+          onRename={(set) => void renameTabSetAsked(set)}
+          onDelete={(set) => void deleteTabSet(set)}
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal?.kind === "openShared" && (
         <OpenSharedDialog
           onCancel={() => setModal(null)}

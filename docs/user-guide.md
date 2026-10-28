@@ -338,6 +338,16 @@ Not restored: what the terminals showed (scrollback and output), AI chat and fil
 
 The tabs are saved to `tabs.json` in the app config directory (atomic, mode `0600`) a moment after they change and when the window closes. Only what reopens a tab is written: the saved session's id, or the host, port, user and kind of login (no passwords, key passphrases or typed logins), and each local pane's folder. Turning the setting off stops saving and restoring.
 
+## Tab sets
+
+A tab set is a named copy of the tabs open now, such as "Production" or "Project X", that you open again later with one click. (It is not a DEV mode workspace: those are VS Code `.code-workspace` files with folders; a tab set holds tabs.)
+
+- **Saving:** **Save tabs as tab set…** in the [command palette](#command-palette), or **Tab sets…** in the toolbar's **More** menu → **Save current tabs…**, asks for a name (1 to 80 characters). A name already in use asks before replacing that set. The set keeps exactly what [Restoring tabs at startup](#restoring-tabs-at-startup) keeps: the tabs in order, their split panes, colours, each local pane's folder and DEV mode. No passwords are saved: a tab opened from a saved session refers to that session, and other tabs keep only the host, port, user and kind of login; a password typed when connecting is asked for again. Shared tabs, AI chats and file viewers are left out.
+- **Opening:** **Open** next to a set in **Tab sets…**, or **Open tab set: <name>** in the command palette, adds its tabs after the open ones (nothing is closed) and shows the first one added. A tab of a saved session connects to the session as it is saved now; a tab whose session was deleted is skipped, and when that leaves nothing a note says so. DEV tabs come back in DEV mode.
+- **Renaming and deleting:** **Rename** and **Delete** next to each set in **Tab sets…**; deleting asks first and leaves its tabs that are open as they are.
+
+Tab sets are kept in `tab-sets.json` in the app config directory (atomic, mode `0600`) on this computer only: they are not [synced](#sync-settings-between-computers). A file that cannot be understood shows no sets.
+
 ## Drop-down window
 
 **Settings → General → Drop-down shortcut** gives PlexusTerm a key combination that works in every application, like Guake, Yakuake or Windows Terminal's quake mode. It is empty (off) by default.
@@ -382,7 +392,7 @@ PlexusTerm's interface comes in English, Spanish, German, French, Japanese, Port
 
 **Settings → Appearance → Show only icons in the toolbar** hides the top toolbar labels even in wide windows. Hover an icon to see its action and shortcut; accessible button names are kept. Turn it off to restore labels (narrow windows still switch to icons automatically). The choice is saved for the next launch.
 
-**Settings → Toolbar** arranges the toolbar. It shows the bar, with its drop-down groups (**More** and **Tools** at first), and a **Hidden** area. Drag a button to move it along the bar, into or out of a group, or to Hidden; drag a group by its handle to move it along the bar (groups do not go inside other groups). Every action can go anywhere, including the ones that start inside More and Tools (Telnet, Mosh, Open shared link, the SSH key generator, the port and network scanners, Wake On LAN and the remote monitor). Clicking a button or a group's handle opens a menu with the same moves (move left or right, to the toolbar, to a group, hide), for when dragging is not handy. **New group** adds a group; type its name in place, and the bin deletes it, putting its buttons back on the bar where it was. An empty group is not shown on the toolbar. **Reset** goes back to the default toolbar. Keyboard shortcuts keep working wherever an action sits, also when it is hidden. The logo and the Settings button always stay.
+**Settings → Toolbar** arranges the toolbar. It shows the bar, with its drop-down groups (**More** and **Tools** at first), and a **Hidden** area. Drag a button to move it along the bar, into or out of a group, or to Hidden; drag a group by its handle to move it along the bar (groups do not go inside other groups). Every action can go anywhere, including the ones that start inside More and Tools (Telnet, Mosh, Open shared link, Play recording, Tab sets, the SSH key generator, the port and network scanners, Wake On LAN and the remote monitor). Clicking a button or a group's handle opens a menu with the same moves (move left or right, to the toolbar, to a group, hide), for when dragging is not handy. **New group** adds a group; type its name in place, and the bin deletes it, putting its buttons back on the bar where it was. An empty group is not shown on the toolbar. **Reset** goes back to the default toolbar. Keyboard shortcuts keep working wherever an action sits, also when it is hidden. The logo and the Settings button always stay.
 
 Web links in PlexusTerm (such as **How to install the relay** in Settings → Sharing) open in your default browser, never inside the PlexusTerm window.
 

@@ -483,6 +483,34 @@ textarea::placeholder {
   z-index: 20;
 }
 
+/* The saved tab sets: one row per set with its tab count and actions. */
+.tab-sets {
+  min-width: min(32rem, 90vw);
+}
+
+.tab-sets__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.tab-sets__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.tab-sets__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .app-dialog__message {
   display: flex;
   flex-direction: column;

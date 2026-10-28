@@ -26,6 +26,7 @@ describe("ToolbarEditor", () => {
       "Mosh…",
       "Open shared link…",
       "Play recording…",
+      "Tab sets…",
     ]);
     expect(within(screen.getByRole("group", { name: "Hidden" })).queryAllByRole("button")).toEqual([]);
   });
@@ -34,7 +35,7 @@ describe("ToolbarEditor", () => {
     const { last } = setup();
     fireEvent.click(chip("SSH"));
     fireEvent.click(screen.getByRole("menuitem", { name: "Move to “More”" }));
-    expect(whereIs(last()!, "ssh")).toEqual({ zone: "more", index: 4 });
+    expect(whereIs(last()!, "ssh")).toEqual({ zone: "more", index: 5 });
 
     cleanup();
     const second = setup(last());
