@@ -23,7 +23,7 @@ use crate::secrets::{NoStore, SharedSecrets};
 use crate::ssh::SshAuth;
 use crate::ssh::{
     Chain, ConnectContext, Connection, ForwardedChannel, PasswordStorage, STORAGE_TIMEOUT,
-    SshError, SshTarget, connect_authenticated, disconnect_jumps,
+    SshError, SshTarget, connect_proxied, disconnect_jumps,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -217,7 +217,7 @@ impl TunnelManager {
     }
 
     /// Opens the tunnel's SSH connection and starts forwarding, without
-    /// touching saved passwords (tests; the app uses `start_with`).
+    /// touching saved passwords (tests; the app uses `start_proxied`).
     #[cfg(test)]
     pub async fn start(
         &self,
@@ -230,11 +230,27 @@ impl TunnelManager {
     }
 
     /// Opens the tunnel's SSH connection and starts forwarding, then saves or forgets the session's
-    /// password as `storage` asks once the login succeeded.
+    /// password as `storage` asks once the login succeeded (tests; the app uses `start_proxied`).
+    #[cfg(test)]
     pub async fn start_with(
         &self,
         tunnel: TunnelDefinition,
         target: SshTarget,
+        trusted_fingerprint: Option<String>,
+        storage: Option<PasswordStorage>,
+    ) -> Result<(), TunnelError> {
+        self.start_proxied(tunnel, target, None, trusted_fingerprint, storage)
+            .await
+    }
+
+    /// Opens the tunnel's SSH connection, through the session's `proxy_command` (blank: none)
+    /// instead of TCP like its terminal tabs, and starts forwarding; then saves or forgets the
+    /// session's password as `storage` asks once the login succeeded.
+    pub async fn start_proxied(
+        &self,
+        tunnel: TunnelDefinition,
+        target: SshTarget,
+        proxy_command: Option<String>,
         trusted_fingerprint: Option<String>,
         storage: Option<PasswordStorage>,
     ) -> Result<(), TunnelError> {
@@ -264,7 +280,7 @@ impl TunnelManager {
         }
 
         let result = tokio::select! {
-            result = self.open(tunnel, target, trusted_fingerprint, storage, generation) => result,
+            result = self.open(tunnel, target, proxy_command, trusted_fingerprint, storage, generation) => result,
             // `stop` already marked the tunnel stopped; dropping `open` releases its listener.
             _ = cancelled => return Ok(()),
         };
@@ -307,6 +323,7 @@ impl TunnelManager {
         &self,
         tunnel: TunnelDefinition,
         target: SshTarget,
+        proxy_command: Option<String>,
         trusted_fingerprint: Option<String>,
         storage: Option<PasswordStorage>,
         generation: u64,
@@ -345,8 +362,9 @@ impl TunnelManager {
             connection,
             jumps,
             warnings,
-        } = connect_authenticated(
+        } = connect_proxied(
             target,
+            proxy_command,
             trusted_fingerprint,
             storage,
             ConnectContext {

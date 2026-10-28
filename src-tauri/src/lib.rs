@@ -31,7 +31,7 @@ use pty::{PtyError, PtyManager, SpawnRequest};
 use secrets::{KeyringStore, SecretError, SharedSecrets};
 use serial::{SerialError, SerialManager, SerialRequest};
 use sftp::SftpError;
-use ssh::{ConnectRequest, PasswordStorage, ShellOptions, SshError, SshManager, SshTarget};
+use ssh::{ConnectRequest, PasswordStorage, ProxiedTarget, ShellOptions, SshError, SshManager};
 use storage::StorageError;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -534,7 +534,8 @@ async fn mosh_connect(
 }
 
 /// `storage` saves the typed password in the keyring (or forgets the saved one) once logged in;
-/// `options` (absent: none) forwards the agent and keeps the shell in tmux (see `ShellOptions`).
+/// `options` (absent: none) forwards the agent, keeps the shell in tmux and reaches the server
+/// through a proxy command (see `ShellOptions`).
 #[tauri::command]
 async fn ssh_connect(
     request: ConnectRequest,
@@ -545,12 +546,18 @@ async fn ssh_connect(
     app: AppHandle,
 ) -> Result<u32, SshError> {
     let target = format!("{}@{}:{}", request.username, request.host, request.port);
-    diaglog::info(&format!("ssh connecting to {target}"));
+    let options = options.unwrap_or_default();
+    // The command itself is never logged: it may hold a token.
+    let via = match options.proxy_command.as_deref().map(str::trim) {
+        Some(command) if !command.is_empty() => " through a proxy command",
+        _ => "",
+    };
+    diaglog::info(&format!("ssh connecting to {target}{via}"));
     let sink = ChannelSink::with_zmodem(on_event);
     let tap = sink.tap;
     let on_lost = sink.loss_reporter();
     let result = ssh
-        .connect_reporting_loss(request, options.unwrap_or_default(), storage, sink, on_lost)
+        .connect_reporting_loss(request, options, storage, sink, on_lost)
         .await;
     match &result {
         Ok(id) => {
@@ -978,17 +985,21 @@ async fn read_recording_file(path: String) -> Result<String, StorageError> {
 const TUNNEL_STATUS_EVENT: &str = "tunnel-status";
 
 /// `target` is the tunnel's saved session, with the typed password or a reference
-/// to the saved one; `storage` works as for `ssh_connect`.
+/// to the saved one, and its proxy command if it has one; `storage` works as for `ssh_connect`.
 #[tauri::command]
 async fn tunnel_start(
     tunnel: TunnelDefinition,
-    target: SshTarget,
+    target: ProxiedTarget,
     trusted_fingerprint: Option<String>,
     storage: Option<PasswordStorage>,
     tunnels: State<'_, TunnelManager>,
 ) -> Result<(), TunnelError> {
+    let ProxiedTarget {
+        target,
+        proxy_command,
+    } = target;
     tunnels
-        .start_with(tunnel, target, trusted_fingerprint, storage)
+        .start_proxied(tunnel, target, proxy_command, trusted_fingerprint, storage)
         .await
 }
 
