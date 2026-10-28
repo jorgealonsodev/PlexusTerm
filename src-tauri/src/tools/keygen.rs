@@ -25,7 +25,7 @@ use zeroize::Zeroizing;
 mod ppk;
 
 use crate::ssh::{
-    Chain, Connection, SshError, SshManager, SshTarget, connect_authenticated, disconnect_jumps,
+    Chain, Connection, ProxiedTarget, SshError, SshManager, connect_proxied, disconnect_jumps,
 };
 
 /// Longest comment accepted (OpenSSH has no limit; this keeps lines readable).
@@ -632,13 +632,13 @@ async fn run(
     Ok((String::from_utf8_lossy(&output).into_owned(), exit_status))
 }
 
-/// Logs into `target` (known_hosts, jump hosts and saved passwords as for an SSH tab,
-/// never changing saved passwords) and adds key `id` to its `authorized_keys`.
+/// Logs into `target` (known_hosts, jump hosts, its proxy command and saved passwords as for
+/// an SSH tab, never changing saved passwords) and adds key `id` to its `authorized_keys`.
 pub async fn install(
     store: &KeyStore,
     id: u32,
     ssh: &SshManager,
-    target: SshTarget,
+    target: ProxiedTarget,
     trusted_fingerprint: Option<String>,
 ) -> Result<InstallOutcome, SshError> {
     let public_key = store
@@ -647,7 +647,15 @@ pub async fn install(
     let command = install_command(&public_key).map_err(failure)?;
     let Chain {
         connection, jumps, ..
-    } = connect_authenticated(target, trusted_fingerprint, None, ssh.context(), None).await?;
+    } = connect_proxied(
+        target.target,
+        target.proxy_command,
+        trusted_fingerprint,
+        None,
+        ssh.context(),
+        None,
+    )
+    .await?;
     let result = run(&connection, &command, INSTALL_TIMEOUT).await;
     let _ = connection
         .disconnect(russh::Disconnect::ByApplication, "", "en")
@@ -775,11 +783,12 @@ pub async fn keygen_export_ppk(
     .await
 }
 
-/// Adds key `id` to `~/.ssh/authorized_keys` on `target`; see [`install`].
+/// Adds key `id` to `~/.ssh/authorized_keys` on `target` (through its proxy command when it
+/// has one, like the session's tab); see [`install`].
 #[tauri::command]
 pub async fn keygen_install(
     id: u32,
-    target: SshTarget,
+    target: ProxiedTarget,
     trusted_fingerprint: Option<String>,
     ssh: tauri::State<'_, SshManager>,
 ) -> Result<InstallOutcome, SshError> {
@@ -795,8 +804,8 @@ pub fn keygen_discard(id: u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ssh::SshAuth;
     use crate::ssh::test_server::{self, PASSWORD};
+    use crate::ssh::{SshAuth, SshTarget};
 
     fn stored_private(store: &KeyStore, id: u32) -> String {
         store.with(id, |k| k.private_openssh.to_string()).unwrap()
@@ -1109,6 +1118,10 @@ mod tests {
             },
             jumps: vec![],
         };
+        let target = ProxiedTarget {
+            target,
+            proxy_command: None,
+        };
         // An unknown host is reported like for an SSH tab, before anything runs.
         let err = install(&store, key.id, &ssh, target.clone(), None)
             .await
@@ -1129,6 +1142,53 @@ mod tests {
             err.to_string()
                 .starts_with("the key could not be installed (exit status 127)"),
             "{err}"
+        );
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn install_goes_through_the_proxy_command_of_the_session() {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let Some(bridge) = ["socat", "nc"]
+            .into_iter()
+            .find(|tool| crate::platform::find_program(tool, &path).is_some())
+        else {
+            eprintln!("skipped: neither socat nor nc is installed");
+            return;
+        };
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let ssh = SshManager::new(dir.path().join("known_hosts"));
+        let store = KeyStore::default();
+        let key = generate(&store, KeyType::Ed25519, None, "me").unwrap();
+        let marker = dir.path().join("proxied");
+        let bridge = match bridge {
+            "socat" => "socat STDIO TCP:%h:%p",
+            _ => "nc %h %p",
+        };
+        let target = ProxiedTarget {
+            target: SshTarget {
+                host: "127.0.0.1".into(),
+                port: server.addr.port(),
+                username: "tester".into(),
+                auth: SshAuth::Password {
+                    password: PASSWORD.into(),
+                },
+                jumps: vec![],
+            },
+            proxy_command: Some(format!("touch {}; {bridge}", marker.display())),
+        };
+        let err = install(&store, key.id, &ssh, target.clone(), None)
+            .await
+            .unwrap_err();
+        let SshError::UnknownHost { fingerprint, .. } = err else {
+            panic!("{err:?}")
+        };
+        assert!(marker.exists(), "install did not use the proxy command");
+        let _ = install(&store, key.id, &ssh, target, Some(fingerprint)).await;
+        assert_eq!(
+            server.exec_commands(),
+            vec![install_command(&key.public_key).unwrap()]
         );
     }
 

@@ -161,7 +161,7 @@ Leave it empty to connect directly (the default).
 - The command is stopped when the tab closes or the connection ends or fails to start. On Linux everything it started is stopped with it; on macOS and Windows the command itself is stopped, and what it started ends when its input closes, as with OpenSSH.
 - The server's host key is still checked against `~/.ssh/known_hosts` with the session's host and port, and the login works as for any SSH session.
 - A session uses either jump hosts or a proxy command, not both: the session dialog refuses to save both.
-- The tab's SFTP browser uses the same connection, and SSH tunnels of the session go through the command too. Mosh sessions and the SSH key generator's **Install** connect directly, without it.
+- The tab's SFTP browser uses the same connection, and SSH tunnels of the session and the SSH key generator's **Install** go through the command too. Mosh sessions connect directly, without it: Mosh's own traffic is UDP, which a proxy command cannot carry.
 - **Copy SSH command** includes it as `-o ProxyCommand=...`.
 
 ### Jump hosts
@@ -698,7 +698,7 @@ The **Tools** menu in the toolbar holds network and SSH utilities.
 - **Load…** opens an existing private key, in OpenSSH format or PuTTY `.ppk` (v2 or v3), asking for its passphrase when it has one. Its comment and passphrase can then be changed (an empty passphrase removes it).
 - The dialog shows the public key in OpenSSH format and its `SHA256:` fingerprint, with **Copy**.
 - **Save public key…** (`0644`), **Save private key…** (`0600`, encrypted with the passphrase when there is one) and **Save as PuTTY key (.ppk)…** (PPK v3, `0600`, for PuTTY or WinSCP) each ask before replacing an existing file.
-- **Install** adds the public key to a saved SSH session's `~/.ssh/authorized_keys`, like `ssh-copy-id`: it logs in like a terminal tab (trust prompt, saved or typed password, jump hosts), creates `~/.ssh` (`0700`) and `authorized_keys` (`0600`) when missing, and adds the key only once, whatever the login shell of that account is.
+- **Install** adds the public key to a saved SSH session's `~/.ssh/authorized_keys`, like `ssh-copy-id`: it logs in like a terminal tab (trust prompt, saved or typed password, jump hosts or proxy command), creates `~/.ssh` (`0700`) and `authorized_keys` (`0600`) when missing, and adds the key only once, whatever the login shell of that account is.
 
 The private key never reaches the window: it stays in PlexusTerm's backend until it is saved, and is discarded when the dialog closes.
 

@@ -220,6 +220,19 @@ describe("KeyGenDialog", () => {
     expect(screen.getByRole("status").textContent).toBe("The key was already installed on web.");
   });
 
+  it("installs through the session's proxy command", async () => {
+    const proxied: SavedSession = { ...db, id: "s3", name: "gw", proxyCommand: "cloudflared access ssh --hostname %h" };
+    render(<KeyGenDialog sessions={[web, proxied]} onClose={() => {}} />);
+    await generate();
+    fireEvent.change(screen.getByLabelText("Saved session"), { target: { value: "s3" } });
+    await click("Install");
+    expect(invoke).toHaveBeenCalledWith("keygen_install", {
+      id: 7,
+      target: expect.objectContaining({ host: "db.example", proxyCommand: "cloudflared access ssh --hostname %h" }),
+      trustedFingerprint: null,
+    });
+  });
+
   it("asks to trust an unknown host, then installs", async () => {
     install = (a) => {
       if (!a.trustedFingerprint) throw { kind: "unknownHost", host: "db.example", fingerprint: "SHA256:host", otherKnownKeys: [] };
