@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SHORTCUT_ACTIONS, shortcutConflict, shortcutFor, shortcutLabel, type KeyLike } from "./shortcuts";
+import { SHORTCUT_ACTIONS, shortcutConflict, shortcutFor, shortcutHint, shortcutLabel, type KeyLike } from "./shortcuts";
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -159,5 +159,20 @@ describe("copy mode and quick select (S7)", () => {
   it("can be moved or cleared like any other action", () => {
     expect(shortcutFor(ctrlShift("X"), { copyMode: "" })).toBeNull();
     expect(shortcutFor(key("y", { altKey: true }), { quickSelect: "Alt+Y" })).toEqual({ type: "quickSelect" });
+  });
+});
+
+describe("shortcutHint", () => {
+  it("is an action's default combination", () => {
+    expect(shortcutHint("copy")).toBe("Ctrl+Shift+C");
+  });
+
+  it("is the user's own combination when there is one", () => {
+    expect(shortcutHint("copy", { copy: "Alt+C" })).toBe("Alt+C");
+  });
+
+  it("is nothing for an unbound action", () => {
+    expect(shortcutHint("copy", { copy: "" })).toBeUndefined();
+    expect(shortcutHint("clear")).toBeUndefined();
   });
 });

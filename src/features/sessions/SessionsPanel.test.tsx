@@ -128,10 +128,17 @@ describe("SessionsPanel", () => {
     expect(clipboard.writeText).toHaveBeenLastCalledWith("ssh -p 2222 -i '/home/me/my keys/id' u@10.0.0.1");
   });
 
+  it("shows Enter beside Connect, the key that connects a selected session (S6)", () => {
+    renderPanel();
+    fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
+    expect(screen.getByRole("menuitem", { name: "Connect" }).getAttribute("aria-keyshortcuts")).toBe("Enter");
+    expect(screen.getByRole("menuitem", { name: "Edit…" }).hasAttribute("aria-keyshortcuts")).toBe(false);
+  });
+
   it("opens a session menu on right click: connect, edit, duplicate, delete", () => {
     const props = renderPanel();
     fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+    expect(screen.getAllByRole("menuitem").map((i) => i.getAttribute("aria-label") ?? i.textContent)).toEqual([
       "Connect",
       "Copy SSH command",
       "Edit…",
@@ -154,7 +161,7 @@ describe("SessionsPanel", () => {
   it("opens a folder menu on right click: new session, new folder, connect all, delete", () => {
     const props = renderPanel();
     fireEvent.contextMenu(screen.getByText("Prod"), { clientX: 5, clientY: 5 });
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+    expect(screen.getAllByRole("menuitem").map((i) => i.getAttribute("aria-label") ?? i.textContent)).toEqual([
       "New session here…",
       "New folder here…",
       "Connect all (1)",
@@ -176,7 +183,7 @@ describe("SessionsPanel", () => {
   it("offers only Connect and copying in the session menu while the library cannot be edited", () => {
     renderPanel({ status: { state: "error", message: "broken" } });
     fireEvent.contextMenu(screen.getByText("web"), { clientX: 5, clientY: 5 });
-    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Connect", "Copy SSH command"]);
+    expect(screen.getAllByRole("menuitem").map((i) => i.getAttribute("aria-label") ?? i.textContent)).toEqual(["Connect", "Copy SSH command"]);
   });
 
   it("collapses a folder when its row is clicked, and keeps it folded the next time it opens", () => {

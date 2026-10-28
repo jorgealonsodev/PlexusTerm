@@ -1,5 +1,6 @@
 import { ContextMenu, type ContextMenuItem } from "../menu/ContextMenu";
 import { useT } from "../../i18n/i18n";
+import { shortcutHint, type ShortcutActionId, type ShortcutOverrides } from "../panes/shortcuts";
 
 export type MenuAction =
   | "copy"
@@ -16,6 +17,19 @@ export type MenuAction =
   | "log"
   | "record";
 
+/** The shortcut action each menu action matches, for the keys shown beside it (S6). */
+const ACTION_SHORTCUTS: Partial<Record<MenuAction, ShortcutActionId>> = {
+  copy: "copy",
+  copyOutput: "copyCommandOutput",
+  askAi: "askAi",
+  paste: "paste",
+  selectAll: "selectAll",
+  clear: "clear",
+  find: "find",
+  save: "saveOutput",
+  log: "toggleLogging",
+};
+
 interface TerminalContextMenuProps {
   /** Pointer position, in viewport coordinates. */
   x: number;
@@ -30,6 +44,8 @@ interface TerminalContextMenuProps {
   canAskAi?: boolean;
   /** The shell marked the command under the click, so its output can be copied. */
   commandOutput?: boolean;
+  /** The user's shortcut changes (Settings → Shortcuts), for the keys shown beside each action. */
+  shortcuts?: ShortcutOverrides;
   onAction: (action: MenuAction) => void;
   onClose: () => void;
 }
@@ -49,11 +65,15 @@ export function TerminalContextMenu({
   selection = "",
   canAskAi = false,
   commandOutput = false,
+  shortcuts,
   onAction,
   onClose,
 }: TerminalContextMenuProps) {
   const t = useT();
-  const item = (action: MenuAction, label: string): ContextMenuItem => ({ label, onSelect: () => onAction(action) });
+  const item = (action: MenuAction, label: string): ContextMenuItem => {
+    const id = ACTION_SHORTCUTS[action];
+    return { label, shortcut: id && shortcutHint(id, shortcuts), onSelect: () => onAction(action) };
+  };
   const selectionItems: ContextMenuItem[] = selection
     ? [
         item("copy", t("common.copy")),

@@ -57,4 +57,16 @@ describe("ContextMenu", () => {
     expect(screen.getByRole("menu").style.left).toBe(`${window.innerWidth - 4}px`);
     expect(screen.getByRole("menu").style.top).toBe(`${window.innerHeight - 4}px`);
   });
+
+  it("shows an item's shortcut at its side, announced apart from its name", () => {
+    render(<ContextMenu x={0} y={0} items={[{ label: "Copy", shortcut: "Ctrl+Shift+C", onSelect: vi.fn() }]} onClose={vi.fn()} />);
+    const item = screen.getByRole("menuitem", { name: "Copy" });
+    expect(item.querySelector(".context-menu__shortcut")?.textContent).toBe("Ctrl+Shift+C");
+    expect(item.getAttribute("aria-keyshortcuts")).toBe("Ctrl+Shift+C");
+  });
+
+  it("shows no shortcut for an item without one", () => {
+    setup();
+    expect(screen.getByRole("menuitem", { name: "Connect" }).querySelector(".context-menu__shortcut")).toBeNull();
+  });
 });
