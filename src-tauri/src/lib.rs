@@ -819,6 +819,20 @@ fn tabs_state_save(app: AppHandle, contents: String) -> Result<(), StorageError>
     storage::save(&config_path(&app, TABS_STATE_FILE)?, &contents)
 }
 
+/// The named tab sets (copies of the open tabs, without secrets); local to this computer.
+const TAB_SETS_FILE: &str = "tab-sets.json";
+
+#[tauri::command]
+async fn tab_sets_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, TAB_SETS_FILE)?;
+    on_disk(move || storage::load(&path)).await
+}
+
+#[tauri::command]
+fn tab_sets_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, TAB_SETS_FILE)?, &contents)
+}
+
 /// When each session and folder last changed or was deleted, for the sync of sessions.
 const SESSIONS_SYNC_STATE_FILE: &str = "sessions-sync.json";
 
@@ -1118,6 +1132,8 @@ pub fn run() {
             sessions_save,
             tabs_state_load,
             tabs_state_save,
+            tab_sets_load,
+            tab_sets_save,
             sessions_sync_state_load,
             sessions_sync_state_save,
             sessions_sync_read,

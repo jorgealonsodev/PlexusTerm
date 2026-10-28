@@ -236,6 +236,11 @@ export function parseTabsDocument(json: string | null): TabsDocument | null {
   } catch {
     return null;
   }
+  return readTabsDocument(value);
+}
+
+/** A parsed tabs document (tabs.json, or a tab set's tabs), sanitized like `parseTabsDocument`. */
+export function readTabsDocument(value: unknown): TabsDocument | null {
   if (!isObject(value) || value.version !== TABS_DOCUMENT_VERSION || !Array.isArray(value.tabs)) return null;
   const tabs: SavedTab[] = [];
   let active = 0;

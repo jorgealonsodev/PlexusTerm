@@ -22,6 +22,7 @@ import {
   Usb,
   type LucideIcon,
   Film,
+  Layers,
 } from "lucide-react";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useT } from "../../i18n/i18n";
@@ -54,6 +55,7 @@ const ACTIONS: Record<ToolbarAction, { label: AppKey | string; icon: LucideIcon 
   mosh: { label: "Mosh…", icon: Smartphone },
   openShared: { label: "share.view.open", icon: Link },
   playRecording: { label: "terminal.player.open", icon: Film },
+  tabSets: { label: "app.tabSets.menu", icon: Layers },
   keyGen: { label: "app.tools.keyGenerator", icon: KeySquare },
   portScan: { label: "app.tools.portScanner", icon: ScanSearch },
   networkScan: { label: "app.tools.networkScanner", icon: Network },
