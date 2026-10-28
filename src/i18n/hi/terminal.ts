@@ -20,6 +20,16 @@ export const terminal: Messages<typeof en> = {
     paste: "पेस्ट करें",
   },
   ruleMatched: "{pattern} से मेल",
+  copyMode: {
+    badge: "कॉपी",
+    hint: "v चुनें · y कॉपी · Esc बाहर",
+  },
+  quickSelect: {
+    badge: "चयन",
+    hint: "कॉपी करने के लिए लेबल टाइप करें · Shift+लेबल खोलता है · Esc बाहर",
+    none: "स्क्रीन पर चुनने के लिए कुछ नहीं",
+    copied: "कॉपी हो गया",
+  },
   commandDot: {
     exit: "निकास कोड {code}",
     exitTime: "निकास कोड {code} · {duration}",

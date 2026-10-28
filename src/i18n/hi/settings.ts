@@ -321,6 +321,8 @@ export const settings: Messages<typeof en> = {
       copy: "कॉपी करें",
       paste: "पेस्ट करें",
       selectAll: "सभी चुनें",
+      copyMode: "कॉपी मोड (कीबोर्ड से चयन)",
+      quickSelect: "त्वरित चयन (URL, पथ या हैश कॉपी करें)",
       previousCommand: "पिछली कमांड पर जाएँ",
       nextCommand: "अगली कमांड पर जाएँ",
       copyCommandOutput: "आख़िरी कमांड का आउटपुट कॉपी करें",

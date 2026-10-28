@@ -71,6 +71,9 @@ interface FakeTerminal {
   modes: { bracketedPasteMode: boolean };
   clear: ReturnType<typeof vi.fn>;
   selectAll: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  clearSelection: ReturnType<typeof vi.fn>;
+  scrollToLine: ReturnType<typeof vi.fn>;
   written: string[];
   /** The cursor line on screen; the cursor sits at its end. */
   line: string;
@@ -114,6 +117,9 @@ vi.mock("@xterm/xterm", () => ({
     modes = { bracketedPasteMode: false };
     clear = vi.fn();
     selectAll = vi.fn();
+    select = vi.fn();
+    clearSelection = vi.fn();
+    scrollToLine = vi.fn();
     line = "";
     bufferType = "normal";
     get buffer() {
@@ -1330,6 +1336,174 @@ describe("TerminalView", () => {
     it("starts each logged line with its date and time when Settings ask for it (the default)", async () => {
       expect(DEFAULT_SETTINGS.logTimestamps).toBe(true);
       expect(await logOneLine(true)).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] bold\n$/);
+    });
+  });
+
+  describe("copy mode and quick select (S7)", () => {
+    const term = () => lastTerm();
+    const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+    const renderView = (props: Partial<Parameters<typeof TerminalView>[0]> = {}) =>
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} {...props} />);
+    const press = (key: string, mods: Partial<KeyboardEvent> = {}, type = "keydown") => {
+      let passed = true;
+      act(() => {
+        passed = term().keyHandler({ type, key, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, ...mods });
+      });
+      return passed;
+    };
+    const ctrlShift = (key: string) => press(key, { ctrlKey: true, shiftKey: true });
+    const cursor = () => document.querySelector(".copy-mode__cursor");
+    const connected = async (props: Partial<Parameters<typeof TerminalView>[0]> = {}) => {
+      backend.start.mockImplementationOnce(() => Promise.resolve(7));
+      const view = renderView(props);
+      await settle();
+      return view;
+    };
+
+    it("Ctrl+Shift+X starts a cursor on the terminal's cursor, with a COPY badge", async () => {
+      await connected();
+      term().line = "$ ls -la";
+      expect(ctrlShift("X")).toBe(false);
+      expect(screen.getByRole("status").textContent).toContain("COPY");
+      expect(cursor()?.getAttribute("data-col")).toBe("8");
+      expect(cursor()?.getAttribute("data-row")).toBe("0");
+    });
+
+    it("moves the cursor with the arrows and h/j/k/l, words and line ends", async () => {
+      await connected();
+      term().line = "$ ls -la";
+      ctrlShift("X");
+      press("h");
+      press("ArrowLeft");
+      expect(cursor()?.getAttribute("data-col")).toBe("6");
+      press("b");
+      expect(cursor()?.getAttribute("data-col")).toBe("5");
+      press("0");
+      expect(cursor()?.getAttribute("data-col")).toBe("0");
+      press("w");
+      expect(cursor()?.getAttribute("data-col")).toBe("2");
+      press("$", { shiftKey: true });
+      expect(cursor()?.getAttribute("data-col")).toBe("7");
+      press("l");
+      expect(cursor()?.getAttribute("data-col")).toBe("8");
+    });
+
+    it("selects with v and copies the selection with y, then leaves", async () => {
+      await connected();
+      term().line = "$ ls -la";
+      ctrlShift("X");
+      press("0");
+      press("w");
+      press("v");
+      press("l");
+      expect(term().select).toHaveBeenLastCalledWith(2, 0, 2);
+      (term() as unknown as { getSelection: () => string }).getSelection = () => "ls";
+      press("y");
+      expect(clipboard.writeText).toHaveBeenCalledWith("ls");
+      expect(cursor()).toBeNull();
+      expect(screen.getByRole("status").textContent).toBe("Copied");
+    });
+
+    it("copies with Enter too, and leaves without copying on Esc or q", async () => {
+      await connected();
+      term().line = "abc";
+      (term() as unknown as { getSelection: () => string }).getSelection = () => "c";
+      ctrlShift("X");
+      press("Escape");
+      expect(cursor()).toBeNull();
+      ctrlShift("X");
+      press("q");
+      expect(cursor()).toBeNull();
+      expect(clipboard.writeText).not.toHaveBeenCalled();
+      expect(term().clearSelection).toHaveBeenCalled();
+      ctrlShift("X");
+      press("h");
+      press("v");
+      press("Enter");
+      expect(clipboard.writeText).toHaveBeenCalledWith("c");
+      expect(cursor()).toBeNull();
+    });
+
+    it("keeps every key from the shell while it is on, pastes included", async () => {
+      const { container } = await connected();
+      term().line = "abc";
+      ctrlShift("X");
+      for (const key of ["a", "i", "Enter", "Escape"]) {
+        // Enter copies and Esc leaves: start again so every key is pressed in copy mode.
+        if (!cursor()) ctrlShift("X");
+        expect(press(key)).toBe(false);
+        expect(press(key, {}, "keypress")).toBe(false);
+      }
+      ctrlShift("X");
+      expect(press("c", { ctrlKey: true })).toBe(false);
+      const paste = new Event("paste", { bubbles: true }) as Event & { clipboardData: unknown };
+      paste.clipboardData = { getData: () => "rm -rf /" };
+      act(() => void container.querySelector(".terminal-host")!.dispatchEvent(paste));
+      expect(term().paste).not.toHaveBeenCalled();
+      expect(backend.write).not.toHaveBeenCalled();
+      // Leaving gives the keys back.
+      press("Escape");
+      expect(press("a")).toBe(true);
+    });
+
+    it("Ctrl+Shift+Q labels the URLs and paths on screen; a label copies its text", async () => {
+      await connected();
+      term().line = "see https://example.com/a and docs/PRD.md";
+      expect(ctrlShift("Q")).toBe(false);
+      const labels = () => [...document.querySelectorAll(".quick-select__label")].map((label) => label.textContent);
+      expect(labels()).toEqual(["a", "s"]);
+      expect(press("s")).toBe(false);
+      expect(clipboard.writeText).toHaveBeenCalledWith("docs/PRD.md");
+      expect(labels()).toEqual([]);
+      expect(screen.getByRole("status").textContent).toBe("Copied");
+      expect(backend.write).not.toHaveBeenCalled();
+    });
+
+    it("Shift+label opens a URL in the browser and a path as Ctrl+click does", async () => {
+      const fileLinks = { resolve: vi.fn(async (text: string) => `/work/${text}`), open: vi.fn() };
+      await connected({ fileLinks });
+      term().line = "see https://example.com/a and docs/PRD.md";
+      ctrlShift("Q");
+      press("A", { shiftKey: true });
+      expect(opener.openUrl).toHaveBeenCalledWith("https://example.com/a");
+      ctrlShift("Q");
+      press("S", { shiftKey: true });
+      await settle();
+      expect(fileLinks.resolve).toHaveBeenCalledWith("docs/PRD.md");
+      expect(fileLinks.open).toHaveBeenCalledWith("/work/docs/PRD.md");
+      expect(clipboard.writeText).not.toHaveBeenCalled();
+    });
+
+    it("leaves quick select with Esc, and says so when nothing on screen can be selected", async () => {
+      await connected();
+      term().line = "4a1b2c3 fixed it";
+      ctrlShift("Q");
+      press("Escape");
+      expect(document.querySelectorAll(".quick-select__label")).toHaveLength(0);
+      expect(press("a")).toBe(true);
+      term().line = "nothing here";
+      ctrlShift("Q");
+      expect(screen.getByRole("status").textContent).toBe("Nothing to select on screen");
+      expect(press("a")).toBe(true);
+    });
+
+    it("starts from the command palette and from shortcuts the user moved", async () => {
+      let run: ((shortcut: import("../panes/shortcuts").Shortcut) => void) | null = null;
+      await connected({
+        settings: { ...DEFAULT_SETTINGS, shortcuts: { copyMode: "Alt+C" } },
+        registerPaneShortcuts: (handler) => {
+          run = handler;
+          return () => {};
+        },
+      });
+      term().line = "abc";
+      expect(ctrlShift("X")).toBe(true);
+      expect(cursor()).toBeNull();
+      press("c", { altKey: true });
+      expect(cursor()).not.toBeNull();
+      press("Escape");
+      act(() => run!({ type: "copyMode" }));
+      expect(cursor()).not.toBeNull();
     });
   });
 

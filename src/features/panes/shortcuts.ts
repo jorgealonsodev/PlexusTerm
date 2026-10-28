@@ -30,6 +30,9 @@ export type Shortcut =
   | { type: "previousCommand" }
   | { type: "nextCommand" }
   | { type: "copyCommandOutput" }
+  /** Keyboard selection over the scrollback, and labels over the URLs, paths, hashes… on screen. */
+  | { type: "copyMode" }
+  | { type: "quickSelect" }
   | { type: "previousFailedCommand" }
   | { type: "nextFailedCommand" }
   | { type: "rerunFailedCommand" }
@@ -100,6 +103,8 @@ export const SHORTCUT_ACTIONS = {
   copy: { shortcut: { type: "copy" }, group: "terminal", defaults: ["Ctrl+Shift+C"] },
   paste: { shortcut: { type: "paste" }, group: "terminal", defaults: ["Ctrl+Shift+V"] },
   selectAll: { shortcut: { type: "selectAll" }, group: "terminal", defaults: [] },
+  copyMode: { shortcut: { type: "copyMode" }, group: "terminal", defaults: ["Ctrl+Shift+X"] },
+  quickSelect: { shortcut: { type: "quickSelect" }, group: "terminal", defaults: ["Ctrl+Shift+Q"] },
   previousCommand: { shortcut: { type: "previousCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowUp"] },
   nextCommand: { shortcut: { type: "nextCommand" }, group: "terminal", defaults: ["Ctrl+Shift+ArrowDown"] },
   copyCommandOutput: { shortcut: { type: "copyCommandOutput" }, group: "terminal", defaults: [] },

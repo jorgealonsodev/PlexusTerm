@@ -321,6 +321,8 @@ export const settings: Messages<typeof en> = {
       copy: "복사",
       paste: "붙여넣기",
       selectAll: "모두 선택",
+      copyMode: "복사 모드(키보드로 선택)",
+      quickSelect: "빠른 선택(URL, 경로 또는 해시 복사)",
       previousCommand: "이전 명령으로 이동",
       nextCommand: "다음 명령으로 이동",
       copyCommandOutput: "마지막 명령의 출력 복사",

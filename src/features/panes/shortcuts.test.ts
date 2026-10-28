@@ -60,7 +60,7 @@ describe("shortcutFor", () => {
     expect(shortcutFor(key("c", { ctrlKey: true }))).toBeNull(); // Ctrl+C interrupts
     expect(shortcutFor(key("v", { ctrlKey: true }))).toBeNull();
     expect(shortcutFor(key("1", { ctrlKey: true }))).toBeNull();
-    expect(shortcutFor(ctrlShift("X"))).toBeNull();
+    expect(shortcutFor(ctrlShift("Z"))).toBeNull();
     expect(shortcutFor(key("ArrowLeft"))).toBeNull();
     expect(shortcutFor(key("ArrowLeft", { altKey: true, ctrlKey: true }))).toBeNull();
     expect(shortcutFor(key("D", { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull();
@@ -137,5 +137,27 @@ describe("Toggle DEV mode (S10)", () => {
     const key = { key: "y", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false };
     expect(shortcutFor(key)).toBeNull();
     expect(shortcutFor(key, { toggleDevMode: "Ctrl+Shift+Y" })).toEqual({ type: "toggleDevMode" });
+  });
+});
+
+describe("copy mode and quick select (S7)", () => {
+  it("are terminal actions on Ctrl+Shift+X and Ctrl+Shift+Q", () => {
+    expect(SHORTCUT_ACTIONS.copyMode).toMatchObject({ group: "terminal", defaults: ["Ctrl+Shift+X"] });
+    expect(SHORTCUT_ACTIONS.quickSelect).toMatchObject({ group: "terminal", defaults: ["Ctrl+Shift+Q"] });
+    expect(shortcutFor(ctrlShift("X"))).toEqual({ type: "copyMode" });
+    expect(shortcutFor(ctrlShift("q"))).toEqual({ type: "quickSelect" });
+  });
+
+  it("take combinations no other default, fixed key or the AI assistant uses", () => {
+    for (const id of ["copyMode", "quickSelect"] as const) {
+      for (const combo of SHORTCUT_ACTIONS[id].defaults) {
+        expect(shortcutConflict(combo, {}, { action: id, assistantShortcut: "Ctrl+Shift+Space" })).toBeNull();
+      }
+    }
+  });
+
+  it("can be moved or cleared like any other action", () => {
+    expect(shortcutFor(ctrlShift("X"), { copyMode: "" })).toBeNull();
+    expect(shortcutFor(key("y", { altKey: true }), { quickSelect: "Alt+Y" })).toEqual({ type: "quickSelect" });
   });
 });

@@ -20,6 +20,16 @@ export const terminal: Messages<typeof en> = {
     paste: "貼り付け",
   },
   ruleMatched: "{pattern} に一致",
+  copyMode: {
+    badge: "コピー",
+    hint: "v 選択 · y コピー · Esc 終了",
+  },
+  quickSelect: {
+    badge: "選択",
+    hint: "ラベルを入力してコピー · Shift+ラベルで開く · Esc で終了",
+    none: "画面に選択できるものがありません",
+    copied: "コピーしました",
+  },
   commandDot: {
     exit: "終了コード {code}",
     exitTime: "終了コード {code} · {duration}",

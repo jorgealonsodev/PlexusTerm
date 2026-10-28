@@ -20,6 +20,16 @@ export const terminal: Messages<typeof en> = {
     paste: "Einfügen",
   },
   ruleMatched: "Treffer für {pattern}",
+  copyMode: {
+    badge: "KOPIEREN",
+    hint: "v auswählen · y kopieren · Esc beenden",
+  },
+  quickSelect: {
+    badge: "AUSWAHL",
+    hint: "Kürzel tippen zum Kopieren · Umschalt+Kürzel öffnet · Esc beendet",
+    none: "Nichts zum Auswählen auf dem Bildschirm",
+    copied: "Kopiert",
+  },
   commandDot: {
     exit: "Exit-Code {code}",
     exitTime: "Exit-Code {code} · {duration}",

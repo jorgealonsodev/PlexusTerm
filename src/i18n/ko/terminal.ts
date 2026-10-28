@@ -20,6 +20,16 @@ export const terminal: Messages<typeof en> = {
     paste: "붙여넣기",
   },
   ruleMatched: "{pattern} 일치",
+  copyMode: {
+    badge: "복사",
+    hint: "v 선택 · y 복사 · Esc 나가기",
+  },
+  quickSelect: {
+    badge: "선택",
+    hint: "레이블을 입력하면 복사 · Shift+레이블은 열기 · Esc 나가기",
+    none: "화면에 선택할 항목이 없습니다",
+    copied: "복사됨",
+  },
   commandDot: {
     exit: "종료 코드 {code}",
     exitTime: "종료 코드 {code} · {duration}",

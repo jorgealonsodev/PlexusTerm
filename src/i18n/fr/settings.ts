@@ -321,6 +321,8 @@ export const settings: Messages<typeof en> = {
       copy: "Copier",
       paste: "Coller",
       selectAll: "Tout sélectionner",
+      copyMode: "Mode copie (sélection au clavier)",
+      quickSelect: "Sélection rapide (copier une URL, un chemin ou un hash)",
       previousCommand: "Aller à la commande précédente",
       nextCommand: "Aller à la commande suivante",
       copyCommandOutput: "Copier la sortie de la dernière commande",
