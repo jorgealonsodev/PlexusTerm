@@ -68,6 +68,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "Port muss eine Zahl zwischen 1 und 65535 sein",
     keyPathRequired: "Pfad zum privaten Schlüssel ist erforderlich",
     tmuxSessionInvalid: "Der Name der tmux-Sitzung darf nur Buchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten (höchstens 64)",
+    proxyCommandInvalid: "Der Proxy-Befehl muss eine einzige Zeile mit höchstens {max} Zeichen sein",
+    proxyWithJumps: "Verwende entweder Sprung-Hosts oder einen Proxy-Befehl, nicht beides",
   },
   jumps: {
     legend: "Jump-Hosts",
@@ -144,6 +146,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "Shell in tmux halten",
     tmuxHelp: "Startet die Shell in einer tmux-Sitzung auf dem Server (tmux new -A -s <Name>), sodass eine Wiederverbindung dort weitermacht, wo du warst, mit weiterlaufenden Programmen. Ohne tmux auf dem Server öffnet sich die normale Shell.",
     tmuxSession: "Name der tmux-Sitzung",
+    proxyCommand: "Proxy-Befehl (erweitert)",
+    proxyCommandPlaceholder: "z. B. cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "Verbindet über diesen Befehl auf deinem Computer statt direkt, wie ProxyCommand von OpenSSH: SSH läuft über seine Ein- und Ausgabe. %h ist der Host, %p der Port, %r der Benutzer und %% ein %. Zum Beispiel: cloudflared access ssh --hostname %h oder aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. Seine Meldungen erscheinen gelb im Terminal. Nicht zusammen mit Sprung-Hosts verwendbar. Leer lassen, um direkt zu verbinden.",
   },
   hostKey: {
     unknownHost: "Unbekannter Host",

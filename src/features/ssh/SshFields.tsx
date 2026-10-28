@@ -1,4 +1,4 @@
-import { DEFAULT_TMUX_SESSION, type QuickConnectForm } from "./quickConnect";
+import { DEFAULT_TMUX_SESSION, MAX_PROXY_COMMAND, type QuickConnectForm } from "./quickConnect";
 import { HelpTip } from "../sidebar/HelpTip";
 import { useT } from "../../i18n/i18n";
 
@@ -87,6 +87,20 @@ export function SshFields({ form, set, check, withSecrets, autoFocusHost }: SshF
           <input value={form.tmuxSession} onChange={set("tmuxSession")} placeholder={DEFAULT_TMUX_SESSION} />
         </label>
       )}
+      <label className="field">
+        <span className="setting-title">
+          {t("sessions.ssh.proxyCommand")} <HelpTip text={t("sessions.ssh.proxyCommandHelp")} />
+        </span>
+        <input
+          value={form.proxyCommand}
+          onChange={set("proxyCommand")}
+          placeholder={t("sessions.ssh.proxyCommandPlaceholder")}
+          maxLength={MAX_PROXY_COMMAND}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+        />
+      </label>
     </>
   );
 }

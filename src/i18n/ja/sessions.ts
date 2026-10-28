@@ -67,6 +67,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "ポートは 1 から 65535 までの数値で指定してください",
     keyPathRequired: "秘密鍵のパスは必須です",
     tmuxSessionInvalid: "tmux セッション名に使えるのは英字、数字、ドット、アンダースコア、ハイフンだけです (64 文字まで)",
+    proxyCommandInvalid: "プロキシコマンドは {max} 文字以内の 1 行にしてください",
+    proxyWithJumps: "踏み台ホストとプロキシコマンドはどちらか一方だけ使えます",
   },
   jumps: {
     legend: "ジャンプホスト",
@@ -136,6 +138,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "シェルを tmux で維持",
     tmuxHelp: "サーバー上の tmux セッション (tmux new -A -s <名前>) の中でシェルを起動するので、再接続すると実行中のプログラムごと元の状態に戻ります。サーバーに tmux がなければ通常のシェルが開きます。",
     tmuxSession: "tmux セッション名",
+    proxyCommand: "プロキシコマンド (詳細)",
+    proxyCommandPlaceholder: "例: cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "直接ではなく、このコンピューター上のこのコマンドを経由して接続します (OpenSSH の ProxyCommand と同じ)。SSH はコマンドの入出力を通ります。%h はホスト、%p はポート、%r はユーザー、%% は % です。例: cloudflared access ssh --hostname %h や aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p。コマンドのメッセージはターミナルに黄色で表示されます。踏み台ホストとは併用できません。直接接続するには空のままにします。",
   },
   hostKey: {
     unknownHost: "不明なホスト",

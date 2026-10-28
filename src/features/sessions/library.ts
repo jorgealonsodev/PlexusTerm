@@ -1,5 +1,5 @@
 import { t } from "../../i18n/i18n";
-import { isTmuxSessionName } from "../ssh/quickConnect";
+import { isProxyCommand, isTmuxSessionName } from "../ssh/quickConnect";
 import type { LocalTarget, SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
 
 /** Saved auth never contains secrets: passwords are asked at connect time. */
@@ -25,6 +25,8 @@ export interface SavedSession {
   forwardAgent?: true;
   /** Keeps the shell in this tmux session; absent when off. */
   tmuxSession?: string;
+  /** Connects through this local command instead of TCP (never with `jumpIds`); absent when none. */
+  proxyCommand?: string;
 }
 
 /** Most jump hosts a connection may go through. */
@@ -171,6 +173,7 @@ export function sanitizeSession(s: LibrarySession): LibrarySession {
     ...(s.jumpIds?.length ? { jumpIds: [...s.jumpIds] } : {}),
     ...(s.forwardAgent === true ? { forwardAgent: true } : {}),
     ...(s.tmuxSession !== undefined && isTmuxSessionName(s.tmuxSession) ? { tmuxSession: s.tmuxSession } : {}),
+    ...(typeof s.proxyCommand === "string" && isProxyCommand(s.proxyCommand) ? { proxyCommand: s.proxyCommand } : {}),
   };
   return ssh;
 }
@@ -347,7 +350,8 @@ function isLibrarySession(v: unknown): v is LibrarySession {
     isSavedAuth(s.auth) &&
     (s.jumpIds === undefined || (Array.isArray(s.jumpIds) && s.jumpIds.every(isString))) &&
     (s.forwardAgent === undefined || typeof s.forwardAgent === "boolean") &&
-    (s.tmuxSession === undefined || isString(s.tmuxSession))
+    (s.tmuxSession === undefined || isString(s.tmuxSession)) &&
+    (s.proxyCommand === undefined || isString(s.proxyCommand))
   );
 }
 
@@ -440,14 +444,19 @@ export function toTarget(saved: DirectSession, password?: string): DirectTarget 
     auth,
     ...(saved.forwardAgent ? { forwardAgent: true } : {}),
     ...(saved.tmuxSession ? { tmuxSession: saved.tmuxSession } : {}),
+    ...(saved.proxyCommand ? { proxyCommand: saved.proxyCommand } : {}),
   };
 }
 
 /** A word for a POSIX shell: as is when it is plain, else single-quoted. */
 const shellWord = (word: string) => (/^[\w@%+=:,./~-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`);
 
-/** The `ssh` command that opens a saved SSH session: its port, its own key if it has one, user@host. */
+/**
+ * The `ssh` command that opens a saved SSH session: its port, its own key if it has one, its proxy
+ * command if it has one, user@host.
+ */
 export function sshCommandOf(session: SavedSession): string {
   const key = session.auth.method === "key" ? ` -i ${shellWord(session.auth.path)}` : "";
-  return `ssh -p ${session.port}${key} ${shellWord(`${session.username}@${session.host}`)}`;
+  const proxy = session.proxyCommand ? ` -o ${shellWord(`ProxyCommand=${session.proxyCommand}`)}` : "";
+  return `ssh -p ${session.port}${key}${proxy} ${shellWord(`${session.username}@${session.host}`)}`;
 }

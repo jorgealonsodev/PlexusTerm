@@ -51,6 +51,12 @@ describe("SSH backend", () => {
     expect(connects()[0].options).toEqual({ forwardAgent: true, tmuxSession: "work" });
   });
 
+  it("sends the proxy command of the target, and nothing else changes", async () => {
+    await backendFor({ ...target, proxyCommand: "nc %h %p" }).start({ cols: 80, rows: 24 }, () => {});
+    expect(connects()[0].options).toEqual({ forwardAgent: false, tmuxSession: null, proxyCommand: "nc %h %p" });
+    expect(connects()[0].request).toMatchObject({ host: "h", port: 22, jumps: [] });
+  });
+
   it("asks for the same tmux session on every start, so a reconnection resumes it", async () => {
     const backend = backendFor({ ...target, tmuxSession: "work" });
     await backend.start({ cols: 80, rows: 24 }, () => {});

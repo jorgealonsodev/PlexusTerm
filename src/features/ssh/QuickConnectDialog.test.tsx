@@ -30,4 +30,13 @@ describe("QuickConnectDialog", () => {
     fireEvent.click(screen.getByText("Connect"));
     expect(onConnect.mock.calls[0][0]).toMatchObject({ forwardAgent: true, tmuxSession: "plexus" });
   });
+
+  it("connects through the proxy command typed", () => {
+    const onConnect = vi.fn();
+    render(<QuickConnectDialog onConnect={onConnect} onCancel={() => {}} />);
+    fill();
+    fireEvent.change(screen.getByLabelText(/Proxy command/), { target: { value: "cloudflared access ssh --hostname %h" } });
+    fireEvent.click(screen.getByText("Connect"));
+    expect(onConnect.mock.calls[0][0]).toMatchObject({ proxyCommand: "cloudflared access ssh --hostname %h" });
+  });
 });

@@ -127,6 +127,25 @@ Saved password sessions (terminal tabs, Mosh and tunnels) connect first: PlexusT
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
 - Key passphrases are never saved.
 
+### Proxy command
+
+**Proxy command (advanced)**, in Quick connect and in a saved SSH session, reaches the server through a command on your computer instead of connecting to it directly, like OpenSSH's `ProxyCommand`: SSH runs over the command's input and output. It is how you go through access gateways such as Cloudflare Access or AWS Systems Manager, for example:
+
+- `cloudflared access ssh --hostname %h`
+- `aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p`
+- `ssh -W %h:%p bastion` (through a bastion of your own OpenSSH config)
+
+Leave it empty to connect directly (the default).
+
+- In the command, `%h` becomes the session's host, `%p` its port, `%r` its username and `%%` a single `%`; any other `%` sequence stays as typed. A host or username with characters the shell would interpret (spaces, `;`, `$`, quotes...) is refused with an error instead of being put in the command.
+- The command runs with `sh -c` (`cmd /C` on Windows), as typed, every time the session connects or reconnects. It must be one line of at most 2000 characters.
+- What the command writes to its error output appears in the terminal in yellow; when the connection fails, its last lines are in the error too (`... (the proxy command said: ...)`).
+- The command is stopped when the tab closes or the connection ends or fails to start. On Linux everything it started is stopped with it; on macOS and Windows the command itself is stopped, and what it started ends when its input closes, as with OpenSSH.
+- The server's host key is still checked against `~/.ssh/known_hosts` with the session's host and port, and the login works as for any SSH session.
+- A session uses either jump hosts or a proxy command, not both: the session dialog refuses to save both.
+- The tab's SFTP browser uses the same connection, and SSH tunnels of the session go through the command too. Mosh sessions and the SSH key generator's **Install** connect directly, without it.
+- **Copy SSH command** includes it as `-o ProxyCommand=...`.
+
 ### Jump hosts
 
 A saved SSH session can reach its server through up to 3 jump hosts (bastions), like `ssh -J`. In the session's edit dialog, **Jump hosts** lists other saved SSH sessions in the order they are crossed: add them from the list, move them up or down, or remove them. Quick-connect sessions have no jump hosts.

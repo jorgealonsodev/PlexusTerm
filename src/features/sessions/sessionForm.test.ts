@@ -16,12 +16,35 @@ const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
   forwardAgent: false,
   tmux: false,
   tmuxSession: "plexus",
+  proxyCommand: "",
   kind: "ssh",
   serial: defaultSerialForm,
   telnet: { host: "", port: "" },
   mosh: { sshSessionId: "", serverCommand: "" },
   local: { program: "", args: "", cwd: "" },
   ...overrides,
+});
+
+describe("parseSessionForm: proxy command", () => {
+  it("saves the proxy command and shows it again in the form", () => {
+    const parsed = parseSessionForm(form({ proxyCommand: " aws ssm start-session --target %h " }), "id-1");
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.session).toMatchObject({ proxyCommand: "aws ssm start-session --target %h" });
+    expect(formFromSession(parsed.session)).toMatchObject({ proxyCommand: "aws ssm start-session --target %h" });
+  });
+
+  it("leaves a blank proxy command out", () => {
+    const parsed = parseSessionForm(form({ proxyCommand: "  " }), "id-1");
+    expect(parsed.ok && parsed.session).not.toHaveProperty("proxyCommand");
+    expect(parsed.ok && formFromSession(parsed.session).proxyCommand).toBe("");
+  });
+
+  it("refuses jump hosts together with a proxy command", () => {
+    expect(parseSessionForm(form({ proxyCommand: "nc %h %p", jumpIds: ["b"] }), "id-1")).toEqual({
+      ok: false,
+      error: "Use either jump hosts or a proxy command, not both",
+    });
+  });
 });
 
 describe("parseSessionForm", () => {

@@ -66,6 +66,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "端口必须是 1 到 65535 之间的数字",
     keyPathRequired: "私钥路径为必填项",
     tmuxSessionInvalid: "tmux 会话名称只能包含字母、数字、点、下划线和连字符（最多 64 个）",
+    proxyCommandInvalid: "代理命令必须是一行，最多 {max} 个字符",
+    proxyWithJumps: "跳板主机和代理命令只能二选一",
   },
   jumps: {
     legend: "跳板机",
@@ -135,6 +137,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "在 tmux 中保持 shell",
     tmuxHelp: "在服务器上的 tmux 会话（tmux new -A -s <名称>）中启动 shell，重新连接时会回到原来的位置，程序仍在运行。服务器上没有 tmux 时会打开普通 shell。",
     tmuxSession: "tmux 会话名称",
+    proxyCommand: "代理命令（高级）",
+    proxyCommandPlaceholder: "例如 cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "不直接连接，而是通过本机上的此命令连接，类似 OpenSSH 的 ProxyCommand：SSH 通过它的输入和输出传输。%h 为主机，%p 为端口，%r 为用户，%% 为 %。例如：cloudflared access ssh --hostname %h，或 aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p。它的消息会以黄色显示在终端中。不能与跳板主机同时使用。留空则直接连接。",
   },
   hostKey: {
     unknownHost: "未知主机",

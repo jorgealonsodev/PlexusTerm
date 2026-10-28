@@ -13,6 +13,8 @@ export interface QuickConnectForm {
   /** Keep the shell in tmux session `tmuxSession` (blank: {@link DEFAULT_TMUX_SESSION}). */
   tmux: boolean;
   tmuxSession: string;
+  /** Local command that carries the connection instead of TCP (blank: none); see {@link isProxyCommand}. */
+  proxyCommand: string;
 }
 
 /** The tmux session a tab is kept in when its name is left blank. */
@@ -20,6 +22,19 @@ export const DEFAULT_TMUX_SESSION = "plexus";
 
 /** Letters, digits, `.`, `_` and `-`, 64 at most: the names the backend accepts (`valid_tmux_session`). */
 export const isTmuxSessionName = (name: string) => /^[A-Za-z0-9._-]{1,64}$/.test(name);
+
+/** Longest proxy command, as the backend accepts it (`MAX_PROXY_COMMAND`). */
+export const MAX_PROXY_COMMAND = 2000;
+
+/**
+ * Whether `value` may be a proxy command: one line (no control characters) of 1 to
+ * {@link MAX_PROXY_COMMAND} characters, already trimmed. The backend runs it with the platform shell.
+ */
+export const isProxyCommand = (value: string) =>
+  value.length >= 1 &&
+  value.length <= MAX_PROXY_COMMAND &&
+  value === value.trim() &&
+  !/[\u0000-\u001f\u007f-\u009f]/.test(value);
 
 export type QuickConnectResult = { ok: true; target: SshTarget } | { ok: false; error: string };
 
@@ -76,6 +91,10 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
 
   const tmuxSession = form.tmuxSession.trim() || DEFAULT_TMUX_SESSION;
   if (form.tmux && !isTmuxSessionName(tmuxSession)) return fail(t("sessions.form.tmuxSessionInvalid"));
+  const proxyCommand = form.proxyCommand.trim();
+  if (proxyCommand && !isProxyCommand(proxyCommand)) {
+    return fail(t("sessions.form.proxyCommandInvalid", { max: MAX_PROXY_COMMAND }));
+  }
 
   return {
     ok: true,
@@ -87,6 +106,7 @@ export function parseQuickConnect(form: QuickConnectForm): QuickConnectResult {
       auth,
       ...(form.forwardAgent ? { forwardAgent: true } : {}),
       ...(form.tmux ? { tmuxSession } : {}),
+      ...(proxyCommand ? { proxyCommand } : {}),
     },
   };
 }

@@ -64,6 +64,8 @@ export const sessions = {
     portRange: "Port must be a number between 1 and 65535",
     keyPathRequired: "Private key path is required",
     tmuxSessionInvalid: "The tmux session name may only use letters, digits, dots, underscores and dashes (64 at most)",
+    proxyCommandInvalid: "The proxy command must be one line of at most {max} characters",
+    proxyWithJumps: "Use either jump hosts or a proxy command, not both",
   },
   jumps: {
     legend: "Jump hosts",
@@ -134,6 +136,9 @@ export const sessions = {
     tmux: "Keep the shell in tmux",
     tmuxHelp: "Starts the shell inside a tmux session on the server (tmux new -A -s <name>), so a reconnection resumes it where you were, with your programs still running. Without tmux on the server, the normal shell opens.",
     tmuxSession: "tmux session name",
+    proxyCommand: "Proxy command (advanced)",
+    proxyCommandPlaceholder: "e.g. cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "Connects through this command on your computer instead of directly, like OpenSSH's ProxyCommand: SSH runs over its input and output. %h is the host, %p the port, %r the user and %% a %. For example: cloudflared access ssh --hostname %h, or aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. Its messages appear in yellow in the terminal. It cannot be used together with jump hosts. Leave it empty to connect directly.",
   },
   hostKey: {
     unknownHost: "Unknown host",

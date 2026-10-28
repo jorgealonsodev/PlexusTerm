@@ -9,6 +9,7 @@ import {
   toTarget,
   isSshSession,
   resolveChain,
+  sshCommandOf,
   type SavedLocalSession,
   type SavedMoshSession,
   type SavedSerialSession,
@@ -359,6 +360,34 @@ describe("saved local sessions (local shells S4)", () => {
     });
     expect(toTarget(local({ program: undefined, args: undefined, cwd: undefined }))).toEqual({ type: "local" });
     expect(isSshSession(local())).toBe(false);
+  });
+});
+
+describe("proxy command of saved sessions", () => {
+  const proxied = session({ proxyCommand: "cloudflared access ssh --hostname %h" });
+
+  it("keeps it through save, parse and toTarget", () => {
+    const saved = libraryReducer(emptyLibrary, { type: "saveSession", session: proxied });
+    const parsed = parseLibrary(serializeLibrary(saved));
+    expect(parsed.ok && parsed.library.sessions[0]).toEqual({ kind: "ssh", ...proxied });
+    expect(toTarget(proxied)).toMatchObject({ proxyCommand: "cloudflared access ssh --hostname %h" });
+    expect(toTarget(session())).not.toHaveProperty("proxyCommand");
+  });
+
+  it("drops a blank, multi-line or too long one", () => {
+    for (const proxyCommand of [" ", "a\nb", "x".repeat(2001)]) {
+      const saved = libraryReducer(emptyLibrary, { type: "saveSession", session: session({ proxyCommand }) });
+      expect(saved.sessions[0]).toEqual({ kind: "ssh", ...session() });
+    }
+  });
+
+  it("refuses a file whose proxy command is not text", () => {
+    const file = JSON.stringify({ version: 1, folders: [], sessions: [{ ...session(), proxyCommand: 3 }] });
+    expect(parseLibrary(file).ok).toBe(false);
+  });
+
+  it("puts it in the ssh command of the session", () => {
+    expect(sshCommandOf(session({ proxyCommand: "nc %h %p" }))).toContain("-o 'ProxyCommand=nc %h %p'");
   });
 });
 

@@ -27,6 +27,11 @@ export interface SshTarget {
   forwardAgent?: boolean;
   /** The shell runs in this tmux session, which every reconnection resumes; absent: plain shell. */
   tmuxSession?: string;
+  /**
+   * Local command whose stdin/stdout carry the connection instead of TCP, like OpenSSH's
+   * `ProxyCommand` (`%h`, `%p`, `%r` expanded by the backend); never together with `jumps`.
+   */
+  proxyCommand?: string;
 }
 
 /**
