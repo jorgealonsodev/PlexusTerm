@@ -476,6 +476,18 @@ describe("TerminalView", () => {
       expect(term().options).toMatchObject({ cursorStyle: "bar", cursorWidth: 2 });
     });
 
+    it("starts with the cursor of the settings and follows its changes", () => {
+      const view = (settings: typeof DEFAULT_SETTINGS) => (
+        <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />
+      );
+      const { rerender } = renderView({ settings: { ...DEFAULT_SETTINGS, cursorShape: "block", cursorBlink: false } });
+      expect(term().options).toMatchObject({ cursorStyle: "block", cursorBlink: false });
+      rerender(view({ ...DEFAULT_SETTINGS, cursorShape: "underline", cursorBlink: true }));
+      expect(term().options).toMatchObject({ cursorStyle: "underline", cursorBlink: true });
+      rerender(view(DEFAULT_SETTINGS));
+      expect(term().options).toMatchObject({ cursorStyle: "bar", cursorWidth: 2, cursorBlink: true });
+    });
+
     it("colours error lines again when the setting or the scheme changes, and stops on close", () => {
       const view = (settings: typeof DEFAULT_SETTINGS) => (
         <TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} settings={settings} />

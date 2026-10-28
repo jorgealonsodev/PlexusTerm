@@ -436,9 +436,9 @@ export function TerminalView({
     if (!host) return;
 
     const term = new Terminal({
-      cursorBlink: true,
-      // A thin bar, as in editors: the block covered a whole cell.
-      cursorStyle: "bar",
+      cursorBlink: settingsRef.current.cursorBlink,
+      // A thin bar by default, as in editors: the block covers a whole cell. The width only applies to the bar.
+      cursorStyle: settingsRef.current.cursorShape,
       cursorWidth: 2,
       fontFamily: cssFontFamily(settingsRef.current.fontFamily),
       fontSize: settingsRef.current.fontSize,
@@ -1524,6 +1524,16 @@ export function TerminalView({
     term.options.fontWeight = fontWeight as FontWeight;
     term.options.fontWeightBold = boldWeight(fontWeight) as FontWeight;
   }, [fontWeight]);
+
+  // The cursor's shape and blinking apply live.
+  const cursorShape = settings.cursorShape;
+  const cursorBlink = settings.cursorBlink;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    if (term.options.cursorStyle !== cursorShape) term.options.cursorStyle = cursorShape;
+    if (term.options.cursorBlink !== cursorBlink) term.options.cursorBlink = cursorBlink;
+  }, [cursorShape, cursorBlink]);
 
   // The line height applies live; taller or shorter rows change how many fit in the pane.
   const lineHeight = settings.lineHeight;

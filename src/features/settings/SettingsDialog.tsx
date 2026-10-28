@@ -26,6 +26,7 @@ import {
   clampChatFontSize,
   clampViewerFontSize,
   clampUiFontSize,
+  CURSOR_SHAPES,
   FONT_WEIGHTS,
   LINE_HEIGHTS,
   MIN_UI_FONT_SIZE,
@@ -66,7 +67,7 @@ import {
   cleanHexColor,
   focusBorderCss,
   type AiProvider,
-  type TerminalSettings, type SidebarAtStartup, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
+  type TerminalSettings, type CursorShape, type SidebarAtStartup, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutConflict, shortcutLabel, type ShortcutOverrides } from "../panes/shortcuts";
 import { isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
@@ -451,6 +452,12 @@ const WEIGHT_NAMES: Record<number, AppKey> = {
   500: "settings.appearance.weightMedium",
   600: "settings.appearance.weightSemibold",
 };
+/** The names of the terminal cursor shapes. */
+const CURSOR_SHAPE_NAMES: Record<CursorShape, AppKey> = {
+  bar: "settings.appearance.cursorBar",
+  block: "settings.appearance.cursorBlock",
+  underline: "settings.appearance.cursorUnderline",
+};
 
 export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus, macros, dropDownError }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
@@ -467,6 +474,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
   const [fontWeight, setFontWeight] = useState(settings.fontWeight);
   const [lineHeight, setLineHeight] = useState(settings.lineHeight);
+  const [cursorShape, setCursorShape] = useState(settings.cursorShape);
+  const [cursorBlink, setCursorBlink] = useState(settings.cursorBlink);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
   const [focusBorderColor, setFocusBorderColor] = useState(settings.focusBorderColor);
@@ -623,6 +632,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       toolbarLayout,
       fontWeight,
       lineHeight,
+      cursorShape,
+      cursorBlink,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
       focusBorderColor: cleanHexColor(focusBorderColor),
@@ -956,6 +967,24 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="field field--size">
+              <span className="setting-title">
+                {t("settings.appearance.cursorShape")} <HelpTip text={t("settings.appearance.cursorShapeHelp")} />
+              </span>
+              <select value={cursorShape} onChange={(e) => setCursorShape(e.target.value as CursorShape)}>
+                {CURSOR_SHAPES.map((shape) => (
+                  <option key={shape} value={shape}>
+                    {t(CURSOR_SHAPE_NAMES[shape])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={cursorBlink} onChange={(e) => setCursorBlink(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.appearance.cursorBlink")} <HelpTip text={t("settings.appearance.cursorBlinkHelp")} />
+              </span>
             </label>
             <label className="field field--size">
               <span className="setting-title">

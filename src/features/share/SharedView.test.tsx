@@ -32,11 +32,17 @@ const term = vi.hoisted(() => ({
   written: [] as string[],
   resets: 0,
   unicode: { activeVersion: "6" },
+  /** The options of the last terminal created, live (the pane sets them after creation too). */
+  options: {} as Record<string, unknown>,
 }));
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
-    options: Record<string, unknown> = {};
+    options: Record<string, unknown>;
     unicode = term.unicode;
+    constructor(options: Record<string, unknown> = {}) {
+      this.options = { ...options };
+      term.options = this.options;
+    }
     parser = {
       registerCsiHandler: (id: { final: string }) => (term.csi.push(id), { dispose() {} }),
       registerOscHandler: (ident: number) => (term.osc.push(ident), { dispose() {} }),
@@ -69,7 +75,7 @@ vi.mock("@xterm/xterm", () => ({
   },
 }));
 
-import type { TerminalSettings } from "../settings/settings";
+import { DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { SharedView } from "./SharedView";
 
 const target = { type: "shared" as const, url: "https://view.example.com/s/abc#key", relayUrl: "wss://relay.example.com", relayHost: "relay.example.com" };
@@ -133,6 +139,22 @@ describe("SharedView (P3)", () => {
     await emit({ event: "done", data: { reason: "refused", code: "version" } });
     expect(screen.getByText("Update PlexusTerm to open this share")).toBeTruthy();
     expect(screen.getByText("Open in the browser")).toBeTruthy();
+  });
+
+  it("draws the cursor of the settings and follows their changes", async () => {
+    view.startView.mockResolvedValue(8);
+    const { rerender } = render(
+      <SharedView target={target} active settings={{ ...DEFAULT_SETTINGS, cursorShape: "block", cursorBlink: false }} />,
+    );
+    await act(async () => {});
+    expect(term.options).toMatchObject({ cursorStyle: "block", cursorBlink: false });
+    rerender(<SharedView target={target} active settings={{ ...DEFAULT_SETTINGS, cursorShape: "underline", fontSize: 18 }} />);
+    expect(term.options).toMatchObject({ cursorStyle: "underline", cursorBlink: true, fontSize: 18 });
+  });
+
+  it("draws a blinking bar cursor with the default settings", async () => {
+    await opened();
+    expect(term.options).toMatchObject({ cursorStyle: "bar", cursorWidth: 2, cursorBlink: true });
   });
 
   it("closes its connection when the pane closes", async () => {

@@ -56,6 +56,10 @@ export interface TerminalSettings {
    * characters come from the font, so only 1 joins them without gaps.
    */
   lineHeight: number;
+  /** Shape of the terminal's cursor, one of CURSOR_SHAPES; a bar is how terminals were always drawn. */
+  cursorShape: CursorShape;
+  /** The terminal's cursor blinks. */
+  cursorBlink: boolean;
   /** SSH tabs show the remote monitor bar (CPU, RAM, disk, network, users). */
   remoteMonitor: boolean;
   /** A dropped SSH session keeps its pane and reconnects by itself (Settings → Connections). */
@@ -245,6 +249,9 @@ export const BOLD_STEP = 300;
 export const boldWeight = (weight: number) => Math.min(900, weight + BOLD_STEP);
 /** Terminal line heights offered. */
 export const LINE_HEIGHTS = [1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3];
+/** Terminal cursor shapes offered (xterm.js's cursorStyle values). */
+export const CURSOR_SHAPES = ["bar", "block", "underline"] as const;
+export type CursorShape = (typeof CURSOR_SHAPES)[number];
 /** The interface and the AI chat are drawn for 13 px text; their sizes scale from it. */
 export const BASE_TEXT_SIZE = 13;
 export const MIN_UI_FONT_SIZE = 10;
@@ -272,6 +279,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   fontFamily: DEFAULT_FONT_FAMILY,
   fontWeight: 400,
   lineHeight: 1,
+  cursorShape: "bar",
+  cursorBlink: true,
   remoteMonitor: true,
   sshAutoReconnect: true,
   syncFolder: "",
@@ -512,6 +521,10 @@ export function parseSettings(json: string | null): TerminalSettings {
     fontFamily: cleanFontFamily(value.fontFamily),
     fontWeight: FONT_WEIGHTS.includes(value.fontWeight as number) ? (value.fontWeight as number) : d.fontWeight,
     lineHeight: LINE_HEIGHTS.includes(value.lineHeight as number) ? (value.lineHeight as number) : d.lineHeight,
+    cursorShape: (CURSOR_SHAPES as readonly unknown[]).includes(value.cursorShape)
+      ? (value.cursorShape as CursorShape)
+      : d.cursorShape,
+    cursorBlink: bool(value.cursorBlink, d.cursorBlink),
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     sshAutoReconnect: bool(value.sshAutoReconnect, d.sshAutoReconnect),
     syncFolder: typeof value.syncFolder === "string" ? value.syncFolder.trim() : d.syncFolder,

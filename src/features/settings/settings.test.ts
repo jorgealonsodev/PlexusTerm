@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_RULE } from "../terminal/highlightRules";
-import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { cleanShareUrl, CURSOR_SHAPES, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("keeps a highlight rule's action through a save and a load (S3)", () => {
@@ -95,6 +95,8 @@ describe("parseSettings", () => {
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1,
+      cursorShape: "bar" as const,
+      cursorBlink: true,
       toolbarIconsOnly: false,
       toolbarLayout: null,
       uiFontSize: 13,
@@ -238,6 +240,8 @@ describe("parseSettings", () => {
       viewerChangedLines: true,
       fontWeight: 400,
       lineHeight: 1,
+      cursorShape: "bar" as const,
+      cursorBlink: true,
       toolbarIconsOnly: false,
       toolbarLayout: null,
       uiFontSize: 13,
@@ -452,6 +456,8 @@ describe("serializeSettings", () => {
       viewerChangedLines: false,
       fontWeight: 500,
       lineHeight: 1,
+      cursorShape: "bar" as const,
+      cursorBlink: true,
       toolbarIconsOnly: false,
       toolbarLayout: null,
       uiFontSize: 15,
@@ -687,6 +693,29 @@ describe("terminal font weight", () => {
     expect(parseSettings(JSON.stringify({ fontWeight: 450 })).fontWeight).toBe(400);
     expect(parseSettings(JSON.stringify({ fontWeight: "bold" })).fontWeight).toBe(400);
     expect(FONT_WEIGHTS).toEqual([300, 400, 500, 600]);
+  });
+});
+
+describe("terminal cursor", () => {
+  it("is a blinking bar by default, as terminals were drawn before the setting", () => {
+    expect(DEFAULT_SETTINGS.cursorShape).toBe("bar");
+    expect(DEFAULT_SETTINGS.cursorBlink).toBe(true);
+    expect(CURSOR_SHAPES).toEqual(["bar", "block", "underline"]);
+  });
+
+  it("keeps a saved shape and blinking, and falls back to the defaults for invalid values", () => {
+    expect(parseSettings(JSON.stringify({ cursorShape: "block", cursorBlink: false }))).toMatchObject({
+      cursorShape: "block",
+      cursorBlink: false,
+    });
+    expect(parseSettings(JSON.stringify({ cursorShape: "underline" })).cursorShape).toBe("underline");
+    expect(parseSettings(JSON.stringify({ cursorShape: "beam", cursorBlink: "no" }))).toMatchObject({
+      cursorShape: "bar",
+      cursorBlink: true,
+    });
+    expect(parseSettings(JSON.stringify({ cursorShape: 3 })).cursorShape).toBe("bar");
+    const saved = parseSettings(serializeSettings({ ...DEFAULT_SETTINGS, cursorShape: "underline", cursorBlink: false }));
+    expect(saved).toMatchObject({ cursorShape: "underline", cursorBlink: false });
   });
 });
 

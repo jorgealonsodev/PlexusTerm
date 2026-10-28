@@ -77,8 +77,8 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
     const host = hostRef.current;
     if (!host) return;
     const term = new Terminal({
-      cursorBlink: true,
-      cursorStyle: "bar",
+      cursorBlink: settings.cursorBlink,
+      cursorStyle: settings.cursorShape,
       cursorWidth: 2,
       fontFamily: cssFontFamily(settings.fontFamily),
       fontSize: settings.fontSize,
@@ -200,6 +200,13 @@ export function SharedView({ target, active, focused = true, settings = DEFAULT_
     term.options.fontSize = settings.fontSize;
     term.options.fontFamily = cssFontFamily(settings.fontFamily);
   }, [settings.theme, settings.fontSize, settings.fontFamily]);
+
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.cursorStyle = settings.cursorShape;
+    term.options.cursorBlink = settings.cursorBlink;
+  }, [settings.cursorShape, settings.cursorBlink]);
 
   useEffect(() => {
     if (active && focused) termRef.current?.focus();

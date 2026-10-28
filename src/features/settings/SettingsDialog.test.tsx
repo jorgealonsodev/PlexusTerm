@@ -673,6 +673,26 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ lineHeight: 1.2 }));
     });
 
+    it("chooses the cursor's shape and blinking, a blinking bar by default, explains them, and saves them", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+      const shape = screen.getByLabelText(/^Cursor shape/) as HTMLSelectElement;
+      expect(shape.value).toBe("bar");
+      expect([...shape.options].map((o) => [o.value, o.textContent])).toEqual([
+        ["bar", "Bar"],
+        ["block", "Block"],
+        ["underline", "Underline"],
+      ]);
+      const blink = screen.getByLabelText(/^Blinking cursor/) as HTMLInputElement;
+      expect(blink.checked).toBe(true);
+      expect(shape.closest(".field")!.querySelector(".help-tip")).not.toBeNull();
+      expect(blink.closest(".check")!.querySelector(".help-tip")).not.toBeNull();
+      fireEvent.change(shape, { target: { value: "block" } });
+      fireEvent.click(blink);
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ cursorShape: "block", cursorBlink: false }));
+    });
+
     it("chooses the weight of the terminal font, regular by default, and saves it", () => {
       const { onSave } = setup();
       const weight = screen.getByLabelText("Terminal font weight") as HTMLSelectElement;
