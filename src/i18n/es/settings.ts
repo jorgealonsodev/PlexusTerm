@@ -58,7 +58,7 @@ export const settings: Messages<typeof en> = {
     remoteMonitor: "Mostrar u ocultar el monitor remoto",
     group: "Grupo",
     newGroupName: "Grupo {n}",
-    intro: "Arrastra un botón, o un grupo por su asa, para moverlo por la barra, meterlo en un grupo o sacarlo, o llevarlo a Ocultos. Al hacer clic en uno, un menú ofrece los mismos movimientos. El logo y el botón de Ajustes siempre se quedan.",
+    intro: "Arrastra un botón, o un grupo por su asa, para moverlo por la barra, meterlo en un grupo o sacarlo, o llevarlo a Ocultos. Al hacer clic en uno, un menú ofrece los mismos movimientos. El logo y el botón de Ajustes siempre se quedan en su sitio.",
     bar: "Barra de herramientas",
     hidden: "Ocultos",
     nothingHidden: "No hay nada oculto. Arrastra aquí un botón para quitarlo de la barra.",

@@ -58,7 +58,7 @@ export const settings: Messages<typeof en> = {
     remoteMonitor: "Remote-Monitor ein- oder ausblenden",
     group: "Gruppe",
     newGroupName: "Gruppe {n}",
-    intro: "Ziehen Sie eine Schaltfläche oder eine Gruppe an ihrem Griff, um sie in der Leiste zu verschieben, in eine Gruppe hinein oder aus ihr heraus oder nach „Ausgeblendet“. Ein Klick darauf bietet dieselben Verschiebungen in einem Menü. Das Logo und die Schaltfläche Einstellungen bleiben immer.",
+    intro: "Ziehen Sie eine Schaltfläche oder eine Gruppe an ihrem Griff, um sie in der Leiste zu verschieben, in eine Gruppe hinein oder aus ihr heraus oder nach „Ausgeblendet“. Ein Klick darauf bietet dieselben Verschiebungen in einem Menü. Das Logo und die Schaltfläche Einstellungen bleiben immer an ihrem Platz.",
     bar: "Symbolleiste",
     hidden: "Ausgeblendet",
     nothingHidden: "Nichts ist ausgeblendet. Ziehen Sie eine Schaltfläche hierher, um sie aus der Leiste zu nehmen.",

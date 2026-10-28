@@ -54,7 +54,7 @@ export const settings: Messages<typeof en> = {
   },
   toolbar: {
     sidebar: "显示或隐藏侧边栏",
-    devColumn: "显示或隐藏 DEV 标签栏",
+    devColumn: "显示或隐藏 DEV 标签列",
     remoteMonitor: "显示或隐藏远程监视器",
     group: "分组",
     newGroupName: "分组 {n}",

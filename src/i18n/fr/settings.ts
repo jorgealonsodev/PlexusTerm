@@ -58,7 +58,7 @@ export const settings: Messages<typeof en> = {
     remoteMonitor: "Afficher ou masquer le moniteur distant",
     group: "Groupe",
     newGroupName: "Groupe {n}",
-    intro: "Faites glisser un bouton, ou un groupe par sa poignée, pour le déplacer le long de la barre, dans un groupe ou hors de celui-ci, ou vers Masqués. Un clic sur l’un d’eux propose les mêmes déplacements dans un menu. Le logo et le bouton Paramètres restent toujours.",
+    intro: "Faites glisser un bouton, ou un groupe par sa poignée, pour le déplacer le long de la barre, dans un groupe ou hors de celui-ci, ou vers Masqués. Un clic sur l’un d’eux propose les mêmes déplacements dans un menu. Le logo et le bouton Paramètres restent toujours en place.",
     bar: "Barre d’outils",
     hidden: "Masqués",
     nothingHidden: "Rien n’est masqué. Faites glisser un bouton ici pour le retirer de la barre.",
