@@ -11,7 +11,7 @@ use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_s
 use crate::platform;
 
 mod shell_integration;
-use crate::terminal::{FlowGate, TerminalSink, Utf8Stream};
+use crate::terminal::{FlowGate, TerminalSink};
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -225,7 +225,7 @@ impl PtyManager {
         );
 
         std::thread::spawn(move || {
-            let mut decoder = Utf8Stream::default();
+            let mut decoder = sink.decoder();
             let mut buf = [0u8; 8192];
             loop {
                 if let Some(gate) = &flow {

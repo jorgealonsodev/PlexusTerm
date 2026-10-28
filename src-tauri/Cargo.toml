@@ -59,6 +59,8 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
 futures-util = "0.3"
 # QR codes of share links, drawn as SVG.
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# ZMODEM (`rz`/`sz`) file transfers inside a terminal session: a sans-IO sender and receiver.
+zmodem2 = "=0.7.3"
 
 [dev-dependencies]
 # A real relay for the sharing end-to-end tests.

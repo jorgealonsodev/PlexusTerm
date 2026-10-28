@@ -23,6 +23,7 @@ mod tools;
 mod tunnels;
 mod updates;
 mod usage;
+mod zmodem;
 
 use mosh::{MoshLauncher, MoshRequest};
 use pty::{PtyError, PtyManager, SpawnRequest};
@@ -54,6 +55,8 @@ enum TerminalEvent {
     /// Instead of `Exit`: the connection went away under an SSH session (no exit status,
     /// no close), which the pane reconnects. A live share of the pane ends like on an exit.
     Lost,
+    /// A ZMODEM file transfer's offer or progress (see [`zmodem`]).
+    Zmodem(zmodem::Notice),
 }
 
 /// Sends a session's events to the webview through a thread that gathers bursts of output
@@ -70,9 +73,28 @@ struct ChannelSink {
     tap: u64,
     /// Set by [`ChannelSink::loss_reporter`]: the exit that follows is sent as `Lost`.
     lost: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// The session's ZMODEM link, which its reader's output goes through (see [`zmodem`]).
+    zmodem: Option<std::sync::Arc<std::sync::Mutex<zmodem::Link>>>,
 }
 
 impl ChannelSink {
+    /// A sink whose session can carry ZMODEM transfers (every kind but Mosh); the session's
+    /// writer is given with [`zmodem::set_writer`] once it exists.
+    fn with_zmodem(channel: Channel<TerminalEvent>) -> Self {
+        let mut sink = Self::new(channel);
+        let tx = sink.tx.clone();
+        sink.zmodem = Some(zmodem::register(
+            sink.tap,
+            std::sync::Arc::new(move |out| {
+                let _ = tx.send(match out {
+                    zmodem::Out::Text(text) => coalesce::Event::Output(text),
+                    zmodem::Out::Notice(notice) => coalesce::Event::Zmodem(notice),
+                });
+            }),
+        ));
+        sink
+    }
+
     fn new(channel: Channel<TerminalEvent>) -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
         let (tap_id, tap) = share::taps().register();
@@ -95,6 +117,9 @@ impl ChannelSink {
                         gate.close();
                     }
                 }
+                coalesce::Event::Zmodem(notice) => {
+                    let _ = channel.send(TerminalEvent::Zmodem(notice));
+                }
                 coalesce::Event::Exit(code) => {
                     gate.close();
                     tap.exited();
@@ -111,6 +136,7 @@ impl ChannelSink {
             flow,
             tap: tap_id,
             lost,
+            zmodem: None,
         }
     }
 
@@ -132,6 +158,55 @@ impl TerminalSink for ChannelSink {
     fn flow(&self) -> Option<std::sync::Arc<terminal::FlowGate>> {
         Some(self.flow.clone())
     }
+    fn decoder(&self) -> terminal::Decoder {
+        match &self.zmodem {
+            Some(link) => terminal::Decoder::Zmodem(link.clone()),
+            None => terminal::Decoder::default(),
+        }
+    }
+}
+
+impl Drop for ChannelSink {
+    /// The session is over (its reader dropped the sink): a transfer still running stops.
+    fn drop(&mut self) {
+        if self.zmodem.is_some() {
+            zmodem::unregister(self.tap);
+        }
+    }
+}
+
+/// Turns ZMODEM detection on or off (Settings → Terminal → ZMODEM transfers).
+#[tauri::command]
+fn zmodem_enabled(enabled: bool) {
+    zmodem::set_enabled(enabled);
+}
+
+/// Accepts the receive offer of share tap `tap`'s session: files go into `folder`.
+#[tauri::command]
+async fn zmodem_receive(tap: u64, folder: String) -> Result<(), String> {
+    diaglog::info(&format!("terminal tap {tap}: ZMODEM receive accepted"));
+    tauri::async_runtime::spawn_blocking(move || zmodem::receive(tap, folder.into()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Accepts the send offer of share tap `tap`'s session: `paths` are sent in order.
+#[tauri::command]
+async fn zmodem_send(tap: u64, paths: Vec<String>) -> Result<(), String> {
+    diaglog::info(&format!(
+        "terminal tap {tap}: ZMODEM send of {} file(s) accepted",
+        paths.len()
+    ));
+    let paths = paths.into_iter().map(std::path::PathBuf::from).collect();
+    tauri::async_runtime::spawn_blocking(move || zmodem::send(tap, paths))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Declines the offer of share tap `tap`'s session, or stops its running transfer.
+#[tauri::command]
+fn zmodem_cancel(tap: u64) -> Result<(), String> {
+    zmodem::cancel(tap)
 }
 
 /// Pauses (or resumes) reading the session of share tap `tap` while its pane has too much output
@@ -157,12 +232,24 @@ fn pty_spawn(
     request: SpawnRequest,
     on_event: Channel<TerminalEvent>,
     ptys: State<'_, PtyManager>,
+    app: AppHandle,
 ) -> Result<u32, PtyError> {
-    let sink = ChannelSink::new(on_event);
+    let sink = ChannelSink::with_zmodem(on_event);
     let tap = sink.tap;
     let result = ptys.spawn(request, sink);
     match &result {
-        Ok(id) => diaglog::info(&format!("local terminal {id} opened (tap {tap})")),
+        Ok(id) => {
+            let id = *id;
+            zmodem::set_writer(
+                tap,
+                std::sync::Arc::new(move |bytes: &[u8]| {
+                    app.state::<PtyManager>()
+                        .write(id, bytes)
+                        .map_err(|e| e.to_string())
+                }),
+            );
+            diaglog::info(&format!("local terminal {id} opened (tap {tap})"))
+        }
         Err(e) => diaglog::warn(&format!("local terminal failed to open: {e}")),
     }
     result
@@ -354,8 +441,20 @@ fn serial_open(
     request: SerialRequest,
     on_event: Channel<TerminalEvent>,
     serial: State<'_, SerialManager>,
+    app: AppHandle,
 ) -> Result<u32, SerialError> {
-    serial.open(request, ChannelSink::new(on_event))
+    let sink = ChannelSink::with_zmodem(on_event);
+    let tap = sink.tap;
+    let id = serial.open(request, sink)?;
+    zmodem::set_writer(
+        tap,
+        std::sync::Arc::new(move |bytes: &[u8]| {
+            app.state::<SerialManager>()
+                .write(id, bytes)
+                .map_err(|e| e.to_string())
+        }),
+    );
+    Ok(id)
 }
 
 #[tauri::command]
@@ -377,8 +476,21 @@ async fn telnet_connect(
     request: TelnetRequest,
     on_event: Channel<TerminalEvent>,
     telnet: State<'_, TelnetManager>,
+    app: AppHandle,
 ) -> Result<u32, TelnetError> {
-    telnet.connect(request, ChannelSink::new(on_event)).await
+    let sink = ChannelSink::with_zmodem(on_event);
+    let tap = sink.tap;
+    let id = telnet.connect(request, sink).await?;
+    // Telnet escapes the bytes (IAC, CR) like typed input, both ways.
+    zmodem::set_writer(
+        tap,
+        std::sync::Arc::new(move |bytes: &[u8]| {
+            app.state::<TelnetManager>()
+                .write(id, bytes)
+                .map_err(|e| e.to_string())
+        }),
+    );
+    Ok(id)
 }
 
 #[tauri::command]
@@ -427,16 +539,29 @@ async fn ssh_connect(
     storage: Option<PasswordStorage>,
     on_event: Channel<TerminalEvent>,
     ssh: State<'_, SshManager>,
+    app: AppHandle,
 ) -> Result<u32, SshError> {
     let target = format!("{}@{}:{}", request.username, request.host, request.port);
     diaglog::info(&format!("ssh connecting to {target}"));
-    let sink = ChannelSink::new(on_event);
+    let sink = ChannelSink::with_zmodem(on_event);
+    let tap = sink.tap;
     let on_lost = sink.loss_reporter();
     let result = ssh
         .connect_reporting_loss(request, storage, sink, on_lost)
         .await;
     match &result {
-        Ok(id) => diaglog::info(&format!("ssh session {id} opened to {target}")),
+        Ok(id) => {
+            let id = *id;
+            zmodem::set_writer(
+                tap,
+                std::sync::Arc::new(move |bytes: &[u8]| {
+                    app.state::<SshManager>()
+                        .write(id, bytes)
+                        .map_err(|e| e.to_string())
+                }),
+            );
+            diaglog::info(&format!("ssh session {id} opened to {target}"))
+        }
         Err(e) => diaglog::warn(&format!("ssh to {target} failed: {e}")),
     }
     result
@@ -924,6 +1049,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             terminal_flow,
+            zmodem_enabled,
+            zmodem_receive,
+            zmodem_send,
+            zmodem_cancel,
             pty_spawn,
             pty_write,
             pty_resize,
@@ -1112,6 +1241,38 @@ mod tests {
         sink.exit(None);
         drop(sink);
         assert_eq!(last_event(rx), r#"{"event":"lost"}"#);
+    }
+
+    #[test]
+    fn a_transfer_offer_reaches_the_pane_after_the_output_before_it() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let channel = Channel::new(move |body| {
+            if let InvokeResponseBody::Json(json) = body {
+                let _ = tx.send(json);
+            }
+            Ok(())
+        });
+        zmodem::set_enabled(true);
+        let sink = ChannelSink::with_zmodem(channel);
+        let mut decoder = sink.decoder();
+        // What `sz` prints first: "rz", then ZRQINIT.
+        let text = decoder.push(b"rz\r**\x18B00000000000000\r\x8a\x11");
+        assert_eq!(text, "");
+        sink.exit(Some(0));
+        drop(decoder);
+        drop(sink);
+        let mut events = Vec::new();
+        while let Ok(json) = rx.recv_timeout(Duration::from_secs(5)) {
+            events.push(json);
+        }
+        assert_eq!(
+            events[1..],
+            [
+                r#"{"event":"output","data":"rz\r"}"#.to_string(),
+                r#"{"event":"zmodem","data":{"phase":"offer","direction":"receive"}}"#.to_string(),
+                r#"{"event":"exit","data":0}"#.to_string(),
+            ]
+        );
     }
 
     #[test]

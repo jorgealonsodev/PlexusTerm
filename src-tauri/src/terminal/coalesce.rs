@@ -5,10 +5,12 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
-/// What a session sends on: output text, then its exit code.
+/// What a session sends on: output text and file transfer notices, then its exit code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     Output(String),
+    /// Sent on its own, after the output before it.
+    Zmodem(crate::zmodem::Notice),
     Exit(Option<u32>),
 }
 
@@ -27,11 +29,16 @@ pub fn forward(rx: Receiver<Event>, mut send: impl FnMut(Event)) {
     while let Ok(first) = rx.recv() {
         let mut batch = match first {
             Event::Exit(code) => return send(Event::Exit(code)),
+            Event::Zmodem(notice) => {
+                send(Event::Zmodem(notice));
+                continue;
+            }
             Event::Output(text) => text,
         };
         let busy = last_sent.is_some_and(|at| at.elapsed() < BURST_GAP);
         let deadline = Instant::now() + if busy { WINDOW } else { Duration::ZERO };
         let mut exit = None;
+        let mut notice = None;
         let mut gone = false;
         while batch.len() < MAX_BATCH {
             let next = match deadline.checked_duration_since(Instant::now()) {
@@ -43,6 +50,10 @@ pub fn forward(rx: Receiver<Event>, mut send: impl FnMut(Event)) {
             };
             match next {
                 Ok(Event::Output(text)) => batch.push_str(&text),
+                Ok(Event::Zmodem(next)) => {
+                    notice = Some(next);
+                    break;
+                }
                 Ok(Event::Exit(code)) => {
                     exit = Some(code);
                     break;
@@ -56,6 +67,9 @@ pub fn forward(rx: Receiver<Event>, mut send: impl FnMut(Event)) {
         }
         send(Event::Output(batch));
         last_sent = Some(Instant::now());
+        if let Some(notice) = notice {
+            send(Event::Zmodem(notice));
+        }
         if let Some(code) = exit {
             return send(Event::Exit(code));
         }
@@ -132,7 +146,7 @@ mod tests {
             .iter()
             .filter_map(|event| match event {
                 Event::Output(text) => Some(text.as_str()),
-                Event::Exit(_) => None,
+                Event::Zmodem(_) | Event::Exit(_) => None,
             })
             .collect();
         assert_eq!(text, sent);
@@ -140,6 +154,31 @@ mod tests {
             events.len() < 200,
             "{} messages for 2000 reads",
             events.len()
+        );
+    }
+
+    #[test]
+    fn a_transfer_notice_goes_out_after_the_output_before_it_and_before_the_rest() {
+        let notice = crate::zmodem::Notice::Offer {
+            direction: crate::zmodem::Direction::Receive,
+        };
+        let out = run(vec![
+            output("a"),
+            output("b"),
+            Event::Zmodem(notice.clone()),
+            output("c"),
+            Event::Zmodem(notice.clone()),
+            Event::Exit(None),
+        ]);
+        assert_eq!(
+            out,
+            vec![
+                output("ab"),
+                Event::Zmodem(notice.clone()),
+                output("c"),
+                Event::Zmodem(notice),
+                Event::Exit(None),
+            ]
         );
     }
 
