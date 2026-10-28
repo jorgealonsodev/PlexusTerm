@@ -16,6 +16,10 @@
 //! the SSH agent's keys, then the default identity files `id_ed25519`, `id_ecdsa` and
 //! `id_rsa` next to known_hosts (`~/.ssh`), unencrypted only. The password is only sent
 //! when the server rejects all of them (see [`try_default_keys`]).
+//!
+//! A terminal tab may ask for [`ShellOptions`]: forwarding the local SSH agent to the target
+//! (never to its jump hosts), and starting the shell inside a tmux session that every
+//! reconnection resumes (see [`tmux_command`]).
 
 pub mod cwd;
 #[cfg(test)]
@@ -92,6 +96,44 @@ pub struct JumpHost {
 fn default_port() -> u16 {
     22
 }
+
+/// Per-tab options of an interactive shell (wire shape camelCase: `{ forwardAgent?, tmuxSession? }`).
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShellOptions {
+    /// Lets the target use the local SSH agent (like `ssh -A`); jump hosts never get it.
+    #[serde(default)]
+    pub forward_agent: bool,
+    /// Runs `tmux new -A -s <name>` instead of the plain login shell (see [`tmux_command`]).
+    #[serde(default)]
+    pub tmux_session: Option<String>,
+}
+
+/// Whether `name` may be a tmux session name: 1 to 64 letters, digits, `.`, `_` or `-`. Nothing
+/// else ever reaches the remote shell's command line.
+pub fn valid_tmux_session(name: &str) -> bool {
+    (1..=64).contains(&name.len())
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+}
+
+/// The exec command of a tab kept in tmux session `name` (a [`valid_tmux_session`]): it
+/// attaches to the session, creating it the first time, and falls back to the login shell with
+/// a one-line note when tmux is not installed. It is valid in sh, bash, zsh and fish, whichever
+/// the user's login shell is (sshd runs it with `$SHELL -c`).
+pub fn tmux_command(name: &str) -> String {
+    // `a && b || c && d` runs the same way in every one of them (fish 3+ included): `exec`
+    // replaces the shell when tmux exists, otherwise the note and the login shell follow.
+    format!(
+        "command -v tmux >/dev/null 2>&1 && exec tmux new -A -s '{name}' \
+         || echo '{TMUX_MISSING_NOTE}' && exec \"$SHELL\" -l"
+    )
+}
+
+/// What a tab kept in tmux prints when the server has no tmux (no quotes: it is single-quoted).
+const TMUX_MISSING_NOTE: &str =
+    "PlexusTerm: tmux is not installed on this server, so this is the login shell.";
 
 #[derive(Clone, serde::Deserialize)]
 #[serde(tag = "method", rename_all = "camelCase")]
@@ -247,6 +289,28 @@ pub(crate) struct ClientHandler {
     rejection: Arc<Mutex<Option<SshError>>>,
     /// Receives the server's `forwarded-tcpip` channels; without it they are refused.
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
+    /// Serves the server's agent channels from the local agent; without it they are refused.
+    agent: Option<AgentEndpoint>,
+}
+
+/// The local SSH agent forwarded channels are bridged to: an explicit socket (tests), or
+/// `None` for this machine's default (see [`platform::connect_agent`]).
+#[derive(Debug, Clone)]
+struct AgentEndpoint(Option<PathBuf>);
+
+/// Copies a forwarded agent channel to and from a fresh connection to the local agent, until
+/// either side closes. An agent that cannot be reached closes the channel.
+async fn bridge_agent(channel: Channel<client::Msg>, endpoint: AgentEndpoint) {
+    match platform::connect_agent(endpoint.0.as_deref()).await {
+        Ok(agent) => {
+            let mut agent = agent.into_inner();
+            let mut stream = channel.into_stream();
+            let _ = tokio::io::copy_bidirectional(&mut stream, &mut agent).await;
+        }
+        Err(_) => {
+            let _ = channel.close().await;
+        }
+    }
 }
 
 /// An authenticated SSH connection.
@@ -294,6 +358,27 @@ impl client::Handler for ClientHandler {
         match &self.forwarded {
             Some(tx) if tx.send(channel).is_ok() => reply.accept().await,
             _ => {
+                reply
+                    .reject(ChannelOpenFailure::AdministrativelyProhibited)
+                    .await
+            }
+        }
+        Ok(())
+    }
+
+    async fn server_channel_open_agent_forward(
+        &mut self,
+        channel: Channel<client::Msg>,
+        reply: ChannelOpenHandle,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        // Only a connection that asked for agent forwarding serves it (russh accepts by default).
+        match &self.agent {
+            Some(endpoint) => {
+                reply.accept().await;
+                tokio::spawn(bridge_agent(channel, endpoint.clone()));
+            }
+            None => {
                 reply
                     .reject(ChannelOpenFailure::AdministrativelyProhibited)
                     .await
@@ -397,6 +482,8 @@ struct Hop {
     auth: SshAuth,
     trusted_fingerprint: Option<String>,
     storage: Option<PasswordStorage>,
+    /// Set on the target of a session that forwards the agent, never on a jump host.
+    agent: Option<AgentEndpoint>,
 }
 
 /// Connects to `target` through its jump hosts (if any), applying the known_hosts
@@ -413,6 +500,22 @@ pub(crate) async fn connect_authenticated(
     ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
 ) -> Result<Chain, SshError> {
+    let (chain, _) =
+        connect_chain(target, trusted_fingerprint, storage, ctx, forwarded, false).await?;
+    Ok(chain)
+}
+
+/// [`connect_authenticated`], and with `forward_agent` the target's connection serves agent
+/// channels from the local agent. Also returns whether it does: an agent that cannot be reached
+/// turns forwarding off for this connection with a warning instead of failing the login.
+async fn connect_chain(
+    target: SshTarget,
+    trusted_fingerprint: Option<String>,
+    storage: Option<PasswordStorage>,
+    ctx: ConnectContext<'_>,
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
+    forward_agent: bool,
+) -> Result<(Chain, bool), SshError> {
     if target.jumps.len() > MAX_JUMPS {
         return Err(SshError::Connection {
             message: format!("at most {MAX_JUMPS} jump hosts are supported"),
@@ -429,6 +532,7 @@ pub(crate) async fn connect_authenticated(
             auth: jump.auth,
             trusted_fingerprint: jump.trusted_fingerprint,
             storage: jump.storage,
+            agent: None,
         };
         match connect_hop(next, jumps.last(), ctx, None).await {
             Ok((connection, warning)) => {
@@ -445,6 +549,19 @@ pub(crate) async fn connect_authenticated(
             }
         }
     }
+    let agent = match forward_agent {
+        false => None,
+        true => match platform::connect_agent(ctx.agent_socket).await {
+            Ok(_) => Some(AgentEndpoint(ctx.agent_socket.map(Path::to_path_buf))),
+            Err(err) => {
+                warnings.push(format!(
+                    "SSH agent forwarding is off for this session: no SSH agent is available ({err})"
+                ));
+                None
+            }
+        },
+    };
+    let forwarding_agent = agent.is_some();
     let last = Hop {
         host: target.host,
         port: target.port,
@@ -452,15 +569,17 @@ pub(crate) async fn connect_authenticated(
         auth: target.auth,
         trusted_fingerprint,
         storage,
+        agent,
     };
     match connect_hop(last, jumps.last(), ctx, forwarded).await {
         Ok((connection, warning)) => {
             warnings.extend(warning);
-            Ok(Chain {
+            let chain = Chain {
                 connection,
                 jumps,
                 warnings,
-            })
+            };
+            Ok((chain, forwarding_agent))
         }
         Err(err) => {
             disconnect_jumps(&jumps).await;
@@ -561,6 +680,7 @@ async fn open_hop(
         trusted_fingerprint: hop.trusted_fingerprint.clone(),
         rejection: rejection.clone(),
         forwarded,
+        agent: hop.agent.clone(),
     };
     let config = Arc::new(client_config(keepalive_interval));
     let label = host_label(&hop.host, hop.port);
@@ -915,15 +1035,20 @@ impl SshManager {
         storage: Option<PasswordStorage>,
         sink: impl TerminalSink,
     ) -> Result<u32, SshError> {
-        self.connect_reporting_loss(req, storage, sink, || {}).await
+        self.connect_reporting_loss(req, ShellOptions::default(), storage, sink, || {})
+            .await
     }
 
     /// Like [`Self::connect_with`], and calls `on_lost` just before the sink's exit when the
     /// connection went away under the session: neither the remote ended the channel (exit
     /// status, close) nor the app closed it. The frontend reconnects such a session.
+    ///
+    /// `options` may forward the local agent to the target and keep the shell in tmux; an
+    /// invalid tmux session name fails before anything is sent.
     pub async fn connect_reporting_loss(
         &self,
         req: ConnectRequest,
+        options: ShellOptions,
         storage: Option<PasswordStorage>,
         sink: impl TerminalSink,
         on_lost: impl FnOnce() + Send + 'static,
@@ -935,12 +1060,30 @@ impl SshManager {
             auth: req.auth,
             jumps: req.jumps,
         };
+        if let Some(name) = &options.tmux_session
+            && !valid_tmux_session(name)
+        {
+            return Err(SshError::Connection {
+                message: format!("{name:?} is not a valid tmux session name"),
+            });
+        }
         let ctx = self.terminal_context();
-        let Chain {
-            connection: handle,
-            jumps,
-            warnings,
-        } = connect_authenticated(target, req.trusted_fingerprint, storage, ctx, None).await?;
+        let (
+            Chain {
+                connection: handle,
+                jumps,
+                warnings,
+            },
+            forwarding_agent,
+        ) = connect_chain(
+            target,
+            req.trusted_fingerprint,
+            storage,
+            ctx,
+            None,
+            options.forward_agent,
+        )
+        .await?;
         let jumps = Arc::new(jumps);
 
         let channel = handle.channel_open_session().await.map_err(connection)?;
@@ -956,7 +1099,15 @@ impl SshManager {
             )
             .await
             .map_err(connection)?;
-        channel.request_shell(false).await.map_err(connection)?;
+        if forwarding_agent {
+            // Like OpenSSH, before the shell starts, so it sees SSH_AUTH_SOCK.
+            channel.agent_forward(false).await.map_err(connection)?;
+        }
+        match &options.tmux_session {
+            Some(name) => channel.exec(false, tmux_command(name)).await,
+            None => channel.request_shell(false).await,
+        }
+        .map_err(connection)?;
         // Shown before any remote output, which only the reader task below forwards.
         for warning in warnings {
             sink.data(format!("\r\n\x1b[33m{warning}\x1b[0m\r\n"));
@@ -1302,9 +1453,15 @@ mod tests {
         let (s, mut rx) = sink();
         let (lost_tx, lost) = unbounded_channel();
         let id = mgr
-            .connect_reporting_loss(request(port, password(PASSWORD)), None, s, move || {
-                let _ = lost_tx.send(());
-            })
+            .connect_reporting_loss(
+                request(port, password(PASSWORD)),
+                ShellOptions::default(),
+                None,
+                s,
+                move || {
+                    let _ = lost_tx.send(());
+                },
+            )
             .await
             .unwrap();
         wait_for(&mut rx, "welcome").await;
@@ -2912,5 +3069,278 @@ mod tests {
         assert_eq!(bastion.password_attempts(), 0, "the jump password was sent");
         assert_eq!(target.publickey_attempts(), 1);
         assert_eq!(target.password_attempts(), 1);
+    }
+
+    // Shell options: agent forwarding (S1) and tmux (S2).
+
+    /// A shell opened like the app opens one, with `options`.
+    async fn shell_with(
+        mgr: &SshManager,
+        req: ConnectRequest,
+        options: ShellOptions,
+    ) -> Result<(u32, UnboundedReceiver<Event>), SshError> {
+        let (s, rx) = sink();
+        let id = mgr
+            .connect_reporting_loss(req, options, None, s, || {})
+            .await?;
+        Ok((id, rx))
+    }
+
+    fn forwarding() -> ShellOptions {
+        ShellOptions {
+            forward_agent: true,
+            tmux_session: None,
+        }
+    }
+
+    fn in_tmux(name: &str) -> ShellOptions {
+        ShellOptions {
+            forward_agent: false,
+            tmux_session: Some(name.into()),
+        }
+    }
+
+    #[tokio::test]
+    async fn without_forwarding_no_agent_is_requested_and_agent_channels_are_refused() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (id, mut rx) = shell_with(&mgr, req, ShellOptions::default())
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+        mgr.write(id, b"agent?").unwrap();
+        let out = wait_for(&mut rx, "agent=").await.0;
+        assert!(out.contains("agent=refused"), "output was {out:?}");
+        assert_eq!(server.agent_requests(), 0);
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn forwarding_requests_the_agent_and_its_channels_reach_the_local_agent() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let Some((mut agent, socket)) = spawn_agent(&dir, &key_from_seed(9)).await else {
+            return;
+        };
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key).with_agent_socket(socket);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (id, mut rx) = shell_with(&mgr, req, forwarding()).await.unwrap();
+        let out = wait_for(&mut rx, "welcome").await.0;
+        mgr.write(id, b"agent?").unwrap();
+        let reply = wait_for(&mut rx, "agent").await.0;
+        let _ = agent.kill();
+        let _ = agent.wait();
+        assert!(!out.contains("\x1b[33m"), "output was {out:?}");
+        assert_eq!(server.agent_requests(), 1);
+        assert!(reply.contains("agent-keys=1"), "output was {reply:?}");
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn forwarding_without_an_agent_opens_the_session_with_one_warning() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key)
+            .with_agent_socket(dir.path().join("no-agent.sock"));
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (id, mut rx) = shell_with(&mgr, req, forwarding()).await.unwrap();
+        let out = wait_for(&mut rx, "welcome").await.0;
+        let warning = "\r\n\x1b[33mSSH agent forwarding is off for this session: \
+                       no SSH agent is available (";
+        assert!(out.starts_with(warning), "output was {out:?}");
+        assert_eq!(out.matches("\x1b[33m").count(), 1, "output was {out:?}");
+        assert_eq!(server.agent_requests(), 0);
+        mgr.write(id, b"agent?").unwrap();
+        let reply = wait_for(&mut rx, "agent=").await.0;
+        assert!(reply.contains("agent=refused"), "output was {reply:?}");
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn forwarding_never_reaches_the_jump_hosts() {
+        let bastion = test_server::start(2, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let Some((mut agent, socket)) = spawn_agent(&dir, &key_from_seed(9)).await else {
+            return;
+        };
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target])).with_agent_socket(socket);
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+
+        let (id, mut rx) = shell_with(&mgr, req, forwarding()).await.unwrap();
+        wait_for(&mut rx, "welcome").await;
+        mgr.write(id, b"agent?").unwrap();
+        let reply = wait_for(&mut rx, "agent").await.0;
+        let _ = agent.kill();
+        let _ = agent.wait();
+        assert_eq!(bastion.agent_requests(), 0);
+        assert_eq!(target.agent_requests(), 1);
+        assert!(reply.contains("agent-keys=1"), "output was {reply:?}");
+    }
+
+    #[test]
+    fn tmux_session_names_are_letters_digits_dots_underscores_and_dashes() {
+        for name in ["plexus", "Work.2_main-x", &"a".repeat(64)] {
+            assert!(valid_tmux_session(name), "{name:?} should be valid");
+        }
+        for name in [
+            "",
+            &"a".repeat(65),
+            "a b",
+            "a'b",
+            "a;b",
+            "$(x)",
+            "a:b",
+            "ñ",
+            "a\nb",
+        ] {
+            assert!(!valid_tmux_session(name), "{name:?} should be invalid");
+        }
+    }
+
+    #[test]
+    fn the_tmux_command_attaches_or_falls_back_to_the_login_shell() {
+        assert_eq!(
+            tmux_command("plexus"),
+            "command -v tmux >/dev/null 2>&1 && exec tmux new -A -s 'plexus' \
+             || echo 'PlexusTerm: tmux is not installed on this server, so this is the login shell.' \
+             && exec \"$SHELL\" -l"
+        );
+        assert!(tmux_command("plexus").starts_with(test_server::TMUX_EXEC_PREFIX));
+    }
+
+    /// Runs `command` with `shell -c` (fish without its configuration) in a clean environment
+    /// whose PATH is `path` and SHELL is `login_shell`; None when `shell` is not installed.
+    #[cfg(unix)]
+    fn run_in(shell: &str, command: &str, path: &Path, login_shell: &Path) -> Option<String> {
+        let program = platform::find_program(shell, &std::env::var_os("PATH")?)?;
+        let home = tempfile::tempdir().unwrap();
+        let mut run = std::process::Command::new(program);
+        if shell == "fish" {
+            run.arg("--no-config");
+        }
+        let output = run
+            .arg("-c")
+            .arg(command)
+            .env_clear()
+            .env("PATH", path)
+            .env("HOME", home.path())
+            .env("SHELL", login_shell)
+            .output()
+            .unwrap();
+        Some(String::from_utf8_lossy(&output.stdout).into_owned())
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn the_tmux_command_works_in_sh_bash_zsh_and_fish_login_shells() {
+        use std::os::unix::fs::PermissionsExt;
+        let with_tmux = tempfile::tempdir().unwrap();
+        let fake = with_tmux.path().join("tmux");
+        std::fs::write(&fake, "#!/bin/sh\necho \"tmux $*\"\n").unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let without_tmux = tempfile::tempdir().unwrap();
+        // Stands for the login shell: prints the arguments it was started with.
+        let login = with_tmux.path().join("login-shell");
+        std::fs::write(&login, "#!/bin/sh\necho \"login $*\"\n").unwrap();
+        std::fs::set_permissions(&login, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let command = tmux_command("work");
+        let mut tried = 0;
+        for shell in ["sh", "bash", "zsh", "fish"] {
+            let Some(attached) = run_in(shell, &command, with_tmux.path(), &login) else {
+                eprintln!("skipping {shell}: not installed");
+                continue;
+            };
+            tried += 1;
+            assert_eq!(attached, "tmux new -A -s work\n", "{shell}");
+            let fallback = run_in(shell, &command, without_tmux.path(), &login).unwrap();
+            assert_eq!(
+                fallback,
+                "PlexusTerm: tmux is not installed on this server, so this is the login shell.\n\
+                 login -l\n",
+                "{shell}"
+            );
+        }
+        assert!(tried > 0, "no shell to try the command in");
+    }
+
+    #[tokio::test]
+    async fn a_tmux_session_runs_its_command_instead_of_the_shell() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (id, mut rx) = shell_with(&mgr, req, in_tmux("work")).await.unwrap();
+        let out = wait_for(&mut rx, "tmux").await.0;
+        assert!(!out.contains("welcome"), "output was {out:?}");
+        mgr.write(id, b"ping").unwrap();
+        assert!(wait_for(&mut rx, "ping").await.0.contains("ping"));
+        assert_eq!(server.exec_commands(), vec![tmux_command("work")]);
+    }
+
+    #[tokio::test]
+    async fn every_reconnection_of_a_tmux_tab_resumes_the_same_session() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        for _ in 0..2 {
+            let req = request(server.addr.port(), password(PASSWORD));
+            let (id, mut rx) = shell_with(&mgr, req, in_tmux("work")).await.unwrap();
+            wait_for(&mut rx, "tmux").await;
+            mgr.write(id, b"drop").unwrap();
+            wait_for(&mut rx, "").await;
+        }
+        assert_eq!(server.exec_commands(), vec![tmux_command("work"); 2]);
+    }
+
+    #[tokio::test]
+    async fn without_tmux_the_plain_shell_is_started() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (_, mut rx) = shell_with(&mgr, req, ShellOptions::default())
+            .await
+            .unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+        assert!(server.exec_commands().is_empty());
+        assert_eq!(server.agent_requests(), 0);
+    }
+
+    #[tokio::test]
+    async fn an_invalid_tmux_session_name_fails_before_connecting() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let Err(err) = shell_with(&mgr, req, in_tmux("x'; rm -rf ~; '")).await else {
+            panic!("an invalid name connected");
+        };
+        assert!(matches!(err, SshError::Connection { .. }), "{err:?}");
+        assert_eq!(server.password_attempts(), 0);
+        assert!(server.exec_commands().is_empty());
+    }
+
+    #[test]
+    fn shell_options_deserialize_from_camel_case_and_default_to_none() {
+        let options: ShellOptions = serde_json::from_value(
+            serde_json::json!({"forwardAgent": true, "tmuxSession": "work"}),
+        )
+        .unwrap();
+        assert!(options.forward_agent);
+        assert_eq!(options.tmux_session.as_deref(), Some("work"));
+        let none: ShellOptions = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert!(!none.forward_agent);
+        assert_eq!(none.tmux_session, None);
     }
 }
