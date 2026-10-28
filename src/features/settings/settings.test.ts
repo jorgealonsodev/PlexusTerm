@@ -3,6 +3,15 @@ import { EXAMPLE_RULE } from "../terminal/highlightRules";
 import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
+  it("keeps a highlight rule's action through a save and a load (S3)", () => {
+    const highlightRules = [
+      { pattern: "\\[y/N\\]", color: "#ff8800", matchCase: false, notify: false, action: { kind: "send" as const, text: "y\\n" } },
+      { pattern: "deploy done", color: "#00ff00", matchCase: false, notify: true },
+    ];
+    const loaded = parseSettings(serializeSettings({ ...DEFAULT_SETTINGS, highlightRules }));
+    expect(loaded.highlightRules).toStrictEqual(highlightRules);
+  });
+
   it("persists icon-only toolbars and keeps labels for old or invalid settings", () => {
     expect(parseSettings(null).toolbarIconsOnly).toBe(false);
     expect(parseSettings('{}').toolbarIconsOnly).toBe(false);

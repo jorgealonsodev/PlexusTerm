@@ -3,7 +3,9 @@ import {
   compileRules,
   EXAMPLE_RULE,
   DEFAULT_RULE_COLOR,
+  MAX_ACTION_TEXT,
   MAX_RULES,
+  actionInput,
   parseHighlightRules,
   ruleError,
   ruleMatches,
@@ -35,6 +37,45 @@ describe("parseHighlightRules", () => {
     expect(parseHighlightRules([{ pattern: "  " }, { color: "#ffffff" }, "ERROR", null])).toEqual([]);
     expect(parseHighlightRules("ERROR")).toEqual([]);
     expect(parseHighlightRules(Array.from({ length: MAX_RULES + 5 }, (_, i) => ({ pattern: `p${i}` })))).toHaveLength(MAX_RULES);
+  });
+});
+
+describe("rule actions", () => {
+  it("keeps old rules without an action unchanged", () => {
+    const [old] = parseHighlightRules([{ pattern: "ERROR", color: "#ff8800", matchCase: true, notify: true }]);
+    expect(old).toStrictEqual({ pattern: "ERROR", color: "#ff8800", matchCase: true, notify: true });
+  });
+
+  it("keeps send-text and play-macro actions, bounds the text and drops unknown or empty ones", () => {
+    const parsed = parseHighlightRules([
+      { pattern: "\\[y/N\\]", action: { kind: "send", text: "y\\n" } },
+      { pattern: "deploy done", action: { kind: "macro", macroId: "m1" } },
+      { pattern: "long", action: { kind: "send", text: "x".repeat(MAX_ACTION_TEXT + 10) } },
+      { pattern: "unknown", action: { kind: "run", command: "rm" } },
+      { pattern: "empty", action: { kind: "send", text: "" } },
+      { pattern: "nomacro", action: { kind: "macro", macroId: 3 } },
+    ]);
+    expect(parsed.map((r) => r.action)).toEqual([
+      { kind: "send", text: "y\\n" },
+      { kind: "macro", macroId: "m1" },
+      { kind: "send", text: "x".repeat(MAX_ACTION_TEXT) },
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect("action" in parsed[3]).toBe(false);
+  });
+
+  it("types \\n as Enter and keeps the other escapes of macros", () => {
+    expect(actionInput("y\\n")).toBe("y\r");
+    expect(actionInput("a\\r\\nb\\tc")).toBe("a\rb\tc");
+    expect(actionInput("plain")).toBe("plain");
+  });
+
+  it("hands each rule's action to the compiled rule", () => {
+    const [none, send] = compileRules([rule("a"), rule("b", { action: { kind: "send", text: "y" } })]);
+    expect(none.action).toBeNull();
+    expect(send.action).toEqual({ kind: "send", text: "y" });
   });
 });
 

@@ -3,8 +3,12 @@
  * when new output matches a rule that notifies. Only the matched text is coloured (decorations drawn
  * over it: the output itself never changes). Rows on the screen can be rewritten, so they are read
  * again on every write; rows that scrolled away keep their colours and are never read again.
+ *
+ * A rule with an action (S3) acts on new output once per line: on a finished line, or on the line the
+ * cursor waits on (a `[y/N]` prompt is never finished until it is answered). The row it acted on is
+ * remembered, so the same line redrawn, finished later or read again never acts twice.
  */
-import { ruleMatches, type CompiledRule } from "./highlightRules";
+import { ruleMatches, type CompiledRule, type RuleAction } from "./highlightRules";
 
 interface Disposable {
   dispose(): void;
@@ -49,6 +53,10 @@ export interface RuleHighlight {
 export const MAX_COLOURED = 1000;
 /** A rule that notifies does so at most this often. */
 export const NOTIFY_EVERY_MS = 10_000;
+/** A rule with an action acts at most this often. */
+export const ACTION_EVERY_MS = 1000;
+/** Rows remembered as acted on; older ones could act again only if they were rewritten. */
+const MAX_ACTED = 200;
 
 /** One line (a row and the rows wrapped after it): its text, and for each character its row and column. */
 function lineText(rows: Row[], first: number) {
@@ -73,6 +81,8 @@ export function attachRuleHighlight(
     rules: () => readonly CompiledRule[];
     /** New output matched rule number `rule`; `line` is its text. */
     onNotify?: (rule: number, line: string) => void;
+    /** New output matched rule number `rule`, which has `action`; `line` is its text. */
+    onAction?: (rule: number, action: RuleAction, line: string) => void;
     schedule?: (scan: () => void) => void;
     now?: () => number;
     maxColoured?: number;
@@ -85,6 +95,32 @@ export function attachRuleHighlight(
   /** The first row never read; rows below it are new output (they may notify). */
   let unread: Marker | null = null;
   const lastNotified = new Map<number, number>();
+  const lastActed = new Map<number, number>();
+  /** The rows rules acted on, oldest first, and which rules. */
+  let acted: { marker: Marker; rules: Set<number> }[] = [];
+
+  /** Runs the actions of `matched` rules for the line starting at row `first`, once per line. */
+  const act = (first: number, cursor: number, text: string, matched: Iterable<number>, rules: readonly CompiledRule[]) => {
+    if (!options.onAction) return;
+    let done = acted.find((a) => !a.marker.isDisposed && a.marker.line === first);
+    for (const rule of matched) {
+      const action = rules[rule]?.action;
+      if (!action || done?.rules.has(rule)) continue;
+      if (!done) {
+        const marker = term.registerMarker(first - cursor);
+        if (!marker) return;
+        done = { marker, rules: new Set() };
+        acted.push(done);
+        while (acted.length > MAX_ACTED) acted.shift()!.marker.dispose();
+      }
+      // Skipped by the rate limit counts too: the line never acts later.
+      done.rules.add(rule);
+      const previous = lastActed.get(rule) ?? -Infinity;
+      if (now() - previous < ACTION_EVERY_MS) continue;
+      lastActed.set(rule, now());
+      options.onAction(rule, action, text.trimEnd());
+    }
+  };
 
   const drop = (c: { marker: Marker; decoration: Disposable }) => {
     c.decoration.dispose();
@@ -105,6 +141,7 @@ export function attachRuleHighlight(
     if (rows.length === 0) return first + 1;
     const { text, at } = lineText(rows, first);
     const matches = ruleMatches(text, rules);
+    if (fresh) act(first, cursor, text, new Set(matches.map((m) => m.rule)), rules);
     for (const match of matches) {
       // One decoration per row the match covers.
       let i = match.start;
@@ -138,6 +175,22 @@ export function attachRuleHighlight(
     return last + 1;
   };
 
+  /** The line the cursor is on (rows `first`..`cursor`) is only read for actions: it is not coloured yet. */
+  const actOnCursorLine = (first: number, cursor: number, rules: readonly CompiledRule[]) => {
+    if (!options.onAction || rules.every((r) => !r.action || !r.regex)) return;
+    const buffer = term.buffer.active;
+    const rows: Row[] = [];
+    for (let r = first; r <= cursor; r++) {
+      const row = buffer.getLine(r);
+      if (!row) break;
+      rows.push(row);
+    }
+    const { text } = lineText(rows, first);
+    if (!text.trim()) return;
+    const withAction = rules.map((r) => (r.action ? r : { ...r, regex: null }));
+    act(first, cursor, text, new Set(ruleMatches(text, withAction).map((m) => m.rule)), rules);
+  };
+
   /** `again`: every row is read again (rules changed), but only rows never read before may notify. */
   const scan = (again = false) => {
     const buffer = term.buffer.active;
@@ -162,6 +215,7 @@ export function attachRuleHighlight(
     // A line that starts above `from` and wraps onto it is read whole.
     while (row > 0 && buffer.getLine(row)?.isWrapped) row--;
     while (row < end) row = colourLine(row, end, cursor, row >= firstUnread, rules);
+    if (!again && end >= firstUnread) actOnCursorLine(end, cursor, rules);
     while (coloured.length > maxColoured) drop(coloured.shift()!);
     unread?.dispose();
     unread = term.registerMarker(end - cursor) ?? null;
@@ -204,6 +258,8 @@ export function attachRuleHighlight(
       subscription.dispose();
       clear();
       unread?.dispose();
+      acted.forEach((a) => a.marker.dispose());
+      acted = [];
     },
   };
 }

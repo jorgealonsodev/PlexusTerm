@@ -1,8 +1,15 @@
 /**
  * Highlight rules: regular expressions of the user's whose matches are coloured in every terminal,
  * like the error colours, and that can ask for attention when they show up (log lines, an IP, a
- * word you are waiting for).
+ * word you are waiting for), and can act on it: type a reply or play a macro (S3).
  */
+import { parseEscapes } from "../macros/macros";
+
+/**
+ * What a rule does when new output matches it, besides colouring: types `text` into the pane as if
+ * you had typed it (`\n` is Enter), or plays the saved macro `macroId`.
+ */
+export type RuleAction = { kind: "send"; text: string } | { kind: "macro"; macroId: string };
 
 export interface HighlightRule {
   pattern: string;
@@ -11,10 +18,14 @@ export interface HighlightRule {
   matchCase: boolean;
   /** Ask for attention (tab mark, desktop notification) when new output matches. */
   notify: boolean;
+  /** Absent: the rule only colours (and notifies). */
+  action?: RuleAction;
 }
 
 export const MAX_RULES = 50;
 const MAX_PATTERN = 500;
+export const MAX_ACTION_TEXT = 1000;
+const MAX_MACRO_ID = 200;
 export const DEFAULT_RULE_COLOR = "#e5c07b";
 /** Only the start of a very long line is searched, so a costly expression cannot freeze a terminal. */
 export const MAX_LINE = 4096;
@@ -30,6 +41,22 @@ export const EXAMPLE_RULE: HighlightRule = {
   notify: false,
 };
 
+/** A stored action, or undefined when it is missing, of an unknown kind or empty. */
+function parseAction(value: unknown): RuleAction | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const raw = value as Record<string, unknown>;
+  if (raw.kind === "send" && typeof raw.text === "string" && raw.text !== "") {
+    return { kind: "send", text: raw.text.slice(0, MAX_ACTION_TEXT) };
+  }
+  if (raw.kind === "macro" && typeof raw.macroId === "string" && raw.macroId !== "") {
+    return { kind: "macro", macroId: raw.macroId.slice(0, MAX_MACRO_ID) };
+  }
+  return undefined;
+}
+
+/** What a send-text action types: the macros' escapes, with `\n` (and a line break) as Enter. */
+export const actionInput = (text: string) => parseEscapes(text).replace(/\r?\n/g, "\r");
+
 /** The rules kept in settings.json; ones without a pattern are dropped. */
 export function parseHighlightRules(value: unknown): HighlightRule[] {
   if (!Array.isArray(value)) return [];
@@ -39,7 +66,10 @@ export function parseHighlightRules(value: unknown): HighlightRule[] {
     const raw = item as Record<string, unknown>;
     const pattern = typeof raw.pattern === "string" ? raw.pattern.slice(0, MAX_PATTERN) : "";
     if (!pattern.trim()) continue;
-    rules.push({ pattern, color: hexColor(raw.color), matchCase: raw.matchCase === true, notify: raw.notify === true });
+    const rule: HighlightRule = { pattern, color: hexColor(raw.color), matchCase: raw.matchCase === true, notify: raw.notify === true };
+    const action = parseAction(raw.action);
+    if (action) rule.action = action;
+    rules.push(rule);
     if (rules.length === MAX_RULES) break;
   }
   return rules;
@@ -62,6 +92,7 @@ export interface CompiledRule {
   regex: RegExp | null;
   color: string;
   notify: boolean;
+  action: RuleAction | null;
 }
 
 export const compileRules = (rules: readonly HighlightRule[]): CompiledRule[] =>
@@ -69,6 +100,7 @@ export const compileRules = (rules: readonly HighlightRule[]): CompiledRule[] =>
     regex: ruleError(rule) === null ? regexOf(rule) : null,
     color: rule.color,
     notify: rule.notify,
+    action: rule.action ?? null,
   }));
 
 /** One match: columns `start`..`end` of the line text, the colour, and the index of its rule. */

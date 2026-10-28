@@ -2185,6 +2185,7 @@ function AppContent() {
                             }}
                             registerWriter={(write) => writers.register(paneId, write)}
                             registerMacroTarget={(target) => macroTargets.register(paneId, target)}
+                            triggerMacro={(id) => macros.list.macros.find((macro) => macro.id === id)}
                             registerPaneShortcuts={(run) => paneShortcuts.register(paneId, run)}
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
                             registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}

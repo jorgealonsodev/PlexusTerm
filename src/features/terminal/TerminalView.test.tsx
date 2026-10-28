@@ -41,6 +41,20 @@ vi.mock("./errorHighlight", async (importOriginal) => ({
     return { refresh: errors.refresh, dispose: errors.dispose };
   },
 }));
+// Highlight rules are tested on their own (ruleHighlight.test.ts); here only their actions' wiring.
+const ruleEngine = vi.hoisted(() => ({
+  onAction: null as null | ((rule: number, action: import("./highlightRules").RuleAction, line: string) => void),
+}));
+vi.mock("./ruleHighlight", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./ruleHighlight")>();
+  return {
+    ...original,
+    attachRuleHighlight: (term: Parameters<typeof original.attachRuleHighlight>[0], options: Parameters<typeof original.attachRuleHighlight>[1]) => {
+      ruleEngine.onAction = options.onAction ?? null;
+      return original.attachRuleHighlight(term, options);
+    },
+  };
+});
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn(async () => "/tmp/session.log") }));
 const opener = vi.hoisted(() => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-opener", () => opener);
@@ -2376,6 +2390,49 @@ describe("TerminalView", () => {
       expect(pane!.sharerTypedAt()).toBe(before);
       lastTerm().type("x");
       expect(pane!.sharerTypedAt()).toBeGreaterThan(before);
+    });
+  });
+
+  describe("highlight rule actions (S3)", () => {
+    const sentData = () => (backend.write.mock.calls as unknown as [number, string][]).map(([, data]) => data);
+    const connect = async (props: Partial<import("react").ComponentProps<typeof TerminalView>> = {}) => {
+      let emit: (msg: import("./backend").TerminalEvent) => void = () => {};
+      backend.start.mockImplementationOnce((_options, onEvent) => {
+        emit = onEvent as typeof emit;
+        return Promise.resolve(7);
+      });
+      const onInput = vi.fn();
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} onInput={onInput} {...props} />);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      return { onInput, emit: (msg: import("./backend").TerminalEvent) => act(() => emit(msg)) };
+    };
+
+    it("types a send-text action into its own pane only, with \\n as Enter", async () => {
+      const { onInput } = await connect();
+      act(() => ruleEngine.onAction!(0, { kind: "send", text: "y\\n" }, "Overwrite? [y/N]"));
+      expect(sentData()).toEqual(["y\r"]);
+      // Never handed to multi-execution (or the macro recorder).
+      expect(onInput).not.toHaveBeenCalled();
+    });
+
+    it("plays a play-macro action into its own pane, and skips a macro that no longer exists", async () => {
+      const macro: import("../macros/macros").Macro = { id: "m1", name: "Deploy", steps: [{ kind: "send", text: "deploy\\r" }] };
+      const triggerMacro = vi.fn((id: string) => (id === "m1" ? macro : undefined));
+      const { onInput } = await connect({ triggerMacro });
+      await act(async () => ruleEngine.onAction!(0, { kind: "macro", macroId: "gone" }, "line"));
+      expect(sentData()).toEqual([]);
+      await act(async () => ruleEngine.onAction!(0, { kind: "macro", macroId: "m1" }, "line"));
+      expect(sentData()).toEqual(["deploy\r"]);
+      expect(onInput).not.toHaveBeenCalled();
+      expect(triggerMacro.mock.calls.map(([id]) => id)).toEqual(["gone", "m1"]);
+    });
+
+    it("sends nothing before the session is open", async () => {
+      backend.start.mockImplementationOnce(() => new Promise<number>(() => {}));
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} />);
+      await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+      act(() => ruleEngine.onAction!(0, { kind: "send", text: "y" }, "line"));
+      expect(sentData()).toEqual([]);
     });
   });
 });
