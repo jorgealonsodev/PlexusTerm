@@ -25,7 +25,7 @@ pub(crate) mod test_server;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -527,6 +527,16 @@ async fn connect_hop(
 
 /// Opens the SSH connection to `hop` (over a `direct-tcpip` channel of `via` when given)
 /// and applies the known_hosts policy, without authenticating.
+/// Every hop's client settings. A keepalive every 15 s, given up after 3 unanswered, notices
+/// a dead link (network gone, laptop resumed) within about a minute, so the pane can reconnect.
+fn client_config() -> client::Config {
+    client::Config {
+        keepalive_interval: Some(Duration::from_secs(15)),
+        keepalive_max: 3,
+        ..Default::default()
+    }
+}
+
 async fn open_hop(
     hop: &Hop,
     via: Option<&Connection>,
@@ -542,10 +552,7 @@ async fn open_hop(
         rejection: rejection.clone(),
         forwarded,
     };
-    let config = Arc::new(client::Config {
-        keepalive_interval: Some(Duration::from_secs(30)),
-        ..Default::default()
-    });
+    let config = Arc::new(client_config());
     let label = host_label(&hop.host, hop.port);
 
     let connecting = async {
@@ -885,6 +892,19 @@ impl SshManager {
         storage: Option<PasswordStorage>,
         sink: impl TerminalSink,
     ) -> Result<u32, SshError> {
+        self.connect_reporting_loss(req, storage, sink, || {}).await
+    }
+
+    /// Like [`Self::connect_with`], and calls `on_lost` just before the sink's exit when the
+    /// connection went away under the session: neither the remote ended the channel (exit
+    /// status, close) nor the app closed it. The frontend reconnects such a session.
+    pub async fn connect_reporting_loss(
+        &self,
+        req: ConnectRequest,
+        storage: Option<PasswordStorage>,
+        sink: impl TerminalSink,
+        on_lost: impl FnOnce() + Send + 'static,
+    ) -> Result<u32, SshError> {
         let target = SshTarget {
             host: req.host,
             port: req.port,
@@ -939,6 +959,9 @@ impl SshManager {
         // Writes run in their own task: a large paste can wait for the remote
         // window while the reader keeps draining output (otherwise both stall).
         let (writer_handle, writer_jumps) = (handle.clone(), jumps.clone());
+        // Set once the app closes the session, whose end is then no lost connection.
+        let closing = Arc::new(AtomicBool::new(false));
+        let closed_by_app = closing.clone();
         tokio::spawn(async move {
             // A write waits for the remote's window, which a remote that stops reading never
             // opens again (not even once the connection is gone): closing must not queue behind it.
@@ -953,7 +976,10 @@ impl SshManager {
                     command = commands.recv() => command,
                 };
                 match command {
-                    None => break,
+                    None => {
+                        closed_by_app.store(true, Ordering::SeqCst);
+                        break;
+                    }
                     Some(Command::Data(data)) => {
                         tokio::select! {
                             biased;
@@ -976,6 +1002,9 @@ impl SshManager {
             // Closed by the user (or the manager was dropped): end the whole connection,
             // which also ends the reader below. Closing the channel politely is only tried
             // briefly: a remote that stopped reading may never answer.
+            if cancelled {
+                closed_by_app.store(true, Ordering::SeqCst);
+            }
             if !cancelled {
                 let _ = writer.close().await;
             } else {
@@ -990,6 +1019,8 @@ impl SshManager {
         tokio::spawn(async move {
             let mut decoder = Utf8Stream::default();
             let mut exit_code = None;
+            // The remote ended the channel (or the shell): a clean end, not a lost connection.
+            let mut ended_by_remote = false;
             loop {
                 if let Some(gate) = &flow {
                     gate.wait().await;
@@ -1004,8 +1035,15 @@ impl SshManager {
                             sink.data(text);
                         }
                     }
-                    ChannelMsg::ExitStatus { exit_status } => exit_code = Some(exit_status),
-                    ChannelMsg::Close => break,
+                    ChannelMsg::ExitStatus { exit_status } => {
+                        exit_code = Some(exit_status);
+                        ended_by_remote = true;
+                    }
+                    ChannelMsg::ExitSignal { .. } | ChannelMsg::Eof => ended_by_remote = true,
+                    ChannelMsg::Close => {
+                        ended_by_remote = true;
+                        break;
+                    }
                     _ => {}
                 }
             }
@@ -1013,6 +1051,9 @@ impl SshManager {
                 .disconnect(russh::Disconnect::ByApplication, "", "en")
                 .await;
             disconnect_jumps(&jumps).await;
+            if !ended_by_remote && !closing.load(Ordering::SeqCst) {
+                on_lost();
+            }
             sink.exit(exit_code);
         });
 
@@ -1188,6 +1229,35 @@ mod tests {
             }
         }
         (out, None)
+    }
+
+    /// A session opened like the app opens one, with what its loss callback reports.
+    struct Watched {
+        id: u32,
+        rx: UnboundedReceiver<Event>,
+        lost: UnboundedReceiver<()>,
+    }
+
+    impl Watched {
+        /// How the session ended: `Some(true)` when it was reported lost before its exit,
+        /// `Some(false)` for a plain exit, None when it did not end within 5 seconds.
+        async fn end(&mut self) -> Option<bool> {
+            let (_, exit) = wait_for(&mut self.rx, "").await;
+            exit.map(|_| self.lost.try_recv().is_ok())
+        }
+    }
+
+    async fn connect_noting_loss(mgr: &SshManager, port: u16) -> Watched {
+        let (s, mut rx) = sink();
+        let (lost_tx, lost) = unbounded_channel();
+        let id = mgr
+            .connect_reporting_loss(request(port, password(PASSWORD)), None, s, move || {
+                let _ = lost_tx.send(());
+            })
+            .await
+            .unwrap();
+        wait_for(&mut rx, "welcome").await;
+        Watched { id, rx, lost }
     }
 
     fn request(port: u16, auth: SshAuth) -> ConnectRequest {
@@ -1546,6 +1616,57 @@ mod tests {
         mgr.write(id, b"exit").unwrap();
         let (_, exit) = wait_for(&mut rx, "").await;
         assert_eq!(exit, Some(Some(7)));
+    }
+
+    #[test]
+    fn a_dead_link_is_given_up_after_three_missed_keepalives_15_seconds_apart() {
+        let config = client_config();
+        assert_eq!(config.keepalive_interval, Some(Duration::from_secs(15)));
+        assert_eq!(config.keepalive_max, 3);
+    }
+
+    #[tokio::test]
+    async fn a_clean_exit_is_not_reported_as_lost() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        mgr.write(session.id, b"exit").unwrap();
+        assert_eq!(session.end().await, Some(false));
+    }
+
+    #[tokio::test]
+    async fn a_channel_closed_without_exit_status_is_not_reported_as_lost() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        mgr.write(session.id, b"hangup").unwrap();
+        assert_eq!(session.end().await, Some(false));
+    }
+
+    #[tokio::test]
+    async fn a_dropped_connection_is_reported_as_lost() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        mgr.write(session.id, b"drop").unwrap();
+        assert_eq!(session.end().await, Some(true));
+    }
+
+    #[tokio::test]
+    async fn closing_a_session_is_not_reported_as_lost() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let mut session = connect_noting_loss(&mgr, server.addr.port()).await;
+
+        mgr.close(session.id).unwrap();
+        assert_eq!(session.end().await, Some(false));
     }
 
     #[tokio::test]
