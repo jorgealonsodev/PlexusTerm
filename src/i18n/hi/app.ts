@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "कमांड पैलेट",
     placeholder: "कोई कार्य, सत्र, मैक्रो, टैब या सेटिंग लिखें…",
     noResults: "कुछ मेल नहीं खाता।",
+    hint: "↑↓ चुनें · Enter चलाएँ · Esc बंद करें",
     historyTitle: "कमांड इतिहास",
     historyPlaceholder: "इस कंप्यूटर पर पहले चलाई गई किसी कमांड का हिस्सा लिखें…",
     groups: {

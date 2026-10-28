@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "لوحة الأوامر",
     placeholder: "اكتب إجراءً أو جلسة أو ماكرو أو علامة تبويب أو إعدادًا…",
     noResults: "لا توجد نتائج مطابقة.",
+    hint: "↑↓ للاختيار · Enter للتنفيذ · Esc للإغلاق",
     historyTitle: "سجل الأوامر",
     historyPlaceholder: "اكتب جزءًا من أمر نفّذته من قبل على هذا الجهاز…",
     groups: {

@@ -89,10 +89,10 @@ export function FindAllDialog({ search, onClose }: FindAllDialogProps) {
   return (
     <div className="overlay overlay--top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="palette find-all" role="dialog" aria-label={t("app.findAll.title")}>
-        <div className="find-all__bar">
-          <Search size={16} className="find-all__icon" aria-hidden="true" />
+        <div className="palette__bar">
+          <Search size={16} className="palette__icon" aria-hidden="true" />
           <input
-            className="find-all__input"
+            className="palette__input"
             role="combobox"
             aria-expanded="true"
             aria-controls="find-all-list"
@@ -148,7 +148,7 @@ export function FindAllDialog({ search, onClose }: FindAllDialogProps) {
         </ul>
         {found.query !== "" && results.length === 0 && <p className="palette__empty muted">{t("app.findAll.noResults")}</p>}
         {capped && <p className="palette__empty muted">{t("app.findAll.capped", { limit: FIND_ALL_LIMIT })}</p>}
-        <div className="find-all__hint">{t("app.findAll.hint")}</div>
+        <div className="palette__hint">{t("app.findAll.hint")}</div>
       </div>
     </div>
   );

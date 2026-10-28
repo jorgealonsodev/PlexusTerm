@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "Befehlspalette",
     placeholder: "Aktion, Sitzung, Makro, Tab oder Einstellung eingeben …",
     noResults: "Keine Treffer.",
+    hint: "↑↓ wählen · Enter ausführen · Esc schließen",
     historyTitle: "Befehlsverlauf",
     historyPlaceholder: "Teil eines Befehls eingeben, der auf diesem Computer lief …",
     groups: {

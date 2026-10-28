@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "コマンドパレット",
     placeholder: "操作、セッション、マクロ、タブ、設定を入力…",
     noResults: "一致するものがありません。",
+    hint: "↑↓ 選択 · Enter 実行 · Esc 閉じる",
     historyTitle: "コマンド履歴",
     historyPlaceholder: "このコンピューターで以前実行したコマンドの一部を入力…",
     groups: {

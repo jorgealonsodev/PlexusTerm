@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "명령 팔레트",
     placeholder: "작업, 세션, 매크로, 탭 또는 설정을 입력하세요…",
     noResults: "일치하는 항목이 없습니다.",
+    hint: "↑↓ 선택 · Enter 실행 · Esc 닫기",
     historyTitle: "명령 기록",
     historyPlaceholder: "이 컴퓨터에서 전에 실행한 명령의 일부를 입력하세요…",
     groups: {

@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "命令面板",
     placeholder: "输入操作、会话、宏、标签页或设置…",
     noResults: "没有匹配项。",
+    hint: "↑↓ 选择 · Enter 运行 · Esc 关闭",
     historyTitle: "命令历史",
     historyPlaceholder: "输入之前在这台电脑上运行过的命令的一部分…",
     groups: {

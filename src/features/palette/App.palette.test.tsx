@@ -49,6 +49,7 @@ describe("command palette", () => {
     openPalette();
     expect(palette()).toBeTruthy();
     expect(document.activeElement).toBe(input());
+    expect(palette()?.textContent).toContain("↑↓ choose · Enter run · Esc close");
     fireEvent.change(input(), { target: { value: "split right" } });
     const option = screen.getByRole("option", { name: /Split right/ });
     expect(option.textContent).toContain("Ctrl+Shift+D");

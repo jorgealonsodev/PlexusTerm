@@ -6,6 +6,7 @@ export const app: Messages<typeof en> = {
     title: "Paleta de comandos",
     placeholder: "Digite uma ação, sessão, macro, aba ou configuração…",
     noResults: "Nada corresponde.",
+    hint: "↑↓ escolher · Enter executar · Esc fechar",
     historyTitle: "Histórico de comandos",
     historyPlaceholder: "Digite parte de um comando executado antes neste computador…",
     groups: {

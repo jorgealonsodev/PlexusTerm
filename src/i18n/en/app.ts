@@ -4,6 +4,7 @@ export const app = {
     title: "Command palette",
     placeholder: "Type an action, session, macro, tab or setting…",
     noResults: "Nothing matches.",
+    hint: "↑↓ choose · Enter run · Esc close",
     historyTitle: "Command history",
     historyPlaceholder: "Type part of a command run before on this computer…",
     groups: {

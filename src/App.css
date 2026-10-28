@@ -575,15 +575,10 @@ textarea::placeholder {
   overflow: hidden;
 }
 
-.palette__input {
-  margin: 10px;
-  font-size: 1.05em;
-}
-
 .palette__list {
   list-style: none;
   margin: 0;
-  padding: 0 6px 6px;
+  padding: 6px 6px 6px;
   overflow-y: auto;
 }
 
@@ -627,12 +622,12 @@ textarea::placeholder {
   margin: 0 16px 14px;
 }
 
-/* Find in all tabs: the palette's box, with Match case beside the field and results under their tab. */
+/* Find in all tabs: the palette's box, wider, with Match case beside the field and results under their tab. */
 .find-all {
   width: min(760px, 100%);
 }
 
-.find-all__bar {
+.palette__bar {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -640,15 +635,15 @@ textarea::placeholder {
   border-bottom: 1px solid var(--border);
 }
 
-.find-all__icon {
+.palette__icon {
   flex: none;
   color: var(--muted);
 }
 
 /* No field box nor the system's focus ring (GTK themes draw their own colour): the bar is the field. */
-.find-all__input,
-.find-all__input:focus,
-.find-all__input:focus-visible {
+.palette__input,
+.palette__input:focus,
+.palette__input:focus-visible {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -688,11 +683,7 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
-.find-all .palette__list {
-  padding-top: 6px;
-}
-
-.find-all__hint {
+.palette__hint {
   padding: 6px 14px;
   border-top: 1px solid var(--border);
   color: var(--muted);

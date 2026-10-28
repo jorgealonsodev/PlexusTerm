@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useT } from "../../i18n/i18n";
 import { filterPalette, type PaletteItem } from "./paletteItems";
@@ -46,22 +47,25 @@ export function CommandPalette({ items, title, placeholder, onClose }: CommandPa
   return (
     <div className="overlay overlay--top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="palette" role="dialog" aria-label={title ?? t("app.palette.title")}>
-        <input
-          className="palette__input"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="palette-list"
-          aria-activedescendant={shown[current] ? `palette-item-${current}` : undefined}
-          autoFocus
-          spellCheck={false}
-          placeholder={placeholder ?? t("app.palette.placeholder")}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSelected(0);
-          }}
-          onKeyDown={onKeyDown}
-        />
+        <div className="palette__bar">
+          <Search size={16} className="palette__icon" aria-hidden="true" />
+          <input
+            className="palette__input"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-list"
+            aria-activedescendant={shown[current] ? `palette-item-${current}` : undefined}
+            autoFocus
+            spellCheck={false}
+            placeholder={placeholder ?? t("app.palette.placeholder")}
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelected(0);
+            }}
+            onKeyDown={onKeyDown}
+          />
+        </div>
         <ul className="palette__list" id="palette-list" role="listbox" ref={listRef}>
           {shown.map((item, index) => (
             <li
@@ -84,6 +88,7 @@ export function CommandPalette({ items, title, placeholder, onClose }: CommandPa
           ))}
         </ul>
         {shown.length === 0 && <p className="palette__empty muted">{t("app.palette.noResults")}</p>}
+        <div className="palette__hint">{t("app.palette.hint")}</div>
       </div>
     </div>
   );
