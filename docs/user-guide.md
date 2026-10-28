@@ -312,7 +312,7 @@ With **Settings → General → Restore tabs at startup** on (the default), Plex
 - Local terminals open their shell in the last folder each pane reported (shell integration, OSC 7), else in the folder they started in.
 - Tabs that were in DEV mode come back in DEV mode on their folder, with the folders added to their workspace.
 
-Not restored: what the terminals showed (scrollback and output), AI chat and file viewer panes, shared tabs opened from a link, and the tab titles set by the shell. Opening PlexusTerm with a folder or a VS Code workspace file (a file manager's action) opens only that, as before; when nothing can be restored, the usual local terminal opens.
+Not restored: what the terminals showed (scrollback and output), AI chat and file viewer panes, shared tabs opened from a link, and the tab titles set by the shell. Opening PlexusTerm with a folder or a VS Code workspace file (a file manager's action) opens only that, as before, and that window's tabs are not saved, so the next usual start still brings back the earlier ones; when nothing can be restored, the usual local terminal opens.
 
 The tabs are saved to `tabs.json` in the app config directory (atomic, mode `0600`) a moment after they change and when the window closes. Only what reopens a tab is written: the saved session's id, or the host, port, user and kind of login (no passwords, key passphrases or typed logins), and each local pane's folder. Turning the setting off stops saving and restoring.
 

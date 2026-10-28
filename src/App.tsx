@@ -291,6 +291,10 @@ function AppContent() {
   const [pendingRestore, setPendingRestore] = useState<TabsDocument | null>(null);
   /** Startup has opened its tabs: from now on tabs.json follows them (never the empty list before). */
   const [startupDone, setStartupDone] = useState(false);
+  /** Panes whose terminal connected once: a later session is a reconnection (S1). */
+  const connectedPanes = useRef(new Set<string>());
+  /** Opened with a workspace or a folder: its tabs never replace the saved ones in tabs.json. */
+  const explicitLaunch = useRef(false);
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
@@ -302,10 +306,12 @@ function AppContent() {
       .then(async (file) => ({ file, folders: file ? await workspaceFoldersOf(file) : [] }))
       .then(async ({ file, folders }) => {
         if (file && folders.length > 0) {
+          explicitLaunch.current = true;
           openWorkspaceFileRef.current(file, folders);
           return setStartupDone(true);
         }
         const folder = await invoke<string | null>("launch_folder_take").catch(() => null);
+        if (folder) explicitLaunch.current = true;
         const settings = terminalSettings.settings;
         if (!folder && settings.restoreTabs) {
           const saved = parseTabsDocument(await invoke<string | null>("tabs_state_load").catch(() => null));
@@ -994,7 +1000,7 @@ function AppContent() {
     void invoke("tabs_state_save", { contents }).catch(() => {});
   }, []);
   useEffect(() => {
-    if (!startupDone) return;
+    if (!startupDone || explicitLaunch.current) return;
     if (!restoreTabs) {
       clearTimeout(saveTabsTimer.current);
       unsavedTabs.current = null;
@@ -2156,9 +2162,12 @@ function AppContent() {
                             onSession={(sessionId) => {
                               updatePane(paneId, { sessionId });
                               if (sessionId !== null) cdWhenReady(paneId, tab.target);
-                              // A new SSH connection brings its file browser to the front; a local terminal
-                              // shows the Explorer instead of Sessions, leaving any other tab chosen (L18).
-                              if (sessionId !== null && tab.target.type === "ssh") setSidebarView("sftp");
+                              const reconnected = sessionId !== null && connectedPanes.current.has(paneId);
+                              if (sessionId !== null) connectedPanes.current.add(paneId);
+                              // A new SSH connection brings its file browser to the front, but not again when
+                              // it reconnects; a local terminal shows the Explorer instead of Sessions,
+                              // leaving any other tab chosen (L18).
+                              if (sessionId !== null && tab.target.type === "ssh" && !reconnected) setSidebarView("sftp");
                               if (sessionId !== null && tab.target.type === "local") {
                                 if (keepStartupView.current) keepStartupView.current = false;
                                 else setSidebarView((view) => (view === "sessions" ? "explorer" : view));

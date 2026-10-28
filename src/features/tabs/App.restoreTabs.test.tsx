@@ -141,6 +141,9 @@ describe("Restoring tabs at startup", () => {
     await settle();
     await settle();
     expect(targets()).toEqual([{ type: "local", cwd: "/srv/project" }]);
+    // That window's tabs never replace the saved ones.
+    await settle(SAVE_WAIT);
+    expect(saves()).toEqual([]);
   });
 });
 
