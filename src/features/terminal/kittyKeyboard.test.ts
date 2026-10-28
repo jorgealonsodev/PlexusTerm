@@ -165,3 +165,15 @@ describe("encodeKittyKey", () => {
     expect(encodeKittyKey(key("Escape", { keyCode: 229 }), 1)).toBeNull();
   });
 });
+
+describe("clear", () => {
+  it("empties one screen's stack and leaves the other's", () => {
+    const kitty = createKittyKeyboard();
+    kitty.push("normal", 1);
+    kitty.push("alternate", 1);
+    kitty.clear("alternate");
+    expect(kitty.flags("alternate")).toBe(0);
+    expect(kitty.flags("normal")).toBe(1);
+  });
+});
+

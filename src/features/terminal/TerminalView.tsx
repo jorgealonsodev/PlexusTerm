@@ -485,7 +485,17 @@ export function TerminalView({
     // The kitty keyboard protocol (S7): AI command-line tools turn it on to receive Ctrl+Enter and
     // Shift+Enter as their own keys; each screen keeps its flags.
     const kitty = createKittyKeyboard();
-    const kittyScreen = (): KittyScreen => (term.buffer.active.type === "alternate" ? "alternate" : "normal");
+    /**
+     * The screen in use. Each visit to the alternate screen starts without flags: a program that
+     * died with the protocol on would otherwise leave it on for the next one (vim's Escape).
+     */
+    let lastKittyScreen: KittyScreen = "normal";
+    const kittyScreen = (): KittyScreen => {
+      const screen: KittyScreen = term.buffer.active.type === "alternate" ? "alternate" : "normal";
+      if (screen === "alternate" && lastKittyScreen !== "alternate") kitty.clear("alternate");
+      lastKittyScreen = screen;
+      return screen;
+    };
     // Application shortcuts must not reach the shell (Ctrl+Shift+D would send Ctrl+D, i.e. EOF);
     // returning false lets the event bubble to the window listener without xterm handling it.
     // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.

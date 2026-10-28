@@ -1222,6 +1222,20 @@ describe("TerminalView", () => {
         expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
       });
 
+      it("starts every visit to the alternate screen without flags, so a program that died leaves none", async () => {
+        await connected();
+        term().bufferType = "alternate";
+        turnOn();
+        // The program exits without turning the protocol off; vim opens the alternate screen next.
+        term().bufferType = "normal";
+        press("a");
+        term().bufferType = "alternate";
+        backend.write.mockClear();
+        expect(press("Escape")).toBe(true);
+        query();
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
+      });
+
       it("forgets the flags on a terminal reset (RIS) and lets xterm reset too", async () => {
         await connected();
         turnOn();

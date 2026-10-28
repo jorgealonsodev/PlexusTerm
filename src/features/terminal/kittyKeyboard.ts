@@ -27,6 +27,8 @@ export interface KittyKeyboard {
   set(screen: KittyScreen, flags: number, mode?: number): void;
   /** Both stacks emptied (RIS, a new session). */
   reset(): void;
+  /** One screen's stack emptied (entering the alternate screen). */
+  clear(screen: KittyScreen): void;
 }
 
 export const createKittyKeyboard = (): KittyKeyboard => {
@@ -59,6 +61,9 @@ export const createKittyKeyboard = (): KittyKeyboard => {
     reset() {
       stacks.normal = [];
       stacks.alternate = [];
+    },
+    clear(screen) {
+      stacks[screen] = [];
     },
   };
 };
