@@ -260,6 +260,7 @@ vi.mock("@xterm/addon-search", () => ({
 }));
 
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { forgetWebglProbe } from "./webglProbe";
 import { ACTIVITY_QUIET_MS, CONNECT_WAIT_SHOWN_S, FONT_WAIT_MS, TITLE_MS, TerminalView } from "./TerminalView";
 import { DEFAULT_SETTINGS } from "../settings/settings";
@@ -1316,6 +1317,110 @@ describe("TerminalView", () => {
     it("starts each logged line with its date and time when Settings ask for it (the default)", async () => {
       expect(DEFAULT_SETTINGS.logTimestamps).toBe(true);
       expect(await logOneLine(true)).toMatch(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] bold\n$/);
+    });
+
+    describe("session recording (S6)", () => {
+      /** Starts recording a pane from its menu; returns how to send it output and read the file. */
+      const record = async () => {
+        // A pane closed by an earlier test may still be flushing.
+        await settle();
+        vi.mocked(invoke).mockClear();
+        vi.mocked(save).mockClear();
+        vi.mocked(save).mockResolvedValueOnce("/tmp/rec.cast");
+        let emit: (msg: { event: string; data: unknown }) => void = () => {};
+        backend.start.mockImplementationOnce((_options, onEvent) => {
+          emit = onEvent as typeof emit;
+          return Promise.resolve(7);
+        });
+        const view = renderView({ settings: { ...DEFAULT_SETTINGS, rightClickPastes: false } });
+        await settle();
+        rightClick(view.container);
+        fireEvent.click(screen.getByRole("menuitem", { name: "Record session…" }));
+        await vi.waitFor(() => expect(screen.getByRole("button", { name: "Stop recording" })).toBeTruthy());
+        /** The file's lines so far: the header, then the events. */
+        const lines = () =>
+          vi
+            .mocked(invoke)
+            .mock.calls.filter(([cmd, args]) =>
+              (cmd === "save_text_file" || cmd === "append_text_file") && (args as { path: string }).path === "/tmp/rec.cast",
+            )
+            .map(([cmd, args]) => [cmd, (args as { contents: string }).contents] as const);
+        const events = () =>
+          lines()
+            .map(([, contents]) => contents)
+            .join("")
+            .split("\n")
+            .filter((line) => line !== "")
+            .slice(1)
+            .map((line) => JSON.parse(line) as [number, string, string]);
+        return { ...view, emit: (data: string) => act(() => emit({ event: "output", data })), lines, events };
+      };
+      const stopFromMenu = (container: HTMLElement) => {
+        rightClick(container);
+        fireEvent.click(screen.getByRole("menuitem", { name: "Stop recording" }));
+      };
+
+      it("records the output and resizes with their times to an asciicast file named after its start", async () => {
+        const { container, emit, lines, events } = await record();
+        expect(vi.mocked(save).mock.calls[0][0]).toMatchObject({
+          defaultPath: expect.stringMatching(/^session-\d{8}-\d{6}\.cast$/),
+          filters: [{ name: "asciicast", extensions: ["cast"] }],
+        });
+        emit("hello\r\n");
+        act(() => term().resize(100, 30));
+        stopFromMenu(container);
+        await vi.waitFor(() => expect(events()).toHaveLength(2));
+        const [header] = lines();
+        expect(header[0]).toBe("save_text_file");
+        expect(JSON.parse(header[1].split("\n")[0])).toMatchObject({ version: 2, width: 80, height: 24, env: { TERM: "xterm-256color" } });
+        const [output, resize] = events();
+        expect(output.slice(1)).toEqual(["o", "hello\r\n"]);
+        expect(resize.slice(1)).toEqual(["r", "100x30"]);
+        expect(resize[0]).toBeGreaterThanOrEqual(output[0]);
+        expect(screen.queryByRole("button", { name: "Stop recording" })).toBeNull();
+      });
+
+      it("never records what is typed", async () => {
+        const { container, emit, events } = await record();
+        act(() => term().type("secret\r"));
+        expect(backend.write).toHaveBeenCalledWith(7, "secret\r");
+        emit("$ ");
+        stopFromMenu(container);
+        await vi.waitFor(() => expect(events()).toHaveLength(1));
+        expect(events()[0].slice(1)).toEqual(["o", "$ "]);
+      });
+
+      it("stops from the recording mark under the terminal", async () => {
+        const { emit, events } = await record();
+        emit("done");
+        fireEvent.click(screen.getByRole("button", { name: "Stop recording" }));
+        await vi.waitFor(() => expect(events()).toHaveLength(1));
+        expect(screen.queryByRole("button", { name: "Stop recording" })).toBeNull();
+      });
+
+      it("writes what it still holds when the pane closes", async () => {
+        const { emit, events, unmount } = await record();
+        emit("bye\r\n");
+        unmount();
+        await vi.waitFor(() => expect(events()).toHaveLength(1));
+        expect(events()[0].slice(1)).toEqual(["o", "bye\r\n"]);
+      });
+
+      it("keeps logging to a text file alongside a recording", async () => {
+        const { container, emit, events } = await record();
+        rightClick(container);
+        fireEvent.click(screen.getByRole("menuitem", { name: "Log to file…" }));
+        await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+        await settle();
+        emit("both\r\n");
+        stopFromMenu(container);
+        await vi.waitFor(() => expect(events()).toHaveLength(1));
+        rightClick(container);
+        fireEvent.click(screen.getByRole("menuitem", { name: "Stop logging" }));
+        await vi.waitFor(() =>
+          expect(vi.mocked(invoke)).toHaveBeenCalledWith("append_text_file", { path: "/tmp/session.log", contents: expect.stringContaining("both") }),
+        );
+      });
     });
   });
 

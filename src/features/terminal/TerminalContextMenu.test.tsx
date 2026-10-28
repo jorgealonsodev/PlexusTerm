@@ -5,10 +5,12 @@ import { TerminalContextMenu, type MenuAction } from "./TerminalContextMenu";
 
 afterEach(cleanup);
 
-const setup = (logging = false) => {
+const setup = (logging = false, recording = false) => {
   const onAction = vi.fn<(action: MenuAction) => void>();
   const onClose = vi.fn();
-  render(<TerminalContextMenu x={40} y={60} logging={logging} onAction={onAction} onClose={onClose} />);
+  render(
+    <TerminalContextMenu x={40} y={60} logging={logging} recording={recording} onAction={onAction} onClose={onClose} />,
+  );
   return { onAction, onClose };
 };
 
@@ -24,6 +26,7 @@ describe("TerminalContextMenu", () => {
       "Find…",
       "Save output to file…",
       "Log to file…",
+      "Record session…",
     ]);
     const menu = screen.getByRole("menu");
     expect(menu.style.left).toBe("40px");
@@ -41,6 +44,13 @@ describe("TerminalContextMenu", () => {
     const { onAction } = setup(true);
     fireEvent.click(screen.getByRole("menuitem", { name: "Stop logging" }));
     expect(onAction).toHaveBeenCalledWith("log");
+  });
+
+  it("offers to stop recording while the pane is recorded (S6)", () => {
+    const { onAction } = setup(false, true);
+    expect(screen.getByRole("menuitem", { name: "Log to file…" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Stop recording" }));
+    expect(onAction).toHaveBeenCalledWith("record");
   });
 
   it("closes on Escape and on a click outside", () => {

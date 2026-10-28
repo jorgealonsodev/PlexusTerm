@@ -258,6 +258,51 @@ textarea::placeholder {
 }
 
 /* The grey rest of a suggested command, drawn on xterm's cell grid after the cursor (S1). */
+/* A pane being recorded (S6): a mark in its top right corner; a click stops the recording. */
+.terminal-rec {
+  position: absolute;
+  top: 6px;
+  right: 16px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--danger);
+  font-size: calc(10px * var(--ui-scale, 1));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.terminal-rec:hover {
+  opacity: 1;
+}
+
+.terminal-rec__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: terminal-rec-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes terminal-rec-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-rec__dot {
+    animation: none;
+  }
+}
+
 .terminal-ghost {
   position: absolute;
   z-index: 1;
