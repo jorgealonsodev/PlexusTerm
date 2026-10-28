@@ -9,6 +9,7 @@ import {
   type ShortcutOverrides,
 } from "../panes/shortcuts";
 import { isValidShortcut } from "./shortcutCapture";
+import { cleanToolbarLayout, type ToolbarLayout } from "../toolbar/toolbarLayout";
 import { cleanDevCommands, DEFAULT_DEV_COMMANDS } from "../devmode/devMode";
 import { DEFAULT_RECENT_FOLDERS, MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPacks";
@@ -129,6 +130,8 @@ export interface TerminalSettings {
   viewerChangedLines: boolean;
   /** Hide toolbar labels visually, keeping tooltips and accessible names. */
   toolbarIconsOnly: boolean;
+  /** Where each toolbar action sits (Settings → Toolbar); null follows the default layout. */
+  toolbarLayout: ToolbarLayout | null;
   /** Text size of the interface (bars, lists, dialogs) in pixels, 10..20; the terminal has its own. */
   uiFontSize: number;
   /** Text size of the AI chat in pixels, 10..24. */
@@ -270,6 +273,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   viewerPosition: "left",
   viewerChangedLines: true,
   toolbarIconsOnly: false,
+  toolbarLayout: null,
   uiFontSize: 13,
   chatFontSize: 13,
   viewerFontSize: 13,
@@ -525,6 +529,7 @@ export function parseSettings(json: string | null, platform: { linux?: boolean }
       : d.viewerPosition,
     viewerChangedLines: bool(value.viewerChangedLines, d.viewerChangedLines),
     toolbarIconsOnly: bool(value.toolbarIconsOnly, d.toolbarIconsOnly),
+    toolbarLayout: cleanToolbarLayout(value.toolbarLayout),
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
     chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
     viewerFontSize: size(value.viewerFontSize, clampViewerFontSize, d.viewerFontSize),

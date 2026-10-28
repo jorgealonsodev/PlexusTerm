@@ -105,6 +105,7 @@ describe("SettingsDialog", () => {
     expect(sections).toEqual([
       "General",
       "Appearance",
+      "Toolbar",
       "Terminal",
       "DEV mode",
       "Connections",

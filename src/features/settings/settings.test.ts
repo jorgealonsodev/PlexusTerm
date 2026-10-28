@@ -11,6 +11,14 @@ describe("parseSettings", () => {
     expect(parseSettings(serializeSettings(settings)).toolbarIconsOnly).toBe(true);
   });
 
+  it("keeps a saved toolbar layout and follows the default one without it", () => {
+    expect(parseSettings(null).toolbarLayout).toBeNull();
+    const settings = parseSettings('{"toolbarLayout":{"bar":[{"kind":"action","id":"ssh"}],"hidden":["telnet"]}}');
+    expect(settings.toolbarLayout?.bar[0]).toEqual({ kind: "action", id: "ssh" });
+    expect(settings.toolbarLayout?.hidden).toEqual(["telnet"]);
+    expect(parseSettings(serializeSettings(settings)).toolbarLayout).toEqual(settings.toolbarLayout);
+  });
+
   it("drops OpenCode's own opencode-go/ prefix from OpenCode Go model ids", () => {
     const json = JSON.stringify({ aiProvider: "opencode-go", aiModel: "opencode-go/glm-5.3-flash" });
     expect(parseSettings(json).aiModel).toBe("glm-5.3-flash");
@@ -63,6 +71,7 @@ describe("parseSettings", () => {
       fontWeight: 400,
       lineHeight: 1,
       toolbarIconsOnly: false,
+      toolbarLayout: null,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -194,6 +203,7 @@ describe("parseSettings", () => {
       fontWeight: 400,
       lineHeight: 1,
       toolbarIconsOnly: false,
+      toolbarLayout: null,
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
@@ -391,6 +401,7 @@ describe("serializeSettings", () => {
       fontWeight: 500,
       lineHeight: 1,
       toolbarIconsOnly: false,
+      toolbarLayout: null,
       uiFontSize: 15,
       chatFontSize: 17,
       viewerFontSize: 13,

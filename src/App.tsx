@@ -104,14 +104,14 @@ import markUrl from "./assets/plexusterm-mark.svg";
 import markLightUrl from "./assets/plexusterm-mark-light.svg";
 import { applyUiTheme } from "./features/settings/uiTheme";
 import { useCompactToolbar } from "./features/toolbar/compact";
-import { DropdownMenu, type DropdownItem } from "./features/menu/DropdownMenu";
+import { ToolbarButtons, type ToolbarSpecs } from "./features/toolbar/ToolbarButtons";
+import { DEFAULT_TOOLBAR_LAYOUT } from "./features/toolbar/toolbarLayout";
 import { WakeOnLanDialog } from "./features/tools/WakeOnLanDialog";
 import { KeyGenDialog } from "./features/tools/keygen/KeyGenDialog";
 import { NetworkScannerDialog } from "./features/tools/scan/NetworkScannerDialog";
 import { PortScannerDialog } from "./features/tools/scan/PortScannerDialog";
 import { RemoteMonitorBar } from "./features/tools/monitor/RemoteMonitorBar";
 import {
-  ChevronDown,
   Circle,
   Code,
   Activity,
@@ -120,7 +120,6 @@ import {
   Network,
   Power,
   ScanSearch,
-  Wrench,
   GitBranch,
   KeyRound,
   PanelLeftClose,
@@ -252,62 +251,6 @@ const draftTunnel = (): Tunnel => ({
   destHost: "localhost",
   destPort: 80,
 });
-
-/** Toolbar menu for the less common session types (S17.3). */
-function MoreMenu({ onTelnet, onMosh, onShared }: { onTelnet: () => void; onMosh: () => void; onShared: () => void }) {
-  // Mosh has no Windows client (S18.2).
-  const t = useT();
-  const offerMosh = usePlatform() !== "windows";
-  const items: DropdownItem[] = [{ label: "Telnet…", icon: <Cable size={15} />, onSelect: onTelnet }];
-  if (offerMosh) items.push({ label: "Mosh…", icon: <Smartphone size={15} />, onSelect: onMosh });
-  items.push({ label: t("share.view.open"), icon: <Link size={15} />, onSelect: onShared });
-  return (
-    <DropdownMenu
-      title={t("app.toolbar.more")}
-      items={items}
-      button={
-        <>
-          <span className="btn__label">{t("app.toolbar.more")}</span>
-          <ChevronDown size={14} />
-        </>
-      }
-    />
-  );
-}
-
-/** Tools menu: network and SSH utilities (S1). */
-function ToolsMenu(props: {
-  monitorOn: boolean;
-  onKeyGen: () => void;
-  onPortScan: () => void;
-  onNetworkScan: () => void;
-  onWakeOnLan: () => void;
-  onToggleMonitor: () => void;
-}) {
-  const t = useT();
-  return (
-    <DropdownMenu
-      title={t("app.toolbar.tools")}
-      items={[
-        { label: t("app.tools.keyGenerator"), icon: <KeySquare size={15} />, onSelect: props.onKeyGen },
-        { label: t("app.tools.portScanner"), icon: <ScanSearch size={15} />, onSelect: props.onPortScan },
-        { label: t("app.tools.networkScanner"), icon: <Network size={15} />, onSelect: props.onNetworkScan },
-        { label: t("app.tools.wakeOnLan"), icon: <Power size={15} />, onSelect: props.onWakeOnLan },
-        {
-          label: props.monitorOn ? t("app.tools.hideMonitor") : t("app.tools.showMonitor"),
-          icon: <Activity size={15} />,
-          onSelect: props.onToggleMonitor,
-        },
-      ]}
-      button={
-        <>
-          <Wrench size={16} />
-          <span className="btn__label">{t("app.toolbar.tools")}</span>
-        </>
-      }
-    />
-  );
-}
 
 function AppContent() {
   const [state, dispatch] = useReducer(tabsReducer, initialTabs);
@@ -1480,6 +1423,88 @@ function AppContent() {
     if (activeTab) dispatch({ type: "split", key: activeTab.key, direction });
   };
 
+  /** Every toolbar action; Settings → Toolbar decides where each one shows. */
+  const toolbarSpecs: ToolbarSpecs = {
+    sidebar: {
+      label: settings.sidebarCollapsed ? t("app.toolbar.showSidebar") : t("app.toolbar.hideSidebar"),
+      title: settings.sidebarCollapsed
+        ? titleWith("app.toolbar.showSidebarTitle", "app.toolbar.showSidebar", "toggleSidebar")
+        : titleWith("app.toolbar.hideSidebarTitle", "app.toolbar.hideSidebar", "toggleSidebar"),
+      icon: settings.sidebarCollapsed ? PanelLeftOpen : PanelLeftClose,
+      onSelect: () => updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      className: "toolbar__sidebar",
+      iconOnly: true,
+    },
+    terminal: {
+      label: t("app.toolbar.terminal"),
+      title: titleWith("app.toolbar.terminalTitle", "app.toolbar.terminal", "newTerminal"),
+      icon: SquareTerminal,
+      onSelect: openLocal,
+    },
+    ssh: {
+      label: "SSH",
+      title: sshShortcut ? `SSH (${sshShortcut})` : "SSH",
+      icon: KeyRound,
+      onSelect: () => setModal({ kind: "quickConnect" }),
+    },
+    serial: { label: t("app.toolbar.serial"), icon: Usb, onSelect: () => setModal({ kind: "serial" }) },
+    telnet: { label: "Telnet…", icon: Cable, onSelect: () => setModal({ kind: "telnet" }) },
+    // Mosh has no Windows client (S18.2).
+    mosh: platform === "windows" ? null : { label: "Mosh…", icon: Smartphone, onSelect: () => setModal({ kind: "mosh" }) },
+    openShared: { label: t("share.view.open"), icon: Link, onSelect: () => setModal({ kind: "openShared" }) },
+    keyGen: { label: t("app.tools.keyGenerator"), icon: KeySquare, onSelect: () => setModal({ kind: "keyGen" }) },
+    portScan: { label: t("app.tools.portScanner"), icon: ScanSearch, onSelect: () => setModal({ kind: "portScan" }) },
+    networkScan: { label: t("app.tools.networkScanner"), icon: Network, onSelect: () => setModal({ kind: "networkScan" }) },
+    wakeOnLan: { label: t("app.tools.wakeOnLan"), icon: Power, onSelect: () => setModal({ kind: "wakeOnLan" }) },
+    remoteMonitor: {
+      label: terminalSettings.settings.remoteMonitor ? t("app.tools.hideMonitor") : t("app.tools.showMonitor"),
+      icon: Activity,
+      onSelect: () => terminalSettings.update({ remoteMonitor: !terminalSettings.settings.remoteMonitor }),
+    },
+    splitRight: {
+      label: t("app.toolbar.splitRight"),
+      title: titleWith("app.toolbar.splitRightTitle", "app.toolbar.splitRight", "splitRight"),
+      icon: Columns2,
+      onSelect: () => split("row"),
+      disabled: !canSplit,
+    },
+    splitDown: {
+      label: t("app.toolbar.splitDown"),
+      title: titleWith("app.toolbar.splitDownTitle", "app.toolbar.splitDown", "splitDown"),
+      icon: Rows2,
+      onSelect: () => split("column"),
+      disabled: !canSplit,
+    },
+    multiExec: {
+      label: t("app.toolbar.multiExec"),
+      title: titleWith("app.toolbar.multiExecTitle", "app.toolbar.multiExec", "toggleMultiExec"),
+      icon: Radio,
+      onSelect: () => setMultiExec((on) => !on),
+      pressed: multiExec,
+    },
+    recordMacro: {
+      label: t("app.toolbar.recordMacro"),
+      title: titleWith("app.toolbar.recordMacroTitle", "app.toolbar.recordMacro", "recordMacro"),
+      icon: Circle,
+      onSelect: toggleRecording,
+      pressed: recording,
+      className: recording ? "btn--recording" : undefined,
+    },
+    // DEV mode's tab column folds like the sidebar: to its icons, or away (Settings).
+    devColumn: activeDev
+      ? {
+          label: settings.devColumnCollapsed ? t("app.toolbar.showDevColumn") : t("app.toolbar.hideDevColumn"),
+          title: settings.devColumnCollapsed
+            ? titleWith("app.toolbar.showDevColumnTitle", "app.toolbar.showDevColumn", "toggleDevColumn")
+            : titleWith("app.toolbar.hideDevColumnTitle", "app.toolbar.hideDevColumn", "toggleDevColumn"),
+          icon: settings.devColumnCollapsed ? PanelRightOpen : PanelRightClose,
+          onSelect: () => updateSettingsWith((s) => ({ devColumnCollapsed: !s.devColumnCollapsed })),
+          className: "toolbar__dev-column",
+          iconOnly: true,
+        }
+      : null,
+  };
+
   return (
     <div className="app">
       <header
@@ -1521,89 +1546,7 @@ function AppContent() {
             onAnimationEnd={() => setSpin(0)}
           />
         </button>
-        <button
-          type="button"
-          className="btn btn--icon toolbar__sidebar"
-          aria-label={settings.sidebarCollapsed ? t("app.toolbar.showSidebar") : t("app.toolbar.hideSidebar")}
-          title={
-            settings.sidebarCollapsed
-              ? titleWith("app.toolbar.showSidebarTitle", "app.toolbar.showSidebar", "toggleSidebar")
-              : titleWith("app.toolbar.hideSidebarTitle", "app.toolbar.hideSidebar", "toggleSidebar")
-          }
-          onClick={() => updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))}
-        >
-          {settings.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
-        <button className="btn btn--icon" title={titleWith("app.toolbar.terminalTitle", "app.toolbar.terminal", "newTerminal")} onClick={openLocal}>
-          <SquareTerminal size={16} />
-          <span className="btn__label">{t("app.toolbar.terminal")}</span>
-        </button>
-        <button
-          className="btn btn--icon"
-          title={sshShortcut ? `SSH (${sshShortcut})` : "SSH"}
-          onClick={() => setModal({ kind: "quickConnect" })}>
-          <KeyRound size={16} />
-          <span className="btn__label">SSH</span>
-        </button>
-        <button className="btn btn--icon" title={t("app.toolbar.serial")} onClick={() => setModal({ kind: "serial" })}>
-          <Usb size={16} />
-          <span className="btn__label">{t("app.toolbar.serial")}</span>
-        </button>
-        <MoreMenu
-          onTelnet={() => setModal({ kind: "telnet" })}
-          onMosh={() => setModal({ kind: "mosh" })}
-          onShared={() => setModal({ kind: "openShared" })}
-        />
-        <ToolsMenu
-          monitorOn={terminalSettings.settings.remoteMonitor}
-          onKeyGen={() => setModal({ kind: "keyGen" })}
-          onPortScan={() => setModal({ kind: "portScan" })}
-          onNetworkScan={() => setModal({ kind: "networkScan" })}
-          onWakeOnLan={() => setModal({ kind: "wakeOnLan" })}
-          onToggleMonitor={() => terminalSettings.update({ remoteMonitor: !terminalSettings.settings.remoteMonitor })}
-        />
-        <button className="btn btn--icon" disabled={!canSplit} title={titleWith("app.toolbar.splitRightTitle", "app.toolbar.splitRight", "splitRight")} onClick={() => split("row")}>
-          <Columns2 size={16} />
-          <span className="btn__label">{t("app.toolbar.splitRight")}</span>
-        </button>
-        <button className="btn btn--icon" disabled={!canSplit} title={titleWith("app.toolbar.splitDownTitle", "app.toolbar.splitDown", "splitDown")} onClick={() => split("column")}>
-          <Rows2 size={16} />
-          <span className="btn__label">{t("app.toolbar.splitDown")}</span>
-        </button>
-        <button
-          className={`btn btn--icon${multiExec ? " btn--pressed" : ""}`}
-          aria-pressed={multiExec}
-          title={titleWith("app.toolbar.multiExecTitle", "app.toolbar.multiExec", "toggleMultiExec")}
-          onClick={() => setMultiExec((on) => !on)}
-        >
-          <Radio size={16} />
-          <span className="btn__label">{t("app.toolbar.multiExec")}</span>
-        </button>
-        <button
-          className={`btn btn--icon${recording ? " btn--pressed btn--recording" : ""}`}
-          aria-pressed={recording}
-          title={titleWith("app.toolbar.recordMacroTitle", "app.toolbar.recordMacro", "recordMacro")}
-          onClick={toggleRecording}
-        >
-          <Circle size={16} />
-          <span className="btn__label">{t("app.toolbar.recordMacro")}</span>
-        </button>
-        {activeDev && (
-          // DEV mode's tab column folds like the sidebar: to its icons, or away (Settings).
-          <button
-            type="button"
-            className="btn btn--icon toolbar__dev-column"
-            aria-label={settings.devColumnCollapsed ? t("app.toolbar.showDevColumn") : t("app.toolbar.hideDevColumn")}
-            title={
-              settings.devColumnCollapsed
-                ? titleWith("app.toolbar.showDevColumnTitle", "app.toolbar.showDevColumn", "toggleDevColumn")
-                : titleWith("app.toolbar.hideDevColumnTitle", "app.toolbar.hideDevColumn", "toggleDevColumn")
-            }
-            onClick={() => updateSettingsWith((s) => ({ devColumnCollapsed: !s.devColumnCollapsed }))}
-          >
-            {settings.devColumnCollapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
-          </button>
-        )}
+        <ToolbarButtons layout={settings.toolbarLayout ?? DEFAULT_TOOLBAR_LAYOUT} specs={toolbarSpecs} />
         <button
           className="btn btn--icon toolbar__settings"
           aria-label={t("app.toolbar.settings")}

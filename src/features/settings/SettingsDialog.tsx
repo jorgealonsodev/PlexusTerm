@@ -3,7 +3,7 @@ import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Code, FileText, Globe, Info, KeyRound, Keyboard, Palette, Search, Share2, SlidersHorizontal, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
+import { Code, FileText, Globe, Info, KeyRound, Keyboard, LayoutPanelTop, Palette, Search, Share2, SlidersHorizontal, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react";
 import { filterSettings } from "./settingsSearch";
 import { LOCALES, t as translate, useT, type LanguageSetting } from "../../i18n/i18n";
 import type { AppKey } from "../../i18n/catalogs";
@@ -70,6 +70,8 @@ import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalo
 import { SharingSettings, type SharingValues } from "../share/SharingSettings";
 import { AuditLogDialog } from "../share/AuditLogDialog";
 import { HelpTip } from "../sidebar/HelpTip";
+import { ToolbarEditor } from "../toolbar/ToolbarEditor";
+import type { ToolbarLayout } from "../toolbar/toolbarLayout";
 import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 
@@ -120,6 +122,7 @@ function ThemePreview({ entry, fontFamily }: { entry: TerminalThemeEntry; fontFa
 export type SettingsSection =
   | "general"
   | "appearance"
+  | "toolbar"
   | "terminal"
   | "dev"
   | "ssh"
@@ -133,6 +136,7 @@ type Section = SettingsSection;
 const SECTIONS: { id: Section; icon: LucideIcon }[] = [
   { id: "general", icon: SlidersHorizontal },
   { id: "appearance", icon: Palette },
+  { id: "toolbar", icon: LayoutPanelTop },
   { id: "terminal", icon: SquareTerminal },
   { id: "dev", icon: Code },
   { id: "ssh", icon: KeyRound },
@@ -338,6 +342,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   };
   const [fontSize, setFontSize] = useState(String(settings.fontSize));
   const [toolbarIconsOnly, setToolbarIconsOnly] = useState(settings.toolbarIconsOnly);
+  const [toolbarLayout, setToolbarLayout] = useState<ToolbarLayout | null>(settings.toolbarLayout);
   const [uiFontSize, setUiFontSize] = useState(String(settings.uiFontSize));
   const [fontWeight, setFontWeight] = useState(settings.fontWeight);
   const [lineHeight, setLineHeight] = useState(settings.lineHeight);
@@ -483,6 +488,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       fontSize: Number.isFinite(size) ? clampFontSize(size) : settings.fontSize,
       uiFontSize: Number.isFinite(uiSize) ? clampUiFontSize(uiSize) : settings.uiFontSize,
       toolbarIconsOnly,
+      toolbarLayout,
       fontWeight,
       lineHeight,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
@@ -700,6 +706,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 {t("settings.about.checkAtStartup")} <HelpTip text={t("settings.about.checkHelp")} />
               </span>
             </label>
+          </div>
+
+          <div {...panel("toolbar")}>
+            <ToolbarEditor layout={toolbarLayout} onChange={setToolbarLayout} />
           </div>
 
           <div {...panel("appearance")}>

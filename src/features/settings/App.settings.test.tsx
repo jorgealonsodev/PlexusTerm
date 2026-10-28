@@ -150,6 +150,45 @@ describe("App settings (S15.2, S15.6)", () => {
     }
   });
 
+  it("arranges the toolbar from Settings → Toolbar and saves the layout", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Toolbar" }));
+    fireEvent.click(screen.getByRole("button", { name: "SSH: options" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hide" }));
+    fireEvent.click(screen.getByRole("button", { name: "Port scanner…: options" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to the toolbar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Record macro: options" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to “More”" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("button", { name: "SSH" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Record macro" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Port scanner…" }));
+    expect(screen.getByRole("dialog", { name: "Port scanner" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "Record macro" }).getAttribute("aria-checked")).toBe("false");
+    // Settings stays, or there would be no way back.
+    expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    const layout = saved().slice(-1)[0].toolbarLayout;
+    expect(layout.hidden).toEqual(["ssh"]);
+    expect(layout.bar.slice(-1)[0]).toEqual({ kind: "action", id: "portScan" });
+  });
+
+  it("keeps the default toolbar until the layout is changed", async () => {
+    render(<App />);
+    await act(() => Promise.resolve());
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "SSH key generator…",
+      "Port scanner…",
+      "Network scanner…",
+      "Wake On LAN…",
+      "Hide remote monitor",
+    ]);
+  });
+
   it("opens Wake On LAN from the Tools menu", async () => {
     render(<App />);
     await act(() => Promise.resolve());

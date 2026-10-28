@@ -4,6 +4,9 @@ export interface DropdownItem {
   label: string;
   icon?: ReactNode;
   onSelect: () => void;
+  disabled?: boolean;
+  /** An on/off item: shown ticked while on. */
+  checked?: boolean;
 }
 
 interface DropdownMenuProps {
@@ -48,8 +51,10 @@ export function DropdownMenu({ button, title, items }: DropdownMenuProps) {
           {items.map((item) => (
             <button
               key={item.label}
-              role="menuitem"
-              className="menu__item"
+              role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+              aria-checked={item.checked}
+              className={`menu__item${item.checked ? " menu__item--checked" : ""}`}
+              disabled={item.disabled}
               onClick={() => {
                 setOpen(false);
                 item.onSelect();

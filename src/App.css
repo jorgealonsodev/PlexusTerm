@@ -1489,9 +1489,12 @@ body.is-moving-tab {
   line-height: 1;
 }
 
-/* DEV mode's column button goes at the right end with Settings, just before it. */
+/* DEV mode's column button goes at the right end with Settings when it is just before it. */
 .toolbar .toolbar__dev-column {
   flex: none;
+}
+
+.toolbar .toolbar__dev-column:has(+ .toolbar__settings) {
   margin-inline-start: auto;
 }
 
@@ -1834,7 +1837,16 @@ body.is-moving-tab {
   cursor: pointer;
 }
 
-.menu__item:hover,
+.menu__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.menu__item--checked {
+  color: var(--accent);
+}
+
+.menu__item:hover:not(:disabled),
 .menu__item:focus-visible {
   outline: none;
   background: var(--surface-2);
@@ -3608,4 +3620,120 @@ body.is-dragging-path {
 /* Turned off from its menu: only a dim "off" icon, to turn it on again. */
 .usage-footer--off {
   opacity: 0.6;
+}
+
+/* Settings → Toolbar: the bar's buttons and groups, dragged into place. */
+body.is-dragging-toolbar-item {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grabbing;
+}
+
+.toolbar-editor__zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.toolbar-editor__zone--group {
+  min-height: 34px;
+  padding: 6px;
+}
+
+.toolbar-editor__zone--over {
+  border-color: var(--accent);
+}
+
+.toolbar-editor__zone--drop-end::after {
+  content: "";
+  align-self: stretch;
+  width: 2px;
+  min-height: 24px;
+  background: var(--accent);
+}
+
+.toolbar-editor__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.toolbar-editor__chip:hover,
+.toolbar-editor__chip:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.toolbar-editor__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.toolbar-editor__group-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-editor__handle {
+  display: inline-flex;
+  padding: 2px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.toolbar-editor__name {
+  width: 12em;
+  min-width: 0;
+}
+
+.toolbar-editor__item--dragging {
+  opacity: 0.4;
+}
+
+.toolbar-editor__item--drop-before {
+  box-shadow: -3px 0 0 var(--accent);
+}
+
+[dir="rtl"] .toolbar-editor__item--drop-before {
+  box-shadow: 3px 0 0 var(--accent);
+}
+
+.toolbar-editor__empty {
+  align-self: center;
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-scale, 1));
+}
+
+.toolbar-editor__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.toolbar-editor__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
