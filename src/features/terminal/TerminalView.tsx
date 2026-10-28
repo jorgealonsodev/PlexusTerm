@@ -33,7 +33,8 @@ import { describeSerialError } from "../serial/serialSettings";
 import { describeSshError, toSshError, type SshError } from "../ssh/sshErrors";
 import { HostKeyPrompt } from "../ssh/HostKeyPrompt";
 import { parseOsc7, parseOsc9Cwd } from "../sftp/osc7";
-import type { MacroTarget } from "../macros/player";
+import { playMacro, type MacroRun, type MacroTarget } from "../macros/player";
+import type { Macro } from "../macros/macros";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
@@ -55,7 +56,7 @@ import { isDrawnGrey, parseOsc133, typedLineAt, type CommandLine, type ScreenRow
 import { themeById } from "./themes";
 import { attachErrorHighlight, errorColor, type ErrorHighlight } from "./errorHighlight";
 import { attachCommandBlocks, jumpColor, type CommandBlocks } from "./commandBlocks";
-import { compileRules } from "./highlightRules";
+import { actionInput, compileRules, type RuleAction } from "./highlightRules";
 import { attachRuleHighlight, type RuleHighlight } from "./ruleHighlight";
 import { createCommandTimer, formatDuration, shortCommand, type FinishedCommand } from "./commandTimer";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
@@ -87,6 +88,8 @@ interface TerminalViewProps {
   onLogging?: (path: string | null) => void;
   /** Hands out this pane's macro interface (S16.3); returns its unregister function. */
   registerMacroTarget?: (target: MacroTarget) => () => void;
+  /** The saved macro a highlight rule's "Play macro" action plays (S3); undefined when it is gone. */
+  triggerMacro?: (id: string) => Macro | undefined;
   /** Hands out how to run this pane's own actions (find, copy…) from the command palette; returns its unregister function. */
   registerPaneShortcuts?: (run: (shortcut: Shortcut) => void) => () => void;
   /**
@@ -296,6 +299,7 @@ export function TerminalView({
   onSettingsChange,
   onLogging,
   registerMacroTarget,
+  triggerMacro,
   registerPaneShortcuts,
   aiSuggest,
   history = commandHistory,
@@ -349,6 +353,10 @@ export function TerminalView({
   const acceptRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
   /** Sends data as if typed (set by the terminal effect), for keys the key handler translates. */
   const typedRef = useRef<(data: string) => void>(() => {});
+  /** Runs a highlight rule's action in this pane only (S3); set once the session's input path exists. */
+  const ruleActionRef = useRef<(action: RuleAction) => void>(() => {});
+  const triggerMacroRef = useRef(triggerMacro);
+  triggerMacroRef.current = triggerMacro;
   const [findOpen, setFindOpen] = useState(false);
   /** `output` is the output of the command under the click, when the shell marks its commands. */
   const [menu, setMenu] = useState<{ x: number; y: number; selection: string; output: string | null } | null>(null);
@@ -480,6 +488,7 @@ export function TerminalView({
           title: t("terminal.ruleMatched", { pattern: settingsRef.current.highlightRules[rule]?.pattern ?? "" }),
           body: line,
         }),
+      onAction: (_rule, action) => ruleActionRef.current(action),
     });
     rulesRef.current = rules;
     const blocks = attachCommandBlocks(term, {
@@ -1068,6 +1077,34 @@ export function TerminalView({
       }
       return true;
     };
+    /**
+     * A highlight rule's action (S3): typed into this pane only, as if by the user (tracked like the
+     * assistant's insert), but never through onInput, so multi-execution does not repeat it in other
+     * panes and a macro being recorded does not take it. One rule macro plays at a time per pane.
+     */
+    let ruleMacro: MacroRun | null = null;
+    const ownInput = (data: string) => {
+      if (cancelConnect || reconnectOnEnter || sessionId === null) return;
+      write(data);
+      track(data);
+    };
+    ruleActionRef.current = (action) => {
+      if (action.kind === "send") return ownInput(actionInput(action.text));
+      const macro = triggerMacroRef.current?.(action.macroId);
+      if (!macro || ruleMacro) return;
+      const run = playMacro(macro, {
+        send: ownInput,
+        subscribe: (listener) => {
+          outputListeners.add(listener);
+          return () => outputListeners.delete(listener);
+        },
+      });
+      ruleMacro = run;
+      void run.done.then((result) => {
+        if (ruleMacro === run) ruleMacro = null;
+        if (result.status === "failed" && !disposed) term.write(`\r\n${red(result.message)}`);
+      });
+    };
     const unregisterMacroTarget = callbacks.current.registerMacroTarget?.({
       send: typed,
       subscribe: (listener) => {
@@ -1298,6 +1335,8 @@ export function TerminalView({
       aiSeq++;
       acceptRef.current = () => false;
       typedRef.current = () => {};
+      ruleActionRef.current = () => {};
+      ruleMacro?.stop();
       unregisterWriter?.();
       unregisterMacroTarget?.();
       unregisterAssistTarget?.();

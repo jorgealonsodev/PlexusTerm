@@ -77,6 +77,7 @@ import type { ToolbarLayout } from "../toolbar/toolbarLayout";
 import { ICON_PACKS, isIconPack } from "../files/iconPacks";
 import { diagnosticLogDefaultDir } from "../diagnostics/useDiagnosticLog";
 import { HighlightRulesEditor } from "./HighlightRulesEditor";
+import type { Macro } from "../macros/macros";
 import { parseHighlightRules } from "../terminal/highlightRules";
 import type { SyncStatus } from "../sessions/useSessionSync";
 
@@ -94,6 +95,8 @@ interface SettingsDialogProps {
   syncStatus?: SyncStatus;
   /** How the sync of the settings went last, when it is on. */
   settingsSyncStatus?: SyncStatus;
+  /** The saved macros a highlight rule's action can play (S3). */
+  macros?: readonly Pick<Macro, "id" | "name">[];
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -343,7 +346,7 @@ const WEIGHT_NAMES: Record<number, AppKey> = {
   600: "settings.appearance.weightSemibold",
 };
 
-export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus, macros }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
   const platform = usePlatform();
@@ -1054,7 +1057,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </label>
             <h3 className="settings__group">{t("settings.groups.highlightRules")}</h3>
-            <HighlightRulesEditor rules={highlightRules} onChange={setHighlightRules} />
+            <HighlightRulesEditor rules={highlightRules} onChange={setHighlightRules} macros={macros} />
           </div>
 
           <div {...panel("dev")}>

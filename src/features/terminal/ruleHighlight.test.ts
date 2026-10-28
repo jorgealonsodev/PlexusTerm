@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileRules, type HighlightRule } from "./highlightRules";
-import { attachRuleHighlight, NOTIFY_EVERY_MS, type RuleTerminal } from "./ruleHighlight";
+import { ACTION_EVERY_MS, attachRuleHighlight, NOTIFY_EVERY_MS, type RuleTerminal } from "./ruleHighlight";
 
 /** CJK characters take two cells, as xterm stores them: the character, then an empty cell of width 0. */
 const WIDE = /[　-鿿]/;
@@ -84,14 +84,19 @@ const rule = (pattern: string, extra: Partial<HighlightRule> = {}): HighlightRul
 const setup = (rules: HighlightRule[], now = () => 0) => {
   const term = new FakeTerminal();
   const notified: { rule: number; line: string }[] = [];
+  const acted: { rule: number; line: string }[] = [];
   let compiled = compileRules(rules);
   const highlight = attachRuleHighlight(term, {
     rules: () => compiled,
     onNotify: (r, line) => notified.push({ rule: r, line }),
+    onAction: (r, action, line) => {
+      expect(action).toBe(compiled[r].action);
+      acted.push({ rule: r, line });
+    },
     schedule: (run) => run(),
     now,
   });
-  return { term, highlight, notified, setRules: (next: HighlightRule[]) => (compiled = compileRules(next)) };
+  return { term, highlight, notified, acted, setRules: (next: HighlightRule[]) => (compiled = compileRules(next)) };
 };
 
 describe("attachRuleHighlight", () => {
@@ -172,5 +177,65 @@ describe("attachRuleHighlight", () => {
     highlight.dispose();
     expect(term.live()).toEqual([]);
     expect(term.markers.every((m) => m.isDisposed)).toBe(true);
+  });
+});
+
+describe("rule actions", () => {
+  const send = { kind: "send" as const, text: "y\\n" };
+
+  it("acts once per new matching line, even with several matches on it", () => {
+    let now = 0;
+    const { term, acted } = setup([rule("y/N", { action: send }), rule("plain")], () => now);
+    term.print("Continue? [y/N] y/N", "plain line");
+    now += ACTION_EVERY_MS;
+    term.print("Again? [y/N]");
+    expect(acted).toEqual([
+      { rule: 0, line: "Continue? [y/N] y/N" },
+      { rule: 0, line: "Again? [y/N]" },
+    ]);
+  });
+
+  it("acts on a prompt waiting on the cursor's line, and never again when that line is redrawn or finished", () => {
+    let now = 0;
+    const { term, acted, highlight } = setup([rule("\\[y/N\\]", { action: send })], () => now);
+    term.cursor = 0;
+    term.print("Overwrite? [y/N] ");
+    expect(acted).toEqual([{ rule: 0, line: "Overwrite? [y/N]" }]);
+    // The reply's echo redraws the line, then Enter finishes it.
+    now += 5 * ACTION_EVERY_MS;
+    term.rows[0].text = "Overwrite? [y/N] y";
+    term.print();
+    term.cursor = null;
+    term.print("done");
+    highlight.refresh();
+    expect(acted).toHaveLength(1);
+    // The prompt is not coloured while the cursor is on it.
+    expect(term.live()).toEqual([{ line: 0, x: 11, width: 5, color: "#ff0000" }]);
+  });
+
+  it("acts at most once a second per rule", () => {
+    let now = 0;
+    const { term, acted } = setup([rule("ready", { action: send }), rule("go", { action: { kind: "macro", macroId: "m" } })], () => now);
+    term.print("ready 1", "ready 2", "go 1");
+    now += ACTION_EVERY_MS - 1;
+    term.print("ready 3");
+    now += 1;
+    term.print("ready 4", "go 2");
+    expect(acted).toEqual([
+      { rule: 0, line: "ready 1" },
+      { rule: 1, line: "go 1" },
+      { rule: 0, line: "ready 4" },
+      { rule: 1, line: "go 2" },
+    ]);
+  });
+
+  it("does not act for rules without an action, for rows already read, or in the alternate screen", () => {
+    const { term, acted, highlight, setRules } = setup([rule("x", { notify: true })]);
+    term.print("x one");
+    setRules([rule("x", { action: send })]);
+    highlight.refresh();
+    term.type = "alternate";
+    term.print("x in vim");
+    expect(acted).toEqual([]);
   });
 });
