@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// The real xterm and image addon (the other SharedView tests use fakes): no query the sharer's
+// The real xterm (the other SharedView tests use fakes): no query the sharer's
 // program sends may make this viewer type an answer into the sharer's shell.
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const settle = () => act(() => new Promise((r) => setTimeout(r, 50)));
 
-describe("the shared viewer never answers queries into the sharer's shell (real xterm + addon-image)", () => {
+describe("the shared viewer never answers queries into the sharer's shell (real xterm)", () => {
   it("DA1, XTSMGRAPHICS, window reports produce no input", async () => {
     let err: unknown = null;
     try {

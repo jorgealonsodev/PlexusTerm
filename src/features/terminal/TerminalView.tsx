@@ -10,13 +10,12 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { cellsOf, createFileLinkProvider, createLinkHandler, webLinkHandler, type FileLinks } from "./fileLinks";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { ImageAddon } from "@xterm/addon-image";
 import { diagnosticEntry } from "../diagnostics/useDiagnosticLog";
 import { softwareWebgl } from "./webglProbe";
 import { keepCanvasesExact } from "./exactCanvas";
 import { latencyFrame, latencyMark } from "./latencyLog";
 import "@xterm/xterm/css/xterm.css";
-import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, INLINE_IMAGE_OPTIONS, type TerminalSettings } from "../settings/settings";
+import { boldWeight, cssFontFamily, DEFAULT_SETTINGS, type TerminalSettings } from "../settings/settings";
 import { hostKeyOf } from "../history/history";
 import { commandHistory, type HistoryStore } from "../history/historyStore";
 import { patchJump } from "../sessions/jumpHosts";
@@ -330,7 +329,6 @@ export function TerminalView({
   const searchRef = useRef<SearchAddon | null>(null);
   /** The WebGL renderer while it draws this terminal; null means xterm's own (DOM) renderer. */
   const webglRef = useRef<WebglAddon | null>(null);
-  const imagesRef = useRef<ImageAddon | null>(null);
   /** Stops keeping the WebGL canvas at its exact size (exactCanvas.ts); null without WebGL. */
   const exactCanvasRef = useRef<(() => void) | null>(null);
   const settingsRef = useRef(settings);
@@ -1300,7 +1298,6 @@ export function TerminalView({
       blocksRef.current = null;
       // Disposed with the terminal.
       webglRef.current = null;
-      imagesRef.current = null;
       exactCanvasRef.current?.();
       exactCanvasRef.current = null;
       if (sessionId !== null) void backend.close(sessionId);
@@ -1359,22 +1356,6 @@ export function TerminalView({
     // The error colours are decorations, drawn by whichever renderer is in use.
     errorsRef.current?.refresh();
   }, [gpuAcceleration]);
-
-  // Inline images (sixel, iTerm2 OSC 1337). The addon draws on a layer of its own and follows the
-  // renderer in use, so it works with WebGL on or off and in either loading order.
-  const inlineImages = settings.inlineImages;
-  useEffect(() => {
-    const term = termRef.current;
-    if (!term) return;
-    if (!inlineImages) {
-      imagesRef.current?.dispose();
-      imagesRef.current = null;
-    } else if (!imagesRef.current) {
-      const addon = new ImageAddon(INLINE_IMAGE_OPTIONS);
-      term.loadAddon(addon);
-      imagesRef.current = addon;
-    }
-  }, [inlineImages]);
 
   // Suggestions show only in the visible, focused pane, and follow their settings.
   useEffect(() => {

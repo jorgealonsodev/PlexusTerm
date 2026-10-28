@@ -172,8 +172,6 @@ export const settings: Messages<typeof en> = {
     ruleAdd: "Adicionar regra",
     gpuAcceleration: "Aceleração por GPU",
     gpuAccelerationHelp: "Os terminais são desenhados com WebGL na placa de vídeo, o que mantém fluidos os programas que redesenham a tela com frequência (ferramentas de IA de linha de comando, htop). Se o WebGL não estiver disponível ou a placa de vídeo for reiniciada, os terminais passam sozinhos para o renderizador padrão. Desative se o texto aparecer errado ou piscar com o seu driver de vídeo. No Linux, se o texto ficar borrado ou a digitação parecer lenta, desative-a.",
-    inlineImages: "Mostrar imagens no terminal",
-    inlineImagesHelp: "Os programas podem desenhar imagens no terminal com sixel (img2sixel, chafa -f sixels) ou com as imagens embutidas do iTerm2 (imgcat): gráficos, miniaturas, prévias. Cada terminal guarda até 64 MB de imagens e descarta as mais antigas além disso; uma imagem pode ter até 16 megapixels. Quem assiste a um compartilhamento também as vê; os logs e os instantâneos da sessão não as incluem. Os terminais abertos mudam na hora; desativar remove as imagens que eles mostram.",
     devCommands: "Comandos que ativam o modo DEV",
     devCommandsHelp: "Uma aba entra no modo DEV quando sua linha de comando executa um destes programas (a primeira palavra do comando; separe por vírgulas ou espaços) e sai quando o prompt do shell volta. O modo DEV coloca as abas numa coluna à direita, mostra o branch do git, lista os arquivos como o VS Code a partir do projeto onde o programa começou e envia notificações da área de trabalho dessa aba. O botão DEV à direita da barra sob o terminal o ativa ou desativa manualmente.",
     devFolderInFooter: "Mostrar a pasta do terminal na barra abaixo dele no modo DEV",

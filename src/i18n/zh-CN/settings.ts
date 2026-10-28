@@ -172,8 +172,6 @@ export const settings: Messages<typeof en> = {
     ruleAdd: "添加规则",
     gpuAcceleration: "GPU 加速",
     gpuAccelerationHelp: "终端在显卡上用 WebGL 绘制，让频繁重绘屏幕的程序（AI 命令行工具、htop）保持流畅。WebGL 不可用或显卡重置时，终端会自动切换到标准渲染器。如果在你的显卡驱动下文字显示异常或闪烁，请关闭此项。在 Linux 上，如果文字模糊或打字感觉迟缓，请关闭此项。",
-    inlineImages: "在终端中显示图像",
-    inlineImagesHelp: "程序可以用 sixel（img2sixel、chafa -f sixels）或 iTerm2 内联图像（imgcat）在终端中绘制图像：图表、缩略图、预览。每个终端最多保留 64 MB 图像，超出时丢弃最早的；单张图像最多 1600 万像素。观看共享的人也能看到；日志和会话快照不包含图像。已打开的终端会立即切换；关闭后，其中显示的图像会被移除。",
     devCommands: "开启 DEV 模式的命令",
     devCommandsHelp: "当标签页的命令行运行其中某个程序（命令的第一个词；用逗号或空格分隔）时，该标签页进入 DEV 模式，shell 提示符返回时退出。DEV 模式会把标签页放到右侧的一列，显示 git 分支，从程序启动所在的项目开始像 VS Code 一样列出文件，并为该标签页发送桌面通知。终端下方栏右端的 DEV 按钮可手动开启或关闭。",
     devFolderInFooter: "在 DEV 模式下于终端下方栏中显示其文件夹",

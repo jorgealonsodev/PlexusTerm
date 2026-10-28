@@ -21,18 +21,10 @@ vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }))
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 vi.mock("@xterm/addon-search", () => ({ SearchAddon: class {} }));
 vi.mock("@xterm/addon-unicode11", () => ({ Unicode11Addon: class {} }));
-// jsdom has no canvas: the real addon cannot draw here.
-vi.mock("@xterm/addon-image", () => ({
-  ImageAddon: class {
-    constructor(public options: unknown) {}
-  },
-}));
 
 /** The handlers the pane registers on the fake terminal. */
 const term = vi.hoisted(() => ({
   csi: [] as { prefix?: string; intermediates?: string; final: string }[],
-  /** Addons loaded and handlers registered, in order. */
-  order: [] as unknown[],
   osc: [] as number[],
   dcs: [] as { intermediates?: string; final: string }[],
   data: null as null | ((data: string) => void),
@@ -46,13 +38,11 @@ vi.mock("@xterm/xterm", () => ({
     options: Record<string, unknown> = {};
     unicode = term.unicode;
     parser = {
-      registerCsiHandler: (id: { final: string }) => (term.csi.push(id), term.order.push(id), { dispose() {} }),
+      registerCsiHandler: (id: { final: string }) => (term.csi.push(id), { dispose() {} }),
       registerOscHandler: (ident: number) => (term.osc.push(ident), { dispose() {} }),
       registerDcsHandler: (id: { final: string }) => (term.dcs.push(id), { dispose() {} }),
     };
-    loadAddon(addon: unknown) {
-      term.order.push(addon);
-    }
+    loadAddon() {}
     attachCustomKeyEventHandler() {}
     open() {}
     focus() {}
@@ -79,8 +69,7 @@ vi.mock("@xterm/xterm", () => ({
   },
 }));
 
-import { ImageAddon } from "@xterm/addon-image";
-import { DEFAULT_SETTINGS, INLINE_IMAGE_OPTIONS, type TerminalSettings } from "../settings/settings";
+import type { TerminalSettings } from "../settings/settings";
 import { SharedView } from "./SharedView";
 
 const target = { type: "shared" as const, url: "https://view.example.com/s/abc#key", relayUrl: "wss://relay.example.com", relayHost: "relay.example.com" };
@@ -95,7 +84,7 @@ async function opened(settings?: TerminalSettings) {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  Object.assign(term, { csi: [], order: [], osc: [], dcs: [], data: null, written: [], resets: 0 });
+  Object.assign(term, { csi: [], osc: [], dcs: [], data: null, written: [], resets: 0 });
 });
 
 describe("SharedView (P3)", () => {
@@ -134,21 +123,6 @@ describe("SharedView (P3)", () => {
     expect(term.csi).toEqual(expect.arrayContaining([{ final: "c" }, { prefix: ">", final: "c" }, { final: "n" }, { prefix: "?", final: "n" }]));
     expect(term.dcs).toEqual([{ intermediates: "$", final: "q" }]);
     expect(term.osc).toEqual(expect.arrayContaining([10, 11, 52]));
-  });
-
-  it("shows the sharer's inline images, without letting the image addon answer queries (S3.3)", async () => {
-    await opened();
-    const image = term.order.find((item) => item instanceof ImageAddon) as unknown as { options: unknown };
-    expect(image.options).toEqual({ ...INLINE_IMAGE_OPTIONS, enableSizeReports: false });
-    // xterm tries the newest handler first: the swallowing ones must come after the addon's own
-    // answers (device attributes, sixel graphics attributes).
-    expect(term.order.indexOf(image)).toBeLessThan(term.order.indexOf(term.csi[0]));
-    expect(term.csi).toEqual(expect.arrayContaining([{ prefix: "?", final: "S" }]));
-  });
-
-  it("shows no images when Settings turn them off (S3.5)", async () => {
-    await opened({ ...DEFAULT_SETTINGS, inlineImages: false });
-    expect(term.order.some((item) => item instanceof ImageAddon)).toBe(false);
   });
 
   it("clears the pane and says why when the share is over for it", async () => {

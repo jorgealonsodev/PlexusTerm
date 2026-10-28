@@ -376,7 +376,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [syncFolder, setSyncFolder] = useState(settings.syncFolder);
   const [settingsSyncFolder, setSettingsSyncFolder] = useState(settings.settingsSyncFolder);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
-  const [inlineImages, setInlineImages] = useState(settings.inlineImages);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
   const [recentFolderLimit, setRecentFolderLimit] = useState(String(settings.recentFolderLimit));
   const [devFolderInFooter, setDevFolderInFooter] = useState(settings.devFolderInFooter);
@@ -577,7 +576,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
         ? clampCommandNotifySeconds(notifySeconds)
         : settings.commandNotifySeconds,
       gpuAcceleration,
-      inlineImages,
       devCommands: parseDevCommands(devCommands),
       recentFolderLimit: Number.isFinite(recentLimit) ? clampRecentFolderLimit(recentLimit) : settings.recentFolderLimit,
       devFolderInFooter,
@@ -1030,12 +1028,6 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <input type="checkbox" checked={gpuAcceleration} onChange={(e) => setGpuAcceleration(e.target.checked)} />
               <span className="setting-title">
                 {t("settings.terminal.gpuAcceleration")} <HelpTip text={t("settings.terminal.gpuAccelerationHelp")} />
-              </span>
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={inlineImages} onChange={(e) => setInlineImages(e.target.checked)} />
-              <span className="setting-title">
-                {t("settings.terminal.inlineImages")} <HelpTip text={t("settings.terminal.inlineImagesHelp")} />
               </span>
             </label>
             <h3 className="settings__group">{t("settings.groups.notifications")}</h3>

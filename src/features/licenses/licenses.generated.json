@@ -614,22 +614,12 @@
 },
 {
 "ecosystem": "npm",
-"name": "@xterm/addon-image",
-"version": "0.9.0",
-"license": "MIT",
-"source": "https://github.com/xtermjs/xterm.js/tree/master#readme",
-"texts": [
-18
-]
-},
-{
-"ecosystem": "npm",
 "name": "@xterm/addon-search",
 "version": "0.16.0",
 "license": "MIT",
 "source": "https://github.com/xtermjs/xterm.js/tree/master#readme",
 "texts": [
-19
+18
 ]
 },
 {
@@ -639,7 +629,7 @@
 "license": "MIT",
 "source": "https://github.com/xtermjs/xterm.js/tree/master#readme",
 "texts": [
-20
+19
 ]
 },
 {
@@ -659,7 +649,7 @@
 "license": "MIT",
 "source": "https://github.com/xtermjs/xterm.js/tree/master#readme",
 "texts": [
-19
+18
 ]
 },
 {
@@ -669,7 +659,7 @@
 "license": "MIT",
 "source": "https://github.com/xtermjs/xterm.js/tree/master#readme",
 "texts": [
-21
+20
 ]
 },
 {
@@ -679,7 +669,7 @@
 "license": "MIT",
 "source": "https://github.com/xtermjs/xterm.js#readme",
 "texts": [
-22
+21
 ]
 },
 {
@@ -689,9 +679,9 @@
 "license": "0BSD OR MIT OR Apache-2.0",
 "source": "https://github.com/oyvindln/adler2",
 "texts": [
+22,
 23,
-24,
-25
+24
 ]
 },
 {
@@ -701,8 +691,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-27
+25,
+26
 ]
 },
 {
@@ -712,8 +702,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-28
+25,
+27
 ]
 },
 {
@@ -723,8 +713,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-ciphers",
 "texts": [
-26,
-29
+25,
+28
 ]
 },
 {
@@ -734,8 +724,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-ciphers",
 "texts": [
-26,
-30
+25,
+29
 ]
 },
 {
@@ -745,8 +735,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/AEADs",
 "texts": [
-26,
-31
+25,
+30
 ]
 },
 {
@@ -756,8 +746,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/AEADs",
 "texts": [
-26,
-32
+25,
+31
 ]
 },
 {
@@ -767,9 +757,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/aho-corasick",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -779,7 +769,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dropbox/rust-alloc-no-stdlib",
 "texts": [
-36
+35
 ]
 },
 {
@@ -789,7 +779,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dropbox/rust-alloc-no-stdlib",
 "texts": [
-37
+36
 ]
 },
 {
@@ -799,8 +789,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/nical/android_system_properties",
 "texts": [
-38,
-39
+37,
+38
 ]
 },
 {
@@ -811,7 +801,7 @@
 "source": "https://github.com/dtolnay/anyhow",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -821,8 +811,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/open-source-cooperative/apple-native-keyring-store.git",
 "texts": [
-40,
-41
+39,
+40
 ]
 },
 {
@@ -833,7 +823,7 @@
 "source": "https://github.com/1Password/arboard",
 "texts": [
 12,
-42
+41
 ]
 },
 {
@@ -843,8 +833,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/password-hashes",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -854,8 +844,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/smol-rs/async-broadcast",
 "texts": [
-44,
-45
+43,
+44
 ]
 },
 {
@@ -865,8 +855,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-channel",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -876,8 +866,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-executor",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -887,8 +877,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-io",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -898,8 +888,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-lock",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -909,8 +899,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-process",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -920,8 +910,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/dcchut/async-recursion",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -931,8 +921,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-signal",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -942,8 +932,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/async-task",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -954,7 +944,7 @@
 "source": "https://github.com/dtolnay/async-trait",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -964,7 +954,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -974,7 +964,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -984,9 +974,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/atomic-waker",
 "texts": [
-26,
 25,
-46
+24,
+45
 ]
 },
 {
@@ -996,7 +986,7 @@
 "license": "ISC AND (Apache-2.0 OR ISC)",
 "source": "https://github.com/aws/aws-lc-rs",
 "texts": [
-47
+46
 ]
 },
 {
@@ -1006,7 +996,7 @@
 "license": "ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0)",
 "source": "https://github.com/aws/aws-lc-rs",
 "texts": [
-48
+47
 ]
 },
 {
@@ -1016,8 +1006,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-49
+25,
+48
 ]
 },
 {
@@ -1027,8 +1017,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/marshallpierce/rust-base64",
 "texts": [
-26,
-50
+25,
+49
 ]
 },
 {
@@ -1038,8 +1028,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/marshallpierce/rust-base64",
 "texts": [
-26,
-50
+25,
+49
 ]
 },
 {
@@ -1049,8 +1039,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/marshallpierce/rust-base64",
 "texts": [
-26,
-51
+25,
+50
 ]
 },
 {
@@ -1060,8 +1050,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-52
+25,
+51
 ]
 },
 {
@@ -1071,8 +1061,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/password-hashes",
 "texts": [
-26,
-53
+25,
+52
 ]
 },
 {
@@ -1082,8 +1072,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/contain-rs/bit-set",
 "texts": [
-26,
-54
+25,
+53
 ]
 },
 {
@@ -1093,8 +1083,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/contain-rs/bit-vec",
 "texts": [
-26,
-54
+25,
+53
 ]
 },
 {
@@ -1104,8 +1094,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/bitflags/bitflags",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -1115,8 +1105,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/bitflags/bitflags",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -1126,8 +1116,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-56
+25,
+55
 ]
 },
 {
@@ -1137,8 +1127,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-57
+25,
+56
 ]
 },
 {
@@ -1148,8 +1138,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-58
+25,
+57
 ]
 },
 {
@@ -1159,8 +1149,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-59
+25,
+58
 ]
 },
 {
@@ -1170,8 +1160,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-59
+25,
+58
 ]
 },
 {
@@ -1181,7 +1171,7 @@
 "license": "MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -1191,8 +1181,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/blocking",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -1202,8 +1192,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-ciphers",
 "texts": [
-26,
-60
+25,
+59
 ]
 },
 {
@@ -1213,8 +1203,8 @@
 "license": "BSD-3-Clause AND MIT",
 "source": "https://github.com/dropbox/rust-brotli",
 "texts": [
-36,
-61
+35,
+60
 ]
 },
 {
@@ -1224,7 +1214,7 @@
 "license": "BSD-3-Clause/MIT",
 "source": "https://github.com/dropbox/rust-brotli-decompressor",
 "texts": [
-36
+35
 ]
 },
 {
@@ -1234,8 +1224,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/Nullus157/bs58-rs",
 "texts": [
-26,
-62
+25,
+61
 ]
 },
 {
@@ -1245,8 +1235,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/fitzgen/bumpalo",
 "texts": [
-26,
-63
+25,
+62
 ]
 },
 {
@@ -1256,9 +1246,9 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/Lokathor/bytemuck",
 "texts": [
-26,
-64,
-65
+25,
+63,
+64
 ]
 },
 {
@@ -1268,9 +1258,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/byteorder",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -1280,8 +1270,8 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/image-rs/byteorder-lite",
 "texts": [
-34,
-35
+33,
+34
 ]
 },
 {
@@ -1291,7 +1281,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/bytes",
 "texts": [
-66
+65
 ]
 },
 {
@@ -1301,7 +1291,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -1311,7 +1301,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -1321,8 +1311,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/camino-rs/camino",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -1332,8 +1322,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/cargo",
 "texts": [
-24,
-25
+23,
+24
 ]
 },
 {
@@ -1343,7 +1333,7 @@
 "license": "MIT",
 "source": "https://github.com/oli-obk/cargo_metadata",
 "texts": [
-25
+24
 ]
 },
 {
@@ -1353,8 +1343,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-modes",
 "texts": [
-26,
-67
+25,
+66
 ]
 },
 {
@@ -1364,7 +1354,7 @@
 "license": "Apache-2.0/MIT",
 "source": "https://github.com/emk/cesu8-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -1374,7 +1364,7 @@
 "license": "MIT",
 "source": "https://github.com/mdsteele/rust-cfb",
 "texts": [
-68
+67
 ]
 },
 {
@@ -1384,8 +1374,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/cfg-if",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -1395,8 +1385,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/stream-ciphers",
 "texts": [
-26,
-32
+25,
+31
 ]
 },
 {
@@ -1406,8 +1396,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/stream-ciphers",
 "texts": [
-26,
-70
+25,
+69
 ]
 },
 {
@@ -1417,8 +1407,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305",
 "texts": [
-26,
-31
+25,
+30
 ]
 },
 {
@@ -1428,7 +1418,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/chronotope/chrono",
 "texts": [
-71
+70
 ]
 },
 {
@@ -1438,8 +1428,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-72
+25,
+71
 ]
 },
 {
@@ -1449,8 +1439,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-73
+25,
+72
 ]
 },
 {
@@ -1460,7 +1450,7 @@
 "license": "BSL-1.0",
 "source": "https://github.com/DoumanAsh/clipboard-win",
 "texts": [
-74
+73
 ]
 },
 {
@@ -1470,8 +1460,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-75
+25,
+74
 ]
 },
 {
@@ -1481,7 +1471,7 @@
 "license": "MIT",
 "source": "https://github.com/Marwes/combine",
 "texts": [
-76
+75
 ]
 },
 {
@@ -1491,8 +1481,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/concurrent-queue",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -1502,8 +1492,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-77
+25,
+76
 ]
 },
 {
@@ -1513,8 +1503,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/SergioBenitez/cookie-rs",
 "texts": [
-78,
-79
+77,
+78
 ]
 },
 {
@@ -1524,8 +1514,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/core-foundation-rs",
 "texts": [
-26,
-80
+25,
+79
 ]
 },
 {
@@ -1535,8 +1525,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/core-foundation-rs",
 "texts": [
-26,
-80
+25,
+79
 ]
 },
 {
@@ -1546,8 +1536,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/core-foundation-rs",
 "texts": [
-26,
-80
+25,
+79
 ]
 },
 {
@@ -1557,8 +1547,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/core-foundation-rs",
 "texts": [
-26,
-80
+25,
+79
 ]
 },
 {
@@ -1568,8 +1558,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/thomcc/core_detect",
 "texts": [
-26,
-81
+25,
+80
 ]
 },
 {
@@ -1579,8 +1569,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-82
+25,
+81
 ]
 },
 {
@@ -1590,8 +1580,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-83
+25,
+82
 ]
 },
 {
@@ -1601,8 +1591,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-77
+25,
+76
 ]
 },
 {
@@ -1612,8 +1602,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/srijs/rust-crc32fast",
 "texts": [
-84,
-85
+83,
+84
 ]
 },
 {
@@ -1623,7 +1613,7 @@
 "license": "MIT",
 "source": "https://code.haverbeke.berlin/marijn/crelt",
 "texts": [
-86
+85
 ]
 },
 {
@@ -1633,9 +1623,9 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/crossbeam-rs/crossbeam",
 "texts": [
-26,
-87,
-88
+25,
+86,
+87
 ]
 },
 {
@@ -1645,8 +1635,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/crossbeam-rs/crossbeam",
 "texts": [
-26,
-87
+25,
+86
 ]
 },
 {
@@ -1656,7 +1646,7 @@
 "license": "MIT",
 "source": "https://github.com/eira-fransham/crunchy",
 "texts": [
-89
+88
 ]
 },
 {
@@ -1666,8 +1656,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/crypto-bigint",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -1677,8 +1667,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-90
+25,
+89
 ]
 },
 {
@@ -1688,8 +1678,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-91
+25,
+90
 ]
 },
 {
@@ -1699,8 +1689,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/entropyxyz/crypto-primes",
 "texts": [
-26,
-92
+25,
+91
 ]
 },
 {
@@ -1710,7 +1700,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/servo/rust-cssparser",
 "texts": [
-93
+92
 ]
 },
 {
@@ -1720,7 +1710,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/servo/rust-cssparser",
 "texts": [
-93
+92
 ]
 },
 {
@@ -1730,7 +1720,7 @@
 "license": "MIT",
 "source": "https://github.com/frenic/csstype#readme",
 "texts": [
-94
+93
 ]
 },
 {
@@ -1740,8 +1730,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/mmastrac/linktime",
 "texts": [
-84,
-25
+83,
+24
 ]
 },
 {
@@ -1751,8 +1741,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-modes",
 "texts": [
-26,
-67
+25,
+66
 ]
 },
 {
@@ -1762,8 +1752,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-modes",
 "texts": [
-26,
-67
+25,
+66
 ]
 },
 {
@@ -1773,8 +1763,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-95
+25,
+94
 ]
 },
 {
@@ -1784,7 +1774,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek",
 "texts": [
-96
+95
 ]
 },
 {
@@ -1794,7 +1784,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/curve25519-dalek",
 "texts": [
-97
+96
 ]
 },
 {
@@ -1804,8 +1794,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/dalek-cryptography/curve25519-dalek",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -1815,7 +1805,7 @@
 "license": "MIT",
 "source": "https://github.com/TedDriggs/darling",
 "texts": [
-98
+97
 ]
 },
 {
@@ -1825,7 +1815,7 @@
 "license": "MIT",
 "source": "https://github.com/TedDriggs/darling",
 "texts": [
-98
+97
 ]
 },
 {
@@ -1835,7 +1825,7 @@
 "license": "MIT",
 "source": "https://github.com/TedDriggs/darling",
 "texts": [
-98
+97
 ]
 },
 {
@@ -1845,7 +1835,7 @@
 "license": "MIT",
 "source": "https://github.com/xacrimon/dashmap",
 "texts": [
-99
+98
 ]
 },
 {
@@ -1855,7 +1845,7 @@
 "license": "MIT",
 "source": "https://github.com/ia0/data-encoding",
 "texts": [
-100
+99
 ]
 },
 {
@@ -1865,8 +1855,8 @@
 "license": "Apache-2.0/MIT",
 "source": "https://github.com/diwic/dbus-rs",
 "texts": [
-101,
-102
+100,
+101
 ]
 },
 {
@@ -1876,8 +1866,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/knurling-rs/defmt",
 "texts": [
-26,
-103
+25,
+102
 ]
 },
 {
@@ -1887,8 +1877,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/knurling-rs/defmt",
 "texts": [
-26,
-103
+25,
+102
 ]
 },
 {
@@ -1898,7 +1888,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/knurling-rs/defmt",
 "texts": [
-20
+19
 ]
 },
 {
@@ -1908,7 +1898,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/kobzol/rust-delegate",
 "texts": [
-20
+19
 ]
 },
 {
@@ -1918,8 +1908,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-77
+25,
+76
 ]
 },
 {
@@ -1929,8 +1919,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jhpratt/deranged",
 "texts": [
-104,
-105
+103,
+104
 ]
 },
 {
@@ -1940,7 +1930,7 @@
 "license": "MIT",
 "source": "https://github.com/JelteF/derive_more",
 "texts": [
-106
+105
 ]
 },
 {
@@ -1950,7 +1940,7 @@
 "license": "MIT",
 "source": "https://github.com/JelteF/derive_more",
 "texts": [
-106
+105
 ]
 },
 {
@@ -1960,8 +1950,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/block-ciphers",
 "texts": [
-107,
-108
+106,
+107
 ]
 },
 {
@@ -1971,8 +1961,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-109
+25,
+108
 ]
 },
 {
@@ -1982,8 +1972,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-110
+25,
+109
 ]
 },
 {
@@ -1993,8 +1983,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://codeberg.org/dirs/dirs-rs",
 "texts": [
-111,
-112
+110,
+111
 ]
 },
 {
@@ -2004,8 +1994,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/dirs-dev/dirs-sys-rs",
 "texts": [
-111,
-112
+110,
+111
 ]
 },
 {
@@ -2015,7 +2005,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -2025,8 +2015,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/yaahc/displaydoc",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2036,7 +2026,7 @@
 "license": "MIT",
 "source": "https://github.com/OpenByteDev/dlopen2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -2046,7 +2036,7 @@
 "license": "MIT",
 "source": "https://github.com/OpenByteDev/dlopen2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -2056,7 +2046,7 @@
 "license": "MIT",
 "source": "https://github.com/niklak/dom_query",
 "texts": [
-113
+112
 ]
 },
 {
@@ -2066,8 +2056,8 @@
 "license": "(MPL-2.0 OR Apache-2.0)",
 "source": "https://github.com/cure53/DOMPurify",
 "texts": [
-26,
-93
+25,
+92
 ]
 },
 {
@@ -2077,8 +2067,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/marcianx/downcast-rs",
 "texts": [
-26,
-114
+25,
+113
 ]
 },
 {
@@ -2088,8 +2078,8 @@
 "license": "Apache-2.0 AND MIT",
 "source": "https://github.com/rust-windowing/winit",
 "texts": [
-84,
-115
+83,
+114
 ]
 },
 {
@@ -2100,7 +2090,7 @@
 "source": "https://github.com/dtolnay/dtoa",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -2110,7 +2100,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/upsuper/dtoa-short",
 "texts": [
-93
+92
 ]
 },
 {
@@ -2120,7 +2110,7 @@
 "license": "CC0-1.0 OR MIT-0 OR Apache-2.0",
 "source": "https://gitlab.com/kornelski/dunce",
 "texts": [
-116
+115
 ]
 },
 {
@@ -2131,7 +2121,7 @@
 "source": "https://github.com/dtolnay/dyn-clone",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -2141,8 +2131,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/signatures",
 "texts": [
-117,
-118
+116,
+117
 ]
 },
 {
@@ -2152,8 +2142,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/signatures",
 "texts": [
-117,
-118
+116,
+117
 ]
 },
 {
@@ -2163,7 +2153,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek",
 "texts": [
-119
+118
 ]
 },
 {
@@ -2173,8 +2163,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-120
+25,
+119
 ]
 },
 {
@@ -2184,8 +2174,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/nvzqz/embed-plist-rs",
 "texts": [
-26,
-121
+25,
+120
 ]
 },
 {
@@ -2195,9 +2185,9 @@
 "license": "(Apache-2.0 OR MIT) AND BSD-3-Clause",
 "source": "https://github.com/hsivonen/encoding_rs",
 "texts": [
-26,
-122,
-123
+25,
+121,
+122
 ]
 },
 {
@@ -2207,7 +2197,7 @@
 "license": "MIT",
 "source": "https://github.com/zeenix/endi",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2217,7 +2207,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://gitlab.com/antonok/enum_dispatch",
 "texts": [
-124
+123
 ]
 },
 {
@@ -2227,8 +2217,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/meithecatte/enumflags2",
 "texts": [
-125,
-126
+124,
+125
 ]
 },
 {
@@ -2238,8 +2228,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/meithecatte/enumflags2",
 "texts": [
-127,
-128
+126,
+127
 ]
 },
 {
@@ -2249,8 +2239,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/indexmap-rs/equivalent",
 "texts": [
-26,
-129
+25,
+128
 ]
 },
 {
@@ -2261,7 +2251,7 @@
 "source": "https://github.com/dtolnay/erased-serde",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -2271,8 +2261,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/lambda-fairy/rust-errno",
 "texts": [
-26,
-130
+25,
+129
 ]
 },
 {
@@ -2282,7 +2272,7 @@
 "license": "BSL-1.0",
 "source": "https://github.com/DoumanAsh/error-code",
 "texts": [
-74
+73
 ]
 },
 {
@@ -2292,8 +2282,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/event-listener",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2303,8 +2293,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/event-listener-strategy",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2314,8 +2304,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/fastrand",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2325,7 +2315,7 @@
 "license": "MIT",
 "source": "https://github.com/pdf-rs/fax",
 "texts": [
-131
+130
 ]
 },
 {
@@ -2336,7 +2326,7 @@
 "source": "https://github.com/image-rs/fdeflate",
 "texts": [
 12,
-132
+131
 ]
 },
 {
@@ -2346,8 +2336,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/zkcrypto/ff",
 "texts": [
-26,
-133
+25,
+132
 ]
 },
 {
@@ -2357,9 +2347,9 @@
 "license": "MIT OR Apache-2.0 OR BSD-1-Clause",
 "source": "https://github.com/mit-plv/fiat-crypto",
 "texts": [
+133,
 134,
-135,
-136
+135
 ]
 },
 {
@@ -2369,9 +2359,9 @@
 "license": "MIT OR Apache-2.0 OR BSD-1-Clause",
 "source": "https://github.com/mit-plv/fiat-crypto",
 "texts": [
+133,
 134,
-135,
-136
+135
 ]
 },
 {
@@ -2382,7 +2372,7 @@
 "source": "https://github.com/Diggsey/rust-field-offset",
 "texts": [
 12,
-137
+136
 ]
 },
 {
@@ -2392,7 +2382,7 @@
 "license": "MIT",
 "source": "https://github.com/wezterm/wezterm",
 "texts": [
-138
+137
 ]
 },
 {
@@ -2402,8 +2392,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/alexcrichton/filetime",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -2413,8 +2403,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/petgraph/fixedbitset",
 "texts": [
-26,
-139
+25,
+138
 ]
 },
 {
@@ -2424,8 +2414,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/flate2-rs",
 "texts": [
-26,
-140
+25,
+139
 ]
 },
 {
@@ -2435,8 +2425,8 @@
 "license": "Apache-2.0 / MIT",
 "source": "https://github.com/servo/rust-fnv",
 "texts": [
-26,
-141
+25,
+140
 ]
 },
 {
@@ -2446,7 +2436,7 @@
 "license": "Zlib",
 "source": "https://github.com/orlp/foldhash",
 "texts": [
-142
+141
 ]
 },
 {
@@ -2456,7 +2446,7 @@
 "license": "Zlib",
 "source": "https://github.com/orlp/foldhash",
 "texts": [
-142
+141
 ]
 },
 {
@@ -2466,8 +2456,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/sfackler/foreign-types",
 "texts": [
-84,
-143
+83,
+142
 ]
 },
 {
@@ -2477,8 +2467,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/sfackler/foreign-types",
 "texts": [
-84,
-143
+83,
+142
 ]
 },
 {
@@ -2488,8 +2478,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/sfackler/foreign-types",
 "texts": [
-84,
-143
+83,
+142
 ]
 },
 {
@@ -2499,8 +2489,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/rust-url",
 "texts": [
-26,
-144
+25,
+143
 ]
 },
 {
@@ -2510,8 +2500,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2521,8 +2511,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2532,8 +2522,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2543,8 +2533,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2554,8 +2544,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2565,9 +2555,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/futures-lite",
 "texts": [
-26,
 25,
-46
+24,
+45
 ]
 },
 {
@@ -2577,8 +2567,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2588,8 +2578,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2599,8 +2589,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2610,8 +2600,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/futures-rs",
 "texts": [
-145,
-146
+144,
+145
 ]
 },
 {
@@ -2621,7 +2611,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2631,7 +2621,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2641,7 +2631,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2651,7 +2641,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2661,7 +2651,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2671,7 +2661,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2681,7 +2671,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2691,7 +2681,7 @@
 "license": "MIT",
 "source": "https://github.com/fizyk20/generic-array.git",
 "texts": [
-147
+146
 ]
 },
 {
@@ -2701,7 +2691,7 @@
 "license": "MIT",
 "source": "https://github.com/fizyk20/generic-array.git",
 "texts": [
-147
+146
 ]
 },
 {
@@ -2711,7 +2701,7 @@
 "license": "Apache-2.0",
 "source": "https://codeberg.org/swsnr/gethostname.rs.git",
 "texts": [
-26
+25
 ]
 },
 {
@@ -2721,8 +2711,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/getrandom",
 "texts": [
-148,
-149
+147,
+148
 ]
 },
 {
@@ -2732,8 +2722,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/getrandom",
 "texts": [
-148,
-150
+147,
+149
 ]
 },
 {
@@ -2743,8 +2733,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/getrandom",
 "texts": [
-148,
-151
+147,
+150
 ]
 },
 {
@@ -2754,8 +2744,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-152
+25,
+151
 ]
 },
 {
@@ -2765,8 +2755,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-32
+25,
+31
 ]
 },
 {
@@ -2776,7 +2766,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2786,7 +2776,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2796,7 +2786,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2806,7 +2796,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2816,7 +2806,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2826,8 +2816,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/glob",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -2837,7 +2827,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustwasm/gloo/tree/master/crates/timers",
 "texts": [
-20
+19
 ]
 },
 {
@@ -2847,7 +2837,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2857,8 +2847,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/zkcrypto/group",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2868,7 +2858,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2878,7 +2868,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2888,7 +2878,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk3-rs",
 "texts": [
-25
+24
 ]
 },
 {
@@ -2898,7 +2888,7 @@
 "license": "MIT",
 "source": "https://github.com/source-foundry/Hack#readme",
 "texts": [
-153
+152
 ]
 },
 {
@@ -2909,7 +2899,7 @@
 "source": "https://github.com/VoidStarKat/half-rs",
 "texts": [
 12,
-132
+131
 ]
 },
 {
@@ -2919,8 +2909,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/hashbrown",
 "texts": [
-26,
-154
+25,
+153
 ]
 },
 {
@@ -2930,8 +2920,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/hashbrown",
 "texts": [
-26,
-154
+25,
+153
 ]
 },
 {
@@ -2941,8 +2931,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/hashbrown",
 "texts": [
-26,
-154
+25,
+153
 ]
 },
 {
@@ -2952,8 +2942,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/hashbrown",
 "texts": [
-26,
-154
+25,
+153
 ]
 },
 {
@@ -2963,8 +2953,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/withoutboats/heck",
 "texts": [
-26,
-155
+25,
+154
 ]
 },
 {
@@ -2974,8 +2964,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/withoutboats/heck",
 "texts": [
-26,
-155
+25,
+154
 ]
 },
 {
@@ -2985,8 +2975,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/hermit-os/hermit-rs",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -2996,8 +2986,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/KokaKiwi/rust-hex",
 "texts": [
-84,
-156
+83,
+155
 ]
 },
 {
@@ -3007,8 +2997,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-157
+25,
+156
 ]
 },
 {
@@ -3018,8 +3008,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/KDFs/",
 "texts": [
-26,
-158
+25,
+157
 ]
 },
 {
@@ -3029,8 +3019,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/KDFs/",
 "texts": [
-26,
-158
+25,
+157
 ]
 },
 {
@@ -3040,8 +3030,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/MACs",
 "texts": [
-26,
-109
+25,
+108
 ]
 },
 {
@@ -3051,8 +3041,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/MACs",
 "texts": [
-26,
-109
+25,
+108
 ]
 },
 {
@@ -3062,8 +3052,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/html5ever",
 "texts": [
-26,
-159
+25,
+158
 ]
 },
 {
@@ -3073,8 +3063,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/hyperium/http",
 "texts": [
-160,
-161
+159,
+160
 ]
 },
 {
@@ -3084,7 +3074,7 @@
 "license": "MIT",
 "source": "https://github.com/hyperium/http-body",
 "texts": [
-162
+161
 ]
 },
 {
@@ -3094,7 +3084,7 @@
 "license": "MIT",
 "source": "https://github.com/hyperium/http-body",
 "texts": [
-162
+161
 ]
 },
 {
@@ -3104,8 +3094,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/seanmonstar/httparse",
 "texts": [
-26,
-163
+25,
+162
 ]
 },
 {
@@ -3115,8 +3105,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/pyfisch/httpdate",
 "texts": [
-26,
-164
+25,
+163
 ]
 },
 {
@@ -3126,8 +3116,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hybrid-array",
 "texts": [
-26,
-75
+25,
+74
 ]
 },
 {
@@ -3137,7 +3127,7 @@
 "license": "MIT",
 "source": "https://github.com/hyperium/hyper",
 "texts": [
-165
+164
 ]
 },
 {
@@ -3147,9 +3137,9 @@
 "license": "Apache-2.0 OR ISC OR MIT",
 "source": "https://github.com/rustls/hyper-rustls",
 "texts": [
-26,
-166,
-167
+25,
+165,
+166
 ]
 },
 {
@@ -3159,7 +3149,7 @@
 "license": "MIT",
 "source": "https://github.com/hyperium/hyper-util",
 "texts": [
-168
+167
 ]
 },
 {
@@ -3169,8 +3159,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/strawlab/iana-time-zone",
 "texts": [
-169,
-170
+168,
+169
 ]
 },
 {
@@ -3180,8 +3170,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/strawlab/iana-time-zone",
 "texts": [
-169,
-170
+168,
+169
 ]
 },
 {
@@ -3191,7 +3181,7 @@
 "license": "MIT",
 "source": "https://github.com/mdsteele/rust-ico",
 "texts": [
-171
+170
 ]
 },
 {
@@ -3201,7 +3191,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3211,7 +3201,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3221,7 +3211,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3231,7 +3221,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3241,7 +3231,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3251,7 +3241,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3261,7 +3251,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3271,7 +3261,7 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/TedDriggs/ident_case",
 "texts": [
-132
+131
 ]
 },
 {
@@ -3281,8 +3271,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/rust-url/",
 "texts": [
-26,
-173
+25,
+172
 ]
 },
 {
@@ -3292,8 +3282,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/hsivonen/idna_adapter",
 "texts": [
-26,
-174
+25,
+173
 ]
 },
 {
@@ -3304,7 +3294,7 @@
 "source": "https://github.com/image-rs/image",
 "texts": [
 12,
-132
+131
 ]
 },
 {
@@ -3314,8 +3304,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/bluss/indexmap",
 "texts": [
-26,
-175
+25,
+174
 ]
 },
 {
@@ -3325,8 +3315,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/indexmap-rs/indexmap",
 "texts": [
-26,
-175
+25,
+174
 ]
 },
 {
@@ -3336,7 +3326,7 @@
 "license": "MIT",
 "source": "https://github.com/bojand/infer",
 "texts": [
-176
+175
 ]
 },
 {
@@ -3346,8 +3336,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-177
+25,
+176
 ]
 },
 {
@@ -3357,8 +3347,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-178
+25,
+177
 ]
 },
 {
@@ -3368,8 +3358,8 @@
 "license": "MIT / Apache-2.0",
 "source": "https://github.com/jtakakura/io-kit-rs",
 "texts": [
-179,
-180
+178,
+179
 ]
 },
 {
@@ -3379,8 +3369,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/krisprice/ipnet",
 "texts": [
-181,
-182
+180,
+181
 ]
 },
 {
@@ -3390,7 +3380,7 @@
 "license": "MIT",
 "source": "https://github.com/TheLarkInn/is-docker",
 "texts": [
-183
+182
 ]
 },
 {
@@ -3400,7 +3390,7 @@
 "license": "MIT",
 "source": "https://github.com/TheLarkInn/is-wsl",
 "texts": [
-183
+182
 ]
 },
 {
@@ -3411,7 +3401,7 @@
 "source": "https://github.com/dtolnay/itoa",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -3421,7 +3411,7 @@
 "license": "MIT",
 "source": "https://github.com/tauri-apps/javascriptcore-rs",
 "texts": [
-184
+183
 ]
 },
 {
@@ -3431,7 +3421,7 @@
 "license": "MIT",
 "source": "https://github.com/tauri-apps/javascriptcore-rs",
 "texts": [
-185
+184
 ]
 },
 {
@@ -3441,9 +3431,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/jiff",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3453,9 +3443,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/jiff",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3465,9 +3455,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/jiff",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3477,9 +3467,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/jiff",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3489,9 +3479,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/jiff",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3501,8 +3491,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/jni-rs/jni-rs",
 "texts": [
-26,
-186
+25,
+185
 ]
 },
 {
@@ -3512,7 +3502,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jni-rs/jni-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3522,7 +3512,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jni-rs/jni-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3532,8 +3522,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jni-rs/jni-sys",
 "texts": [
-84,
-187
+83,
+186
 ]
 },
 {
@@ -3543,8 +3533,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jni-rs/jni-sys",
 "texts": [
-84,
-187
+83,
+186
 ]
 },
 {
@@ -3554,7 +3544,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jni-rs/jni-sys",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3564,8 +3554,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -3575,8 +3565,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/idubrov/json-patch",
 "texts": [
-84,
-188
+83,
+187
 ]
 },
 {
@@ -3586,7 +3576,7 @@
 "license": "MIT",
 "source": "https://github.com/microsoft/node-jsonc-parser#readme",
 "texts": [
-189
+188
 ]
 },
 {
@@ -3596,8 +3586,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/chanced/jsonptr",
 "texts": [
-190,
-191
+189,
+190
 ]
 },
 {
@@ -3607,8 +3597,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/sponges",
 "texts": [
-26,
-192
+25,
+191
 ]
 },
 {
@@ -3618,8 +3608,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-193,
-91
+192,
+90
 ]
 },
 {
@@ -3629,8 +3619,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-windowing/keyboard-types",
 "texts": [
-26,
-194
+25,
+193
 ]
 },
 {
@@ -3640,8 +3630,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/open-source-cooperative/keyring-rs",
 "texts": [
-40,
-41
+39,
+40
 ]
 },
 {
@@ -3651,8 +3641,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/open-source-cooperative/keyring-core.git",
 "texts": [
-40,
-41
+39,
+40
 ]
 },
 {
@@ -3662,8 +3652,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang-nursery/lazy-static.rs",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -3673,8 +3663,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://crates.io/crates/libappindicator",
 "texts": [
-26,
-195
+25,
+194
 ]
 },
 {
@@ -3684,7 +3674,7 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://crates.io/crates/libappindicator-sys",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3695,7 +3685,7 @@
 "source": "https://github.com/rust-lang/libc",
 "texts": [
 12,
-196
+195
 ]
 },
 {
@@ -3705,8 +3695,8 @@
 "license": "Apache-2.0/MIT",
 "source": "https://github.com/diwic/dbus-rs",
 "texts": [
-101,
-102
+100,
+101
 ]
 },
 {
@@ -3716,7 +3706,7 @@
 "license": "ISC",
 "source": "https://github.com/nagisa/rust_libloading/",
 "texts": [
-197
+196
 ]
 },
 {
@@ -3726,7 +3716,7 @@
 "license": "MIT",
 "source": "https://gitlab.redox-os.org/redox-os/libredox.git",
 "texts": [
-198
+197
 ]
 },
 {
@@ -3736,9 +3726,9 @@
 "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
 "source": "https://github.com/sunfishcode/linux-raw-sys",
 "texts": [
-26,
-199,
-25
+25,
+198,
+24
 ]
 },
 {
@@ -3748,7 +3738,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -3758,8 +3748,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Amanieu/parking_lot",
 "texts": [
-26,
-200
+25,
+199
 ]
 },
 {
@@ -3769,8 +3759,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/log",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -3780,9 +3770,9 @@
 "license": "MIT OR Apache-2.0 OR Zlib",
 "source": "https://github.com/Ralith/lru-slab",
 "texts": [
-26,
-201,
-202
+25,
+200,
+201
 ]
 },
 {
@@ -3792,7 +3782,7 @@
 "license": "ISC",
 "source": "https://lucide.dev",
 "texts": [
-203
+202
 ]
 },
 {
@@ -3802,7 +3792,7 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/h4llow3En/mac-notification-sys",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3813,8 +3803,8 @@
 "source": "https://github.com/JohnTitor/mach2",
 "texts": [
 12,
-204,
-205
+203,
+204
 ]
 },
 {
@@ -3824,7 +3814,7 @@
 "license": "MIT",
 "source": "https://marked.js.org",
 "texts": [
-206
+205
 ]
 },
 {
@@ -3834,8 +3824,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/html5ever",
 "texts": [
-26,
-159
+25,
+158
 ]
 },
 {
@@ -3845,7 +3835,7 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/stainless-steel/md5",
 "texts": [
-207
+206
 ]
 },
 {
@@ -3855,9 +3845,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/memchr",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -3867,7 +3857,7 @@
 "license": "MIT",
 "source": "https://github.com/Gilnaa/memoffset",
 "texts": [
-208
+207
 ]
 },
 {
@@ -3877,8 +3867,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/hyperium/mime",
 "texts": [
-26,
-209
+25,
+208
 ]
 },
 {
@@ -3888,9 +3878,9 @@
 "license": "MIT OR Zlib OR Apache-2.0",
 "source": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
 "texts": [
-210,
+209,
 12,
-211
+210
 ]
 },
 {
@@ -3900,9 +3890,9 @@
 "license": "MIT OR Zlib OR Apache-2.0",
 "source": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
 "texts": [
-210,
+209,
 12,
-211
+210
 ]
 },
 {
@@ -3912,7 +3902,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/mio",
 "texts": [
-212
+211
 ]
 },
 {
@@ -3922,8 +3912,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/KEMs",
 "texts": [
-26,
-213
+25,
+212
 ]
 },
 {
@@ -3933,8 +3923,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/KEMs",
 "texts": [
-26,
-213
+25,
+212
 ]
 },
 {
@@ -3944,8 +3934,8 @@
 "license": "BSD-3-Clause OR Apache-2.0",
 "source": "https://github.com/awxkee/moxcms.git",
 "texts": [
-214,
-215
+213,
+214
 ]
 },
 {
@@ -3955,9 +3945,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/tauri-apps/muda",
 "texts": [
-26,
-216,
-217
+25,
+215,
+216
 ]
 },
 {
@@ -3967,8 +3957,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/hsivonen/multiversion_no_op",
 "texts": [
-26,
-122
+25,
+121
 ]
 },
 {
@@ -3978,7 +3968,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-mobile/ndk",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3988,7 +3978,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-windowing/android-ndk-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -3998,7 +3988,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-mobile/ndk",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4008,7 +3998,7 @@
 "license": "MIT",
 "source": "https://github.com/mbrubeck/rust-debug-unreachable",
 "texts": [
-218
+217
 ]
 },
 {
@@ -4018,7 +4008,7 @@
 "license": "MIT",
 "source": "https://github.com/nix-rust/nix",
 "texts": [
-219
+218
 ]
 },
 {
@@ -4028,7 +4018,7 @@
 "license": "MIT",
 "source": "https://github.com/nix-rust/nix",
 "texts": [
-219
+218
 ]
 },
 {
@@ -4038,7 +4028,7 @@
 "license": "MIT",
 "source": "https://github.com/nix-rust/nix",
 "texts": [
-219
+218
 ]
 },
 {
@@ -4048,7 +4038,7 @@
 "license": "MIT",
 "source": "https://github.com/rust-bakery/nom",
 "texts": [
-220
+219
 ]
 },
 {
@@ -4058,8 +4048,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/hoodie/notify-rust",
 "texts": [
-84,
-221
+83,
+220
 ]
 },
 {
@@ -4069,8 +4059,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4080,8 +4070,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-bigint",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4091,8 +4081,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-bigint",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4102,8 +4092,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-complex",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4114,7 +4104,7 @@
 "source": "https://github.com/jhpratt/num-conv",
 "texts": [
 12,
-222
+221
 ]
 },
 {
@@ -4124,8 +4114,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-integer",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4135,8 +4125,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-iter",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4146,8 +4136,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-rational",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4157,8 +4147,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-num/num-traits",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -4169,8 +4159,8 @@
 "source": "https://github.com/illicitonion/num_enum",
 "texts": [
 12,
-223,
-25
+222,
+24
 ]
 },
 {
@@ -4181,8 +4171,8 @@
 "source": "https://github.com/illicitonion/num_enum",
 "texts": [
 12,
-223,
-25
+222,
+24
 ]
 },
 {
@@ -4192,7 +4182,7 @@
 "license": "MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4202,7 +4192,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4212,7 +4202,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4222,7 +4212,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4232,7 +4222,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4242,7 +4232,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4252,7 +4242,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4262,7 +4252,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4272,7 +4262,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4282,7 +4272,7 @@
 "license": "MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4292,7 +4282,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4302,7 +4292,7 @@
 "license": "MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4312,7 +4302,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4322,7 +4312,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4332,7 +4322,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4342,7 +4332,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4352,7 +4342,7 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/madsmtm/objc2",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4362,8 +4352,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/matklad/once_cell",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -4373,8 +4363,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-224
+25,
+223
 ]
 },
 {
@@ -4384,7 +4374,7 @@
 "license": "MIT",
 "source": "https://github.com/Byron/open-rs",
 "texts": [
-225
+224
 ]
 },
 {
@@ -4394,8 +4384,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustls/openssl-probe",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -4405,7 +4395,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/soc/option-ext.git",
 "texts": [
-226
+225
 ]
 },
 {
@@ -4415,8 +4405,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/danieldg/ordered-stream",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -4426,7 +4416,7 @@
 "license": "MIT",
 "source": "https://github.com/oconnor663/os_pipe.rs",
 "texts": [
-227
+226
 ]
 },
 {
@@ -4436,8 +4426,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-120
+25,
+119
 ]
 },
 {
@@ -4447,8 +4437,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-228
+25,
+227
 ]
 },
 {
@@ -4458,8 +4448,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-120
+25,
+119
 ]
 },
 {
@@ -4469,7 +4459,7 @@
 "license": "Apache-2.0",
 "source": "https://github.com/warp-tech/russh",
 "texts": [
-26
+25
 ]
 },
 {
@@ -4479,7 +4469,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -4489,7 +4479,7 @@
 "license": "MIT",
 "source": "https://github.com/gtk-rs/gtk-rs-core",
 "texts": [
-25
+24
 ]
 },
 {
@@ -4499,9 +4489,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/parking",
 "texts": [
-26,
 25,
-229
+24,
+228
 ]
 },
 {
@@ -4511,8 +4501,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Amanieu/parking_lot",
 "texts": [
-26,
-200
+25,
+199
 ]
 },
 {
@@ -4522,8 +4512,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Amanieu/parking_lot",
 "texts": [
-26,
-200
+25,
+199
 ]
 },
 {
@@ -4533,8 +4523,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-120
+25,
+119
 ]
 },
 {
@@ -4544,8 +4534,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/password-hashes",
 "texts": [
-26,
-230
+25,
+229
 ]
 },
 {
@@ -4555,8 +4545,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-231
+25,
+230
 ]
 },
 {
@@ -4566,8 +4556,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/rust-url/",
 "texts": [
-26,
-173
+25,
+172
 ]
 },
 {
@@ -4577,8 +4567,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/petgraph/petgraph",
 "texts": [
-26,
-232
+25,
+231
 ]
 },
 {
@@ -4588,8 +4578,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -4599,7 +4589,7 @@
 "license": "MIT",
 "source": "https://github.com/rust-phf/rust-phf",
 "texts": [
-233
+232
 ]
 },
 {
@@ -4609,7 +4599,7 @@
 "license": "MIT",
 "source": "https://github.com/rust-phf/rust-phf",
 "texts": [
-233
+232
 ]
 },
 {
@@ -4619,7 +4609,7 @@
 "license": "MIT",
 "source": "https://github.com/rust-phf/rust-phf",
 "texts": [
-233
+232
 ]
 },
 {
@@ -4629,7 +4619,7 @@
 "license": "MIT",
 "source": "https://github.com/rust-phf/rust-phf",
 "texts": [
-233
+232
 ]
 },
 {
@@ -4640,7 +4630,7 @@
 "source": "https://github.com/taiki-e/pin-project-lite",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -4650,8 +4640,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/smol-rs/piper",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -4661,8 +4651,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-231
+25,
+230
 ]
 },
 {
@@ -4672,8 +4662,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -4683,8 +4673,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-77
+25,
+76
 ]
 },
 {
@@ -4694,7 +4684,7 @@
 "license": "MIT",
 "source": "https://github.com/jorgealonsodev/plexusterm-relay",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4704,7 +4694,7 @@
 "license": "MIT",
 "source": "https://github.com/jorgealonsodev/plexusterm-relay",
 "texts": [
-20
+19
 ]
 },
 {
@@ -4714,7 +4704,7 @@
 "license": "MIT",
 "source": "https://github.com/ebarnard/rust-plist/",
 "texts": [
-234
+233
 ]
 },
 {
@@ -4724,8 +4714,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/image-rs/image-png",
 "texts": [
-26,
-235
+25,
+234
 ]
 },
 {
@@ -4735,8 +4725,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/image-rs/image-png",
 "texts": [
-26,
-235
+25,
+234
 ]
 },
 {
@@ -4746,8 +4736,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/smol-rs/polling",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -4757,8 +4747,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-236
+25,
+235
 ]
 },
 {
@@ -4768,8 +4758,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-237
+25,
+236
 ]
 },
 {
@@ -4779,8 +4769,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-238
+25,
+237
 ]
 },
 {
@@ -4790,8 +4780,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/universal-hashes",
 "texts": [
-26,
-32
+25,
+31
 ]
 },
 {
@@ -4802,7 +4792,7 @@
 "source": "https://github.com/taiki-e/portable-atomic",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -4813,7 +4803,7 @@
 "source": "https://github.com/taiki-e/portable-atomic-util",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -4823,7 +4813,7 @@
 "license": "MIT",
 "source": "https://github.com/wezterm/wezterm",
 "texts": [
-138
+137
 ]
 },
 {
@@ -4833,7 +4823,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -4843,8 +4833,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jhpratt/powerfmt",
 "texts": [
-239,
-240
+238,
+239
 ]
 },
 {
@@ -4854,8 +4844,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/cryptocorrosion/cryptocorrosion",
 "texts": [
-241,
-242
+240,
+241
 ]
 },
 {
@@ -4865,7 +4855,7 @@
 "license": "MIT",
 "source": "https://github.com/emilio/precomputed-hash",
 "texts": [
-243
+242
 ]
 },
 {
@@ -4875,8 +4865,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-213
+25,
+212
 ]
 },
 {
@@ -4886,8 +4876,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-244
+25,
+243
 ]
 },
 {
@@ -4897,8 +4887,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/bkchr/proc-macro-crate",
 "texts": [
-24,
-25
+23,
+24
 ]
 },
 {
@@ -4908,8 +4898,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/bkchr/proc-macro-crate",
 "texts": [
-24,
-25
+23,
+24
 ]
 },
 {
@@ -4919,8 +4909,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/bkchr/proc-macro-crate",
 "texts": [
-24,
-25
+23,
+24
 ]
 },
 {
@@ -4930,8 +4920,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://gitlab.com/CreepySkeleton/proc-macro-error",
 "texts": [
-245,
-246
+244,
+245
 ]
 },
 {
@@ -4941,8 +4931,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://gitlab.com/CreepySkeleton/proc-macro-error",
 "texts": [
-245,
-246
+244,
+245
 ]
 },
 {
@@ -4953,7 +4943,7 @@
 "source": "https://github.com/dtolnay/proc-macro2",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -4963,8 +4953,8 @@
 "license": "BSD-3-Clause OR Apache-2.0",
 "source": "https://github.com/awxkee/pxfm",
 "texts": [
-214,
-215
+213,
+214
 ]
 },
 {
@@ -4974,8 +4964,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/kennytm/qrcode-rust",
 "texts": [
-26,
-247
+25,
+246
 ]
 },
 {
@@ -4985,8 +4975,8 @@
 "license": "MIT/Apache-2.0",
 "source": "http://github.com/tailhook/quick-error",
 "texts": [
-84,
-248
+83,
+247
 ]
 },
 {
@@ -4996,7 +4986,7 @@
 "license": "MIT",
 "source": "https://github.com/tafia/quick-xml",
 "texts": [
-249
+248
 ]
 },
 {
@@ -5006,7 +4996,7 @@
 "license": "MIT",
 "source": "https://github.com/tafia/quick-xml",
 "texts": [
-249
+248
 ]
 },
 {
@@ -5016,8 +5006,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/quinn-rs/quinn",
 "texts": [
-26,
-250
+25,
+249
 ]
 },
 {
@@ -5027,8 +5017,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/quinn-rs/quinn",
 "texts": [
-26,
-250
+25,
+249
 ]
 },
 {
@@ -5038,8 +5028,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/quinn-rs/quinn",
 "texts": [
-26,
-250
+25,
+249
 ]
 },
 {
@@ -5050,7 +5040,7 @@
 "source": "https://github.com/dtolnay/quote",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5060,7 +5050,7 @@
 "license": "MIT OR Apache-2.0 OR LGPL-2.1-or-later",
 "source": "https://github.com/r-efi/r-efi",
 "texts": [
-20
+19
 ]
 },
 {
@@ -5070,7 +5060,7 @@
 "license": "MIT OR Apache-2.0 OR LGPL-2.1-or-later",
 "source": "https://github.com/r-efi/r-efi",
 "texts": [
-20
+19
 ]
 },
 {
@@ -5080,8 +5070,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand",
 "texts": [
-251,
-252
+250,
+251
 ]
 },
 {
@@ -5091,8 +5081,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand",
 "texts": [
-251,
-252
+250,
+251
 ]
 },
 {
@@ -5102,8 +5092,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand",
 "texts": [
-251,
-252
+250,
+251
 ]
 },
 {
@@ -5113,8 +5103,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand_core",
 "texts": [
-253,
-254
+252,
+253
 ]
 },
 {
@@ -5124,8 +5114,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand",
 "texts": [
-253,
-252
+252,
+251
 ]
 },
 {
@@ -5135,8 +5125,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rand",
 "texts": [
-253,
-252
+252,
+251
 ]
 },
 {
@@ -5146,8 +5136,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-random/rngs",
 "texts": [
-253,
-255
+252,
+254
 ]
 },
 {
@@ -5158,8 +5148,8 @@
 "source": "https://github.com/rust-windowing/raw-window-handle",
 "texts": [
 12,
-256,
-257
+255,
+256
 ]
 },
 {
@@ -5169,7 +5159,7 @@
 "license": "MIT",
 "source": "https://react.dev/",
 "texts": [
-258
+257
 ]
 },
 {
@@ -5179,7 +5169,7 @@
 "license": "MIT",
 "source": "https://react.dev/",
 "texts": [
-258
+257
 ]
 },
 {
@@ -5189,7 +5179,7 @@
 "license": "MIT",
 "source": "https://gitlab.redox-os.org/redox-os/syscall",
 "texts": [
-259
+258
 ]
 },
 {
@@ -5199,7 +5189,7 @@
 "license": "MIT",
 "source": "https://gitlab.redox-os.org/redox-os/users",
 "texts": [
-260
+259
 ]
 },
 {
@@ -5210,7 +5200,7 @@
 "source": "https://github.com/dtolnay/ref-cast",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5221,7 +5211,7 @@
 "source": "https://github.com/dtolnay/ref-cast",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5231,8 +5221,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/regex",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -5242,8 +5232,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/regex",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -5253,8 +5243,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/regex",
 "texts": [
-26,
-55
+25,
+54
 ]
 },
 {
@@ -5264,8 +5254,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/seanmonstar/reqwest",
 "texts": [
-261,
-262
+260,
+261
 ]
 },
 {
@@ -5275,8 +5265,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/signatures",
 "texts": [
-117,
-118
+116,
+117
 ]
 },
 {
@@ -5286,7 +5276,7 @@
 "license": "MIT",
 "source": "https://github.com/PolyMeilex/rfd",
 "texts": [
-263
+262
 ]
 },
 {
@@ -5296,9 +5286,9 @@
 "license": "Apache-2.0 AND ISC",
 "source": "https://github.com/briansmith/ring",
 "texts": [
+263,
 264,
-265,
-266
+265
 ]
 },
 {
@@ -5308,8 +5298,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/RSA",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -5319,7 +5309,7 @@
 "license": "Apache-2.0",
 "source": "https://github.com/warp-tech/russh",
 "texts": [
-26
+25
 ]
 },
 {
@@ -5329,7 +5319,7 @@
 "license": "Apache-2.0",
 "source": "https://github.com/warp-tech/russh",
 "texts": [
-26
+25
 ]
 },
 {
@@ -5339,7 +5329,7 @@
 "license": "Apache-2.0",
 "source": "https://github.com/AspectUnk/russh-sftp",
 "texts": [
-26
+25
 ]
 },
 {
@@ -5349,7 +5339,7 @@
 "license": "Apache-2.0",
 "source": "https://github.com/warp-tech/russh",
 "texts": [
-26
+25
 ]
 },
 {
@@ -5360,7 +5350,7 @@
 "source": "https://github.com/rust-lang/rustc-hash",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5370,9 +5360,9 @@
 "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
 "source": "https://github.com/bytecodealliance/rustix",
 "texts": [
-26,
-199,
-25
+25,
+198,
+24
 ]
 },
 {
@@ -5382,9 +5372,9 @@
 "license": "Apache-2.0 OR ISC OR MIT",
 "source": "https://github.com/rustls/rustls",
 "texts": [
-26,
-166,
-167
+25,
+165,
+166
 ]
 },
 {
@@ -5394,10 +5384,10 @@
 "license": "Apache-2.0 OR ISC OR MIT",
 "source": "https://github.com/rustls/rustls-native-certs",
 "texts": [
-267,
-26,
-166,
-167
+266,
+25,
+165,
+166
 ]
 },
 {
@@ -5407,8 +5397,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustls/pki-types",
 "texts": [
-268,
-269
+267,
+268
 ]
 },
 {
@@ -5418,8 +5408,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustls/rustls-platform-verifier",
 "texts": [
-26,
-270
+25,
+269
 ]
 },
 {
@@ -5429,7 +5419,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustls/rustls-platform-verifier",
 "texts": [
-20
+19
 ]
 },
 {
@@ -5439,7 +5429,7 @@
 "license": "ISC",
 "source": "https://github.com/rustls/webpki",
 "texts": [
-271
+270
 ]
 },
 {
@@ -5450,7 +5440,7 @@
 "source": "https://github.com/dtolnay/rustversion",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5460,8 +5450,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/stream-ciphers",
 "texts": [
-26,
-272
+25,
+271
 ]
 },
 {
@@ -5471,9 +5461,9 @@
 "license": "Unlicense/MIT",
 "source": "https://github.com/BurntSushi/same-file",
 "texts": [
-33,
-273,
-35
+32,
+272,
+34
 ]
 },
 {
@@ -5483,7 +5473,7 @@
 "license": "MIT",
 "source": "https://github.com/steffengy/schannel-rs",
 "texts": [
-274
+273
 ]
 },
 {
@@ -5493,7 +5483,7 @@
 "license": "MIT",
 "source": "https://react.dev/",
 "texts": [
-258
+257
 ]
 },
 {
@@ -5503,7 +5493,7 @@
 "license": "MIT",
 "source": "https://github.com/GREsau/schemars",
 "texts": [
-275
+274
 ]
 },
 {
@@ -5513,7 +5503,7 @@
 "license": "MIT",
 "source": "https://github.com/GREsau/schemars",
 "texts": [
-275
+274
 ]
 },
 {
@@ -5523,7 +5513,7 @@
 "license": "MIT",
 "source": "https://github.com/GREsau/schemars",
 "texts": [
-275
+274
 ]
 },
 {
@@ -5533,7 +5523,7 @@
 "license": "MIT",
 "source": "https://github.com/GREsau/schemars",
 "texts": [
-275
+274
 ]
 },
 {
@@ -5543,8 +5533,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/bluss/scopeguard",
 "texts": [
-26,
-276
+25,
+275
 ]
 },
 {
@@ -5554,8 +5544,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/password-hashes",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -5565,8 +5555,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -5576,8 +5566,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/hwchen/secret-service-rs.git",
 "texts": [
-26,
-277
+25,
+276
 ]
 },
 {
@@ -5587,8 +5577,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/kornelski/rust-security-framework",
 "texts": [
-26,
-278
+25,
+277
 ]
 },
 {
@@ -5598,8 +5588,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/kornelski/rust-security-framework",
 "texts": [
-26,
-278
+25,
+277
 ]
 },
 {
@@ -5609,7 +5599,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/servo/stylo",
 "texts": [
-226
+225
 ]
 },
 {
@@ -5620,7 +5610,7 @@
 "source": "https://github.com/dtolnay/semver",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5631,7 +5621,7 @@
 "source": "https://github.com/serde-rs/serde",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5642,7 +5632,7 @@
 "source": "https://github.com/dtolnay/serde-untagged",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5653,7 +5643,7 @@
 "source": "https://github.com/serde-rs/bytes",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5664,7 +5654,7 @@
 "source": "https://github.com/serde-rs/serde",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5675,7 +5665,7 @@
 "source": "https://github.com/serde-rs/serde",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5686,7 +5676,7 @@
 "source": "https://github.com/serde-rs/serde",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5697,7 +5687,7 @@
 "source": "https://github.com/serde-rs/json",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5708,7 +5698,7 @@
 "source": "https://github.com/dtolnay/serde-repr",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -5718,8 +5708,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-84,
-279
+83,
+278
 ]
 },
 {
@@ -5729,8 +5719,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -5740,8 +5730,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jonasbb/serde_with/",
 "texts": [
-26,
-232
+25,
+231
 ]
 },
 {
@@ -5751,8 +5741,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jonasbb/serde_with/",
 "texts": [
-26,
-232
+25,
+231
 ]
 },
 {
@@ -5762,8 +5752,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-281
+25,
+280
 ]
 },
 {
@@ -5773,8 +5763,8 @@
 "license": "BSD-2-Clause OR Apache-2.0",
 "source": "https://github.com/de-vri-es/serial2-rs",
 "texts": [
-282,
-283
+281,
+282
 ]
 },
 {
@@ -5784,8 +5774,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/chippers/serialize-to-javascript",
 "texts": [
-26,
-284
+25,
+283
 ]
 },
 {
@@ -5795,8 +5785,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/chippers/serialize-to-javascript",
 "texts": [
-26,
-284
+25,
+283
 ]
 },
 {
@@ -5806,7 +5796,7 @@
 "license": "MPL-2.0",
 "source": "https://github.com/serialport/serialport-rs",
 "texts": [
-285
+284
 ]
 },
 {
@@ -5816,8 +5806,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/stylo",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -5827,8 +5817,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-286
+25,
+285
 ]
 },
 {
@@ -5838,8 +5828,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-287
+25,
+286
 ]
 },
 {
@@ -5849,8 +5839,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-286
+25,
+285
 ]
 },
 {
@@ -5860,8 +5850,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-287
+25,
+286
 ]
 },
 {
@@ -5871,8 +5861,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-288
+25,
+287
 ]
 },
 {
@@ -5882,8 +5872,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/hashes",
 "texts": [
-26,
-288
+25,
+287
 ]
 },
 {
@@ -5893,8 +5883,8 @@
 "license": "Apache-2.0/MIT",
 "source": "https://github.com/tomaka/shared_library/",
 "texts": [
-26,
-289
+25,
+288
 ]
 },
 {
@@ -5904,8 +5894,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/tmiasko/shell-words",
 "texts": [
-26,
-290
+25,
+289
 ]
 },
 {
@@ -5915,8 +5905,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/vorner/signal-hook",
 "texts": [
-26,
-291
+25,
+290
 ]
 },
 {
@@ -5926,8 +5916,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-118
+25,
+117
 ]
 },
 {
@@ -5937,7 +5927,7 @@
 "license": "MIT",
 "source": "https://github.com/mcountryman/simd-adler32",
 "texts": [
-292
+291
 ]
 },
 {
@@ -5947,8 +5937,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/seancroach/simd_cesu8",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -5959,7 +5949,7 @@
 "source": "https://github.com/rusticstuff/simdutf8",
 "texts": [
 12,
-132
+131
 ]
 },
 {
@@ -5969,9 +5959,9 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/jedisct1/rust-siphash",
 "texts": [
-293,
-26,
-25
+292,
+25,
+24
 ]
 },
 {
@@ -5981,7 +5971,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/slab",
 "texts": [
-294
+293
 ]
 },
 {
@@ -5991,8 +5981,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/rust-smallvec",
 "texts": [
-26,
-295
+25,
+294
 ]
 },
 {
@@ -6002,8 +5992,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/mcginty/snow",
 "texts": [
-251,
-296
+250,
+295
 ]
 },
 {
@@ -6013,8 +6003,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-lang/socket2",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -6024,8 +6014,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rust-windowing/softbuffer",
 "texts": [
-297,
-298
+296,
+297
 ]
 },
 {
@@ -6035,7 +6025,7 @@
 "license": "MIT",
 "source": "https://gitlab.gnome.org/World/Rust/soup3-rs",
 "texts": [
-185
+184
 ]
 },
 {
@@ -6045,7 +6035,7 @@
 "license": "MIT",
 "source": "https://gitlab.gnome.org/World/Rust/soup3-rs",
 "texts": [
-185
+184
 ]
 },
 {
@@ -6055,8 +6045,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/formats",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -6066,8 +6056,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-299
+25,
+298
 ]
 },
 {
@@ -6077,8 +6067,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/SSH",
 "texts": [
-26,
-82
+25,
+81
 ]
 },
 {
@@ -6088,8 +6078,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/SSH",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -6099,8 +6089,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/SSH",
 "texts": [
-26,
-43
+25,
+42
 ]
 },
 {
@@ -6110,8 +6100,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/storyyeller/stable_deref_trait",
 "texts": [
-26,
-300
+25,
+299
 ]
 },
 {
@@ -6121,8 +6111,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/string-cache",
 "texts": [
-26,
-80
+25,
+79
 ]
 },
 {
@@ -6132,7 +6122,7 @@
 "license": "MIT",
 "source": "https://github.com/rapidfuzz/strsim-rs",
 "texts": [
-301
+300
 ]
 },
 {
@@ -6142,7 +6132,7 @@
 "license": "MIT",
 "source": "https://code.haverbeke.berlin/marijn/style-mod",
 "texts": [
-302
+301
 ]
 },
 {
@@ -6152,7 +6142,7 @@
 "license": "BSD-3-Clause",
 "source": "https://github.com/dalek-cryptography/subtle",
 "texts": [
-303
+302
 ]
 },
 {
@@ -6162,8 +6152,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Brendonovich/swift-rs",
 "texts": [
-304,
-305
+303,
+304
 ]
 },
 {
@@ -6173,8 +6163,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/dtolnay/syn",
 "texts": [
-26,
-25
+25,
+24
 ]
 },
 {
@@ -6185,7 +6175,7 @@
 "source": "https://github.com/dtolnay/syn",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6196,7 +6186,7 @@
 "source": "https://github.com/dtolnay/syn",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6216,7 +6206,7 @@
 "license": "MIT",
 "source": "https://github.com/mystor/synstructure",
 "texts": [
-306
+305
 ]
 },
 {
@@ -6226,8 +6216,8 @@
 "license": "Apache-2.0",
 "source": "https://github.com/tauri-apps/tao",
 "texts": [
-84,
-307
+83,
+306
 ]
 },
 {
@@ -6237,9 +6227,9 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/tauri-apps/tao",
 "texts": [
-26,
-308,
-309
+25,
+307,
+308
 ]
 },
 {
@@ -6249,8 +6239,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/composefs/tar-rs",
 "texts": [
-26,
-310
+25,
+309
 ]
 },
 {
@@ -6386,7 +6376,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/tauri-apps/winrt-notification",
 "texts": [
-311,
+310,
 12,
 13
 ]
@@ -6398,8 +6388,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Stebalien/tempfile",
 "texts": [
-26,
-312
+25,
+311
 ]
 },
 {
@@ -6409,8 +6399,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/html5ever",
 "texts": [
-26,
-313
+25,
+312
 ]
 },
 {
@@ -6421,7 +6411,7 @@
 "source": "https://github.com/dtolnay/thiserror",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6432,7 +6422,7 @@
 "source": "https://github.com/dtolnay/thiserror",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6443,7 +6433,7 @@
 "source": "https://github.com/dtolnay/thiserror",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6454,7 +6444,7 @@
 "source": "https://github.com/dtolnay/thiserror",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6464,7 +6454,7 @@
 "license": "MIT",
 "source": "https://github.com/image-rs/image-tiff",
 "texts": [
-314
+313
 ]
 },
 {
@@ -6475,7 +6465,7 @@
 "source": "https://github.com/time-rs/time",
 "texts": [
 12,
-315
+314
 ]
 },
 {
@@ -6486,7 +6476,7 @@
 "source": "https://github.com/time-rs/time",
 "texts": [
 12,
-315
+314
 ]
 },
 {
@@ -6497,7 +6487,7 @@
 "source": "https://github.com/time-rs/time",
 "texts": [
 12,
-315
+314
 ]
 },
 {
@@ -6507,7 +6497,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -6517,9 +6507,9 @@
 "license": "Zlib OR Apache-2.0 OR MIT",
 "source": "https://github.com/Lokathor/tinyvec",
 "texts": [
-26,
 25,
-65
+24,
+64
 ]
 },
 {
@@ -6529,7 +6519,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tokio",
 "texts": [
-316
+315
 ]
 },
 {
@@ -6539,7 +6529,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tokio",
 "texts": [
-317
+316
 ]
 },
 {
@@ -6549,8 +6539,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/rustls/tokio-rustls",
 "texts": [
-318,
-319
+317,
+318
 ]
 },
 {
@@ -6560,7 +6550,7 @@
 "license": "MIT",
 "source": "https://github.com/snapview/tokio-tungstenite",
 "texts": [
-320
+319
 ]
 },
 {
@@ -6570,7 +6560,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tokio",
 "texts": [
-316
+315
 ]
 },
 {
@@ -6580,8 +6570,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -6591,8 +6581,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -6602,8 +6592,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -6613,8 +6603,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-84,
-279
+83,
+278
 ]
 },
 {
@@ -6624,8 +6614,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-84,
-279
+83,
+278
 ]
 },
 {
@@ -6635,8 +6625,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -6646,8 +6636,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -6657,8 +6647,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/toml-rs/toml",
 "texts": [
-280,
-279
+279,
+278
 ]
 },
 {
@@ -6668,7 +6658,7 @@
 "license": "MIT",
 "source": "https://github.com/tower-rs/tower",
 "texts": [
-321
+320
 ]
 },
 {
@@ -6678,7 +6668,7 @@
 "license": "MIT",
 "source": "https://github.com/tower-rs/tower-http",
 "texts": [
-322
+321
 ]
 },
 {
@@ -6688,7 +6678,7 @@
 "license": "MIT",
 "source": "https://github.com/tower-rs/tower",
 "texts": [
-321
+320
 ]
 },
 {
@@ -6698,7 +6688,7 @@
 "license": "MIT",
 "source": "https://github.com/tower-rs/tower",
 "texts": [
-321
+320
 ]
 },
 {
@@ -6708,7 +6698,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tracing",
 "texts": [
-323
+322
 ]
 },
 {
@@ -6718,7 +6708,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tracing",
 "texts": [
-323
+322
 ]
 },
 {
@@ -6728,7 +6718,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/tracing",
 "texts": [
-323
+322
 ]
 },
 {
@@ -6738,9 +6728,9 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/tauri-apps/tray-icon",
 "texts": [
-26,
-216,
-324
+25,
+215,
+323
 ]
 },
 {
@@ -6750,7 +6740,7 @@
 "license": "MIT",
 "source": "https://github.com/mbrubeck/tree_magic/",
 "texts": [
-325
+324
 ]
 },
 {
@@ -6760,7 +6750,7 @@
 "license": "MIT",
 "source": "https://github.com/seanmonstar/try-lock",
 "texts": [
-326
+325
 ]
 },
 {
@@ -6770,8 +6760,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/snapview/tungstenite-rs",
 "texts": [
-26,
-327
+25,
+326
 ]
 },
 {
@@ -6782,7 +6772,7 @@
 "source": "https://github.com/dtolnay/typeid",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6792,9 +6782,9 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/paholg/typenum",
 "texts": [
+327,
 328,
-329,
-330
+329
 ]
 },
 {
@@ -6804,7 +6794,7 @@
 "license": "MIT",
 "source": "https://github.com/haraldh/rust_uds_windows",
 "texts": [
-331
+330
 ]
 },
 {
@@ -6814,8 +6804,8 @@
 "license": "MIT OR GPL-3.0-only",
 "source": "https://github.com/hack-ink/unescaper",
 "texts": [
-332,
-333
+331,
+332
 ]
 },
 {
@@ -6826,8 +6816,8 @@
 "source": "https://github.com/dtolnay/unicode-ident",
 "texts": [
 12,
-25,
-334
+24,
+333
 ]
 },
 {
@@ -6837,8 +6827,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/unicode-rs/unicode-segmentation",
 "texts": [
-26,
-155
+25,
+154
 ]
 },
 {
@@ -6848,8 +6838,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-335
+25,
+334
 ]
 },
 {
@@ -6859,8 +6849,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/RustCrypto/traits",
 "texts": [
-26,
-336
+25,
+335
 ]
 },
 {
@@ -6870,7 +6860,7 @@
 "license": "ISC",
 "source": "https://github.com/briansmith/untrusted",
 "texts": [
-337
+336
 ]
 },
 {
@@ -6880,7 +6870,7 @@
 "license": "ISC",
 "source": "https://github.com/briansmith/untrusted",
 "texts": [
-337
+336
 ]
 },
 {
@@ -6890,8 +6880,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/rust-url",
 "texts": [
-26,
-173
+25,
+172
 ]
 },
 {
@@ -6901,7 +6891,7 @@
 "license": "MIT",
 "source": "https://github.com/denoland/rust-urlpattern",
 "texts": [
-338
+337
 ]
 },
 {
@@ -6912,7 +6902,7 @@
 "source": "https://github.com/SimonSapin/rust-utf8",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -6922,8 +6912,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/hsivonen/utf8_iter",
 "texts": [
-26,
-122
+25,
+121
 ]
 },
 {
@@ -6933,8 +6923,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/uuid-rs/uuid",
 "texts": [
-26,
-339
+25,
+338
 ]
 },
 {
@@ -6944,7 +6934,7 @@
 "license": "MIT",
 "source": "https://github.com/tokio-rs/valuable",
 "texts": [
-20
+19
 ]
 },
 {
@@ -6954,7 +6944,7 @@
 "license": "MIT",
 "source": "https://github.com/marijnh/w3c-keyname#readme",
 "texts": [
-340
+339
 ]
 },
 {
@@ -6964,9 +6954,9 @@
 "license": "Unlicense/MIT",
 "source": "https://github.com/BurntSushi/walkdir",
 "texts": [
+32,
 33,
-34,
-35
+34
 ]
 },
 {
@@ -6976,7 +6966,7 @@
 "license": "MIT",
 "source": "https://github.com/seanmonstar/want",
 "texts": [
-341
+340
 ]
 },
 {
@@ -6986,9 +6976,9 @@
 "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
 "source": "https://github.com/bytecodealliance/wasi",
 "texts": [
-26,
-199,
-25
+25,
+198,
+24
 ]
 },
 {
@@ -6998,9 +6988,9 @@
 "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
 "source": "https://github.com/bytecodealliance/wasi-rs",
 "texts": [
-26,
-199,
-25
+25,
+198,
+24
 ]
 },
 {
@@ -7010,8 +7000,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7021,8 +7011,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7032,8 +7022,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7043,8 +7033,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/main/crates/macro-support",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7054,8 +7044,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/shared",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7066,7 +7056,7 @@
 "source": "https://github.com/MattiasBuelens/wasm-streams/",
 "texts": [
 12,
-25
+24
 ]
 },
 {
@@ -7076,7 +7066,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7086,7 +7076,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7096,7 +7086,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7106,7 +7096,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7116,7 +7106,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7126,7 +7116,7 @@
 "license": "MIT",
 "source": "https://github.com/smithay/wayland-rs",
 "texts": [
-342
+341
 ]
 },
 {
@@ -7136,8 +7126,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys",
 "texts": [
-26,
-69
+25,
+68
 ]
 },
 {
@@ -7147,8 +7137,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/daxpedda/web-time",
 "texts": [
-343,
-344
+342,
+343
 ]
 },
 {
@@ -7158,8 +7148,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/servo/html5ever",
 "texts": [
-26,
-159
+25,
+158
 ]
 },
 {
@@ -7169,7 +7159,7 @@
 "license": "MIT",
 "source": "https://github.com/tauri-apps/webkit2gtk-rs",
 "texts": [
-345
+344
 ]
 },
 {
@@ -7179,7 +7169,7 @@
 "license": "MIT",
 "source": "https://github.com/tauri-apps/webkit2gtk-rs",
 "texts": [
-346
+345
 ]
 },
 {
@@ -7189,7 +7179,7 @@
 "license": "CDLA-Permissive-2.0",
 "source": "https://github.com/rustls/webpki-roots",
 "texts": [
-347
+346
 ]
 },
 {
@@ -7199,7 +7189,7 @@
 "license": "MIT",
 "source": "https://github.com/wravery/webview2-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -7209,7 +7199,7 @@
 "license": "MIT",
 "source": "https://github.com/wravery/webview2-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -7219,7 +7209,7 @@
 "license": "MIT",
 "source": "https://github.com/wravery/webview2-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -7229,8 +7219,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/image-rs/weezl",
 "texts": [
-26,
-348
+25,
+347
 ]
 },
 {
@@ -7240,8 +7230,8 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/retep998/winapi-rs",
 "texts": [
-84,
-349
+83,
+348
 ]
 },
 {
@@ -7251,7 +7241,7 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/retep998/winapi-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -7261,9 +7251,9 @@
 "license": "Unlicense OR MIT",
 "source": "https://github.com/BurntSushi/winapi-util",
 "texts": [
-33,
-273,
-35
+32,
+272,
+34
 ]
 },
 {
@@ -7273,7 +7263,7 @@
 "license": "MIT/Apache-2.0",
 "source": "https://github.com/retep998/winapi-rs",
 "texts": [
-20
+19
 ]
 },
 {
@@ -7283,9 +7273,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/tauri-apps/tauri-plugin-vibrancy",
 "texts": [
-26,
-350,
-351
+25,
+349,
+350
 ]
 },
 {
@@ -7295,7 +7285,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7306,7 +7296,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7317,7 +7307,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7328,7 +7318,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7339,7 +7329,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7350,7 +7340,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7361,7 +7351,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7372,8 +7362,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/open-source-cooperative/windows-native-keyring-store.git",
 "texts": [
-40,
-41
+39,
+40
 ]
 },
 {
@@ -7383,7 +7373,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7394,7 +7384,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7405,7 +7395,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7416,7 +7406,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7427,7 +7417,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7438,7 +7428,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7449,7 +7439,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7460,7 +7450,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7471,7 +7461,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7482,7 +7472,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7493,7 +7483,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7504,7 +7494,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7515,7 +7505,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7526,7 +7516,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7537,7 +7527,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7548,7 +7538,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7559,7 +7549,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7570,7 +7560,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7581,7 +7571,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7592,7 +7582,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7603,7 +7593,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7614,7 +7604,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7625,7 +7615,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7636,7 +7626,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7647,7 +7637,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7658,7 +7648,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7669,7 +7659,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7680,7 +7670,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7691,7 +7681,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7702,7 +7692,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7713,7 +7703,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7724,7 +7714,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7735,7 +7725,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7746,7 +7736,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7757,7 +7747,7 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/microsoft/windows-rs",
 "texts": [
-352,
+351,
 16
 ]
 },
@@ -7768,7 +7758,7 @@
 "license": "MIT",
 "source": "https://github.com/winnow-rs/winnow",
 "texts": [
-25
+24
 ]
 },
 {
@@ -7778,7 +7768,7 @@
 "license": "MIT",
 "source": "https://github.com/winnow-rs/winnow",
 "texts": [
-25
+24
 ]
 },
 {
@@ -7788,7 +7778,7 @@
 "license": "MIT",
 "source": "https://github.com/gentoo90/winreg-rs",
 "texts": [
-353
+352
 ]
 },
 {
@@ -7798,7 +7788,7 @@
 "license": "MIT",
 "source": "https://github.com/gentoo90/winreg-rs",
 "texts": [
-353
+352
 ]
 },
 {
@@ -7808,9 +7798,9 @@
 "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
 "source": "https://github.com/bytecodealliance/wit-bindgen",
 "texts": [
-26,
-199,
-25
+25,
+198,
+24
 ]
 },
 {
@@ -7820,8 +7810,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/YaLTeR/wl-clipboard-rs",
 "texts": [
-26,
-354
+25,
+353
 ]
 },
 {
@@ -7831,8 +7821,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/elliptic-curves",
 "texts": [
-26,
-355
+25,
+354
 ]
 },
 {
@@ -7842,7 +7832,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -7852,9 +7842,9 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/tauri-apps/wry",
 "texts": [
-26,
-356,
-357
+25,
+355,
+356
 ]
 },
 {
@@ -7864,7 +7854,7 @@
 "license": "MIT",
 "source": "https://github.com/AltF02/x11-rs.git",
 "texts": [
-25
+24
 ]
 },
 {
@@ -7874,7 +7864,7 @@
 "license": "MIT",
 "source": "https://github.com/AltF02/x11-rs.git",
 "texts": [
-25
+24
 ]
 },
 {
@@ -7884,8 +7874,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/psychon/x11rb",
 "texts": [
-26,
-358
+25,
+357
 ]
 },
 {
@@ -7895,8 +7885,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/psychon/x11rb",
 "texts": [
-26,
-358
+25,
+357
 ]
 },
 {
@@ -7906,8 +7896,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/Stebalien/xattr",
 "texts": [
-26,
-312
+25,
+311
 ]
 },
 {
@@ -7917,7 +7907,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -7927,7 +7917,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -7937,7 +7927,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-359
+358
 ]
 },
 {
@@ -7947,8 +7937,8 @@
 "license": "MIT OR Apache-2.0",
 "source": "https://github.com/open-source-cooperative/zbus-secret-service-keyring-store.git",
 "texts": [
-40,
-41
+39,
+40
 ]
 },
 {
@@ -7958,7 +7948,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-359
+358
 ]
 },
 {
@@ -7968,7 +7958,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-359
+358
 ]
 },
 {
@@ -7978,7 +7968,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zcheapstr/",
 "texts": [
-360
+359
 ]
 },
 {
@@ -7988,9 +7978,9 @@
 "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
 "source": "https://github.com/google/zerocopy",
 "texts": [
+360,
 361,
-362,
-363
+362
 ]
 },
 {
@@ -8000,9 +7990,9 @@
 "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
 "source": "https://github.com/google/zerocopy",
 "texts": [
+360,
 361,
-362,
-363
+362
 ]
 },
 {
@@ -8012,7 +8002,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -8022,7 +8012,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -8032,8 +8022,8 @@
 "license": "Apache-2.0 OR MIT",
 "source": "https://github.com/RustCrypto/utils",
 "texts": [
-26,
-192
+25,
+191
 ]
 },
 {
@@ -8043,7 +8033,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -8053,7 +8043,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -8063,7 +8053,7 @@
 "license": "Unicode-3.0",
 "source": "https://github.com/unicode-org/icu4x",
 "texts": [
-172
+171
 ]
 },
 {
@@ -8073,7 +8063,7 @@
 "license": "Zlib",
 "source": "https://github.com/trifectatechfoundation/zlib-rs",
 "texts": [
-364
+363
 ]
 },
 {
@@ -8083,7 +8073,7 @@
 "license": "MIT",
 "source": "https://github.com/dtolnay/zmij",
 "texts": [
-25
+24
 ]
 },
 {
@@ -8093,9 +8083,9 @@
 "license": "MIT OR Apache-2.0 OR Zlib",
 "source": "https://github.com/etemesi254/zune-image",
 "texts": [
-26,
-365,
-366
+25,
+364,
+365
 ]
 },
 {
@@ -8105,9 +8095,9 @@
 "license": "MIT OR Apache-2.0 OR Zlib",
 "source": "https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg",
 "texts": [
-26,
-365,
-366
+25,
+364,
+365
 ]
 },
 {
@@ -8117,7 +8107,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-359
+358
 ]
 },
 {
@@ -8127,7 +8117,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-359
+358
 ]
 },
 {
@@ -8137,7 +8127,7 @@
 "license": "MIT",
 "source": "https://github.com/z-galaxy/zbus/",
 "texts": [
-25
+24
 ]
 }
 ],
@@ -8160,7 +8150,6 @@
 "SPDXVersion: SPDX-2.1\nDataLicense: CC0-1.0\nPackageName: tauri\nDataFormat: SPDXRef-1\nPackageSupplier: Organization: The Tauri Programme in the Commons Conservancy\nPackageHomePage: https://tauri.app\nPackageLicenseDeclared: Apache-2.0\nPackageLicenseDeclared: MIT\nPackageCopyrightText: 2019-2022, The Tauri Programme in the Commons Conservancy\nPackageSummary: <text>Tauri is a rust project that enables developers to make secure\nand small desktop applications using a web frontend.\n                </text>\nPackageComment: <text>The package includes the following libraries; see\nRelationship information.\n                </text>\nCreated: 2019-05-20T09:00:00Z\nPackageDownloadLocation: git://github.com/tauri-apps/tauri\nPackageDownloadLocation: git+https://github.com/tauri-apps/tauri.git\nPackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git\nCreator: Person: Daniel Thompson-Yvetot",
 "MIT License\n\n    Copyright (c) Microsoft Corporation.\n\n    Permission is hereby granted, free of charge, to any person obtaining a copy\n    of this software and associated documentation files (the \"Software\"), to deal\n    in the Software without restriction, including without limitation the rights\n    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n    copies of the Software, and to permit persons to whom the Software is\n    furnished to do so, subject to the following conditions:\n\n    The above copyright notice and this permission notice shall be included in all\n    copies or substantial portions of the Software.\n\n    THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n    SOFTWARE",
 "Copyright (c) 2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
-"Copyright (c) 2019, 2020, 2021, 2022, 2023 The xterm.js authors (https://github.com/xtermjs/xterm.js)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
 "Copyright (c) 2017, The xterm.js authors (https://github.com/xtermjs/xterm.js)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
 "MIT License\n\nCopyright (c) <year> <copyright holders>\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and\nassociated documentation files (the \"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the\nfollowing conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial\nportions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT\nLIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO\nEVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE\nUSE OR OTHER DEALINGS IN THE SOFTWARE.",
 "Copyright (c) 2018, The xterm.js authors (https://github.com/xtermjs/xterm.js)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.",
