@@ -63,6 +63,7 @@ export const sessions = {
     usernameRequired: "Username is required",
     portRange: "Port must be a number between 1 and 65535",
     keyPathRequired: "Private key path is required",
+    tmuxSessionInvalid: "The tmux session name may only use letters, digits, dots, underscores and dashes (64 at most)",
   },
   jumps: {
     legend: "Jump hosts",
@@ -128,6 +129,11 @@ export const sessions = {
     privateKey: "Private key",
     agent: "SSH agent",
     passphrase: "Passphrase (optional)",
+    forwardAgent: "Forward SSH agent",
+    forwardAgentHelp: "Lets this server use the keys of your local SSH agent, for example for git or to jump to another machine, without copying them there. Only turn it on for servers you trust: while you are connected, their administrators can use your keys too. Jump hosts never get it.",
+    tmux: "Keep the shell in tmux",
+    tmuxHelp: "Starts the shell inside a tmux session on the server (tmux new -A -s <name>), so a reconnection resumes it where you were, with your programs still running. Without tmux on the server, the normal shell opens.",
+    tmuxSession: "tmux session name",
   },
   hostKey: {
     unknownHost: "Unknown host",

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { SshTarget } from "../sessions/types";
-import { parseQuickConnect, type QuickConnectForm } from "./quickConnect";
-import { fieldSetter, SshFields } from "./SshFields";
+import { DEFAULT_TMUX_SESSION, parseQuickConnect, type QuickConnectForm } from "./quickConnect";
+import { checkSetter, fieldSetter, SshFields } from "./SshFields";
 import { useT } from "../../i18n/i18n";
 
 interface QuickConnectDialogProps {
@@ -17,6 +17,9 @@ const emptyForm: QuickConnectForm = {
   password: "",
   keyPath: "~/.ssh/id_ed25519",
   passphrase: "",
+  forwardAgent: false,
+  tmux: false,
+  tmuxSession: DEFAULT_TMUX_SESSION,
 };
 
 export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogProps) {
@@ -35,7 +38,13 @@ export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogPr
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
       <form className="dialog" onSubmit={submit} aria-labelledby="qc-title">
         <h2 id="qc-title">{t("sessions.ssh.title")}</h2>
-        <SshFields form={form} set={fieldSetter(setForm)} withSecrets autoFocusHost />
+        <SshFields
+          form={form}
+          set={fieldSetter(setForm)}
+          check={checkSetter(setForm)}
+          withSecrets
+          autoFocusHost
+        />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           <button type="button" className="btn" onClick={onCancel}>

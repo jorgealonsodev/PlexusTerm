@@ -67,6 +67,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "Le nom d'utilisateur est obligatoire",
     portRange: "Le port doit être un nombre compris entre 1 et 65535",
     keyPathRequired: "Le chemin de la clé privée est obligatoire",
+    tmuxSessionInvalid: "Le nom de la session tmux ne peut contenir que des lettres, des chiffres, des points, des tirets bas et des tirets (64 au maximum)",
   },
   jumps: {
     legend: "Hôtes de rebond",
@@ -146,6 +147,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "Clé privée",
     agent: "Agent SSH",
     passphrase: "Phrase secrète (facultative)",
+    forwardAgent: "Transférer l'agent SSH",
+    forwardAgentHelp: "Permet à ce serveur d'utiliser les clés de votre agent SSH local, par exemple pour git ou pour rebondir vers une autre machine, sans les y copier. Ne l'activez que pour des serveurs de confiance : pendant la connexion, leurs administrateurs peuvent aussi utiliser vos clés. Les hôtes de rebond ne le reçoivent jamais.",
+    tmux: "Garder le shell dans tmux",
+    tmuxHelp: "Démarre le shell dans une session tmux sur le serveur (tmux new -A -s <nom>) : une reconnexion reprend là où vous en étiez, avec vos programmes toujours en cours. Sans tmux sur le serveur, le shell normal s'ouvre.",
+    tmuxSession: "Nom de la session tmux",
   },
   hostKey: {
     unknownHost: "Hôte inconnu",

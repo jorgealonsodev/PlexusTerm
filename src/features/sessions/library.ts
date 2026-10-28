@@ -1,4 +1,5 @@
 import { t } from "../../i18n/i18n";
+import { isTmuxSessionName } from "../ssh/quickConnect";
 import type { LocalTarget, SerialSettings, SerialTarget, SshTarget, TelnetTarget } from "./types";
 
 /** Saved auth never contains secrets: passwords are asked at connect time. */
@@ -20,6 +21,10 @@ export interface SavedSession {
   auth: SavedAuth;
   /** Saved SSH sessions to go through first, outermost first (S14); absent when none. */
   jumpIds?: string[];
+  /** Forwards the local SSH agent to this server; absent when off. */
+  forwardAgent?: true;
+  /** Keeps the shell in this tmux session; absent when off. */
+  tmuxSession?: string;
 }
 
 /** Most jump hosts a connection may go through. */
@@ -163,8 +168,11 @@ export function sanitizeSession(s: LibrarySession): LibrarySession {
     port: s.port,
     username: s.username,
     auth: sanitizeAuth(s.auth),
+    ...(s.jumpIds?.length ? { jumpIds: [...s.jumpIds] } : {}),
+    ...(s.forwardAgent === true ? { forwardAgent: true } : {}),
+    ...(s.tmuxSession !== undefined && isTmuxSessionName(s.tmuxSession) ? { tmuxSession: s.tmuxSession } : {}),
   };
-  return s.jumpIds?.length ? { ...ssh, jumpIds: [...s.jumpIds] } : ssh;
+  return ssh;
 }
 
 /** Drops `ids` from every chain of jump hosts (they are being deleted). */
@@ -337,7 +345,9 @@ function isLibrarySession(v: unknown): v is LibrarySession {
     isString(s.username) &&
     Number.isInteger(s.port) &&
     isSavedAuth(s.auth) &&
-    (s.jumpIds === undefined || (Array.isArray(s.jumpIds) && s.jumpIds.every(isString)))
+    (s.jumpIds === undefined || (Array.isArray(s.jumpIds) && s.jumpIds.every(isString))) &&
+    (s.forwardAgent === undefined || typeof s.forwardAgent === "boolean") &&
+    (s.tmuxSession === undefined || isString(s.tmuxSession))
   );
 }
 
@@ -422,7 +432,15 @@ export function toTarget(saved: DirectSession, password?: string): DirectTarget 
     saved.auth.method === "password"
       ? { method: "password" as const, password: password ?? "" }
       : saved.auth;
-  return { type: "ssh", host: saved.host, port: saved.port, username: saved.username, auth };
+  return {
+    type: "ssh",
+    host: saved.host,
+    port: saved.port,
+    username: saved.username,
+    auth,
+    ...(saved.forwardAgent ? { forwardAgent: true } : {}),
+    ...(saved.tmuxSession ? { tmuxSession: saved.tmuxSession } : {}),
+  };
 }
 
 /** A word for a POSIX shell: as is when it is plain, else single-quoted. */

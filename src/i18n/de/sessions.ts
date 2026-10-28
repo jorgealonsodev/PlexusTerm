@@ -67,6 +67,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "Benutzername ist erforderlich",
     portRange: "Port muss eine Zahl zwischen 1 und 65535 sein",
     keyPathRequired: "Pfad zum privaten Schlüssel ist erforderlich",
+    tmuxSessionInvalid: "Der Name der tmux-Sitzung darf nur Buchstaben, Ziffern, Punkte, Unterstriche und Bindestriche enthalten (höchstens 64)",
   },
   jumps: {
     legend: "Jump-Hosts",
@@ -138,6 +139,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "Privater Schlüssel",
     agent: "SSH-Agent",
     passphrase: "Passphrase (optional)",
+    forwardAgent: "SSH-Agent weiterleiten",
+    forwardAgentHelp: "Erlaubt diesem Server, die Schlüssel deines lokalen SSH-Agents zu nutzen, etwa für git oder um auf einen anderen Rechner zu springen, ohne sie dorthin zu kopieren. Nur für vertrauenswürdige Server einschalten: Solange du verbunden bist, können auch deren Administratoren deine Schlüssel nutzen. Jump-Hosts erhalten ihn nie.",
+    tmux: "Shell in tmux halten",
+    tmuxHelp: "Startet die Shell in einer tmux-Sitzung auf dem Server (tmux new -A -s <Name>), sodass eine Wiederverbindung dort weitermacht, wo du warst, mit weiterlaufenden Programmen. Ohne tmux auf dem Server öffnet sich die normale Shell.",
+    tmuxSession: "Name der tmux-Sitzung",
   },
   hostKey: {
     unknownHost: "Unbekannter Host",

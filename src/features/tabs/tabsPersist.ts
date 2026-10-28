@@ -7,6 +7,7 @@
  * or saved-password actions. Reading validates everything: a bad or foreign file restores nothing.
  */
 import { targetTitle, type JumpTarget, type SessionTarget, type SshAuth, type SshTarget } from "../sessions/types";
+import { isTmuxSessionName } from "../ssh/quickConnect";
 import { clampRatio, closePane, leaf, MAX_PANES, paneIds, type PaneLayout } from "../panes/paneLayout";
 import type { Tab } from "./tabs";
 
@@ -76,10 +77,19 @@ function sanitizeLogin(value: unknown): Omit<JumpTarget, "name"> | null {
   return auth && { host: value.host, port: value.port, username: value.username, auth };
 }
 
+/** The shell options of an SSH target (not secret); an invalid tmux session name is dropped. */
+function shellOptions(value: Json): Pick<SshTarget, "forwardAgent" | "tmuxSession"> {
+  return {
+    ...(value.forwardAgent === true ? { forwardAgent: true } : {}),
+    ...(isText(value.tmuxSession) && isTmuxSessionName(value.tmuxSession) ? { tmuxSession: value.tmuxSession } : {}),
+  };
+}
+
 function sanitizeSsh(value: unknown): SshTarget | null {
   if (!isObject(value) || value.type !== "ssh") return null;
-  const login = sanitizeLogin(value);
-  if (!login) return null;
+  const found = sanitizeLogin(value);
+  if (!found) return null;
+  const login = { ...found, ...shellOptions(value) };
   if (value.jumps === undefined) return { type: "ssh", ...login };
   if (!Array.isArray(value.jumps)) return null;
   const jumps: JumpTarget[] = [];

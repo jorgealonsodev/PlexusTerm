@@ -66,6 +66,7 @@ export const sessions: Messages<typeof en> = {
     usernameRequired: "ユーザー名は必須です",
     portRange: "ポートは 1 から 65535 までの数値で指定してください",
     keyPathRequired: "秘密鍵のパスは必須です",
+    tmuxSessionInvalid: "tmux セッション名に使えるのは英字、数字、ドット、アンダースコア、ハイフンだけです (64 文字まで)",
   },
   jumps: {
     legend: "ジャンプホスト",
@@ -130,6 +131,11 @@ export const sessions: Messages<typeof en> = {
     privateKey: "秘密鍵",
     agent: "SSH エージェント",
     passphrase: "パスフレーズ (省略可)",
+    forwardAgent: "SSH エージェントを転送",
+    forwardAgentHelp: "このサーバーがローカルの SSH エージェントの鍵を使えるようにします。たとえば git や別のマシンへの接続に、鍵をコピーせずに使えます。信頼できるサーバーでのみオンにしてください。接続中はそのサーバーの管理者もあなたの鍵を使えます。踏み台ホストには転送されません。",
+    tmux: "シェルを tmux で維持",
+    tmuxHelp: "サーバー上の tmux セッション (tmux new -A -s <名前>) の中でシェルを起動するので、再接続すると実行中のプログラムごと元の状態に戻ります。サーバーに tmux がなければ通常のシェルが開きます。",
+    tmuxSession: "tmux セッション名",
   },
   hostKey: {
     unknownHost: "不明なホスト",

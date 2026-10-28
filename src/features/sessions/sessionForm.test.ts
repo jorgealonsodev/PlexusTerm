@@ -13,6 +13,9 @@ const form = (overrides: Partial<SessionForm> = {}): SessionForm => ({
   password: "",
   keyPath: "",
   passphrase: "",
+  forwardAgent: false,
+  tmux: false,
+  tmuxSession: "plexus",
   kind: "ssh",
   serial: defaultSerialForm,
   telnet: { host: "", port: "" },
@@ -53,6 +56,30 @@ describe("parseSessionForm", () => {
 
   it("reports validation errors", () => {
     expect(parseSessionForm(form({ host: "" }), "x")).toEqual({ ok: false, error: "Host is required" });
+  });
+});
+
+describe("parseSessionForm (SSH options)", () => {
+  it("saves agent forwarding and the tmux session, and edits them again", () => {
+    const parsed = parseSessionForm(form({ forwardAgent: true, tmux: true, tmuxSession: "work" }), "id-1");
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.session).toMatchObject({ forwardAgent: true, tmuxSession: "work" });
+    const again = formFromSession(parsed.session);
+    expect(again).toMatchObject({ forwardAgent: true, tmux: true, tmuxSession: "work" });
+    expect(parseSessionForm(again, "id-1")).toEqual(parsed);
+  });
+
+  it("saves neither when they are off, and edits a session without them with tmux off", () => {
+    const parsed = parseSessionForm(form(), "id-1");
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.session).not.toHaveProperty("forwardAgent");
+    expect(parsed.session).not.toHaveProperty("tmuxSession");
+    expect(formFromSession(parsed.session)).toMatchObject({ forwardAgent: false, tmux: false, tmuxSession: "plexus" });
+  });
+
+  it("reports an invalid tmux session name", () => {
+    const parsed = parseSessionForm(form({ tmux: true, tmuxSession: "my session" }), "id-1");
+    expect(parsed.ok).toBe(false);
   });
 });
 

@@ -9,6 +9,9 @@ const form = (overrides: Partial<QuickConnectForm> = {}): QuickConnectForm => ({
   password: "pw",
   keyPath: "",
   passphrase: "",
+  forwardAgent: false,
+  tmux: false,
+  tmuxSession: "plexus",
   ...overrides,
 });
 
@@ -73,5 +76,29 @@ describe("parseQuickConnect", () => {
     [{ method: "key" as const, keyPath: "" }, "Private key path is required"],
   ])("rejects invalid input %o", (overrides, error) => {
     expect(parseQuickConnect(form(overrides))).toEqual({ ok: false, error });
+  });
+
+  it("adds agent forwarding and the tmux session only when they are ticked", () => {
+    const plain = parseQuickConnect(form({ tmuxSession: "work" }));
+    expect(plain.ok && plain.target).not.toHaveProperty("forwardAgent");
+    expect(plain.ok && plain.target).not.toHaveProperty("tmuxSession");
+    const both = parseQuickConnect(form({ forwardAgent: true, tmux: true, tmuxSession: " work.2_x-y " }));
+    expect(both.ok && both.target).toMatchObject({ forwardAgent: true, tmuxSession: "work.2_x-y" });
+  });
+
+  it("uses the tmux session plexus when the name is left blank", () => {
+    const result = parseQuickConnect(form({ tmux: true, tmuxSession: "  " }));
+    expect(result.ok && result.target.tmuxSession).toBe("plexus");
+  });
+
+  it.each(["a b", "x';rm", "ñ", "a".repeat(65)])("rejects the tmux session name %j", (tmuxSession) => {
+    expect(parseQuickConnect(form({ tmux: true, tmuxSession }))).toEqual({
+      ok: false,
+      error: "The tmux session name may only use letters, digits, dots, underscores and dashes (64 at most)",
+    });
+  });
+
+  it("ignores an invalid tmux session name while tmux is off", () => {
+    expect(parseQuickConnect(form({ tmux: false, tmuxSession: "a b" })).ok).toBe(true);
   });
 });

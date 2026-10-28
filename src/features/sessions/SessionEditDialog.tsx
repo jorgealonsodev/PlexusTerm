@@ -5,7 +5,7 @@ import { ShellPicker } from "../terminal/ShellPicker";
 import { usePlatform } from "../platform/usePlatform";
 import { SerialFields } from "../serial/SerialFields";
 import { TelnetFields } from "../telnet/TelnetFields";
-import { fieldSetter, SshFields } from "../ssh/SshFields";
+import { checkSetter, fieldSetter, SshFields } from "../ssh/SshFields";
 import { JumpHostsField } from "./JumpHostsField";
 import { isSshSession, type LibrarySession, type SavedSession } from "./library";
 import { secretDelete, secretExists } from "./secrets";
@@ -167,7 +167,7 @@ export function SessionEditDialog({
         )}
         {form.kind === "ssh" && (
           <>
-            <SshFields form={form} set={set} withSecrets={false} />
+            <SshFields form={form} set={set} check={checkSetter(setForm)} withSecrets={false} />
             {form.method === "password" && (
               <p className="muted">
                 {t("sessions.edit.passwordNote")}
