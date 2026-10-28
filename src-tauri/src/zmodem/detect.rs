@@ -32,6 +32,9 @@ pub enum Segment {
 pub struct Detector {
     /// The start of what may be a header, cut by the end of the last read.
     held: Vec<u8>,
+    /// How many of `held`'s first bytes were shown already: a lone `*` or `**` is ordinary text
+    /// until a ZDLE follows, so it is never delayed; it is kept only to match a header.
+    held_shown: usize,
     /// Bytes of a header's line trailer that may still follow.
     trailer: u8,
 }
@@ -48,6 +51,8 @@ impl Detector {
     /// header cut by the end of `bytes` is held back until the next call or [`Detector::release`].
     pub fn feed(&mut self, bytes: &[u8]) -> Vec<Segment> {
         let mut data = std::mem::take(&mut self.held);
+        // Bytes before `skip` reached the terminal with the last read.
+        let skip = std::mem::take(&mut self.held_shown);
         data.extend_from_slice(bytes);
         let mut segments = Vec::new();
         let mut text = Vec::new();
@@ -63,7 +68,9 @@ impl Detector {
                 self.trailer = 0;
             }
             if byte != b'*' {
-                text.push(byte);
+                if i >= skip {
+                    text.push(byte);
+                }
                 i += 1;
                 continue;
             }
@@ -77,11 +84,26 @@ impl Detector {
                     i += HEADER_LEN;
                 }
                 Match::Partial => {
-                    self.held = data[i..].to_vec();
+                    let rest = &data[i..];
+                    if rest.contains(&ZDLE) {
+                        self.held_shown = skip.saturating_sub(i);
+                    } else {
+                        // Only `*` or `**` so far: shown now, kept to match what follows.
+                        text.extend(
+                            rest.iter()
+                                .enumerate()
+                                .filter(|(n, _)| i + n >= skip)
+                                .map(|(_, b)| *b),
+                        );
+                        self.held_shown = rest.len();
+                    }
+                    self.held = rest.to_vec();
                     break;
                 }
                 Match::No => {
-                    text.push(byte);
+                    if i >= skip {
+                        text.push(byte);
+                    }
                     i += 1;
                 }
             }
@@ -92,14 +114,16 @@ impl Detector {
         segments
     }
 
-    /// Whether the start of a possible header is held back.
+    /// Whether the start of a possible header is held back (not shown yet).
     pub fn holding(&self) -> bool {
-        !self.held.is_empty()
+        self.held.len() > self.held_shown
     }
 
-    /// Gives back the held bytes as text: no header followed them in time.
+    /// Gives back the held bytes not shown yet as text: no header followed them in time.
     pub fn release(&mut self) -> Vec<u8> {
-        std::mem::take(&mut self.held)
+        let shown = std::mem::take(&mut self.held_shown);
+        let held = std::mem::take(&mut self.held);
+        held[shown.min(held.len())..].to_vec()
     }
 }
 
@@ -216,8 +240,47 @@ mod tests {
         for byte in &header {
             found.extend(d.feed(std::slice::from_ref(byte)));
         }
-        assert_eq!(found, vec![Segment::Header(Direction::Send)]);
+        // The `**` reached the terminal at once (ordinary text until the ZDLE came).
+        assert_eq!(
+            found,
+            vec![text(b"*"), text(b"*"), Segment::Header(Direction::Send)]
+        );
         assert!(!d.holding());
+    }
+
+    #[test]
+    fn a_trailing_asterisk_is_shown_at_once_never_held() {
+        let mut d = Detector::default();
+        assert_eq!(d.feed(b"ls *"), vec![text(b"ls *")]);
+        assert!(!d.holding());
+        assert_eq!(d.feed(b"[****"), vec![text(b"[****")]);
+        assert!(!d.holding());
+        // What follows is shown once, not again with the asterisks kept for matching.
+        assert_eq!(d.feed(b" done"), vec![text(b" done")]);
+        assert_eq!(d.release(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn a_header_cut_after_its_asterisks_is_still_found() {
+        let mut d = Detector::default();
+        let header = hex_header(ZRQINIT, [0; 4]);
+        assert_eq!(d.feed(&header[..2]), vec![text(b"**")]);
+        assert_eq!(
+            d.feed(&header[2..]),
+            vec![Segment::Header(Direction::Receive)]
+        );
+    }
+
+    #[test]
+    fn a_cut_header_with_its_zdle_is_held_until_it_completes() {
+        let mut d = Detector::default();
+        let header = hex_header(ZRQINIT, [0; 4]);
+        assert_eq!(d.feed(&header[..5]), vec![]);
+        assert!(d.holding());
+        assert_eq!(
+            d.feed(&header[5..]),
+            vec![Segment::Header(Direction::Receive)]
+        );
     }
 
     #[test]

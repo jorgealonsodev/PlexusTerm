@@ -178,6 +178,14 @@ fn receive_through(h: &Harness, remote: &mut RemoteSz, dir: &std::path::Path, ch
 }
 
 #[test]
+fn a_typed_asterisk_is_echoed_at_once() {
+    // `ls *` must not wait for a header that never comes.
+    let h = Harness::new(true);
+    assert_eq!(h.feed(b"*"), "*");
+    assert_eq!(h.feed(b"[****"), "[****");
+}
+
+#[test]
 fn a_full_receive_writes_the_exact_file_and_hands_the_terminal_back() {
     let h = Harness::new(true);
     let dir = tempfile::tempdir().unwrap();

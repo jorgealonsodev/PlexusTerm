@@ -43,6 +43,14 @@ describe("session export", () => {
     expect(byName["app (mosh)"]).toMatchObject({ sshSessionId: "new-2" });
   });
 
+  it("never turns agent forwarding on from a file: an export may come from someone else", () => {
+    const plan = planLibraryImport(emptyLibrary, exportLibrary(library), counter());
+    const app = plan.toAdd.find((s) => s.name === "app")!;
+    expect("forwardAgent" in app).toBe(false);
+    // Everything else of the session is kept, tmux included.
+    expect(app).toMatchObject({ tmuxSession: "app", jumpIds: ["new-1"] });
+  });
+
   it("adds nothing when the same export is imported again, and links to the sessions already saved", () => {
     const first = planLibraryImport(emptyLibrary, exportLibrary(library), counter());
     const saved: SessionLibrary = { version: 1, folders: [], sessions: first.toAdd };

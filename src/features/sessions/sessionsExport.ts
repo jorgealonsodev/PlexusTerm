@@ -46,7 +46,11 @@ const identities = (sessions: LibrarySession[]) => {
 export function planLibraryImport(library: SessionLibrary, json: string, newId: () => string): ImportPlan {
   const parsed = parseLibrary(json);
   if (!parsed.ok) throw new Error(parsed.error);
-  const placed = parsed.library.sessions.map((s) => ({ ...s, folder: normalizeFolder(`${IMPORT_ROOT}/${s.folder}`) }));
+  // A file may come from someone else: it never turns agent forwarding on; the user ticks it here.
+  const placed = parsed.library.sessions.map((s) => {
+    const { forwardAgent: _agent, ...rest } = s as LibrarySession & { forwardAgent?: boolean };
+    return { ...rest, folder: normalizeFolder(`${IMPORT_ROOT}/${s.folder}`) } as LibrarySession;
+  });
 
   const savedIdentity = identities(library.sessions);
   const seen = new Map(library.sessions.map((s) => [savedIdentity(s), s.id]));
