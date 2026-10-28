@@ -17,6 +17,19 @@ export function reconnectDelay(attempt: number): number | null {
   return DELAYS_S[Math.min(attempt, DELAYS_S.length) - 1];
 }
 
+/** A connection that stayed up this long dropped for a new reason: its attempts start over. */
+export const RECONNECT_STABLE_MS = 30_000;
+
+/**
+ * The attempt to wait for after a drop: the first when the connection had been up for
+ * RECONNECT_STABLE_MS, else the one after `lastAttempt`, the attempt that brought it back (0 when it
+ * was the pane's own connection). A host that accepts and drops again at once runs out of attempts
+ * like one that never answers.
+ */
+export function attemptAfterDrop(lastAttempt: number, upForMs: number): number {
+  return upForMs >= RECONNECT_STABLE_MS ? 1 : lastAttempt + 1;
+}
+
 /**
  * Whether a failed reconnection attempt is tried again: only the network failing again, on the
  * host or on a jump host. A rejected login, a missing password or a host key to trust needs the

@@ -325,7 +325,15 @@ pub(crate) struct ConnectContext<'a> {
     pub secrets: &'a SharedSecrets,
     /// Bound on the keyring update after the login (see [`STORAGE_TIMEOUT`]).
     pub storage_timeout: Duration,
+    /// How often every hop sends a keepalive ([`KEEPALIVE`], or [`TERMINAL_KEEPALIVE`]).
+    pub keepalive_interval: Duration,
 }
+
+/// Keepalive of SFTP, tunnels, Mosh's start and the other connections that do not reconnect.
+pub(crate) const KEEPALIVE: Duration = Duration::from_secs(30);
+/// Keepalive of terminal tabs, which reconnect by themselves: a dead link is noticed in about
+/// 45 s (3 unanswered) instead of 90 s.
+pub(crate) const TERMINAL_KEEPALIVE: Duration = Duration::from_secs(15);
 
 /// `user@host:port` a saved password belongs to, normalized the same way when
 /// it is saved and when it is used.
@@ -478,8 +486,9 @@ async fn connect_hop(
         agent_socket,
         secrets,
         storage_timeout,
+        keepalive_interval,
     } = ctx;
-    let mut handle = open_hop(&hop, via, known_hosts, forwarded.clone()).await?;
+    let mut handle = open_hop(&hop, via, known_hosts, keepalive_interval, forwarded.clone()).await?;
     let endpoint = endpoint(&hop.username, &hop.host, hop.port);
 
     if matches!(
@@ -496,7 +505,7 @@ async fn connect_hop(
             }
             KeysOutcome::Rejected => {}
             KeysOutcome::Disconnected => {
-                handle = open_hop(&hop, via, known_hosts, forwarded).await?;
+                handle = open_hop(&hop, via, known_hosts, keepalive_interval, forwarded).await?;
             }
         }
     }
@@ -527,11 +536,11 @@ async fn connect_hop(
 
 /// Opens the SSH connection to `hop` (over a `direct-tcpip` channel of `via` when given)
 /// and applies the known_hosts policy, without authenticating.
-/// Every hop's client settings. A keepalive every 15 s, given up after 3 unanswered, notices
-/// a dead link (network gone, laptop resumed) within about a minute, so the pane can reconnect.
-fn client_config() -> client::Config {
+/// A hop's client settings: a keepalive every `keepalive_interval`, the link given up after 3
+/// unanswered (network gone, laptop resumed).
+fn client_config(keepalive_interval: Duration) -> client::Config {
     client::Config {
-        keepalive_interval: Some(Duration::from_secs(15)),
+        keepalive_interval: Some(keepalive_interval),
         keepalive_max: 3,
         ..Default::default()
     }
@@ -541,6 +550,7 @@ async fn open_hop(
     hop: &Hop,
     via: Option<&Connection>,
     known_hosts: &Path,
+    keepalive_interval: Duration,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
 ) -> Result<Connection, SshError> {
     let rejection = Arc::new(Mutex::new(None));
@@ -552,7 +562,7 @@ async fn open_hop(
         rejection: rejection.clone(),
         forwarded,
     };
-    let config = Arc::new(client_config());
+    let config = Arc::new(client_config(keepalive_interval));
     let label = host_label(&hop.host, hop.port);
 
     let connecting = async {
@@ -866,6 +876,15 @@ impl SshManager {
             agent_socket: self.agent_socket.as_deref(),
             secrets: &self.secrets,
             storage_timeout: self.storage_timeout,
+            keepalive_interval: KEEPALIVE,
+        }
+    }
+
+    /// The context of a terminal tab's connection: it notices a dead link sooner, to reconnect.
+    fn terminal_context(&self) -> ConnectContext<'_> {
+        ConnectContext {
+            keepalive_interval: TERMINAL_KEEPALIVE,
+            ..self.context()
         }
     }
 
@@ -914,7 +933,7 @@ impl SshManager {
             auth: req.auth,
             jumps: req.jumps,
         };
-        let ctx = self.context();
+        let ctx = self.terminal_context();
         let Chain {
             connection: handle,
             jumps,
@@ -1622,9 +1641,18 @@ mod tests {
 
     #[test]
     fn a_dead_link_is_given_up_after_three_missed_keepalives_15_seconds_apart() {
-        let config = client_config();
+        let config = client_config(TERMINAL_KEEPALIVE);
         assert_eq!(config.keepalive_interval, Some(Duration::from_secs(15)));
         assert_eq!(config.keepalive_max, 3);
+    }
+
+    #[test]
+    fn only_terminal_tabs_send_keepalives_every_15_seconds() {
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(dir.path().join("known_hosts"));
+        assert_eq!(mgr.terminal_context().keepalive_interval, Duration::from_secs(15));
+        // SFTP, tunnels, Mosh's start and key installs keep the 30 s they had.
+        assert_eq!(mgr.context().keepalive_interval, Duration::from_secs(30));
     }
 
     #[tokio::test]

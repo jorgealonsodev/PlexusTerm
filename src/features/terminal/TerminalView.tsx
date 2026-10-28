@@ -40,7 +40,7 @@ import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
 import { backendFor, setTerminalFlow, type StartOptions } from "./backend";
 import { createOutputFlow } from "./flowControl";
-import { MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
+import { attemptAfterDrop, MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
 import { runningShellOf } from "./localShell";
 import { useShells } from "../platform/useShells";
 import { clearLineKeys } from "./clearLine";
@@ -517,6 +517,9 @@ export function TerminalView({
      * once the attempts stopped (Ctrl+C, used up) and Enter starts them again.
      */
     let reconnectAttempt = 0;
+    /** The attempt that brought the session back (0: the pane's own connection), and since when. */
+    let lastAttempt = 0;
+    let connectedAt = 0;
     let reconnectWait: (() => void) | null = null;
     let reconnectOnEnter = false;
     /** Bumped by every start: what an abandoned start answers later is dropped. */
@@ -625,6 +628,8 @@ export function TerminalView({
       };
       function tryNow() {
         stop();
+        // Turned off in Settings while waiting: no more attempts; Enter still reconnects.
+        if (!settingsRef.current.sshAutoReconnect) return stopReconnecting();
         start();
       }
       window.addEventListener("online", tryNow);
@@ -639,7 +644,7 @@ export function TerminalView({
       sessionId = null;
       callbacks.current.onSession?.(null);
       term.write(`\r\n[${t("terminal.view.connectionLost")}]\r\n`);
-      waitToReconnect(1);
+      waitToReconnect(attemptAfterDrop(lastAttempt, Date.now() - connectedAt));
     };
 
     const start = (trustedFingerprint?: string) => {
@@ -750,6 +755,8 @@ export function TerminalView({
           if (disposed || ended || seq !== startSeq) void backend.close(id).catch(() => {});
           else {
             reconnectAttempt = 0;
+            lastAttempt = attempt;
+            connectedAt = Date.now();
             sessionId = id;
             callbacks.current.onSession?.(id);
           }

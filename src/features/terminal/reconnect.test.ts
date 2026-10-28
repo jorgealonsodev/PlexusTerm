@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
+import { attemptAfterDrop, MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
 
 describe("reconnectDelay", () => {
   it("backs off 1, 2, 5, 10 and 30 s, then waits 30 s, for at most 10 attempts", () => {
@@ -23,5 +23,14 @@ describe("retriesAfter", () => {
     expect(retriesAfter({ kind: "unknownHost", host: "h", fingerprint: "f", otherKnownKeys: [] })).toBe(false);
     expect(retriesAfter({ kind: "hostKeyChanged", host: "h", fingerprint: "f", line: 3 })).toBe(false);
     expect(retriesAfter({ kind: "hop", hop: 1, name: "bastion", error: { kind: "authFailed" } })).toBe(false);
+  });
+});
+
+describe("attemptAfterDrop", () => {
+  it("starts over after a connection that stayed up 30 s, else keeps counting", () => {
+    expect(attemptAfterDrop(0, 0)).toBe(1);
+    expect(attemptAfterDrop(3, 29_999)).toBe(4);
+    expect(attemptAfterDrop(3, 30_000)).toBe(1);
+    expect(attemptAfterDrop(MAX_RECONNECT_ATTEMPTS, 1_000)).toBe(MAX_RECONNECT_ATTEMPTS + 1);
   });
 });

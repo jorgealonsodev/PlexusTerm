@@ -1507,6 +1507,8 @@ describe("TerminalView", () => {
       return view;
     }
     const lose = (i = starts.length - 1) => act(async () => starts[i].emit({ event: "lost" }));
+    /** What the pane wrote since the connection last dropped. */
+    const sinceLastDrop = () => text().slice(text().lastIndexOf("[Connection lost]"));
     const reject = (err: unknown, i = starts.length - 1) => act(async () => starts[i].reject(err));
 
     it("keeps the pane after a drop, says when it retries, and reconnects with the same login", async () => {
@@ -1582,6 +1584,55 @@ describe("TerminalView", () => {
       expect(starts).toHaveLength(4);
       await advance(1);
       expect(starts).toHaveLength(5);
+    });
+
+    it("a connection that drops again soon after reconnecting keeps counting its attempts", async () => {
+      await connected();
+      await lose();
+      await advance(1000);
+      await act(async () => starts[1].resolve(8));
+      // Dropped again within 30 s: the next wait is the second one, not a new first.
+      await advance(5_000);
+      await lose();
+      expect(sinceLastDrop()).toContain("attempt 2 of 10 in 2 s");
+      // A host that keeps accepting and dropping gives up like one that never answers.
+      for (let attempt = 2; attempt <= 10; attempt++) {
+        await advance(30_000);
+        await act(async () => starts[starts.length - 1].resolve(10 + attempt));
+        await lose();
+      }
+      expect(text()).toContain("[Could not reconnect after 10 attempts. Press Enter to try again.]");
+      const before = starts.length;
+      await advance(600_000);
+      expect(starts).toHaveLength(before);
+    });
+
+    it("a connection that stayed up for 30 s starts its attempts from the first again", async () => {
+      await connected();
+      await lose();
+      await advance(1000);
+      await act(async () => starts[1].resolve(8));
+      await advance(30_000);
+      await lose();
+      expect(sinceLastDrop()).toContain("attempt 1 of 10 in 1 s");
+    });
+
+    it("turning the option off while waiting stops the attempts, and Enter still reconnects", async () => {
+      const onExit = vi.fn();
+      const props = { target: agent, active: true, onTitle: () => {}, onExit };
+      const { rerender } = render(<TerminalView {...props} settings={{ ...DEFAULT_SETTINGS, sshAutoReconnect: true }} />);
+      await advance(FONT_WAIT_MS + 10);
+      await act(async () => starts[0].resolve(7));
+      await lose();
+      rerender(<TerminalView {...props} settings={{ ...DEFAULT_SETTINGS, sshAutoReconnect: false }} />);
+      await advance(1000);
+      expect(starts).toHaveLength(1);
+      expect(text()).toContain("[Reconnection cancelled. Press Enter to reconnect.]");
+      act(() => void window.dispatchEvent(new Event("online")));
+      expect(starts).toHaveLength(1);
+      act(() => lastTerm().type("\r"));
+      expect(starts).toHaveLength(2);
+      expect(onExit).not.toHaveBeenCalled();
     });
 
     it("Ctrl+C stops reconnecting, and Enter then starts again", async () => {

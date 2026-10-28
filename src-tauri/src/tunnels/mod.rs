@@ -354,6 +354,7 @@ impl TunnelManager {
                 agent_socket: self.agent_socket.as_deref(),
                 secrets: &self.secrets,
                 storage_timeout: self.storage_timeout,
+                keepalive_interval: crate::ssh::KEEPALIVE,
             },
             forwarded_tx,
         )
