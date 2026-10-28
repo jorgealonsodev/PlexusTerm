@@ -1630,6 +1630,19 @@ body.is-moving-tab {
   border-color: var(--accent);
 }
 
+/* The presets menu under a password or passphrase command (SshFields). */
+.command-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-end;
+  color: var(--muted);
+}
+
+.command-presets select {
+  width: auto;
+}
+
 .form-row .field--grow {
   min-width: 0;
 }

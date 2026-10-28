@@ -137,8 +137,9 @@ interface CommandFieldProps {
 function CommandField({ label, help, value, onChange }: CommandFieldProps) {
   const t = useT();
   return (
-    <div className="form-row">
-      <label className="field field--grow">
+    // The command takes the whole width (it is long); the presets sit under it, small.
+    <div className="field">
+      <label className="field">
         <span className="setting-title">
           {label} <HelpTip text={help} />
         </span>
@@ -152,7 +153,7 @@ function CommandField({ label, help, value, onChange }: CommandFieldProps) {
           placeholder={PASSWORD_COMMAND_PRESETS[0].command}
         />
       </label>
-      <label className="field">
+      <label className="command-presets">
         {t("sessions.passwordCommand.presets")}
         <select
           value=""
