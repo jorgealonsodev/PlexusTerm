@@ -306,6 +306,45 @@ describe("file viewer panes", () => {
   });
 });
 
+describe("recording player (S6)", () => {
+  const tab = (state: TabsState) => state.tabs[0];
+  const local = { kind: "local" } as const;
+  const play = (state: TabsState, path: string) => tabsReducer(state, { type: "openPlayer", key: tab(state).key, path });
+  const view = (state: TabsState, path: string) =>
+    tabsReducer(state, { type: "openViewer", key: tab(state).key, path, origin: local });
+
+  it("opens a recording at the right of the focused terminal, in a pane linked to it", () => {
+    const state = play(open(initialTabs), "/rec/a.cast");
+    expect(tab(state).layout).toMatchObject({ kind: "split", direction: "row", a: { id: "pane-1" }, b: { id: "pane-2" } });
+    expect(tab(state).viewers).toEqual({
+      "pane-2": { terminalPaneId: "pane-1", path: "/rec/a.cast", origin: local, opened: 1, kind: "recording" },
+    });
+    expect(tab(state).focusedPane).toBe("pane-2");
+    expect(isTerminalPane(tab(state), "pane-2")).toBe(false);
+    expect(terminalPaneOf(tab(state))).toBe("pane-1");
+  });
+
+  it("plays another recording in the same player, and keeps the file viewer apart", () => {
+    let state = view(open(initialTabs), "/p/a.ts"); // pane-2, at the left
+    state = play(state, "/rec/a.cast"); // pane-3: the viewer is focused, the player goes with its terminal
+    expect(tab(state).viewers!["pane-3"]).toMatchObject({ terminalPaneId: "pane-1", kind: "recording" });
+    state = play(state, "/rec/b.cast");
+    expect(paneIds(tab(state).layout)).toEqual(["pane-2", "pane-1", "pane-3"]);
+    expect(tab(state).viewers!["pane-3"]).toMatchObject({ path: "/rec/b.cast", opened: 2 });
+    // Viewing a file still uses the file viewer, not the player.
+    state = view(state, "/p/b.ts");
+    expect(tab(state).viewers!["pane-2"]).toMatchObject({ path: "/p/b.ts" });
+    expect(tab(state).viewers!["pane-3"]).toMatchObject({ path: "/rec/b.cast" });
+  });
+
+  it("closes with its terminal", () => {
+    const state = play(open(initialTabs), "/rec/a.cast");
+    const closed = tabsReducer(state, { type: "closePane", key: "tab-1", paneId: "pane-2" });
+    expect(tab(closed).focusedPane).toBe("pane-1");
+    expect(tab(closed).viewers).toEqual({});
+  });
+});
+
 describe("tab colours", () => {
   it("colours a tab, clears it, and gives a duplicate the same colour", () => {
     let state = open(initialTabs);

@@ -3310,6 +3310,37 @@ body.is-dragging-path {
   color: var(--text);
 }
 
+/* The recording player (S6): the recorded terminal at its own size, scrolled when the pane is smaller. */
+.cast-player__screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 6px 6px 12px;
+}
+
+.cast-player__host {
+  display: inline-block;
+}
+
+.cast-player__controls {
+  gap: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.cast-player__progress {
+  flex: 1 1 auto;
+  min-width: 60px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.cast-player__time {
+  flex: none;
+  color: var(--muted);
+  font-size: calc(11px * var(--ui-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+
 /* A Markdown file rendered, readable like GitHub's: a measured column, headings, code and tables. */
 .viewer__markdown {
   flex: 1 1 auto;

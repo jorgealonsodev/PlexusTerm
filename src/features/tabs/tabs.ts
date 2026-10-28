@@ -31,6 +31,8 @@ export interface ViewerLink {
   origin: PathOrigin;
   /** Counts the files viewed in it, so viewing one again reads it again. */
   opened: number;
+  /** "recording": an asciicast player (S6), read-only, kept apart from the file viewer. */
+  kind?: "recording";
 }
 
 export interface Tab {
@@ -48,7 +50,7 @@ export interface Tab {
   focusedPane: string;
   /** AI chat panes by pane id; at most one per terminal pane. */
   chats: Record<string, ChatLink>;
-  /** File viewer panes by pane id; at most one per terminal pane. */
+  /** File viewer panes (and recording players) by pane id; at most one of each per terminal pane. */
   viewers?: Record<string, ViewerLink>;
   /** The colour the user gave the tab (#rrggbb), to tell tabs apart. */
   color?: string;
@@ -115,6 +117,8 @@ export type TabsAction =
   /** Shows a file in the viewer of the focused terminal, opening one at its left if it has none. */
   /** `position` places a new viewer next to its terminal; "left" when omitted. */
   | { type: "openViewer"; key: string; path: string; origin: PathOrigin; position?: ViewerPosition }
+  /** Plays a recording (a local `.cast` file) in the player of the focused terminal, opening one at its right if it has none. */
+  | { type: "openPlayer"; key: string; path: string; position?: ViewerPosition }
   | { type: "closePane"; key: string; paneId: string }
   | { type: "focusPane"; key: string; paneId: string }
   | { type: "focusDirection"; key: string; direction: FocusDirection }
@@ -137,6 +141,44 @@ function updateTab(state: TabsState, key: string, fn: (tab: Tab) => Tab): TabsSt
   if (!tab) return state;
   const next = fn(tab);
   return next === tab ? state : { ...state, tabs: state.tabs.map((t) => (t === tab ? next : t)) };
+}
+
+/**
+ * Shows `file` in the focused terminal's viewer of the same kind (file viewer or recording
+ * player), opening one at `position` of the terminal if it has none.
+ */
+function openLinked(
+  state: TabsState,
+  key: string,
+  file: Pick<ViewerLink, "path" | "origin" | "kind">,
+  position: ViewerPosition,
+): TabsState {
+  const tab = state.tabs.find((t) => t.key === key);
+  if (!tab) return state;
+  const terminalPaneId = terminalPaneOf(tab);
+  const viewers = tab.viewers ?? {};
+  const existing = Object.keys(viewers).find(
+    (id) => viewers[id].terminalPaneId === terminalPaneId && viewers[id].kind === file.kind,
+  );
+  const opened = (existing ? viewers[existing].opened : 0) + 1;
+  const link: ViewerLink = { terminalPaneId, path: file.path, origin: file.origin, opened };
+  if (file.kind) link.kind = file.kind;
+  if (existing) {
+    return updateTab(state, tab.key, (t) => ({ ...t, focusedPane: existing, viewers: { ...viewers, [existing]: link } }));
+  }
+  const pane = `pane-${state.nextPaneSeq}`;
+  const layout = splitPane(
+    tab.layout,
+    terminalPaneId,
+    position === "below" ? "column" : "row",
+    pane,
+    position === "left" ? "before" : "after",
+  );
+  if (layout === tab.layout) return state;
+  return {
+    ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, viewers: { ...viewers, [pane]: link } })),
+    nextPaneSeq: state.nextPaneSeq + 1,
+  };
 }
 
 /** What the tab bar shows: the given title, or the target's title in the current language. */
@@ -254,32 +296,10 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         nextPaneSeq: state.nextPaneSeq + 1,
       };
     }
-    case "openViewer": {
-      const tab = state.tabs.find((t) => t.key === action.key);
-      if (!tab) return state;
-      const terminalPaneId = terminalPaneOf(tab);
-      const viewers = tab.viewers ?? {};
-      const existing = Object.keys(viewers).find((id) => viewers[id].terminalPaneId === terminalPaneId);
-      const opened = (existing ? viewers[existing].opened : 0) + 1;
-      const link: ViewerLink = { terminalPaneId, path: action.path, origin: action.origin, opened };
-      if (existing) {
-        return updateTab(state, tab.key, (t) => ({ ...t, focusedPane: existing, viewers: { ...viewers, [existing]: link } }));
-      }
-      const pane = `pane-${state.nextPaneSeq}`;
-      const position = action.position ?? "left";
-      const layout = splitPane(
-        tab.layout,
-        terminalPaneId,
-        position === "below" ? "column" : "row",
-        pane,
-        position === "left" ? "before" : "after",
-      );
-      if (layout === tab.layout) return state;
-      return {
-        ...updateTab(state, tab.key, (t) => ({ ...t, layout, focusedPane: pane, viewers: { ...viewers, [pane]: link } })),
-        nextPaneSeq: state.nextPaneSeq + 1,
-      };
-    }
+    case "openViewer":
+      return openLinked(state, action.key, { path: action.path, origin: action.origin }, action.position ?? "left");
+    case "openPlayer":
+      return openLinked(state, action.key, { path: action.path, origin: { kind: "local" }, kind: "recording" }, action.position ?? "right");
     case "closePane": {
       const tab = state.tabs.find((t) => t.key === action.key);
       if (!tab) return state;
