@@ -1793,6 +1793,8 @@ export function TerminalView({
       );
     }
     return null;
+  };
+
   const stopRecording = () => {
     void recordRef.current?.stop();
     recordRef.current = null;

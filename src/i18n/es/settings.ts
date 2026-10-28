@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "Sugerencias de comandos",
     provider: "Proveedor de IA",
     chat: "Chat",
+    dropDown: "Ventana desplegable",
   },
   sections: {
     general: "General",
@@ -365,6 +366,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "Restaurar las pestañas al iniciar",
     restoreTabsHelp: "Vuelve a abrir las pestañas, los paneles divididos y el modo DEV de la última vez: las sesiones guardadas se reconectan con su configuración actual y los terminales locales se abren en su última carpeta. Nunca se guardan contraseñas ni la salida del terminal. Al abrir PlexusTerm con una carpeta o un espacio de trabajo, solo se abre eso.",
+    dropDownShortcut: "Atajo de la ventana desplegable",
+    dropDownShortcutHelp: "Una combinación de teclas que funciona en cualquier aplicación: baja PlexusTerm desde arriba de la pantalla donde está el puntero, a todo lo ancho, y lo oculta al pulsarla de nuevo. Déjalo vacío para que la ventana siga como está. No funciona en una sesión Wayland, y otra aplicación puede estar usando ya la combinación.",
+    dropDownHeight: "Altura de la ventana desplegable (% de la pantalla)",
+    dropDownHeightHelp: "Qué parte de la altura de la pantalla ocupa la ventana desplegable, del 20 al 100 %.",
+    dropDownWayland: "Los atajos globales no están disponibles en una sesión Wayland: el escritorio no deja que las aplicaciones escuchen teclas fuera de sus ventanas.",
+    dropDownFailed: "No se pudo activar el atajo: {error}",
+    dropDownClear: "Quitar el atajo de la ventana desplegable",
   },
   about: {
     licenses: "Licencias de código abierto",

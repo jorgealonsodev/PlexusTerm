@@ -55,6 +55,7 @@ import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepFontSize } from "
 import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
+import { useDropDown } from "./features/settings/useDropDown";
 import { useDiagnosticLog } from "./features/diagnostics/useDiagnosticLog";
 import { chainTarget, collectLogins } from "./features/sessions/jumpHosts";
 import {
@@ -286,6 +287,12 @@ function AppContent() {
     terminalSettings.settings.diagnosticLog,
     terminalSettings.settings.diagnosticLogDir,
     terminalSettings.settings.gpuAcceleration,
+  );
+  // The system-wide shortcut that brings the window down from the top of the screen (S5).
+  const dropDownError = useDropDown(
+    terminalSettings.settings.dropDownShortcut,
+    terminalSettings.settings.dropDownHeight,
+    terminalSettings.loaded,
   );
   // Start with one local terminal open, once the settings say which shell it runs.
   const started = useRef(false);
@@ -2540,6 +2547,7 @@ function AppContent() {
           syncStatus={sessionSync}
           settingsSyncStatus={settingsSync}
           macros={macros.list.macros}
+          dropDownError={dropDownError}
         />
       )}
       {modal?.kind === "share" && (

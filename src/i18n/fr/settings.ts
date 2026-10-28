@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "Suggestions de commandes",
     provider: "Fournisseur d’IA",
     chat: "Chat",
+    dropDown: "Fenêtre déroulante",
   },
   sections: {
     general: "Général",
@@ -365,6 +366,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "Restaurer les onglets au démarrage",
     restoreTabsHelp: "Rouvre les onglets, les volets divisés et le mode DEV de la dernière exécution : les sessions enregistrées se reconnectent avec leurs réglages actuels et les terminaux locaux s'ouvrent dans leur dernier dossier. Les mots de passe et la sortie du terminal ne sont jamais enregistrés. Ouvrir PlexusTerm avec un dossier ou un espace de travail n'ouvre que celui-ci.",
+    dropDownShortcut: "Raccourci de la fenêtre déroulante",
+    dropDownShortcutHelp: "Une combinaison de touches qui fonctionne dans toutes les applications : elle fait descendre PlexusTerm du haut de l'écran sous le pointeur, sur toute la largeur, et le masque quand vous l'appuyez de nouveau. Laissez vide pour garder la fenêtre telle quelle. Ne fonctionne pas dans une session Wayland, et une autre application peut déjà utiliser la combinaison.",
+    dropDownHeight: "Hauteur de la fenêtre déroulante (% de l'écran)",
+    dropDownHeightHelp: "La part de la hauteur de l'écran occupée par la fenêtre déroulante, de 20 à 100 %.",
+    dropDownWayland: "Les raccourcis globaux ne sont pas disponibles dans une session Wayland : le bureau ne laisse pas les applications écouter les touches hors de leurs fenêtres.",
+    dropDownFailed: "Impossible de définir le raccourci : {error}",
+    dropDownClear: "Supprimer le raccourci de la fenêtre déroulante",
   },
   about: {
     licenses: "Licences open source",

@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "Sugestões de comandos",
     provider: "Provedor de IA",
     chat: "Chat",
+    dropDown: "Janela suspensa",
   },
   sections: {
     general: "Geral",
@@ -365,6 +366,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "Restaurar as abas ao iniciar",
     restoreTabsHelp: "Reabre as abas, os painéis divididos e o modo DEV da última execução: as sessões salvas se reconectam com as configurações atuais e os terminais locais abrem na última pasta. Senhas e a saída do terminal nunca são salvas. Ao abrir o PlexusTerm com uma pasta ou um espaço de trabalho, apenas ele é aberto.",
+    dropDownShortcut: "Atalho da janela suspensa",
+    dropDownShortcutHelp: "Uma combinação de teclas que funciona em qualquer aplicativo: faz o PlexusTerm descer do topo da tela sob o ponteiro, na largura toda, e o oculta quando você a pressiona de novo. Deixe vazio para manter a janela como está. Não funciona em uma sessão Wayland, e outro aplicativo pode já usar a combinação.",
+    dropDownHeight: "Altura da janela suspensa (% da tela)",
+    dropDownHeightHelp: "Quanto da altura da tela a janela suspensa ocupa, de 20 a 100 %.",
+    dropDownWayland: "Atalhos globais não estão disponíveis em uma sessão Wayland: o desktop não deixa os aplicativos ouvirem teclas fora de suas janelas.",
+    dropDownFailed: "Não foi possível definir o atalho: {error}",
+    dropDownClear: "Remover o atalho da janela suspensa",
   },
   about: {
     licenses: "Licenças de código aberto",

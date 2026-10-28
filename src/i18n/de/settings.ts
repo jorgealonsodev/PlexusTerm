@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "Befehlsvorschläge",
     provider: "KI-Anbieter",
     chat: "Chat",
+    dropDown: "Ausklappfenster",
   },
   sections: {
     general: "Allgemein",
@@ -365,6 +366,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "Tabs beim Start wiederherstellen",
     restoreTabsHelp: "Öffnet die Tabs, geteilten Bereiche und den DEV-Modus der letzten Sitzung erneut: Gespeicherte Sitzungen verbinden sich mit ihren aktuellen Einstellungen, lokale Terminals öffnen sich in ihrem letzten Ordner. Passwörter und Terminalausgaben werden nie gespeichert. Wird PlexusTerm mit einem Ordner oder Arbeitsbereich geöffnet, wird nur dieser geöffnet.",
+    dropDownShortcut: "Tastenkürzel für das Ausklappfenster",
+    dropDownShortcutHelp: "Eine Tastenkombination, die in jeder Anwendung funktioniert: Sie lässt PlexusTerm auf dem Bildschirm unter dem Mauszeiger von oben in voller Breite herunterfahren und blendet es beim erneuten Drücken aus. Leer lassen, damit das Fenster bleibt, wie es ist. Funktioniert nicht in einer Wayland-Sitzung, und eine andere Anwendung kann die Kombination bereits verwenden.",
+    dropDownHeight: "Höhe des Ausklappfensters (% des Bildschirms)",
+    dropDownHeightHelp: "Wie viel der Bildschirmhöhe das Ausklappfenster einnimmt, von 20 bis 100 %.",
+    dropDownWayland: "Globale Tastenkürzel sind in einer Wayland-Sitzung nicht verfügbar: Der Desktop lässt Anwendungen keine Tasten außerhalb ihrer Fenster abhören.",
+    dropDownFailed: "Das Tastenkürzel konnte nicht gesetzt werden: {error}",
+    dropDownClear: "Tastenkürzel des Ausklappfensters entfernen",
   },
   about: {
     licenses: "Open-Source-Lizenzen",

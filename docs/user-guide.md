@@ -12,6 +12,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [File explorer](#file-explorer) | Local files of the active local tab, VS Code-style lists and workspaces in DEV mode, viewing files, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
+| [Drop-down window](#drop-down-window) | A global shortcut that brings the window down from the top of the screen and hides it |
 | [Sharing a tab](#sharing-a-tab) | A link to watch and type into a tab from another computer or a phone, through your own relay |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
 | [Terminal settings](#terminal-settings) | Colour schemes, font, tab and window colours, AI command-line tools and DEV mode, copy and paste, find, copy mode and quick select, saving and logging output |
@@ -324,6 +325,16 @@ With **Settings → General → Restore tabs at startup** on (the default), Plex
 Not restored: what the terminals showed (scrollback and output), AI chat and file viewer panes, shared tabs opened from a link, and the tab titles set by the shell. Opening PlexusTerm with a folder or a VS Code workspace file (a file manager's action) opens only that, as before, and that window's tabs are not saved, so the next usual start still brings back the earlier ones; when nothing can be restored, the usual local terminal opens.
 
 The tabs are saved to `tabs.json` in the app config directory (atomic, mode `0600`) a moment after they change and when the window closes. Only what reopens a tab is written: the saved session's id, or the host, port, user and kind of login (no passwords, key passphrases or typed logins), and each local pane's folder. Turning the setting off stops saving and restoring.
+
+## Drop-down window
+
+**Settings → General → Drop-down shortcut** gives PlexusTerm a key combination that works in every application, like Guake, Yakuake or Windows Terminal's quake mode. It is empty (off) by default.
+
+- **Setting it:** click the field and press the combination; it needs Ctrl, Alt or Meta with a key, and a combination PlexusTerm already uses (an action of the Shortcuts section, a fixed key or the AI assistant) is refused, naming who uses it. **Clear** turns the drop-down off.
+- **Using it:** pressing it brings the window down from the top of the screen the pointer is on, at the full width of that screen and **Drop-down height** percent of its height (20 to 100 %, 50 by default), shows it and gives it the focus, even while PlexusTerm is behind other windows or minimized. Pressing it again while PlexusTerm is in front hides the window; the next press brings it back.
+- **Normal window:** while the shortcut is empty nothing moves or resizes the window; it opens and stays where you put it. Only pressing the shortcut places it.
+- **Conflicts:** another application (or the desktop) may already use the combination. PlexusTerm then says under the field that it could not set it, with the system's reason; choose another one.
+- **Wayland:** in a Wayland session the desktop does not let applications listen to keys outside their windows, so the shortcut cannot be set and Settings says so. Use an X11 session, or bind a desktop shortcut of your own to bring PlexusTerm forward.
 
 ## Sharing a tab
 

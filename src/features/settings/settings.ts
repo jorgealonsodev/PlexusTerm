@@ -201,6 +201,10 @@ export interface TerminalSettings {
   focusBorderStrength: number;
   /** Height of the bar under each terminal and viewer, in px (PANE_FOOTER_HEIGHTS bounds); its text grows with it. */
   paneFooterHeight: number;
+  /** System-wide shortcut that brings the window down from the top of the screen and hides it; "" is off. */
+  dropDownShortcut: string;
+  /** Height of the drop-down window, in percent of the screen's (DROP_DOWN_HEIGHT bounds). */
+  dropDownHeight: number;
 }
 
 export const MIN_FOCUS_BORDER_STRENGTH = 10;
@@ -213,6 +217,13 @@ export const MAX_PANE_FOOTER_HEIGHT = 48;
 export const BASE_PANE_FOOTER_HEIGHT = 22;
 export const clampPaneFooterHeight = (value: number) =>
   Math.min(MAX_PANE_FOOTER_HEIGHT, Math.max(MIN_PANE_FOOTER_HEIGHT, Math.round(value)));
+export const MIN_DROP_DOWN_HEIGHT = 20;
+export const MAX_DROP_DOWN_HEIGHT = 100;
+export const clampDropDownHeight = (value: number) =>
+  Math.min(MAX_DROP_DOWN_HEIGHT, Math.max(MIN_DROP_DOWN_HEIGHT, Math.round(value)));
+/** A valid shortcut that is not one of PlexusTerm's fixed keys, or "" (off). */
+export const cleanDropDownShortcut = (value: unknown): string =>
+  typeof value === "string" && isValidShortcut(value) && !reservedUse(value) ? value : "";
 /** A #rrggbb colour in lower case, or "" (the scheme's accent). */
 export const cleanHexColor = (value: unknown): string =>
   typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim()) ? value.trim().toLowerCase() : "";
@@ -325,6 +336,8 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   devFolderInFooter: true,
   aiUsageInFooter: true,
   aiUsageProvider: "off",
+  dropDownShortcut: "",
+  dropDownHeight: 50,
 };
 
 export const clampFontSize = (size: number) => Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, Math.round(size)));
@@ -587,6 +600,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     focusBorderColor: cleanHexColor(value.focusBorderColor),
     focusBorderStrength: size(value.focusBorderStrength, clampFocusBorderStrength, d.focusBorderStrength),
     paneFooterHeight: size(value.paneFooterHeight, clampPaneFooterHeight, d.paneFooterHeight),
+    dropDownShortcut: cleanDropDownShortcut(value.dropDownShortcut),
+    dropDownHeight: size(value.dropDownHeight, clampDropDownHeight, d.dropDownHeight),
   };
 }
 

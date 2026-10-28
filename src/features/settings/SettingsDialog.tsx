@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { LicensesDialog } from "../licenses/LicensesDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -58,6 +58,9 @@ import {
   MAX_FOCUS_BORDER_STRENGTH,
   clampFocusBorderStrength,
   clampPaneFooterHeight,
+  clampDropDownHeight,
+  MAX_DROP_DOWN_HEIGHT,
+  MIN_DROP_DOWN_HEIGHT,
   MAX_PANE_FOOTER_HEIGHT,
   MIN_PANE_FOOTER_HEIGHT,
   cleanHexColor,
@@ -65,7 +68,9 @@ import {
   type AiProvider,
   type TerminalSettings, type SidebarAtStartup, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
-import { shortcutLabel } from "../panes/shortcuts";
+import { shortcutConflict, shortcutLabel, type ShortcutOverrides } from "../panes/shortcuts";
+import { isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
+import { describeDropDownError } from "./useDropDown";
 import { devCommandsText, parseDevCommands } from "../devmode/devMode";
 import { MAX_RECENT_FOLDERS } from "../devmode/recentFolders";
 import { BUNDLED_FONTS, catalogChoice, detectInstalledFonts } from "./fontCatalog";
@@ -97,6 +102,8 @@ interface SettingsDialogProps {
   settingsSyncStatus?: SyncStatus;
   /** The saved macros a highlight rule's action can play (S3). */
   macros?: readonly Pick<Macro, "id" | "name">[];
+  /** Why the system refused the drop-down shortcut, as `dropdown_set` answered (null when it took it). */
+  dropDownError?: unknown;
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -337,6 +344,105 @@ function openLink(e: MouseEvent, url: string) {
   void openUrl(url).catch(() => {});
 }
 
+/**
+ * The drop-down window's system-wide shortcut: press a combination to set it (Escape keeps the old
+ * one), refused when PlexusTerm already uses it; Clear turns the drop-down off.
+ */
+function DropDownShortcutField({
+  value,
+  onChange,
+  overrides,
+  assistantShortcut,
+  systemError,
+}: {
+  value: string;
+  onChange: (shortcut: string) => void;
+  overrides: ShortcutOverrides;
+  assistantShortcut: string;
+  systemError: unknown;
+}) {
+  const t = useT();
+  const [capturing, setCapturing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refusal = (shortcut: string): string | null => {
+    if (!isValidShortcut(shortcut)) return t("settings.shortcuts.invalid");
+    const conflict = shortcutConflict(shortcut, overrides);
+    const action = conflict
+      ? conflict.kind === "action"
+        ? t(`settings.shortcuts.actions.${conflict.action}`)
+        : conflict.kind === "reserved"
+          ? t(`settings.shortcuts.fixed.${conflict.use === "playMacro" ? "playMacro" : "acceptWord"}`)
+          : t("settings.shortcuts.actions.assistant")
+      : shortcut === assistantShortcut
+        ? t("settings.shortcuts.actions.assistant")
+        : null;
+    return action === null ? null : t("settings.shortcuts.taken", { shortcut, action });
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!capturing) return;
+    const plain = !e.ctrlKey && !e.altKey && !e.metaKey;
+    if (plain && e.key === "Tab") return; // keep moving through the form
+    e.preventDefault();
+    e.stopPropagation();
+    if (plain && e.key === "Escape") {
+      setCapturing(false);
+      setError(null);
+      return;
+    }
+    const shortcut = shortcutFromEvent(e);
+    if (shortcut === null) return;
+    const refused = refusal(shortcut);
+    setError(refused);
+    if (refused === null) {
+      setCapturing(false);
+      onChange(shortcut);
+    }
+  };
+
+  return (
+    <div className="field">
+      <label htmlFor="settings-drop-down-shortcut">
+        {t("settings.general.dropDownShortcut")} <HelpTip text={t("settings.general.dropDownShortcutHelp")} />
+      </label>
+      <div className="form-row">
+        <input
+          id="settings-drop-down-shortcut"
+          className={capturing ? "shortcut-capture shortcut-capture--active" : "shortcut-capture"}
+          readOnly
+          value={value}
+          placeholder={t("settings.shortcuts.notSet")}
+          onFocus={() => setCapturing(true)}
+          onClick={() => setCapturing(true)}
+          onBlur={() => {
+            setCapturing(false);
+            setError(null);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        <button
+          type="button"
+          className="btn"
+          disabled={value === ""}
+          aria-label={t("settings.general.dropDownClear")}
+          onClick={() => {
+            setError(null);
+            onChange("");
+          }}
+        >
+          {t("settings.shortcuts.clear")}
+        </button>
+      </div>
+      {capturing && !error && <span className="muted shortcuts__note">{t("settings.shortcuts.capturing")}</span>}
+      {error && <span className="form-error shortcuts__note">{error}</span>}
+      {!error && value !== "" && systemError != null && (
+        <span className="form-error shortcuts__note">{describeDropDownError(systemError, t)}</span>
+      )}
+    </div>
+  );
+}
+
 /** Terminal settings shared by every tab (S15.6), in sections chosen from a side menu. */
 /** The names of the terminal font weights. */
 const WEIGHT_NAMES: Record<number, AppKey> = {
@@ -346,7 +452,7 @@ const WEIGHT_NAMES: Record<number, AppKey> = {
   600: "settings.appearance.weightSemibold",
 };
 
-export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus, macros }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus, macros, dropDownError }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
   const platform = usePlatform();
@@ -455,6 +561,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [shortcuts, setShortcuts] = useState(settings.shortcuts);
+  const [dropDownShortcut, setDropDownShortcut] = useState(settings.dropDownShortcut);
+  const [dropDownHeight, setDropDownHeight] = useState(String(settings.dropDownHeight));
   const [section, setSection] = useState<Section>(initialSection ?? "general");
   /** The search box's text: while it has some, every section shows the options it finds. */
   const [query, setQuery] = useState("");
@@ -587,6 +695,10 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       ...sharing,
       shareRelayUrl: cleanShareUrl(sharing.shareRelayUrl, ["wss", "ws"]),
       shareViewerOrigin: cleanShareUrl(sharing.shareViewerOrigin, ["https", "http"]),
+      dropDownShortcut,
+      dropDownHeight: Number.isFinite(Number.parseFloat(dropDownHeight))
+        ? clampDropDownHeight(Number.parseFloat(dropDownHeight))
+        : settings.dropDownHeight,
     };
   };
 
@@ -736,6 +848,27 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               <span className="setting-title">
                 {t("settings.about.checkAtStartup")} <HelpTip text={t("settings.about.checkHelp")} />
               </span>
+            </label>
+            <h3 className="settings__group">{t("settings.groups.dropDown")}</h3>
+            <DropDownShortcutField
+              value={dropDownShortcut}
+              onChange={setDropDownShortcut}
+              overrides={shortcuts}
+              assistantShortcut={assistantShortcut}
+              systemError={dropDownError}
+            />
+            <label className="field">
+              <span className="setting-title">
+                {t("settings.general.dropDownHeight")} <HelpTip text={t("settings.general.dropDownHeightHelp")} />
+              </span>
+              <input
+                type="number"
+                min={MIN_DROP_DOWN_HEIGHT}
+                max={MAX_DROP_DOWN_HEIGHT}
+                step={5}
+                value={dropDownHeight}
+                onChange={(e) => setDropDownHeight(e.target.value)}
+              />
             </label>
           </div>
 

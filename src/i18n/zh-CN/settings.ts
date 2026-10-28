@@ -37,6 +37,7 @@ export const settings: Messages<typeof en> = {
     suggestions: "命令建议",
     provider: "AI 提供商",
     chat: "聊天",
+    dropDown: "下拉窗口",
   },
   sections: {
     general: "常规",
@@ -362,6 +363,13 @@ export const settings: Messages<typeof en> = {
   general: {
     restoreTabs: "启动时恢复标签页",
     restoreTabsHelp: "重新打开上次运行时的标签页、拆分窗格和 DEV 模式：已保存的会话按当前设置重新连接，本地终端在其最后所在的文件夹中打开。从不保存密码和终端输出。使用文件夹或工作区打开 PlexusTerm 时，只打开该文件夹或工作区。",
+    dropDownShortcut: "下拉窗口快捷键",
+    dropDownShortcutHelp: "在任何应用程序中都有效的组合键：让 PlexusTerm 从指针所在屏幕的顶部以全宽落下，再按一次则隐藏。留空则窗口保持原样。在 Wayland 会话中不起作用，且其他应用程序可能已在使用该组合键。",
+    dropDownHeight: "下拉窗口高度（屏幕的 %）",
+    dropDownHeightHelp: "下拉窗口占屏幕高度的比例，20 到 100 %。",
+    dropDownWayland: "Wayland 会话中无法使用全局快捷键：桌面不允许应用程序监听其窗口以外的按键。",
+    dropDownFailed: "无法设置快捷键：{error}",
+    dropDownClear: "移除下拉窗口快捷键",
   },
   about: {
     licenses: "开源许可证",
