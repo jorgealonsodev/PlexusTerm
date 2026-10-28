@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EXAMPLE_RULE } from "../terminal/highlightRules";
 import { cleanShareUrl, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
@@ -63,6 +64,10 @@ describe("parseSettings", () => {
       shortcuts: {},
       shiftEnterNewline: true,
       attentionNotifications: true,
+      commandNotifySeconds: 10,
+      logTimestamps: true,
+      syncFolder: "",
+      highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -83,7 +88,7 @@ describe("parseSettings", () => {
       recentFolderLimit: 10,
       devFolderInFooter: true,
       aiUsageInFooter: true,
-      aiUsageProvider: "auto" as const,
+      aiUsageProvider: "off" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,
@@ -133,7 +138,8 @@ describe("parseSettings", () => {
     expect(parseSettings(JSON.stringify({ aiUsageInFooter: false })).aiUsageInFooter).toBe(false);
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencodeGo" })).aiUsageProvider).toBe("opencodeGo");
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "agy" })).aiUsageProvider).toBe("agy");
-    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencode" })).aiUsageProvider).toBe("auto");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "opencode" })).aiUsageProvider).toBe("off");
+    expect(parseSettings(JSON.stringify({ aiUsageProvider: "auto" })).aiUsageProvider).toBe("auto");
     expect(parseSettings(JSON.stringify({ aiUsageProvider: "off" })).aiUsageProvider).toBe("off");
   });
 
@@ -195,6 +201,10 @@ describe("parseSettings", () => {
       // So do the settings added for AI command-line tools.
       shiftEnterNewline: true,
       attentionNotifications: true,
+      commandNotifySeconds: 10,
+      logTimestamps: true,
+      syncFolder: "",
+      highlightRules: [EXAMPLE_RULE],
       gpuAcceleration: true,
       gitFileStatus: true,
       viewerAutoSave: false,
@@ -215,7 +225,7 @@ describe("parseSettings", () => {
       recentFolderLimit: 10,
       devFolderInFooter: true,
       aiUsageInFooter: true,
-      aiUsageProvider: "auto" as const,
+      aiUsageProvider: "off" as const,
       shareRelayUrl: "",
       shareViewerOrigin: "",
       shareViewNeedsApproval: true,
@@ -393,6 +403,10 @@ describe("serializeSettings", () => {
       shortcuts: { newTerminal: "Ctrl+Alt+N", toggleSidebar: "", nextTab: "Ctrl+PageDown" },
       shiftEnterNewline: false,
       attentionNotifications: false,
+      commandNotifySeconds: 0,
+      logTimestamps: false,
+      syncFolder: "/home/me/Sync",
+      highlightRules: [{ pattern: "ERROR", color: "#ff8800", matchCase: true, notify: true }],
       gpuAcceleration: false,
       gitFileStatus: false,
       viewerAutoSave: true,
@@ -579,19 +593,21 @@ describe("interface and chat text sizes", () => {
   });
 });
 
-describe("GPU acceleration on Linux", () => {
-  it("is off by default there, as WebGL in WebKitGTK delays every key by several frames", () => {
-    expect(parseSettings(null, { linux: true }).gpuAcceleration).toBe(false);
-    expect(parseSettings(null, { linux: false }).gpuAcceleration).toBe(true);
-    expect(parseSettings(null).gpuAcceleration).toBe(true);
+describe("highlight rules", () => {
+  it("start with the example rule, and keep an emptied list empty", () => {
+    expect(parseSettings(null).highlightRules).toEqual([EXAMPLE_RULE]);
+    expect(parseSettings(JSON.stringify({ version: 2, fontSize: 14 })).highlightRules).toEqual([EXAMPLE_RULE]);
+    expect(parseSettings(JSON.stringify({ highlightRules: [] })).highlightRules).toEqual([]);
   });
+});
 
-  it("is turned off once in settings saved before this change, and kept when turned on again", () => {
-    const old = JSON.stringify({ version: 1, gpuAcceleration: true, fontSize: 16 });
-    expect(parseSettings(old, { linux: true })).toMatchObject({ gpuAcceleration: false, fontSize: 16 });
-    expect(parseSettings(old, { linux: false }).gpuAcceleration).toBe(true);
-    const chosen = serializeSettings({ ...DEFAULT_SETTINGS, gpuAcceleration: true });
-    expect(parseSettings(chosen, { linux: true }).gpuAcceleration).toBe(true);
+describe("GPU acceleration", () => {
+  it("is on by default, on Linux too, and keeps what was saved", () => {
+    expect(parseSettings(null).gpuAcceleration).toBe(true);
+    expect(parseSettings(JSON.stringify({ version: 1, fontSize: 16 })).gpuAcceleration).toBe(true);
+    expect(parseSettings(JSON.stringify({ version: 1, gpuAcceleration: true })).gpuAcceleration).toBe(true);
+    const off = serializeSettings({ ...DEFAULT_SETTINGS, gpuAcceleration: false });
+    expect(parseSettings(off).gpuAcceleration).toBe(false);
   });
 });
 

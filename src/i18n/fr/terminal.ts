@@ -23,7 +23,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "Ne plus demander",
     paste: "Coller",
   },
+  ruleMatched: "Correspondance avec {pattern}",
+  commandDot: {
+    exit: "Code de sortie {code}",
+    exitTime: "Code de sortie {code} · {duration}",
+    askAi: "Cliquez pour demander à l'IA pourquoi elle a échoué",
+    attached: "La commande `{command}` s'est terminée avec le code de sortie {code}. Sa sortie :",
+    outputGone: "(sa sortie n'est plus dans le terminal)",
+    noOutput: "(elle n'a rien affiché)",
+    question: "Pourquoi cette commande a-t-elle échoué, et comment la corriger ?",
+  },
+  commandDone: {
+    finished: "Commande terminée",
+    failed: "La commande a échoué (code {code})",
+  },
   menu: {
+    copyOutput: "Copier la sortie de la commande",
     askAi: "Demander à l’IA",
     typeSelection: "Saisir à l’invite",
     findSelection: "Rechercher dans le terminal",

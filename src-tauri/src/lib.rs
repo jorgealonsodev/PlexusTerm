@@ -642,6 +642,32 @@ fn sessions_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
     storage::save(&config_path(&app, SESSIONS_FILE)?, &contents)
 }
 
+/// When each session and folder last changed or was deleted, for the sync of sessions.
+const SESSIONS_SYNC_STATE_FILE: &str = "sessions-sync.json";
+
+#[tauri::command]
+async fn sessions_sync_state_load(app: AppHandle) -> Result<Option<String>, StorageError> {
+    let path = config_path(&app, SESSIONS_SYNC_STATE_FILE)?;
+    on_disk(move || storage::load(&path)).await
+}
+
+#[tauri::command]
+fn sessions_sync_state_save(app: AppHandle, contents: String) -> Result<(), StorageError> {
+    storage::save(&config_path(&app, SESSIONS_SYNC_STATE_FILE)?, &contents)
+}
+
+/// The sessions file in the folder the user syncs; None when no computer wrote it yet.
+#[tauri::command]
+async fn sessions_sync_read(folder: String) -> Result<Option<String>, StorageError> {
+    on_disk(move || storage::load(&storage::sync_file(&folder)?)).await
+}
+
+/// Replaces the sessions file in the synced folder at once (a sync service never sees half of it).
+#[tauri::command]
+async fn sessions_sync_write(folder: String, contents: String) -> Result<(), StorageError> {
+    on_disk(move || storage::save(&storage::sync_file(&folder)?, &contents)).await
+}
+
 /// Upper bound for files picked for import (a sessions .ini file is a few kilobytes).
 const IMPORT_MAX_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -859,6 +885,10 @@ pub fn run() {
             sftp_write_text,
             sessions_load,
             sessions_save,
+            sessions_sync_state_load,
+            sessions_sync_state_save,
+            sessions_sync_read,
+            sessions_sync_write,
             import_read_file,
             tunnels_load,
             tunnels_save,

@@ -58,6 +58,8 @@ describe("App Telnet and Mosh (S17.3)", () => {
   it("opens a Mosh tab over a saved SSH session from the More menu", async () => {
     render(<App />);
     await screen.findByText("web");
+    // The startup terminal opens on its own a moment later: the Mosh tab must come after it.
+    await vi.waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: "More" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Mosh…" }));
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
@@ -85,7 +87,9 @@ describe("App Telnet and Mosh (S17.3)", () => {
 
   it("opens saved Telnet and Mosh sessions", async () => {
     render(<App />);
-    fireEvent.doubleClick(await screen.findByText("old switch"));
+    const telnet = await screen.findByText("old switch");
+    await vi.waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(1));
+    fireEvent.doubleClick(telnet);
     expect(lastTarget()).toEqual({ type: "telnet", host: "switch.lan", port: 2323 });
     fireEvent.doubleClick(screen.getByText("web (mosh)"));
     await vi.waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(3));

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSessionLog } from "./sessionLog";
+import { createSessionLog, logTimestamp } from "./sessionLog";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -106,5 +106,22 @@ describe("createSessionLog", () => {
     log.write("late");
     await vi.advanceTimersByTimeAsync(1000);
     expect(append).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("timestamps", () => {
+  it("start every line with output with the time, across batches, and leave empty lines alone", async () => {
+    const append = vi.fn((_path: string, _text: string) => Promise.resolve());
+    let n = 0;
+    const log = createSessionLog("/tmp/s.log", append, { intervalMs: 500, timestamp: () => `[t${++n}] ` });
+    log.write("\x1b[31mfirst\x1b[0m\r\nsecond half");
+    await vi.advanceTimersByTimeAsync(500);
+    log.write(" goes on\n\nthird\n");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(append.mock.calls.map((c) => c[1]).join("")).toBe("[t1] first\n[t1] second half goes on\n\n[t2] third\n");
+  });
+
+  it("are written as local date and time", () => {
+    expect(logTimestamp(new Date(2026, 9, 27, 9, 5, 7))).toBe("[2026-10-27 09:05:07] ");
   });
 });

@@ -28,7 +28,11 @@ export interface UsageState {
   loading: boolean;
 }
 
-/** A provider is read at most this often, however many bars show it. */
+/**
+ * A bar asks for its provider's usage this often. The backend answers from the file every window
+ * shares and asks the service itself only every few minutes (src-tauri/src/usage.rs), so a newer
+ * read by another window shows here within this time.
+ */
 export const USAGE_REFRESH_MS = 60_000;
 
 /** Whose usage a terminal's bar shows: the chosen provider, or the CLI running in it. */
@@ -40,11 +44,11 @@ export function providerFor(choice: AiUsageChoice, cli: string | null): UsagePro
   return null;
 }
 
-const READERS: Record<UsageProvider, () => Promise<Usage>> = {
-  claude: () => invoke<Usage>("usage_claude"),
-  codex: () => invoke<Usage>("usage_codex"),
-  agy: () => invoke<Usage>("usage_agy"),
-  opencodeGo: () => invoke<Usage>("ai_opencode_go_usage"),
+const COMMANDS: Record<UsageProvider, string> = {
+  claude: "usage_claude",
+  codex: "usage_codex",
+  agy: "usage_agy",
+  opencodeGo: "ai_opencode_go_usage",
 };
 
 /** The message of a failed read: a string (usage commands) or `{ message }` (AI commands). */
@@ -67,7 +71,10 @@ const cache = new Map<UsageProvider, Entry>();
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((listener) => listener());
 
-/** Reads `provider` unless it was read less than a minute ago (or `force`); one read at a time. */
+/**
+ * Reads `provider` unless it was read less than a minute ago; `force` ("Refresh now") asks the
+ * backend to read the service again, which it does at most once a minute. One read at a time.
+ */
 export function refreshUsage(provider: UsageProvider, force = false): Promise<void> {
   const entry = cache.get(provider) ?? { state: IDLE, readAt: -Infinity, pending: null };
   cache.set(provider, entry);
@@ -75,7 +82,7 @@ export function refreshUsage(provider: UsageProvider, force = false): Promise<vo
   if (!force && Date.now() - entry.readAt < USAGE_REFRESH_MS) return Promise.resolve();
   entry.state = { ...entry.state, loading: true };
   notify();
-  entry.pending = READERS[provider]()
+  entry.pending = invoke<Usage>(COMMANDS[provider], { force })
     .then(
       (usage) => {
         entry.state = { usage, error: null, loading: false };

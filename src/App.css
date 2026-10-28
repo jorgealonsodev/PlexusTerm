@@ -248,7 +248,8 @@ textarea::placeholder {
 .terminal-host {
   position: absolute;
   inset: 0;
-  padding: 6px;
+  /* The wider left side holds the dot of a failed command (commandBlocks.ts). */
+  padding: 6px 6px 6px 12px;
   /* xterm's FitAddon reads this element's height and width as the room for the rows and
      columns: with border-box they would count the padding, and the last row would overlap
      the bar under the terminal. */
@@ -405,6 +406,108 @@ textarea::placeholder {
   border-color: var(--danger);
   color: var(--danger);
   font-weight: 600;
+}
+
+/* Highlight rules in Settings > Terminal: one row per rule. */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.rules__intro {
+  margin: 0;
+}
+
+.rules__rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.rules__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rules__pattern {
+  flex: 1;
+  min-width: 180px;
+  font-family: var(--mono, monospace);
+}
+
+/* The command palette: under the toolbar, not in the middle of the window. */
+.overlay--top {
+  place-items: start center;
+  padding-top: 72px;
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: min(480px, calc(100vh - 120px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+}
+
+.palette__input {
+  margin: 10px;
+  font-size: 1.05em;
+}
+
+.palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 6px;
+  overflow-y: auto;
+}
+
+.palette__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.palette__item--selected {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.palette__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette__detail,
+.palette__group {
+  color: var(--muted);
+}
+
+.palette__group {
+  flex: none;
+  font-size: 0.85em;
+}
+
+.palette__shortcut {
+  flex: none;
+  font-size: 0.8em;
+}
+
+.palette__empty {
+  margin: 0 16px 14px;
 }
 
 .dialog {

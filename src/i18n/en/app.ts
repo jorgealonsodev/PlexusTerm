@@ -1,5 +1,20 @@
 /** The app shell: toolbar, tabs, panes, sidebar, dialogs and notices. */
 export const app = {
+  palette: {
+    title: "Command palette",
+    placeholder: "Type an action, session, macro, tab or setting…",
+    noResults: "Nothing matches.",
+    historyTitle: "Command history",
+    historyPlaceholder: "Type part of a command run before on this computer…",
+    groups: {
+      actions: "Action",
+      sessions: "Session",
+      macros: "Macro",
+      tabs: "Tab",
+      settings: "Settings",
+      history: "History",
+    },
+  },
   toolbar: {
     aiAssistant: "AI assistant",
     aiAssistantTitle: "AI assistant ({shortcut})",
@@ -44,6 +59,7 @@ export const app = {
     moshSessionGone: 'The SSH session of "{name}" no longer exists; edit it to choose another one.',
     sshSessionGone: "That SSH session no longer exists.",
     noTerminalForAi: "Open a terminal to chat with the AI.",
+    noTerminalForHistory: "Open a terminal to search its command history.",
     tabFull: "This tab already has {max} panes; close one to open the AI chat.",
     commandNotRun: "The command was not run: the terminal is at a password prompt or a full-screen program.",
     copyFailed: "Could not copy to the clipboard.",

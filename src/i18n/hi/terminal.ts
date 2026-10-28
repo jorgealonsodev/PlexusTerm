@@ -19,7 +19,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "फिर से न पूछें",
     paste: "पेस्ट करें",
   },
+  ruleMatched: "{pattern} से मेल",
+  commandDot: {
+    exit: "निकास कोड {code}",
+    exitTime: "निकास कोड {code} · {duration}",
+    askAi: "विफलता का कारण AI से पूछने के लिए क्लिक करें",
+    attached: "कमांड `{command}` निकास कोड {code} के साथ ख़त्म हुई। उसका आउटपुट:",
+    outputGone: "(उसका आउटपुट अब टर्मिनल में नहीं है)",
+    noOutput: "(उसने कुछ नहीं छापा)",
+    question: "यह कमांड क्यों विफल हुई, और मैं इसे कैसे ठीक करूँ?",
+  },
+  commandDone: {
+    finished: "कमांड पूरी हुई",
+    failed: "कमांड विफल रही (कोड {code})",
+  },
   menu: {
+    copyOutput: "कमांड का आउटपुट कॉपी करें",
     askAi: "AI से पूछें",
     typeSelection: "प्रॉम्प्ट पर लिखें",
     findSelection: "टर्मिनल में खोजें",

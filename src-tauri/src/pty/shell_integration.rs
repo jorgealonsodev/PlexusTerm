@@ -571,6 +571,8 @@ mod tests {
         let mut cmd = CommandBuilder::new(program);
         cmd.args(args);
         cmd.env("HOME", home);
+        // pwsh and fish read their profile from XDG_CONFIG_HOME when set (CI runners set it).
+        cmd.env("XDG_CONFIG_HOME", home.join(".config"));
         cmd.env("TERM", "xterm-256color");
         for (name, value) in env {
             cmd.env(name, value);
@@ -589,9 +591,10 @@ mod tests {
             Default::default()
         };
         // A shell that never exits (a startup file waiting for input) fails the test, never hangs it.
-        let (tx, rx) = std::sync::mpsc::channel();
+        let out = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let (done_tx, done) = std::sync::mpsc::channel();
+        let shared = out.clone();
         std::thread::spawn(move || {
-            let mut out = Vec::new();
             let mut chunk = [0u8; 4096];
             let mut prompts = 0;
             while let Ok(n) = reader.read(&mut chunk) {
@@ -601,6 +604,7 @@ mod tests {
                 if chunk[..n].windows(4).any(|w| w == b"\x1b[6n") {
                     let _ = writer.write_all(b"\x1b[1;1R");
                 }
+                let mut out = shared.lock().unwrap();
                 out.extend_from_slice(&chunk[..n]);
                 // A, ended by BEL or (cmd) ESC \\.
                 let seen = out
@@ -614,13 +618,26 @@ mod tests {
                     }
                 }
             }
-            let _ = tx.send(out);
+            let _ = done_tx.send(());
         });
-        let out = rx.recv_timeout(std::time::Duration::from_secs(30));
-        let _ = child.kill();
-        let _ = child.wait();
-        let out = out.unwrap_or_else(|_| panic!("{program} did not exit"));
-        String::from_utf8_lossy(&out).into_owned()
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        let exited = loop {
+            if matches!(child.try_wait(), Ok(Some(_))) {
+                break true;
+            }
+            if std::time::Instant::now() > deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                break false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
+        // ConPTY ends its output only once the pseudo console closes, not when the shell exits.
+        drop(pair.master);
+        let _ = done.recv_timeout(std::time::Duration::from_secs(5));
+        let out = String::from_utf8_lossy(&out.lock().unwrap()).into_owned();
+        assert!(exited, "{program} did not exit; it printed {out:?}");
+        out
     }
 
     #[cfg(unix)]
@@ -636,6 +653,51 @@ mod tests {
             out.contains("\x1b]133;A\x07") && out.contains("\x1b]133;D;1\x07"),
             "{out:?}"
         );
+    }
+
+    /// The ZDOTDIR a zsh started as PlexusTerm starts it ends up with, as `${(t)ZDOTDIR}=$ZDOTDIR`,
+    /// when the user's .zshenv sets it with `zshenv`. None when zsh is not installed.
+    #[cfg(unix)]
+    fn zdotdir_after(zshenv: &str) -> Option<String> {
+        let program = crate::platform::find_program("zsh", &std::env::var_os("PATH")?)?;
+        let tmp = tempfile::tempdir().unwrap();
+        let scripts = tmp.path().join("scripts");
+        install_scripts(&scripts).unwrap();
+        let home = tmp.path().join("home");
+        std::fs::create_dir_all(home.join("zdot")).unwrap();
+        std::fs::write(home.join(".zshenv"), zshenv).unwrap();
+        std::fs::write(home.join("zdot/.zshrc"), "").unwrap();
+        let program = program.to_string_lossy().into_owned();
+        let it = integration(
+            &program,
+            &[],
+            Inherited {
+                scripts: Some(&scripts),
+                ..Default::default()
+            },
+        );
+        let out = run_in_pty(
+            &program,
+            it.args.unwrap_or_default(),
+            it.env,
+            &home,
+            b"print -r -- \"<${(t)ZDOTDIR}=${ZDOTDIR:t}>\"\rexit\r",
+            true,
+        );
+        let start = out.rfind('<')?;
+        Some(out[start + 1..start + out[start..].find('>')?].to_string())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn zsh_keeps_the_zdotdir_of_the_users_zshenv_exported_only_when_the_user_exports_it() {
+        // Not exported by the user: a zsh started from this one must read ~/.zshenv again.
+        let Some(plain) = zdotdir_after("ZDOTDIR=$HOME/zdot\n") else {
+            eprintln!("zsh is not installed: not checked");
+            return;
+        };
+        assert_eq!(plain, "scalar=zdot");
+        assert_eq!(zdotdir_after("export ZDOTDIR=$HOME/zdot\n").unwrap(), "scalar-export=zdot");
     }
 
     #[cfg(unix)]

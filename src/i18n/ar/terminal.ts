@@ -26,7 +26,22 @@ export const terminal: Messages<typeof en> = {
     dontAsk: "عدم السؤال مرة أخرى",
     paste: "لصق",
   },
+  ruleMatched: "مطابقة {pattern}",
+  commandDot: {
+    exit: "رمز الخروج {code}",
+    exitTime: "رمز الخروج {code} · {duration}",
+    askAi: "انقر لسؤال الذكاء الاصطناعي عن سبب الفشل",
+    attached: "انتهى الأمر `{command}` برمز الخروج {code}. مخرجاته:",
+    outputGone: "(لم تعد مخرجاته في الطرفية)",
+    noOutput: "(لم يطبع شيئًا)",
+    question: "لماذا فشل هذا الأمر، وكيف أصلحه؟",
+  },
+  commandDone: {
+    finished: "اكتمل الأمر",
+    failed: "فشل الأمر (الرمز {code})",
+  },
   menu: {
+    copyOutput: "نسخ مخرجات الأمر",
     askAi: "اسأل الذكاء الاصطناعي",
     typeSelection: "اكتب في سطر الأوامر",
     findSelection: "البحث في الطرفية",

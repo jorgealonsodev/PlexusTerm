@@ -7,11 +7,17 @@
 //! - Antigravity (`agy`): the quota summary its local language server answers on 127.0.0.1, asked
 //!   with the CSRF token on that server's command line (only while Antigravity runs).
 //! - OpenCode Go answers `GET /zen/go/v1/usage` (see `ai::AiClient::opencode_go_usage`).
+//!
+//! Every PlexusTerm window is its own process, and the services limit how often an account may
+//! ask (Anthropic answers 429 for long after a few reads a minute), so each answer is kept in a file
+//! that all windows share: a provider is asked at most once per [`interval_of`] it, however many
+//! windows and bars show it, and less often after errors.
 
-use std::path::PathBuf;
+use std::future::Future;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Where Anthropic reports Claude Code's plan usage (what Claude Code's `/usage` shows).
@@ -25,7 +31,7 @@ const CODEX_USAGE_URL: &str = "https://chatgpt.com/backend-api/wham/usage";
 /// How long a usage service may take to answer.
 const TIMEOUT: Duration = Duration::from_secs(15);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WindowKind {
     FiveHour,
@@ -35,7 +41,7 @@ pub enum WindowKind {
 
 /// One rate-limit window: the percent spent, when it resets (Unix seconds), whether the limit
 /// is reached, and the group of models it counts (Antigravity has several; none elsewhere).
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageWindow {
     pub kind: WindowKind,
@@ -46,10 +52,134 @@ pub struct UsageWindow {
 }
 
 /// The windows of one provider, shortest first.
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Usage {
     pub windows: Vec<UsageWindow>,
+}
+
+/// How often a provider's service is asked. The online ones change slowly and limit their callers;
+/// Antigravity's is a server on this computer.
+pub fn interval_of(provider: &str) -> Duration {
+    if provider == "agy" {
+        Duration::from_secs(60)
+    } else {
+        Duration::from_secs(5 * 60)
+    }
+}
+/// "Refresh now" still waits this long after the last read.
+pub const FORCED_MIN: Duration = Duration::from_secs(60);
+/// After failures the wait doubles each time, up to this.
+pub const MAX_BACKOFF: Duration = Duration::from_secs(30 * 60);
+
+/// The last answer of a provider, as the shared file keeps it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CachedUsage {
+    /// When it was read (Unix seconds).
+    pub read_at: i64,
+    /// Failed reads in a row; 0 after a good one.
+    pub failures: u32,
+    pub result: Result<Usage, String>,
+}
+
+/// How long to wait after `cached` before asking again: the interval, doubled for each failure
+/// in a row, up to [`MAX_BACKOFF`].
+pub fn wait_after(cached: &CachedUsage, interval: Duration) -> Duration {
+    let doubled = interval.saturating_mul(1 << cached.failures.min(6));
+    doubled.min(MAX_BACKOFF.max(interval))
+}
+
+/// Whether the service may be asked at `now` (Unix seconds); `forced` is "Refresh now".
+pub fn is_due(cached: Option<&CachedUsage>, now: i64, interval: Duration, forced: bool) -> bool {
+    let Some(cached) = cached else { return true };
+    let age = now - cached.read_at;
+    // A clock set back would otherwise keep the old answer for good.
+    if age < 0 {
+        return true;
+    }
+    let wait = if forced {
+        FORCED_MIN
+    } else {
+        wait_after(cached, interval)
+    };
+    age as u64 >= wait.as_secs()
+}
+
+fn read_cached(path: &Path) -> Option<CachedUsage> {
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+}
+
+/// Writes through a temporary file, so another window never reads half of it.
+fn write_cached(path: &Path, cached: &CachedUsage) {
+    let Ok(bytes) = serde_json::to_vec(cached) else {
+        return;
+    };
+    let tmp = path.with_extension("json.tmp");
+    if std::fs::write(&tmp, bytes).is_ok() && std::fs::rename(&tmp, path).is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+}
+
+/// The usage `read` gives, or the answer `path` keeps while it is recent enough; every window
+/// that shares `path` shares the reads. A failed write only costs a read more.
+pub async fn shared_read<F, Fut>(
+    path: &Path,
+    interval: Duration,
+    forced: bool,
+    now: i64,
+    read: F,
+) -> Result<Usage, String>
+where
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<Usage, String>>,
+{
+    let cached = read_cached(path);
+    if !is_due(cached.as_ref(), now, interval, forced) {
+        return cached.map_or_else(|| Err("No usage was read yet.".into()), |c| c.result);
+    }
+    let result = read().await;
+    let failures = match (&result, &cached) {
+        (Ok(_), _) => 0,
+        (Err(_), Some(c)) if c.result.is_err() => c.failures.saturating_add(1),
+        (Err(_), _) => 1,
+    };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    write_cached(
+        path,
+        &CachedUsage {
+            read_at: now,
+            failures,
+            result: result.clone(),
+        },
+    );
+    result
+}
+
+fn now_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or_default()
+}
+
+/// Reads `provider` through the file every window shares (in the app config folder).
+pub async fn shared_usage<F, Fut>(
+    app: &tauri::AppHandle,
+    provider: &str,
+    forced: bool,
+    read: F,
+) -> Result<Usage, String>
+where
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<Usage, String>>,
+{
+    match crate::config_path(app, &format!("ai-usage-{provider}.json")) {
+        Ok(path) => shared_read(&path, interval_of(provider), forced, now_secs(), read).await,
+        Err(_) => read().await,
+    }
 }
 
 fn window(
@@ -395,7 +525,7 @@ pub async fn fetch_claude(
         }
         429 => {
             return Err(
-                "Anthropic is limiting requests; the usage will be read again in a minute.".into(),
+                "Anthropic is limiting requests; the usage will be read again later.".into(),
             );
         }
         _ => return Err(format!("Anthropic answered with HTTP {status}.")),
@@ -407,7 +537,11 @@ pub async fn fetch_claude(
 
 /// Claude Code's plan usage, read with the sign-in Claude Code keeps (never renewed here).
 #[tauri::command]
-pub async fn usage_claude() -> Result<Usage, String> {
+pub async fn usage_claude(app: tauri::AppHandle, force: Option<bool>) -> Result<Usage, String> {
+    shared_usage(&app, "claude", force.unwrap_or(false), read_claude).await
+}
+
+async fn read_claude() -> Result<Usage, String> {
     let auth = claude_auth(&claude_credentials().await?)?;
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -600,7 +734,11 @@ pub async fn ask_agy(http: &reqwest::Client, base: &str, csrf: &str) -> Option<V
 /// Antigravity's plan usage, asked of its language server while Antigravity (the IDE or `agy`)
 /// runs on this computer.
 #[tauri::command]
-pub async fn usage_agy() -> Result<Usage, String> {
+pub async fn usage_agy(app: tauri::AppHandle, force: Option<bool>) -> Result<Usage, String> {
+    shared_usage(&app, "agy", force.unwrap_or(false), read_agy).await
+}
+
+async fn read_agy() -> Result<Usage, String> {
     let http = reqwest::Client::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
@@ -628,7 +766,7 @@ pub async fn usage_agy() -> Result<Usage, String> {
     let had_known = AGY_SERVER.lock().ok().and_then(|mut s| s.take()).is_some();
     if had_known {
         // The language server it answered on has gone: look for the running one again.
-        return Box::pin(usage_agy()).await;
+        return Box::pin(read_agy()).await;
     }
     Err("Antigravity is not running: its usage is read while the IDE or agy is open.".into())
 }
@@ -711,7 +849,11 @@ pub async fn fetch_codex(
 
 /// Codex's plan usage, read with the ChatGPT sign-in in `~/.codex/auth.json`.
 #[tauri::command]
-pub async fn usage_codex() -> Result<Usage, String> {
+pub async fn usage_codex(app: tauri::AppHandle, force: Option<bool>) -> Result<Usage, String> {
+    shared_usage(&app, "codex", force.unwrap_or(false), read_codex).await
+}
+
+async fn read_codex() -> Result<Usage, String> {
     let path = codex_home()
         .ok_or("Codex's folder was not found.")?
         .join("auth.json");
@@ -730,6 +872,132 @@ pub async fn usage_codex() -> Result<Usage, String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn usage_of(percent: f64) -> Usage {
+        Usage {
+            windows: vec![UsageWindow {
+                kind: WindowKind::FiveHour,
+                percent,
+                resets_at: None,
+                limited: false,
+                group: None,
+            }],
+        }
+    }
+
+    /// Reads through `shared_read` at `now`, counting how many times the service is asked.
+    async fn read_at(
+        path: &Path,
+        now: i64,
+        forced: bool,
+        answer: Result<Usage, String>,
+        asked: &std::sync::atomic::AtomicU32,
+    ) -> Result<Usage, String> {
+        shared_read(path, Duration::from_secs(300), forced, now, || async {
+            asked.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            answer
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn every_window_shares_one_read_per_interval() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ai-usage-claude.json");
+        let asked = std::sync::atomic::AtomicU32::new(0);
+        assert_eq!(
+            read_at(&path, 1000, false, Ok(usage_of(5.0)), &asked).await,
+            Ok(usage_of(5.0))
+        );
+        // Another window, a minute later: the shared answer, the service is not asked.
+        assert_eq!(
+            read_at(&path, 1060, false, Ok(usage_of(9.0)), &asked).await,
+            Ok(usage_of(5.0))
+        );
+        assert_eq!(
+            read_at(&path, 1299, false, Ok(usage_of(9.0)), &asked).await,
+            Ok(usage_of(5.0))
+        );
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
+        // Five minutes after the read it is asked again.
+        assert_eq!(
+            read_at(&path, 1300, false, Ok(usage_of(9.0)), &asked).await,
+            Ok(usage_of(9.0))
+        );
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn refresh_now_asks_again_after_a_minute_not_sooner() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ai-usage-codex.json");
+        let asked = std::sync::atomic::AtomicU32::new(0);
+        read_at(&path, 1000, false, Ok(usage_of(5.0)), &asked)
+            .await
+            .unwrap();
+        assert_eq!(
+            read_at(&path, 1059, true, Ok(usage_of(9.0)), &asked).await,
+            Ok(usage_of(5.0))
+        );
+        assert_eq!(
+            read_at(&path, 1060, true, Ok(usage_of(9.0)), &asked).await,
+            Ok(usage_of(9.0))
+        );
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn failures_wait_twice_as_long_each_time_up_to_half_an_hour() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ai-usage-claude.json");
+        let asked = std::sync::atomic::AtomicU32::new(0);
+        let limited = || Err::<Usage, String>("Anthropic is limiting requests".into());
+        let mut now = 0;
+        for wait in [600, 1200, 1800, 1800] {
+            read_at(&path, now, false, limited(), &asked)
+                .await
+                .unwrap_err();
+            // The error is kept for the other windows until the longer wait is over.
+            assert_eq!(
+                read_at(&path, now + wait - 1, false, Ok(usage_of(1.0)), &asked).await,
+                limited()
+            );
+            now += wait;
+        }
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 4);
+        // A good read ends the backoff.
+        read_at(&path, now, false, Ok(usage_of(1.0)), &asked)
+            .await
+            .unwrap();
+        assert_eq!(
+            read_at(&path, now + 300, false, Ok(usage_of(2.0)), &asked).await,
+            Ok(usage_of(2.0))
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unreadable_file_or_a_clock_set_back_asks_the_service() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ai-usage-agy.json");
+        std::fs::write(&path, b"not json").unwrap();
+        let asked = std::sync::atomic::AtomicU32::new(0);
+        read_at(&path, 1000, false, Ok(usage_of(5.0)), &asked)
+            .await
+            .unwrap();
+        read_at(&path, 500, false, Ok(usage_of(6.0)), &asked)
+            .await
+            .unwrap();
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert!(!path.with_extension("json.tmp").exists());
+    }
+
+    #[test]
+    fn online_services_are_asked_every_five_minutes_and_antigravity_every_minute() {
+        assert_eq!(interval_of("claude"), Duration::from_secs(300));
+        assert_eq!(interval_of("codex"), Duration::from_secs(300));
+        assert_eq!(interval_of("opencodeGo"), Duration::from_secs(300));
+        assert_eq!(interval_of("agy"), Duration::from_secs(60));
+    }
 
     #[test]
     fn codex_windows_are_named_by_their_length() {

@@ -2,9 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clampFontSize, DEFAULT_SETTINGS, parseSettings, serializeSettings, type TerminalSettings } from "./settings";
 
-/** WebKitGTK, the webview on Linux, names itself "(X11; … Linux …)", on Wayland too. */
-const isLinuxWebview = () => typeof navigator !== "undefined" && /\(X11;[^)]*Linux/.test(navigator.userAgent);
-
 /**
  * The terminal settings (S15.6), loaded from settings.json and saved after every change.
  * A failed load or save keeps the app usable with the settings in memory.
@@ -23,7 +20,7 @@ export function useSettings() {
     invoke<string | null>("settings_load")
       .then((json) => {
         if (changed.current) return;
-        current.current = parseSettings(json, { linux: isLinuxWebview() });
+        current.current = parseSettings(json);
         setSettings(current.current);
       })
       .catch(() => {})
