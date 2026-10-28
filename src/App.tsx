@@ -73,11 +73,12 @@ import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
 import { Sidebar, SIDEBAR_VIEWS, type SidebarView } from "./features/sidebar/Sidebar";
 import { loadSidebarView, saveSidebarView } from "./features/sidebar/uiMemory";
-import type { SessionTarget, SshTarget } from "./features/sessions/types";
+import type { MoshTarget, SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { useSessionSync } from "./features/sessions/useSessionSync";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
+import { parseTabsDocument, planRestore, serializeTabs, snapshotTabs, type TabsDocument } from "./features/tabs/tabsPersist";
 import { chatAction, initialTabs, isTerminalPane, tabTitle, tabsReducer, terminalPaneOf, type ChatLink, type Tab, type TabsAction, type ViewerLink } from "./features/tabs/tabs";
 import { FileViewer } from "./features/viewer/FileViewer";
 import { imageType } from "./features/viewer/markdown";
@@ -213,6 +214,8 @@ interface PaneMeta {
 
 /** "Open in terminal" over SSH: the shell is ready once its login output is quiet this long... */
 const SHELL_QUIET_MS = 400;
+/** tabs.json is written this long after the tabs last changed, so a crash loses little (S2.1). */
+const TABS_SAVE_DELAY_MS = 500;
 /** ...or when it printed nothing this long after the session started. */
 const SHELL_FIRST_OUTPUT_MS = 1500;
 
@@ -284,19 +287,32 @@ function AppContent() {
   const openWorkspaceFileRef = useRef<(file: string, folders: string[]) => void>(() => {});
   /** Opens a local terminal in a folder given to PlexusTerm (a file manager's action). */
   const openFolderRef = useRef<(folder: string) => void>(() => {});
+  /** The tabs of the last run read from tabs.json, waiting for the session library to reopen (S2). */
+  const [pendingRestore, setPendingRestore] = useState<TabsDocument | null>(null);
+  /** Startup has opened its tabs: from now on tabs.json follows them (never the empty list before). */
+  const [startupDone, setStartupDone] = useState(false);
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
     // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal; opened with
-    // a folder: the usual terminal, started there.
+    // a folder: the usual terminal, started there; otherwise the tabs of the last run when
+    // Settings say so.
     void invoke<string | null>("launch_workspace_take")
       .catch(() => null)
       .then(async (file) => ({ file, folders: file ? await workspaceFoldersOf(file) : [] }))
       .then(async ({ file, folders }) => {
-        if (file && folders.length > 0) return openWorkspaceFileRef.current(file, folders);
+        if (file && folders.length > 0) {
+          openWorkspaceFileRef.current(file, folders);
+          return setStartupDone(true);
+        }
         const folder = await invoke<string | null>("launch_folder_take").catch(() => null);
         const settings = terminalSettings.settings;
+        if (!folder && settings.restoreTabs) {
+          const saved = parseTabsDocument(await invoke<string | null>("tabs_state_load").catch(() => null));
+          if (saved && saved.tabs.length > 0) return setPendingRestore(saved);
+        }
         dispatch({ type: "open", target: localTargetOf(folder ? { ...settings, localCwd: folder } : settings) });
+        setStartupDone(true);
       });
   }, [terminalSettings.loaded, terminalSettings.settings]);
   const shells = useShells();
@@ -801,7 +817,10 @@ function AppContent() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [isRunning]);
 
-  const open = useCallback((target: SessionTarget) => dispatch({ type: "open", target }), []);
+  const open = useCallback(
+    (target: SessionTarget, savedId?: string) => dispatch({ type: "open", target, ...(savedId ? { savedId } : {}) }),
+    [],
+  );
   const { localShell, localShellArgs, localCwd: localStart } = terminalSettings.settings;
   const openLocal = useCallback(
     () => open(localTargetOf({ localShell, localShellArgs, localCwd: localStart })),
@@ -876,25 +895,141 @@ function AppContent() {
   };
 
   /** Mosh starts its server with the login of a saved SSH session (S17.2). */
-  const openMosh = async (sshSessionId: string, serverCommand: string | undefined, name?: string) => {
+  const moshTarget = async (sshSessionId: string, serverCommand: string | undefined, name?: string): Promise<MoshTarget | null> => {
     const ssh = sessions.library.sessions.find((s) => s.id === sshSessionId);
     if (!ssh || !isSshSession(ssh)) {
-      return setNotice(
+      setNotice(
         name
           ? t("app.notice.moshSessionGone", { name })
           : t("app.notice.sshSessionGone"),
       );
+      return null;
     }
     const login = await sshLoginFor(ssh);
-    if (login) open({ type: "mosh", ssh: login, ...(serverCommand ? { serverCommand } : {}) });
+    return login && { type: "mosh", ssh: login, ...(serverCommand ? { serverCommand } : {}) };
+  };
+  const openMosh = async (sshSessionId: string, serverCommand: string | undefined, name?: string) => {
+    const target = await moshTarget(sshSessionId, serverCommand, name);
+    if (target) open(target);
   };
 
-  const openSaved = async (session: LibrarySession) => {
-    if (isMoshSession(session)) return openMosh(session.sshSessionId, session.serverCommand, session.name);
-    if (!isSshSession(session)) return open(toTarget(session));
-    const login = await sshLoginFor(session);
-    if (login) open(login);
+  /** What a saved session connects to, as it is saved now; null when it cannot (a notice says why). */
+  const savedTarget = async (session: LibrarySession): Promise<SessionTarget | null> => {
+    if (isMoshSession(session)) return moshTarget(session.sshSessionId, session.serverCommand, session.name);
+    if (!isSshSession(session)) return toTarget(session);
+    return sshLoginFor(session);
   };
+
+  /** The tab remembers its saved session, so tabs.json refers to it instead of saving its login (S2.2). */
+  const openSaved = async (session: LibrarySession) => {
+    // Opened at once when there is no login to look up.
+    if (!isSshSession(session) && !isMoshSession(session)) return open(toTarget(session), session.id);
+    const target = await savedTarget(session);
+    if (target) open(target, session.id);
+  };
+
+  /** Panes restored at startup that turn DEV mode on once their shell has started, by tab key. */
+  const devOnRestore = useRef(new Map<string, string>());
+  /** The folder each restored local pane started in, until its shell reports one (OSC 7). */
+  const restoredCwds = useRef(new Map<string, string>());
+  // The tabs of the last run reopen once the saved sessions they refer to are known (S2.2): a
+  // deleted session's tab is skipped, and with nothing left the usual terminal opens.
+  const restoring = useRef(false);
+  useEffect(() => {
+    if (!pendingRestore || sessions.status.state === "loading" || restoring.current) return;
+    restoring.current = true;
+    const doc = pendingRestore;
+    void Promise.all(
+      doc.tabs.map(({ source }) => {
+        if ("target" in source) return source.target;
+        const session = sessions.library.sessions.find((s) => s.id === source.sessionId);
+        return session ? savedTarget(session).catch(() => null) : null;
+      }),
+    ).then((targets) => {
+      const plan = planRestore(doc, targets, stateRef.current);
+      if (plan.tabs.length === 0) {
+        dispatch({ type: "open", target: localTargetOf(terminalSettings.settings) });
+      } else {
+        for (const tab of plan.tabs) {
+          if (tab.target.type !== "local" || !tab.target.cwd) continue;
+          for (const pane of paneIds(tab.layout)) restoredCwds.current.set(pane, plan.cwds[pane] ?? tab.target.cwd);
+        }
+        for (const [pane, folder] of Object.entries(plan.cwds)) pendingCd.current.set(pane, folder);
+        for (const { key, pane } of plan.dev) devOnRestore.current.set(key, pane);
+        const added = plan.dev.filter((d) => d.folders.length > 0);
+        if (added.length) setWorkspaceFolders((prev) => ({ ...prev, ...Object.fromEntries(added.map((d) => [d.key, d.folders])) }));
+        dispatch({ type: "restore", tabs: plan.tabs, activeKey: plan.activeKey });
+      }
+      setPendingRestore(null);
+      setStartupDone(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRestore, sessions.status.state]);
+  // A restored DEV tab turns DEV mode on from its pane once that pane's shell has started.
+  useEffect(() => {
+    for (const [key, pane] of devOnRestore.current) {
+      const tab = state.tabs.find((t) => t.key === key);
+      if (!tab || !paneIds(tab.layout).includes(pane)) {
+        devOnRestore.current.delete(key);
+        continue;
+      }
+      if ((paneMeta[pane]?.sessionId ?? null) === null) continue;
+      devOnRestore.current.delete(key);
+      if (!dev.state[key]) toggleDev(tab, pane);
+    }
+  }, [state.tabs, paneMeta, dev.state, toggleDev]);
+
+  // tabs.json follows the open tabs, a moment after they change, once startup has opened its own (S2.1).
+  const { restoreTabs } = terminalSettings.settings;
+  const lastSavedTabs = useRef<string | null>(null);
+  /** The contents waiting for the delay to be written, or null. */
+  const unsavedTabs = useRef<string | null>(null);
+  const saveTabsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flushTabs = useCallback(() => {
+    clearTimeout(saveTabsTimer.current);
+    const contents = unsavedTabs.current;
+    if (contents === null) return;
+    unsavedTabs.current = null;
+    lastSavedTabs.current = contents;
+    void invoke("tabs_state_save", { contents }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!startupDone) return;
+    if (!restoreTabs) {
+      clearTimeout(saveTabsTimer.current);
+      unsavedTabs.current = null;
+      return;
+    }
+    const contents = serializeTabs(
+      snapshotTabs({
+        tabs: state.tabs,
+        activeKey: state.activeKey,
+        cwdOf: (pane) => paneMeta[pane]?.cwd ?? restoredCwds.current.get(pane) ?? null,
+        devOf: (key) => {
+          const tabDev = dev.state[key];
+          return tabDev && { pane: tabDev.pane, folder: tabDev.folder ?? tabDev.root };
+        },
+        workspaceOf: (key) => workspaceFolders[key],
+      }),
+    );
+    // Pane reports that change nothing saved (output, prompts) neither write nor postpone a write.
+    if (contents === unsavedTabs.current) return;
+    clearTimeout(saveTabsTimer.current);
+    if (contents === lastSavedTabs.current) {
+      unsavedTabs.current = null;
+      return;
+    }
+    unsavedTabs.current = contents;
+    saveTabsTimer.current = setTimeout(flushTabs, TABS_SAVE_DELAY_MS);
+  }, [startupDone, restoreTabs, state.tabs, state.activeKey, paneMeta, dev.state, workspaceFolders, flushTabs]);
+  // Closing the window does not wait for the delay.
+  useEffect(() => {
+    window.addEventListener("beforeunload", flushTabs);
+    return () => {
+      window.removeEventListener("beforeunload", flushTabs);
+      flushTabs();
+    };
+  }, [flushTabs]);
 
   /** Deletes sessions and the passwords saved for them; a keyring failure only shows a notice. */
   const deleteSessions = (action: LibraryAction) => {

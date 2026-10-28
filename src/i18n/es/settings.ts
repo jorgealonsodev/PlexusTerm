@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "Aceptar una palabra de la sugerencia",
     },
   },
+  general: {
+    restoreTabs: "Restaurar las pestañas al iniciar",
+    restoreTabsHelp: "Vuelve a abrir las pestañas, los paneles divididos y el modo DEV de la última vez: las sesiones guardadas se reconectan con su configuración actual y los terminales locales se abren en su última carpeta. Nunca se guardan contraseñas ni la salida del terminal. Al abrir PlexusTerm con una carpeta o un espacio de trabajo, solo se abre eso.",
+  },
   about: {
     licenses: "Licencias de código abierto",
     licensesIntro: "PlexusTerm está hecho con estas bibliotecas de código abierto. Selecciona una para ver su licencia.",

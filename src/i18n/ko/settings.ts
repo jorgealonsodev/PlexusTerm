@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "제안에서 한 단어 수락",
     },
   },
+  general: {
+    restoreTabs: "시작할 때 탭 복원",
+    restoreTabsHelp: "지난번의 탭, 분할 창, DEV 모드를 다시 엽니다. 저장된 세션은 현재 설정으로 다시 연결되고 로컬 터미널은 마지막 폴더에서 열립니다. 비밀번호와 터미널 출력은 저장되지 않습니다. 폴더나 작업 영역을 지정해 PlexusTerm을 열면 그것만 열립니다.",
+  },
   about: {
     licenses: "오픈 소스 라이선스",
     licensesIntro: "PlexusTerm은 다음 오픈 소스 라이브러리로 만들어졌습니다. 하나를 선택하면 라이선스를 볼 수 있습니다.",

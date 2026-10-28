@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "Accepter un mot de la suggestion",
     },
   },
+  general: {
+    restoreTabs: "Restaurer les onglets au démarrage",
+    restoreTabsHelp: "Rouvre les onglets, les volets divisés et le mode DEV de la dernière exécution : les sessions enregistrées se reconnectent avec leurs réglages actuels et les terminaux locaux s'ouvrent dans leur dernier dossier. Les mots de passe et la sortie du terminal ne sont jamais enregistrés. Ouvrir PlexusTerm avec un dossier ou un espace de travail n'ouvre que celui-ci.",
+  },
   about: {
     licenses: "Licences open source",
     licensesIntro: "PlexusTerm est construit avec ces bibliothèques open source. Sélectionnez-en une pour voir sa licence.",

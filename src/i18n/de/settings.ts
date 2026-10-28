@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "Ein Wort des Vorschlags übernehmen",
     },
   },
+  general: {
+    restoreTabs: "Tabs beim Start wiederherstellen",
+    restoreTabsHelp: "Öffnet die Tabs, geteilten Bereiche und den DEV-Modus der letzten Sitzung erneut: Gespeicherte Sitzungen verbinden sich mit ihren aktuellen Einstellungen, lokale Terminals öffnen sich in ihrem letzten Ordner. Passwörter und Terminalausgaben werden nie gespeichert. Wird PlexusTerm mit einem Ordner oder Arbeitsbereich geöffnet, wird nur dieser geöffnet.",
+  },
   about: {
     licenses: "Open-Source-Lizenzen",
     licensesIntro: "PlexusTerm nutzt diese Open-Source-Bibliotheken. Wähle eine aus, um ihre Lizenz zu sehen.",

@@ -339,6 +339,10 @@ export const settings = {
       acceptWord: "Accept one word of the suggestion",
     },
   },
+  general: {
+    restoreTabs: "Restore tabs at startup",
+    restoreTabsHelp: "Reopens the tabs, split panes and DEV mode of the last run: saved sessions reconnect with their current settings and local terminals open in their last folder. Passwords and terminal output are never saved. Opening PlexusTerm with a folder or workspace opens only that.",
+  },
   about: {
     licenses: "Open-source licenses",
     licensesIntro: "PlexusTerm is built with these open-source libraries. Select one to see its license.",

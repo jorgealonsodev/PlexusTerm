@@ -338,6 +338,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "接受建议中的一个词",
     },
   },
+  general: {
+    restoreTabs: "启动时恢复标签页",
+    restoreTabsHelp: "重新打开上次运行时的标签页、拆分窗格和 DEV 模式：已保存的会话按当前设置重新连接，本地终端在其最后所在的文件夹中打开。从不保存密码和终端输出。使用文件夹或工作区打开 PlexusTerm 时，只打开该文件夹或工作区。",
+  },
   about: {
     licenses: "开源许可证",
     licensesIntro: "PlexusTerm 使用以下开源库构建。选择一个可查看其许可证。",

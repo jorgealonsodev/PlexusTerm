@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "候補を 1 単語だけ確定",
     },
   },
+  general: {
+    restoreTabs: "起動時にタブを復元",
+    restoreTabsHelp: "前回のタブ、分割ペイン、DEV モードを再び開きます。保存したセッションは現在の設定で再接続し、ローカルターミナルは最後のフォルダーで開きます。パスワードとターミナルの出力は保存されません。フォルダーやワークスペースを指定して PlexusTerm を開いた場合は、それだけが開きます。",
+  },
   about: {
     licenses: "オープンソース ライセンス",
     licensesIntro: "PlexusTerm は次のオープンソース ライブラリで作られています。選択するとライセンスを表示します。",

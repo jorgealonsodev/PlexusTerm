@@ -341,6 +341,10 @@ export const settings: Messages<typeof en> = {
       acceptWord: "Aceitar uma palavra da sugestão",
     },
   },
+  general: {
+    restoreTabs: "Restaurar as abas ao iniciar",
+    restoreTabsHelp: "Reabre as abas, os painéis divididos e o modo DEV da última execução: as sessões salvas se reconectam com as configurações atuais e os terminais locais abrem na última pasta. Senhas e a saída do terminal nunca são salvas. Ao abrir o PlexusTerm com uma pasta ou um espaço de trabalho, apenas ele é aberto.",
+  },
   about: {
     licenses: "Licenças de código aberto",
     licensesIntro: "O PlexusTerm é feito com estas bibliotecas de código aberto. Selecione uma para ver sua licença.",

@@ -399,6 +399,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [devColumnHideWhenCollapsed, setDevColumnHideWhenCollapsed] = useState(settings.devColumnHideWhenCollapsed);
   const [devColumnAtStartup, setDevColumnAtStartup] = useState(settings.devColumnAtStartup);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
+  const [restoreTabs, setRestoreTabs] = useState(settings.restoreTabs);
   const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
   const [diagnosticLog, setDiagnosticLog] = useState(settings.diagnosticLog);
   const [diagnosticLogDir, setDiagnosticLogDir] = useState(settings.diagnosticLogDir);
@@ -555,6 +556,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       devColumnHideWhenCollapsed,
       devColumnAtStartup,
       checkUpdates,
+      restoreTabs,
       aiSaveChats,
       diagnosticLog,
       diagnosticLogDir: cleanLocalShell(diagnosticLogDir),
@@ -713,6 +715,12 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
                 <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>
               </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={restoreTabs} onChange={(e) => setRestoreTabs(e.target.checked)} />
+              <span className="setting-title">
+                {t("settings.general.restoreTabs")} <HelpTip text={t("settings.general.restoreTabsHelp")} />
+              </span>
             </label>
             <label className="check">
               <input type="checkbox" checked={checkUpdates} onChange={(e) => setCheckUpdates(e.target.checked)} />
