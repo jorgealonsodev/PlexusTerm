@@ -122,8 +122,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} セッション",
     skippedInclude: "Include 行 (読み込みません)",
     skippedMatch: "Match ブロック (適用しません)",
-    skippedProxyCommand: "ProxyCommand のあるホスト (それなしでインポート)",
-    skippedJump: "ProxyJump がファイル内のホストでないホスト (それなしでインポート)",
+    skippedProxyCommand: "2000 文字を超える ProxyCommand 行 (それなしでインポート)",
+    skippedJump: "ProxyJump のホストが 3 つを超えるか、ホスト自身を指すホスト (それなしでインポート)",
+    proxyCommands: "これらのセッションは、開くたびにこのコンピューターでコマンドを実行します。インポートする前に確認してください:",
   },
   ssh: {
     title: "SSH セッション",

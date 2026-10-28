@@ -147,8 +147,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "جلسات {type}",
     skippedInclude: "أسطر Include (لا تُتبع)",
     skippedMatch: "كتل Match (لا تُطبق)",
-    skippedProxyCommand: "مضيفون لديهم ProxyCommand (استُوردوا بدونه)",
-    skippedJump: "مضيفون ليس ProxyJump الخاص بهم مضيفًا في الملف (استُوردوا بدونه)",
+    skippedProxyCommand: "أسطر ProxyCommand أطول من 2000 حرف (استُوردت بدونه)",
+    skippedJump: "مضيفون يحتوي ProxyJump الخاص بهم على أكثر من 3 مضيفين أو يذكر المضيف نفسه (استُوردوا بدونه)",
+    proxyCommands: "تشغّل هذه الجلسات أمرًا على هذا الحاسوب في كل مرة تفتحها. راجعها قبل الاستيراد:",
   },
   ssh: {
     title: "جلسة SSH",

@@ -1,4 +1,4 @@
-import type { LibrarySession } from "./library";
+import { isSshSession, type LibrarySession } from "./library";
 import { skippedLabel, type ImportPlan } from "./iniImport";
 import { useT } from "../../i18n/i18n";
 
@@ -10,12 +10,17 @@ interface IniImportDialogProps {
   onClose: () => void;
 }
 
-/** Preview of a sessions .ini import; nothing is saved until the user confirms. */
+/**
+ * Preview of an import (.ini, ~/.ssh/config or an exported sessions file); nothing is saved until
+ * the user confirms. Proxy commands are listed in full: they run on this computer when the session
+ * is opened, and a file may come from someone else.
+ */
 export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogProps) {
   const t = useT();
   const plan = result.ok ? result.plan : null;
   const count = plan?.toAdd.length ?? 0;
   const skipped = plan ? Object.entries(plan.skipped) : [];
+  const proxied = (plan?.toAdd ?? []).filter(isSshSession).filter((s) => s.proxyCommand);
 
   return (
     <div className="overlay" onKeyDown={(e) => e.key === "Escape" && onClose()}>
@@ -38,6 +43,18 @@ export function IniImportDialog({ result, onConfirm, onClose }: IniImportDialogP
                 <ul className="import-skipped">
                   {skipped.map(([key, n]) => (
                     <li key={key}>{`${skippedLabel(key)}: ${n}`}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {proxied.length > 0 && (
+              <>
+                <p className="form-error">{t("sessions.import.proxyCommands")}</p>
+                <ul className="import-skipped">
+                  {proxied.map((s) => (
+                    <li key={s.id} data-testid="import-proxy-command">
+                      {s.name}: <code dir="ltr">{s.proxyCommand}</code>
+                    </li>
                   ))}
                 </ul>
               </>

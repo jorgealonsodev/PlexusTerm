@@ -24,6 +24,8 @@ export type ImportedSession =
       auth?: SavedAuth;
       /** Names of the imported sessions to go through first, outermost first. */
       jumps?: string[];
+      /** Local command that carries the connection (ssh config `ProxyCommand`); never with `jumps`. */
+      proxyCommand?: string;
     }
   | { kind: "telnet"; name: string; folder: string; host: string; port: number };
 

@@ -120,8 +120,9 @@ export const sessions = {
     skippedType: "{type} sessions",
     skippedInclude: "Include lines (not followed)",
     skippedMatch: "Match blocks (not applied)",
-    skippedProxyCommand: "Hosts with a ProxyCommand (imported without it)",
-    skippedJump: "Hosts whose ProxyJump is not a host of the file (imported without it)",
+    skippedProxyCommand: "ProxyCommand lines longer than 2000 characters (imported without it)",
+    skippedJump: "Hosts whose ProxyJump has more than 3 hosts or names the host itself (imported without it)",
+    proxyCommands: "These sessions run a command on this computer each time you open them. Check them before importing:",
   },
   ssh: {
     title: "SSH session",

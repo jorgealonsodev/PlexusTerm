@@ -85,10 +85,66 @@ describe("parseSshConfig", () => {
     expect(parsed.skipped).toEqual({});
   });
 
-  it("counts ProxyJump hops that are not imported hosts, and imports the host without them", () => {
+  it("imports a ProxyJump hop with a user and a port as a jump host session with that port", () => {
     const parsed = parseSshConfig("Host inner\n  ProxyJump admin@gw.example.com:2222");
-    expect(parsed.sessions[0].kind === "ssh" && parsed.sessions[0].jumps).toBeUndefined();
-    expect(parsed.skipped).toEqual({ jump: 1 });
+    expect(parsed.sessions).toEqual([
+      {
+        kind: "ssh",
+        name: "inner",
+        folder: SSH_CONFIG_FOLDER,
+        host: "inner",
+        port: 22,
+        username: "",
+        jumps: ["admin@gw.example.com:2222"],
+      },
+      {
+        kind: "ssh",
+        name: "admin@gw.example.com:2222",
+        folder: SSH_CONFIG_FOLDER,
+        host: "gw.example.com",
+        port: 2222,
+        username: "admin",
+      },
+    ]);
+    expect(parsed.skipped).toEqual({});
+  });
+
+  it("reads host:port, user@host, [IPv6]:port and ssh:// hops, sharing one session per hop", () => {
+    const parsed = parseSshConfig(
+      ["Host a", "  ProxyJump gw:2200,ops@10.0.0.1", "Host b", "  ProxyJump ssh://[fd00::1]:2022,gw:2200"].join("\n"),
+    );
+    expect(parsed.sessions.map((s) => [s.name, s.host, s.port, s.kind === "ssh" ? s.username : ""])).toEqual([
+      ["a", "a", 22, ""],
+      ["b", "b", 22, ""],
+      ["gw:2200", "gw", 2200, ""],
+      ["ops@10.0.0.1", "10.0.0.1", 22, "ops"],
+      ["ssh://[fd00::1]:2022", "fd00::1", 2022, ""],
+    ]);
+    expect(parsed.sessions[0]).toMatchObject({ jumps: ["gw:2200", "ops@10.0.0.1"] });
+    expect(parsed.sessions[1]).toMatchObject({ jumps: ["ssh://[fd00::1]:2022", "gw:2200"] });
+  });
+
+  it("gives a hop through a host of the file that host's settings, with the user and port of the hop", () => {
+    const parsed = parseSshConfig(
+      ["Host gw", "  HostName 1.2.3.4", "  User me", "  IdentityFile ~/.ssh/gw", "Host app", "  ProxyJump root@gw:2222", "Host db", "  ProxyJump me@gw:22"].join(
+        "\n",
+      ),
+    );
+    // Same user and port as the host itself: the host is the jump.
+    expect(parsed.sessions.find((s) => s.name === "db")).toMatchObject({ jumps: ["gw"] });
+    expect(parsed.sessions.find((s) => s.name === "app")).toMatchObject({ jumps: ["root@gw:2222"] });
+    expect(parsed.sessions.find((s) => s.name === "root@gw:2222")).toMatchObject({
+      host: "1.2.3.4",
+      port: 2222,
+      username: "root",
+      auth: { method: "key", path: "~/.ssh/gw" },
+    });
+  });
+
+  it("counts a ProxyJump with more than 3 hops or a hop it cannot read, and imports the host without it", () => {
+    const parsed = parseSshConfig("Host a\n  ProxyJump h1,h2,h3,h4\nHost b\n  ProxyJump gw:99999");
+    expect(parsed.sessions.map((s) => s.name)).toEqual(["a", "b"]);
+    expect(parsed.skipped).toEqual({ jump: 2 });
   });
 
   it("ignores ProxyJump none", () => {
@@ -96,12 +152,41 @@ describe("parseSshConfig", () => {
     expect(parsed.skipped).toEqual({});
   });
 
-  it("counts Include and Match lines and ProxyCommand hosts, which are not followed", () => {
+  it("counts Include and Match lines, which are not followed", () => {
     const parsed = parseSshConfig(
-      ["Include ~/.orbstack/ssh/config", "Host h", "  ProxyCommand nc -X 5 %h %p", "Match host x", "  User nobody"].join("\n"),
+      ["Include ~/.orbstack/ssh/config", "Host h", "Match host x", "  User nobody"].join("\n"),
     );
     expect(parsed.sessions.map((s) => s.name)).toEqual(["h"]);
-    expect(parsed.skipped).toEqual({ include: 1, match: 1, proxyCommand: 1 });
+    expect(parsed.skipped).toEqual({ include: 1, match: 1 });
+  });
+
+  it("imports the whole ProxyCommand line as the session's proxy command", () => {
+    const parsed = parseSshConfig(
+      ['Host h', '  ProxyCommand cloudflared access ssh --hostname "%h" --id x', "Host *", "  ProxyCommand ignored %h"].join("\n"),
+    );
+    expect(parsed.sessions[0]).toMatchObject({ proxyCommand: 'cloudflared access ssh --hostname "%h" --id x' });
+    expect(parsed.skipped).toEqual({});
+  });
+
+  it("imports no proxy command for ProxyCommand none, which also overrides later blocks", () => {
+    const parsed = parseSshConfig("Host h\n  ProxyCommand none\nHost *\n  ProxyCommand nc %h %p");
+    expect(parsed.sessions[0]).not.toHaveProperty("proxyCommand");
+    expect(parsed.skipped).toEqual({});
+  });
+
+  it("uses whichever of ProxyJump and ProxyCommand comes first, like ssh", () => {
+    const first = parseSshConfig("Host j\nHost h\n  ProxyJump j\n  ProxyCommand nc %h %p");
+    expect(first.sessions[1]).toMatchObject({ jumps: ["j"] });
+    expect(first.sessions[1]).not.toHaveProperty("proxyCommand");
+    const second = parseSshConfig("Host j\nHost h\n  ProxyCommand nc %h %p\nHost *\n  ProxyJump j");
+    expect(second.sessions[1]).toMatchObject({ proxyCommand: "nc %h %p" });
+    expect(second.sessions[1]).not.toHaveProperty("jumps");
+  });
+
+  it("counts a ProxyCommand longer than 2000 characters and imports the host without it", () => {
+    const parsed = parseSshConfig(`Host h\n  ProxyCommand ${"x".repeat(2001)}`);
+    expect(parsed.sessions[0]).not.toHaveProperty("proxyCommand");
+    expect(parsed.skipped).toEqual({ proxyCommand: 1 });
   });
 
   it("returns nothing for an empty file", () => {
@@ -153,5 +238,16 @@ describe("planImport with an ssh config", () => {
     const plan = planImport(library, parseSshConfig("Host bastion\nHost inner\n  ProxyJump bastion"), ids());
     expect(plan.duplicates).toBe(1);
     expect(plan.toAdd).toMatchObject([{ name: "inner", jumpIds: ["old"] }]);
+  });
+});
+
+describe("planImport of proxy commands and jump hosts with a port", () => {
+  it("keeps the proxy command and links the new jump host session", () => {
+    const parsed = parseSshConfig("Host p\n  ProxyCommand nc %h %p\nHost inner\n  ProxyJump admin@gw:2222");
+    const plan = planImport(emptyLibrary, parsed, ids());
+    expect(plan.toAdd.map((s) => s.name)).toEqual(["p", "inner", "admin@gw:2222"]);
+    expect(plan.toAdd[0]).toMatchObject({ proxyCommand: "nc %h %p" });
+    expect(plan.toAdd[1]).toMatchObject({ jumpIds: ["id3"] });
+    expect(plan.toAdd[2]).toMatchObject({ id: "id3", host: "gw", port: 2222, username: "admin" });
   });
 });

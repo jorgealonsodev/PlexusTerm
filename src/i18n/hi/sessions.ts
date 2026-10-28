@@ -125,8 +125,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} सेशन",
     skippedInclude: "Include पंक्तियाँ (फ़ॉलो नहीं की जातीं)",
     skippedMatch: "Match ब्लॉक (लागू नहीं होते)",
-    skippedProxyCommand: "ProxyCommand वाले होस्ट (उसके बिना इम्पोर्ट)",
-    skippedJump: "ऐसे होस्ट जिनका ProxyJump फ़ाइल का होस्ट नहीं है (उसके बिना इम्पोर्ट)",
+    skippedProxyCommand: "2000 अक्षरों से लंबी ProxyCommand पंक्तियाँ (उसके बिना इम्पोर्ट)",
+    skippedJump: "ऐसे होस्ट जिनके ProxyJump में 3 से ज़्यादा होस्ट हैं या जो खुद उसी होस्ट का नाम लेता है (उसके बिना इम्पोर्ट)",
+    proxyCommands: "ये सेशन हर बार खोलने पर इस कंप्यूटर पर एक कमांड चलाते हैं। इम्पोर्ट करने से पहले इन्हें जाँच लें:",
   },
   ssh: {
     title: "SSH सेशन",

@@ -121,8 +121,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} 세션",
     skippedInclude: "Include 줄 (따라가지 않음)",
     skippedMatch: "Match 블록 (적용하지 않음)",
-    skippedProxyCommand: "ProxyCommand가 있는 호스트 (제외하고 가져옴)",
-    skippedJump: "ProxyJump가 파일의 호스트가 아닌 호스트 (제외하고 가져옴)",
+    skippedProxyCommand: "2000자를 넘는 ProxyCommand 줄 (제외하고 가져옴)",
+    skippedJump: "ProxyJump의 호스트가 3개를 넘거나 자기 자신을 가리키는 호스트 (제외하고 가져옴)",
+    proxyCommands: "이 세션들은 열 때마다 이 컴퓨터에서 명령을 실행합니다. 가져오기 전에 확인하세요:",
   },
   ssh: {
     title: "SSH 세션",

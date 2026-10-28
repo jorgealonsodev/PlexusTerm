@@ -121,8 +121,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} 会话",
     skippedInclude: "Include 行（不跟随）",
     skippedMatch: "Match 块（不应用）",
-    skippedProxyCommand: "带 ProxyCommand 的主机（导入时不含该项）",
-    skippedJump: "ProxyJump 不是文件中主机的主机（导入时不含该项）",
+    skippedProxyCommand: "超过 2000 个字符的 ProxyCommand 行（导入时不含该项）",
+    skippedJump: "ProxyJump 中主机超过 3 个或指向自身的主机（导入时不含该项）",
+    proxyCommands: "这些会话每次打开时都会在本机运行一条命令。导入前请检查：",
   },
   ssh: {
     title: "SSH 会话",

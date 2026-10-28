@@ -136,8 +136,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "Sesiones {type}",
     skippedInclude: "Líneas Include (no se siguen)",
     skippedMatch: "Bloques Match (no se aplican)",
-    skippedProxyCommand: "Hosts con ProxyCommand (importados sin él)",
-    skippedJump: "Hosts cuyo ProxyJump no es un host del fichero (importados sin él)",
+    skippedProxyCommand: "Líneas ProxyCommand de más de 2000 caracteres (importados sin él)",
+    skippedJump: "Hosts cuyo ProxyJump tiene más de 3 hosts o nombra al propio host (importados sin él)",
+    proxyCommands: "Estas sesiones ejecutan un comando en este equipo cada vez que las abres. Revísalos antes de importar:",
   },
   ssh: {
     title: "Sesión SSH",
