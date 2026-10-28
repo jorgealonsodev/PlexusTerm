@@ -2483,6 +2483,7 @@ function AppContent() {
           onLanguageNow={(language) => terminalSettings.update({ language })}
           syncStatus={sessionSync}
           settingsSyncStatus={settingsSync}
+          macros={macros.list.macros}
         />
       )}
       {modal?.kind === "share" && (

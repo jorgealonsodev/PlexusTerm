@@ -314,6 +314,37 @@ describe("SettingsDialog", () => {
     );
   });
 
+  it("gives a highlight rule an action: send text or play a saved macro, and none again (S3)", () => {
+    const onSave = vi.fn();
+    const macros = [
+      { id: "m1", name: "Deploy", steps: [] },
+      { id: "m2", name: "Logs", steps: [] },
+    ];
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      highlightRules: [EXAMPLE_RULE, { ...EXAMPLE_RULE, pattern: "deploy done" }, { ...EXAMPLE_RULE, pattern: "gone", action: { kind: "macro" as const, macroId: "old" } }],
+    };
+    render(<SettingsDialog settings={settings} onSave={onSave} onCancel={() => {}} initialSection="terminal" macros={macros} />);
+    // Sent text is typed as if by you: the help says so.
+    expect(screen.getAllByRole("button", { name: /typed into that terminal as if you typed it/ }).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Action of rule 1"), { target: { value: "send" } });
+    fireEvent.change(screen.getByLabelText("Text rule 1 sends"), { target: { value: "y\\n" } });
+    fireEvent.change(screen.getByLabelText("Action of rule 2"), { target: { value: "macro" } });
+    // Play macro starts with the first saved macro; another can be picked.
+    fireEvent.change(screen.getByLabelText("Macro rule 2 plays"), { target: { value: "m2" } });
+    // A deleted macro is still shown as such until another is picked, and None removes the action.
+    expect((screen.getByLabelText("Macro rule 3 plays") as HTMLSelectElement).selectedOptions[0].textContent).toBe("Deleted macro");
+    fireEvent.change(screen.getByLabelText("Action of rule 3"), { target: { value: "none" } });
+    expect(screen.queryByLabelText("Macro rule 3 plays")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    const saved = onSave.mock.lastCall![0].highlightRules;
+    expect(saved).toStrictEqual([
+      { ...EXAMPLE_RULE, action: { kind: "send", text: "y\\n" } },
+      { ...EXAMPLE_RULE, pattern: "deploy done", action: { kind: "macro", macroId: "m2" } },
+      { ...EXAMPLE_RULE, pattern: "gone" },
+    ]);
+  });
+
   it("sets the settings' own synced folder in Connections and tells how the last sync went", () => {
     const onSave = vi.fn();
     render(<SettingsDialog settings={DEFAULT_SETTINGS} onSave={onSave} onCancel={() => {}} initialSection="ssh" />);
