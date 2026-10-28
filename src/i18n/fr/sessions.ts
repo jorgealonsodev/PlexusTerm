@@ -115,7 +115,7 @@ export const sessions: Messages<typeof en> = {
     command: "Commande du mot de passe",
     passphraseCommand: "Phrase secrète depuis une commande (facultatif)",
     presets: "Modèles",
-    help: "À chaque connexion, PlexusTerm exécute cette commande sur cet ordinateur et se connecte avec ce qu'elle affiche ; le mot de passe n'est jamais enregistré. Le gestionnaire de mots de passe doit déjà être déverrouillé (l'intégration de l'application 1Password, BW_SESSION pour Bitwarden, gpg-agent pour pass…) : la commande ne peut rien demander. Remplacez les mots en majuscules d'un modèle par les vôtres.",
+    help: "À chaque connexion, PlexusTerm exécute cette commande sur cet ordinateur et se connecte avec ce qu'elle affiche ; le mot de passe n'est jamais enregistré. Le gestionnaire de mots de passe doit déjà être déverrouillé (l'intégration de l'application 1Password, BW_SESSION pour Bitwarden, gpg-agent pour pass…) : la commande ne peut rien demander. Remplacez les mots en majuscules d'un modèle par les vôtres. KeePassXC ouvre la base de données avec un fichier clé ; pour une base protégée seulement par un mot de passe, activez l’intégration Secret Service de KeePassXC et utilisez le modèle secret-tool.",
     passphraseHelp: "Utilisée quand aucune phrase secrète n'est saisie : PlexusTerm déverrouille la clé avec ce qu'affiche cette commande et ne l'enregistre jamais. Le gestionnaire de mots de passe doit déjà être déverrouillé : la commande ne peut rien demander.",
     required: "Saisissez la commande qui affiche le mot de passe",
     tooLong: "La commande peut contenir au plus {max} caractères",

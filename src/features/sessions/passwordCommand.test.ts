@@ -179,7 +179,7 @@ describe("password from a command (S5)", () => {
       ["Bitwarden", "bw get password ITEM"],
       ["pass", "pass show PATH"],
       ["GNOME Keyring / libsecret", "secret-tool lookup service NAME"],
-      ["KeePassXC", "keepassxc-cli show -s -a Password DATABASE ENTRY"],
+      ["KeePassXC", "keepassxc-cli show -s -a Password --no-password --key-file KEYFILE DATABASE ENTRY"],
     ]);
   });
 

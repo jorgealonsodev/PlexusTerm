@@ -116,7 +116,7 @@ export const sessions: Messages<typeof en> = {
     command: "Passwortbefehl",
     passphraseCommand: "Passphrase aus einem Befehl (optional)",
     presets: "Vorlagen",
-    help: "Bei jeder Verbindung führt PlexusTerm diesen Befehl auf diesem Computer aus und meldet sich mit seiner Ausgabe an; das Passwort wird nie gespeichert. Der Passwortmanager muss bereits entsperrt sein (die 1Password-App-Integration, BW_SESSION für Bitwarden, gpg-agent für pass …): Der Befehl kann nichts abfragen. Ersetzen Sie die großgeschriebenen Wörter einer Vorlage durch Ihre eigenen.",
+    help: "Bei jeder Verbindung führt PlexusTerm diesen Befehl auf diesem Computer aus und meldet sich mit seiner Ausgabe an; das Passwort wird nie gespeichert. Der Passwortmanager muss bereits entsperrt sein (die 1Password-App-Integration, BW_SESSION für Bitwarden, gpg-agent für pass …): Der Befehl kann nichts abfragen. Ersetzen Sie die großgeschriebenen Wörter einer Vorlage durch Ihre eigenen. KeePassXC öffnet die Datenbank mit einer Schlüsseldatei; für eine Datenbank nur mit Passwort aktivieren Sie die Secret-Service-Integration von KeePassXC und verwenden die Vorlage für secret-tool.",
     passphraseHelp: "Wird verwendet, wenn keine Passphrase eingegeben wird: PlexusTerm entsperrt den Schlüssel mit der Ausgabe dieses Befehls und speichert sie nie. Der Passwortmanager muss bereits entsperrt sein: Der Befehl kann nichts abfragen.",
     required: "Geben Sie den Befehl ein, der das Passwort ausgibt",
     tooLong: "Der Befehl darf höchstens {max} Zeichen lang sein",

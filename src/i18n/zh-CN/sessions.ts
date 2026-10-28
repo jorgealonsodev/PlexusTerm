@@ -108,7 +108,7 @@ export const sessions: Messages<typeof en> = {
     command: "密码命令",
     passphraseCommand: "从命令获取口令（可选）",
     presets: "模板",
-    help: "每次连接时，PlexusTerm 都会在这台电脑上运行此命令，并用它输出的内容登录；密码从不保存。密码管理器必须已解锁（1Password 应用集成、Bitwarden 的 BW_SESSION、pass 的 gpg-agent 等）：命令不能询问任何内容。请将模板中的大写词替换为你自己的值。",
+    help: "每次连接时，PlexusTerm 都会在这台电脑上运行此命令，并用它输出的内容登录；密码从不保存。密码管理器必须已解锁（1Password 应用集成、Bitwarden 的 BW_SESSION、pass 的 gpg-agent 等）：命令不能询问任何内容。请将模板中的大写词替换为你自己的值。 KeePassXC 使用密钥文件打开数据库；仅有密码保护的数据库，请开启 KeePassXC 的 Secret Service 集成并使用 secret-tool 预设。",
     passphraseHelp: "在未输入口令时使用：PlexusTerm 用此命令输出的内容解锁密钥，且从不保存。密码管理器必须已解锁：命令不能询问任何内容。",
     required: "请输入输出密码的命令",
     tooLong: "命令最多 {max} 个字符",

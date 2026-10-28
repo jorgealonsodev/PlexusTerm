@@ -108,7 +108,7 @@ export const sessions: Messages<typeof en> = {
     command: "비밀번호 명령",
     passphraseCommand: "명령으로 가져오는 암호 문구(선택 사항)",
     presets: "템플릿",
-    help: "연결할 때마다 PlexusTerm은 이 컴퓨터에서 이 명령을 실행하고 출력된 값으로 로그인합니다. 비밀번호는 저장되지 않습니다. 비밀번호 관리자는 미리 잠금 해제되어 있어야 합니다(1Password 앱 연동, Bitwarden의 BW_SESSION, pass의 gpg-agent 등). 명령은 아무것도 물어볼 수 없습니다. 템플릿의 대문자 단어를 자신의 값으로 바꾸세요.",
+    help: "연결할 때마다 PlexusTerm은 이 컴퓨터에서 이 명령을 실행하고 출력된 값으로 로그인합니다. 비밀번호는 저장되지 않습니다. 비밀번호 관리자는 미리 잠금 해제되어 있어야 합니다(1Password 앱 연동, Bitwarden의 BW_SESSION, pass의 gpg-agent 등). 명령은 아무것도 물어볼 수 없습니다. 템플릿의 대문자 단어를 자신의 값으로 바꾸세요. KeePassXC는 키 파일로 데이터베이스를 엽니다. 비밀번호만 있는 데이터베이스라면 KeePassXC의 Secret Service 통합을 켜고 secret-tool 프리셋을 사용하세요.",
     passphraseHelp: "암호 문구를 입력하지 않았을 때 사용됩니다. PlexusTerm은 이 명령의 출력으로 키를 잠금 해제하며 저장하지 않습니다. 비밀번호 관리자는 미리 잠금 해제되어 있어야 합니다. 명령은 아무것도 물어볼 수 없습니다.",
     required: "비밀번호를 출력하는 명령을 입력하세요",
     tooLong: "명령은 최대 {max}자까지 입력할 수 있습니다",

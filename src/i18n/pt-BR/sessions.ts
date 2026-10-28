@@ -113,7 +113,7 @@ export const sessions: Messages<typeof en> = {
     command: "Comando da senha",
     passphraseCommand: "Frase secreta a partir de um comando (opcional)",
     presets: "Modelos",
-    help: "A cada conexão, o PlexusTerm executa este comando neste computador e entra com o que ele imprime; a senha nunca é salva. O gerenciador de senhas já deve estar desbloqueado (a integração com o app do 1Password, BW_SESSION para o Bitwarden, gpg-agent para o pass…): o comando não pode pedir nada. Substitua as palavras em maiúsculas de um modelo pelas suas.",
+    help: "A cada conexão, o PlexusTerm executa este comando neste computador e entra com o que ele imprime; a senha nunca é salva. O gerenciador de senhas já deve estar desbloqueado (a integração com o app do 1Password, BW_SESSION para o Bitwarden, gpg-agent para o pass…): o comando não pode pedir nada. Substitua as palavras em maiúsculas de um modelo pelas suas. O KeePassXC abre o banco de dados com um arquivo de chave; para um banco protegido só por senha, ative a integração Secret Service do KeePassXC e use o modelo do secret-tool.",
     passphraseHelp: "Usado quando nenhuma frase secreta é digitada: o PlexusTerm desbloqueia a chave com o que este comando imprime e nunca o salva. O gerenciador de senhas já deve estar desbloqueado: o comando não pode pedir nada.",
     required: "Digite o comando que imprime a senha",
     tooLong: "O comando pode ter no máximo {max} caracteres",

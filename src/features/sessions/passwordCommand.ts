@@ -21,7 +21,9 @@ export const PASSWORD_COMMAND_PRESETS: readonly CommandPreset[] = [
   { label: "Bitwarden", command: "bw get password ITEM" },
   { label: "pass", command: "pass show PATH" },
   { label: "GNOME Keyring / libsecret", command: "secret-tool lookup service NAME" },
-  { label: "KeePassXC", command: "keepassxc-cli show -s -a Password DATABASE ENTRY" },
+  // stdin is closed, so the database cannot ask for its password: a key file opens it. A
+  // password-only database is read through KeePassXC's Secret Service with the secret-tool preset.
+  { label: "KeePassXC", command: "keepassxc-cli show -s -a Password --no-password --key-file KEYFILE DATABASE ENTRY" },
 ];
 
 /**

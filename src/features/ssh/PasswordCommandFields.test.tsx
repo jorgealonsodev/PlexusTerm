@@ -60,7 +60,7 @@ describe("password from a command fields (S5)", () => {
       "bw get password ITEM",
       "pass show PATH",
       "secret-tool lookup service NAME",
-      "keepassxc-cli show -s -a Password DATABASE ENTRY",
+      "keepassxc-cli show -s -a Password --no-password --key-file KEYFILE DATABASE ENTRY",
     ]);
   });
 

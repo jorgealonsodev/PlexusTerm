@@ -106,7 +106,7 @@ export const sessions = {
     command: "Password command",
     passphraseCommand: "Passphrase from a command (optional)",
     presets: "Presets",
-    help: "At every connection PlexusTerm runs this command on this computer and logs in with what it prints; the password is never saved. The password manager must already be unlocked (the 1Password app integration, BW_SESSION for Bitwarden, gpg-agent for pass…): the command cannot ask for anything. Replace the words in capitals of a preset with your own.",
+    help: "At every connection PlexusTerm runs this command on this computer and logs in with what it prints; the password is never saved. The password manager must already be unlocked (the 1Password app integration, BW_SESSION for Bitwarden, gpg-agent for pass…): the command cannot ask for anything. Replace the words in capitals of a preset with your own. KeePassXC opens its database with a key file; for a database with only a password, turn on KeePassXC's Secret Service integration and use the secret-tool preset.",
     passphraseHelp: "Used when no passphrase is typed: PlexusTerm unlocks the key with what this command prints and never saves it. The password manager must already be unlocked: the command cannot ask for anything.",
     required: "Enter the command that prints the password",
     tooLong: "The command may be at most {max} characters long",

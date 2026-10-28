@@ -113,7 +113,7 @@ export const sessions: Messages<typeof en> = {
     command: "Comando de la contraseña",
     passphraseCommand: "Frase de contraseña desde un comando (opcional)",
     presets: "Plantillas",
-    help: "En cada conexión PlexusTerm ejecuta este comando en este equipo e inicia sesión con lo que imprime; la contraseña nunca se guarda. El gestor de contraseñas ya debe estar desbloqueado (la integración con la app de 1Password, BW_SESSION para Bitwarden, gpg-agent para pass…): el comando no puede pedir nada. Sustituye las palabras en mayúsculas de una plantilla por las tuyas.",
+    help: "En cada conexión PlexusTerm ejecuta este comando en este equipo e inicia sesión con lo que imprime; la contraseña nunca se guarda. El gestor de contraseñas ya debe estar desbloqueado (la integración con la app de 1Password, BW_SESSION para Bitwarden, gpg-agent para pass…): el comando no puede pedir nada. Sustituye las palabras en mayúsculas de una plantilla por las tuyas. KeePassXC abre la base de datos con un archivo de clave; si la base de datos solo tiene contraseña, activa la integración Secret Service de KeePassXC y usa la plantilla de secret-tool.",
     passphraseHelp: "Se usa cuando no se escribe ninguna frase de contraseña: PlexusTerm desbloquea la clave con lo que imprime este comando y nunca lo guarda. El gestor de contraseñas ya debe estar desbloqueado: el comando no puede pedir nada.",
     required: "Escribe el comando que imprime la contraseña",
     tooLong: "El comando puede tener como máximo {max} caracteres",
