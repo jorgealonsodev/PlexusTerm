@@ -28,6 +28,33 @@ export function splitIncompleteEscape(text: string): [complete: string, rest: st
   return text.endsWith("\r") ? [text.slice(0, -1), "\r"] : [text, ""];
 }
 
+/** An escape string: an OSC, or a DCS/SOS/PM/APC string (sixel images are DCS strings). */
+export type EscapeString = "osc" | "dcs";
+
+/** The kind of escape string `text` starts with, or null when it starts with something else. */
+export function escapeStringKind(text: string): EscapeString | null {
+  if (text[0] !== "\x1b" || text.length < 2) return null;
+  if (text[1] === "]") return "osc";
+  return "PX^_".includes(text[1]) ? "dcs" : null;
+}
+
+const STRING_END = { osc: /[\x1b\x18\x1a\x07]/g, dcs: /[\x1b\x18\x1a]/g };
+
+/**
+ * Where an escape string whose body is `text` ends, as the terminal's parser sees it: after ST
+ * (ESC \), CAN or SUB (and BEL for an OSC), or before any other ESC, which starts a new sequence.
+ * -1 when it does not end in `text`, also when `text` ends with an ESC that may start an ST.
+ */
+export function escapeStringEnd(text: string, kind: EscapeString): number {
+  const end = STRING_END[kind];
+  end.lastIndex = 0;
+  if (!end.test(text)) return -1;
+  const at = end.lastIndex - 1;
+  if (text[at] !== "\x1b") return at + 1;
+  if (at + 1 === text.length) return -1;
+  return text[at + 1] === "\\" ? at + 2 : at;
+}
+
 /** One row of the terminal buffer: its text and whether it continues the previous row. */
 export interface BufferLine {
   text: string;

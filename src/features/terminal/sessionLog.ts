@@ -1,4 +1,4 @@
-import { splitIncompleteEscape, stripAnsi } from "./output";
+import { escapeStringEnd, escapeStringKind, splitIncompleteEscape, stripAnsi, type EscapeString } from "./output";
 
 /** Longest tail kept back waiting for the end of an escape sequence. */
 const MAX_TAIL = 4096;
@@ -55,6 +55,8 @@ export function createSessionLog(
   let inFlight: Promise<void> | null = null;
   /** The last text logged ended a line: the next output starts a new one. */
   let atLineStart = true;
+  /** An escape string too long to wait for (an image) is being left out until it ends. */
+  let skipping: EscapeString | null = null;
 
   /** Puts the time before each line with output; empty lines stay empty. */
   const stamped = (text: string) => {
@@ -97,9 +99,32 @@ export function createSessionLog(
 
   const flush = (final: boolean) => {
     if (failed || pending === "") return;
-    let [ready, rest] = final ? [pending, ""] : splitIncompleteEscape(pending);
-    if (rest.length > MAX_TAIL) [ready, rest] = [pending, ""];
-    pending = rest;
+    let ready = "";
+    for (;;) {
+      if (skipping) {
+        const end = escapeStringEnd(pending, skipping);
+        if (end === -1) {
+          // An ESC at the end may be the first half of the ST that ends the string.
+          pending = !final && pending.endsWith("\x1b") ? "\x1b" : "";
+          break;
+        }
+        skipping = null;
+        pending = pending.slice(end);
+      }
+      const [complete, rest] = splitIncompleteEscape(pending);
+      ready += complete;
+      const kind = escapeStringKind(rest);
+      if (kind && (final || rest.length > MAX_TAIL)) {
+        // Sixel (DCS) and iTerm2 (OSC 1337) images run to megabytes: they are never logged as
+        // text, however many chunks they arrive in; what follows their end is.
+        skipping = kind;
+        pending = rest.slice(2);
+        continue;
+      }
+      if (final || rest.length > MAX_TAIL) [ready, pending] = [ready + rest, ""];
+      else pending = rest;
+      break;
+    }
     const text = stamped(stripAnsi(ready));
     if (text === "") return;
     const room = Math.max(0, maxBacklog - backlog.length);

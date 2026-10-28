@@ -109,6 +109,50 @@ describe("createSessionLog", () => {
   });
 });
 
+describe("inline images (S3.4)", () => {
+  /** Writes `data` in chunks of `size`, one batch every chunk, as a slow image upload arrives. */
+  const writeInBatches = async (log: ReturnType<typeof setup>["log"], data: string, size: number) => {
+    for (let at = 0; at < data.length; at += size) {
+      log.write(data.slice(at, at + size));
+      await vi.advanceTimersByTimeAsync(500);
+    }
+  };
+  const logged = (append: ReturnType<typeof setup>["append"]) => append.mock.calls.map((c) => c[1]).join("");
+  // Far longer than the escape tail the log waits for (4096 characters).
+  const pixels = "#0;2;0;0;0#0!200~-".repeat(2000);
+  const base64 = "iVBORw0KGgoAAAANSUhEUgAA".repeat(2000);
+
+  it("drops a sixel image (DCS) split across many batches whole, and keeps the text around it", async () => {
+    const { log, append } = setup();
+    await writeInBatches(log, `before\r\n\x1bPq${pixels}\x1b\\after\r\n`, 3000);
+    await log.stop();
+    expect(logged(append)).toBe("before\nafter\n");
+  });
+
+  it("drops an iTerm2 image (OSC 1337) split across many batches whole, ended by BEL or ST", async () => {
+    const { log, append } = setup();
+    const image = (end: string) => `\x1b]1337;File=inline=1;size=48000:${base64}${end}`;
+    // The ST is cut between two batches (ESC at the end of one, \ at the start of the next).
+    await writeInBatches(log, `one ${image("\x07")}two ${image("\x1b\\")}three`, 4367);
+    await log.stop();
+    expect(logged(append)).toBe("one two three");
+  });
+
+  it("never writes an image left unfinished when the log stops", async () => {
+    const { log, append } = setup();
+    await writeInBatches(log, `shown\x1bPq${pixels}`, 3000);
+    await log.stop();
+    expect(logged(append)).toBe("shown");
+  });
+
+  it("logs the output after an image cut short by another escape sequence", async () => {
+    const { log, append } = setup();
+    await writeInBatches(log, `\x1bPq${pixels}\x1b[31mred\x1b[0m\r\n`, 3000);
+    await log.stop();
+    expect(logged(append)).toBe("red\n");
+  });
+});
+
 describe("timestamps", () => {
   it("start every line with output with the time, across batches, and leave empty lines alone", async () => {
     const append = vi.fn((_path: string, _text: string) => Promise.resolve());
