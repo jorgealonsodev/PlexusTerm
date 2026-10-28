@@ -74,10 +74,24 @@ describe("Find in all tabs (S3)", () => {
     keys("G");
     await type("error");
     fireEvent.keyDown(input(), { key: "Enter" });
-    await wait(10);
+    await wait(80);
     expect(dialog()).toBeNull();
     expect(terminals()).toEqual(["true", "false"]);
     expect(reveals).toEqual([{ terminal: 0, row: 1, column: 0, length: 5 }]);
+  });
+
+  it("selects the match where it is once the shown tab rewrapped, not where it was found", async () => {
+    await start();
+    keys("T");
+    keys("G");
+    await type("missing");
+    // Shown again, the first terminal's lines moved down a row (it was resized).
+    const before = buffers[0];
+    buffers[0] = ["make", "build", "error: missing header"];
+    fireEvent.keyDown(input(), { key: "Enter" });
+    await wait(80);
+    buffers[0] = before;
+    expect(reveals).toEqual([{ terminal: 0, row: 2, column: 7, length: 7 }]);
   });
 
   it("is in the command palette", async () => {

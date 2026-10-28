@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIND_ALL_LIMIT, findInPanes, searchablePanes, type BufferRow, type FindTarget, type SearchablePane } from "./findAll";
+import { FIND_ALL_LIMIT, findInPanes, locate, rowText, searchablePanes, type BufferRow, type FindTarget, type SearchablePane } from "./findAll";
 import type { Tab } from "../tabs/tabs";
 
 /** Rows of a buffer from plain lines; a line given as an array is one logical line wrapped over those rows. */
@@ -27,9 +27,9 @@ describe("findInPanes (S3)", () => {
     const { results, capped } = findInPanes(panes, "error", { matchCase: false });
     expect(capped).toBe(false);
     expect(results).toEqual([
-      { tabKey: "t1", paneId: "p1", tabTitle: "t1", paneTitle: "p1", line: "old error in scrollback", index: 4, row: 0, column: 4, length: 5 },
-      { tabKey: "t1", paneId: "p1", tabTitle: "t1", paneTitle: "p1", line: "another error here", index: 8, row: 2, column: 8, length: 5 },
-      { tabKey: "t2", paneId: "p2", tabTitle: "t2", paneTitle: "p2", line: "error", index: 0, row: 1, column: 0, length: 5 },
+      { tabKey: "t1", paneId: "p1", tabTitle: "t1", paneTitle: "p1", line: "old error in scrollback", lineOrdinal: 0, index: 4, row: 0, column: 4, length: 5 },
+      { tabKey: "t1", paneId: "p1", tabTitle: "t1", paneTitle: "p1", line: "another error here", lineOrdinal: 2, index: 8, row: 2, column: 8, length: 5 },
+      { tabKey: "t2", paneId: "p2", tabTitle: "t2", paneTitle: "p2", line: "error", lineOrdinal: 1, index: 0, row: 1, column: 0, length: 5 },
     ]);
   });
 
@@ -112,3 +112,45 @@ describe("searchablePanes (S3)", () => {
     expect(panes[1].rows()).toEqual([{ text: "three", wrapped: false }]);
   });
 });
+
+describe("locate (S3)", () => {
+  it("finds a result again after its terminal rewrapped, by its line and its place in it", () => {
+    const before = rows("first", ["abcde", "fghij", "kl  "]);
+    const [result] = findInPanes([pane("t", "p", before)], "jk", { matchCase: false }).results;
+    // Shown again wider: the line now fits in two rows.
+    const after = rows("first", ["abcdefgh", "ijkl"]);
+    expect(locate(after, result)).toEqual({ row: 2, column: 1 });
+  });
+
+  it("follows the line when scrollback above it went away, and gives up when the line is gone", () => {
+    const [result] = findInPanes([pane("t", "p", rows("a", "b", "the error"))], "error", { matchCase: false }).results;
+    expect(locate(rows("b", "the error"), result)).toEqual({ row: 1, column: 4 });
+    expect(locate(rows("nothing here"), result)).toBeNull();
+  });
+});
+
+describe("rowText (S3)", () => {
+  const cell = (chars: string, width: number) => ({ getChars: () => chars, getWidth: () => width });
+  const line = (text: string, cells: ReturnType<typeof cell>[], isWrapped = false) => ({
+    length: cells.length,
+    isWrapped,
+    translateToString: () => text,
+    getCell: (x: number) => cells[x],
+  });
+
+  it("drops the empty cell a wide character left when it did not fit at the end of the row", () => {
+    const row = line("ab ", [cell("a", 1), cell("b", 1), cell("", 1)]);
+    const next = line("漢c", [cell("漢", 2), cell("", 0), cell("c", 1)], true);
+    expect(rowText(row, next)).toBe("ab");
+  });
+
+  it("keeps a printed space, and an empty end before a row that does not continue it", () => {
+    const spaced = line("ab ", [cell("a", 1), cell("b", 1), cell(" ", 1)]);
+    const next = line("漢c", [cell("漢", 2), cell("", 0), cell("c", 1)], true);
+    expect(rowText(spaced, next)).toBe("ab ");
+    const empty = line("ab ", [cell("a", 1), cell("b", 1), cell("", 1)]);
+    expect(rowText(empty, line("漢c", [cell("漢", 2), cell("", 0), cell("c", 1)], false))).toBe("ab ");
+    expect(rowText(empty, undefined)).toBe("ab ");
+  });
+});
+

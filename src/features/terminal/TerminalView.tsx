@@ -66,7 +66,7 @@ import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from 
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
-import type { BufferRow, FindTarget } from "../search/findAll";
+import { rowText, type BufferRow, type FindTarget } from "../search/findAll";
 import { copyModeKey, scrollFor, selectionRange, startCopyMode, type CopyBuffer, type CopyState } from "./copyMode";
 import { findQuickMatches, labelHits, quickSelectKey, viewportLines, type QuickMatch } from "./quickSelect";
 import { KeyboardModes, type CellBox } from "./KeyboardModes";
@@ -1961,7 +1961,7 @@ export function TerminalView({
           const rows: BufferRow[] = [];
           for (let y = 0; y < buffer.length; y++) {
             const line = buffer.getLine(y);
-            rows.push({ text: line?.translateToString(false) ?? "", wrapped: line?.isWrapped ?? false });
+            rows.push({ text: line ? rowText(line, buffer.getLine(y + 1)) : "", wrapped: line?.isWrapped ?? false });
           }
           return rows;
         },

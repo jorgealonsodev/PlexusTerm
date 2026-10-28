@@ -102,7 +102,7 @@ import { SharedView } from "./features/share/SharedView";
 import { OpenSharedDialog } from "./features/share/OpenSharedDialog";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
 import { FindAllDialog } from "./features/search/FindAllDialog";
-import { findInPanes, searchablePanes, type FindResult, type FindTarget } from "./features/search/findAll";
+import { findInPanes, locate, searchablePanes, type FindResult, type FindTarget } from "./features/search/findAll";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { setChatSaving } from "./features/ai/chatHistory";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
@@ -275,6 +275,13 @@ const draftTunnel = (): Tunnel => ({
 
 /** Most commands the history search lists. */
 const HISTORY_SHOWN = 1000;
+
+
+/** Runs `f` once the layout after the current change was drawn (two frames: the fit runs in the first). */
+function afterLayout(f: () => void) {
+  if (typeof requestAnimationFrame !== "function") return void setTimeout(f, 32);
+  requestAnimationFrame(() => requestAnimationFrame(f));
+}
 
 function AppContent() {
   const [state, dispatch] = useReducer(tabsReducer, initialTabs);
@@ -1699,8 +1706,13 @@ function AppContent() {
   const revealFound = (result: FindResult) => {
     dispatch({ type: "activate", key: result.tabKey });
     dispatch({ type: "focusPane", key: result.tabKey, paneId: result.paneId });
-    // Once the tab is on screen.
-    setTimeout(() => findTargets.get(result.paneId)?.reveal(result.row, result.column, result.length), 0);
+    // Once the tab is on screen and its terminal fitted (it may have rewrapped at the new size),
+    // the match is looked for again where it is now.
+    afterLayout(() => {
+      const target = findTargets.get(result.paneId);
+      const at = target && locate(target.rows(), result);
+      if (target && at) target.reveal(at.row, at.column, result.length);
+    });
   };
 
   /** What the command palette offers: actions, saved sessions, macros, open tabs and Settings sections. */
