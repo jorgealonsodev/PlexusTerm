@@ -36,8 +36,8 @@ export interface TerminalBackend {
 }
 
 /** Pauses or resumes reading the session of share tap `tap` (see `flowControl.ts`). */
-export function setTerminalFlow(tap: number, paused: boolean) {
-  return invoke<void>("terminal_flow", { tap, paused });
+export function setTerminalFlow(tap: number, paused: boolean, pending?: number) {
+  return invoke<void>("terminal_flow", { tap, paused, pending });
 }
 
 function channelFor(onEvent: (event: TerminalEvent) => void) {

@@ -457,7 +457,8 @@ export function TerminalView({
     let outputSeq = 0;
     /** Pauses reading the session while xterm has too much output still to parse. */
     const outputFlow = createOutputFlow((paused) => {
-      if (tap !== null) void setTerminalFlow(tap, paused).catch(() => {});
+      // How much is still to draw goes along, for the diagnostic log's note on a long pause.
+      if (tap !== null) void setTerminalFlow(tap, paused, outputFlow.pending()).catch(() => {});
     });
     const resizeListeners = new Set<(cols: number, rows: number) => void>();
     /** Macros waiting for output (S16.3). */

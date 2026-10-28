@@ -10,7 +10,7 @@ const backend = vi.hoisted(() => ({
   close: vi.fn(() => Promise.resolve()),
 }));
 
-const flow = vi.hoisted(() => ({ setTerminalFlow: vi.fn(async (_tap: number, _paused: boolean) => {}) }));
+const flow = vi.hoisted(() => ({ setTerminalFlow: vi.fn(async (_tap: number, _paused: boolean, _pending?: number) => {}) }));
 vi.mock("./backend", () => ({ backendFor: () => backend, setTerminalFlow: flow.setTerminalFlow }));
 /** While `held`, the fake xterm keeps write callbacks (output not parsed yet) until `release`. */
 const parsing = vi.hoisted(() => ({
@@ -294,11 +294,12 @@ describe("TerminalView", () => {
       const { emit } = await started();
       parsing.held = true;
       for (let i = 0; i < 12; i++) emit({ event: "output", data: chunk });
-      expect(flow.setTerminalFlow.mock.calls).toEqual([[42, true]]);
+      // With how much is still to draw: nine chunks crossed the high mark, one is left at the low one.
+      expect(flow.setTerminalFlow.mock.calls).toEqual([[42, true, 9 * chunk.length]]);
       act(() => parsing.release());
       expect(flow.setTerminalFlow.mock.calls).toEqual([
-        [42, true],
-        [42, false],
+        [42, true, 9 * chunk.length],
+        [42, false, chunk.length],
       ]);
       // Every chunk still reached the terminal, in order.
       expect(lastTerm().written.filter((text) => text === chunk)).toHaveLength(12);
@@ -317,8 +318,8 @@ describe("TerminalView", () => {
       for (let i = 0; i < 12; i++) emit({ event: "output", data: chunk });
       view.unmount();
       expect(flow.setTerminalFlow.mock.calls).toEqual([
-        [42, true],
-        [42, false],
+        [42, true, 9 * chunk.length],
+        [42, false, 12 * chunk.length],
       ]);
     });
   });

@@ -9,12 +9,27 @@ use std::time::{Duration, Instant};
 
 /// A pause the webview never lifted (its resume lost, the pane gone) ends after this long.
 pub const LEASE: Duration = Duration::from_secs(5);
+/// A pause this long is told to the diagnostic log: the window is far behind its output.
+pub const LONG_PAUSE: Duration = Duration::from_secs(10);
 
 #[derive(Default)]
 struct State {
     /// When the current pause began (or was last confirmed); None while reading may go on.
     paused_at: Option<Instant>,
+    /// When the current pause began, its renewals included; None while reading goes on.
+    paused_since: Option<Instant>,
+    /// The current pause was told as long.
+    told: bool,
     closed: bool,
+}
+
+/// What a pause change is worth telling the diagnostic log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PauseNote {
+    /// Reading has been paused this long (told once per pause).
+    Long(Duration),
+    /// A long pause ended after this long.
+    Over(Duration),
 }
 
 /// Whether one session's reader may read on.
@@ -23,6 +38,7 @@ pub struct FlowGate {
     changed: Condvar,
     notify: tokio::sync::Notify,
     lease: Duration,
+    long: Duration,
 }
 
 impl Default for FlowGate {
@@ -37,11 +53,16 @@ impl FlowGate {
     }
 
     pub fn with_lease(lease: Duration) -> Self {
+        Self::with_lease_and_long(lease, LONG_PAUSE)
+    }
+
+    pub fn with_lease_and_long(lease: Duration, long: Duration) -> Self {
         Self {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
             notify: tokio::sync::Notify::new(),
             lease,
+            long,
         }
     }
 
@@ -54,16 +75,37 @@ impl FlowGate {
         (!left.is_zero()).then_some(left)
     }
 
-    /// Pauses or resumes reading. A closed gate stays open for good.
-    pub fn set_paused(&self, paused: bool) {
-        {
+    /// Pauses or resumes reading. A closed gate stays open for good. Returns what the diagnostic
+    /// log should hear: a pause that has lasted long, or the end of one.
+    pub fn set_paused(&self, paused: bool) -> Option<PauseNote> {
+        let note = {
             let mut state = self.state.lock().unwrap();
             if state.closed {
-                return;
+                return None;
             }
-            state.paused_at = paused.then(Instant::now);
-        }
+            let now = Instant::now();
+            // A pause whose renewals stopped for longer than its lease already let reading go on.
+            let lapsed = state.paused_at.is_some_and(|at| now.duration_since(at) > self.lease);
+            let mut note = None;
+            if !paused || lapsed {
+                let since = state.paused_since.take();
+                if let Some(since) = since.filter(|_| state.told && !paused) {
+                    note = Some(PauseNote::Over(now.duration_since(since)));
+                }
+                state.told = false;
+            }
+            if paused {
+                let long = now.duration_since(*state.paused_since.get_or_insert(now));
+                if !state.told && long >= self.long {
+                    state.told = true;
+                    note = Some(PauseNote::Long(long));
+                }
+            }
+            state.paused_at = paused.then_some(now);
+            note
+        };
         self.wake();
+        note
     }
 
     /// The session ended or no longer has a webview to slow it down: never wait again.
@@ -132,16 +174,10 @@ impl Gates {
         gates.insert(tap, Arc::downgrade(gate));
     }
 
-    /// Pauses or resumes session `tap`; false when it is gone.
-    pub fn set_paused(&self, tap: u64, paused: bool) -> bool {
-        let gate = self.gates.lock().unwrap().get(&tap).and_then(Weak::upgrade);
-        match gate {
-            Some(gate) => {
-                gate.set_paused(paused);
-                true
-            }
-            None => false,
-        }
+    /// Pauses or resumes session `tap`, with what the diagnostic log should hear; None when it is gone.
+    pub fn set_paused(&self, tap: u64, paused: bool) -> Option<Option<PauseNote>> {
+        let gate = self.gates.lock().unwrap().get(&tap).and_then(Weak::upgrade)?;
+        Some(gate.set_paused(paused))
     }
 }
 
@@ -249,16 +285,37 @@ mod tests {
     }
 
     #[test]
+    fn a_long_pause_is_told_once_and_its_end_after_it() {
+        let gate = FlowGate::with_lease_and_long(Duration::from_secs(5), Duration::from_millis(40));
+        assert_eq!(gate.set_paused(true), None);
+        std::thread::sleep(Duration::from_millis(60));
+        assert!(matches!(gate.set_paused(true), Some(PauseNote::Long(d)) if d >= Duration::from_millis(40)));
+        assert_eq!(gate.set_paused(true), None, "told once per pause");
+        assert!(matches!(gate.set_paused(false), Some(PauseNote::Over(d)) if d >= Duration::from_millis(60)));
+        assert_eq!(gate.set_paused(true), None, "a new pause starts counting again");
+        assert_eq!(gate.set_paused(false), None, "a short pause ends untold");
+    }
+
+    #[test]
+    fn a_pause_that_lapsed_counts_again_from_its_next_renewal() {
+        let gate = FlowGate::with_lease_and_long(Duration::from_millis(20), Duration::from_millis(60));
+        gate.set_paused(true);
+        std::thread::sleep(Duration::from_millis(80));
+        // The renewals stopped longer than the lease: reading went on, so this is a new pause.
+        assert_eq!(gate.set_paused(true), None);
+    }
+
+    #[test]
     fn gates_are_found_by_tap_while_their_session_lives() {
         let gates = Gates::default();
         let gate = Arc::new(FlowGate::new());
         gates.register(7, &gate);
-        assert!(gates.set_paused(7, true));
+        assert_eq!(gates.set_paused(7, true), Some(None));
         assert!(!gate.wait_sync_for(Duration::from_millis(20)));
-        assert!(gates.set_paused(7, false));
+        assert_eq!(gates.set_paused(7, false), Some(None));
         assert!(gate.wait_sync_for(Duration::from_millis(20)));
-        assert!(!gates.set_paused(8, true));
+        assert_eq!(gates.set_paused(8, true), None);
         drop(gate);
-        assert!(!gates.set_paused(7, true));
+        assert_eq!(gates.set_paused(7, true), None);
     }
 }

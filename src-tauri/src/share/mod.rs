@@ -493,13 +493,18 @@ impl ShareManager {
             auto_approve: request.auto_approve,
             record_input: request.record_input,
         });
+        crate::diaglog::info(&format!(
+            "share {id} started on terminal tap {} ({:?})",
+            request.tap, request.accesses
+        ));
         tauri::async_runtime::spawn(async move {
             let awake = manager.clone();
             let _ =
                 tokio::task::spawn_blocking(move || awake.inner.awake.lock().unwrap().acquire(lid))
                     .await;
-            host.run(marker.as_ref()).await;
+            let end = host.run(marker.as_ref()).await;
             tap.detach();
+            crate::diaglog::info(&format!("share {id} ended: {end:?}"));
             if let Some(marker) = marker {
                 marker.remove();
             }

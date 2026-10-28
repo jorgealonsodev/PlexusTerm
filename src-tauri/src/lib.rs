@@ -63,6 +63,8 @@ enum TerminalEvent {
 struct ChannelSink {
     tx: std::sync::mpsc::Sender<coalesce::Event>,
     flow: std::sync::Arc<terminal::FlowGate>,
+    /// The session's share tap, which names it in the diagnostic log.
+    tap: u64,
 }
 
 impl ChannelSink {
@@ -93,7 +95,7 @@ impl ChannelSink {
                 }
             })
         });
-        Self { tx, flow }
+        Self { tx, flow, tap: tap_id }
     }
 }
 
@@ -112,8 +114,19 @@ impl TerminalSink for ChannelSink {
 /// Pauses (or resumes) reading the session of share tap `tap` while its pane has too much output
 /// still to parse. A session already gone is ignored.
 #[tauri::command]
-fn terminal_flow(tap: u64, paused: bool) {
-    terminal::flow::gates().set_paused(tap, paused);
+fn terminal_flow(tap: u64, paused: bool, pending: Option<u64>) {
+    match terminal::flow::gates().set_paused(tap, paused).flatten() {
+        Some(terminal::flow::PauseNote::Long(long)) => diaglog::warn(&format!(
+            "terminal tap {tap}: output reading paused for {:.0} s, {} KB still to draw",
+            long.as_secs_f64(),
+            pending.unwrap_or(0) / 1024
+        )),
+        Some(terminal::flow::PauseNote::Over(long)) => diaglog::info(&format!(
+            "terminal tap {tap}: output reading resumed after {:.1} s",
+            long.as_secs_f64()
+        )),
+        None => {}
+    }
 }
 
 #[tauri::command]
@@ -122,9 +135,11 @@ fn pty_spawn(
     on_event: Channel<TerminalEvent>,
     ptys: State<'_, PtyManager>,
 ) -> Result<u32, PtyError> {
-    let result = ptys.spawn(request, ChannelSink::new(on_event));
+    let sink = ChannelSink::new(on_event);
+    let tap = sink.tap;
+    let result = ptys.spawn(request, sink);
     match &result {
-        Ok(id) => diaglog::info(&format!("local terminal {id} opened")),
+        Ok(id) => diaglog::info(&format!("local terminal {id} opened (tap {tap})")),
         Err(e) => diaglog::warn(&format!("local terminal failed to open: {e}")),
     }
     result

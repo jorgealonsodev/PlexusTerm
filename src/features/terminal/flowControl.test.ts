@@ -36,6 +36,15 @@ describe("createOutputFlow", () => {
     expect(setPaused).toHaveBeenCalledTimes(2);
   });
 
+  it("tells how much output is still to parse", () => {
+    const flow = createOutputFlow(vi.fn());
+    const first = flow.queued(100);
+    flow.queued(50);
+    expect(flow.pending()).toBe(150);
+    first();
+    expect(flow.pending()).toBe(50);
+  });
+
   it("disposing a session that was never paused asks nothing", () => {
     const setPaused = vi.fn();
     createOutputFlow(setPaused).dispose();

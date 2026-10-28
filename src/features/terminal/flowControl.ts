@@ -17,6 +17,8 @@ export const FLOW_RENEW_MS = 3000;
 export interface OutputFlow {
   /** Counts `length` characters handed to xterm; call the returned function once xterm parsed them. */
   queued(length: number): () => void;
+  /** Characters handed to xterm and not parsed yet. */
+  pending(): number;
   /** The pane is gone: resume a paused session, and ask nothing more. */
   dispose(): void;
 }
@@ -42,6 +44,7 @@ export function createOutputFlow(setPaused: (paused: boolean) => void): OutputFl
         if (!disposed && paused && pending < FLOW_LOW) pause(false);
       };
     },
+    pending: () => pending,
     dispose() {
       if (!disposed && paused) pause(false);
       disposed = true;

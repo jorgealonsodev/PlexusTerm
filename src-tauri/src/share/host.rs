@@ -141,12 +141,13 @@ impl Host {
             .collect()
     }
 
-    /// Runs the share until it ends; the end is reported to the frontend and the audit log.
-    pub async fn run(mut self, marker: Option<&Marker>) {
+    /// Runs the share until it ends; the end is reported to the frontend and the audit log, and returned.
+    pub async fn run(mut self, marker: Option<&Marker>) -> EndKind {
         let (kind, code) = self.serve(marker).await;
         self.flush_bursts(true);
         self.log("end", json!({ "reason": kind, "code": code }));
-        self.emit(ShareEvent::Ended { kind, code });
+        self.emit(ShareEvent::Ended { kind: kind.clone(), code });
+        kind
     }
 
     async fn serve(&mut self, marker: Option<&Marker>) -> Done {
