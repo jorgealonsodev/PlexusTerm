@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "历史",
     },
   },
+  findAll: {
+    title: "在所有标签页中查找",
+    placeholder: "输入要在所有终端中查找的文本…",
+    matchCase: "区分大小写",
+    noResults: "没有终端包含此文本。",
+    capped: "仅显示前 {limit} 个结果。",
+  },
   toolbar: {
     aiAssistant: "AI 助手",
     aiAssistantTitle: "AI 助手 ({shortcut})",

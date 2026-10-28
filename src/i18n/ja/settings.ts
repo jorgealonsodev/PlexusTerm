@@ -329,6 +329,7 @@ export const settings: Messages<typeof en> = {
       newTelnet: "新しい Telnet 接続",
       newMosh: "新しい Mosh 接続",
       find: "検索",
+      findAll: "すべてのタブで検索",
       copy: "コピー",
       paste: "貼り付け",
       selectAll: "すべて選択",

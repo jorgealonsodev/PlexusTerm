@@ -627,6 +627,64 @@ textarea::placeholder {
   margin: 0 16px 14px;
 }
 
+/* Find in all tabs: the palette's box, with Match case beside the field and results under their tab. */
+.find-all {
+  width: min(760px, 100%);
+}
+
+.find-all__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px;
+}
+
+.find-all__input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.find-all__case {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.find-all__group {
+  list-style: none;
+}
+
+.find-all__tab {
+  padding: 8px 10px 2px;
+  color: var(--muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.find-all__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.find-all__line {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+  font-family: var(--mono, monospace);
+}
+
+.find-all__line mark {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
 .dialog {
   display: flex;
   flex-direction: column;

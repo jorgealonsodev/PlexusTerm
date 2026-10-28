@@ -329,6 +329,7 @@ export const settings: Messages<typeof en> = {
       newTelnet: "اتصال Telnet جديد",
       newMosh: "اتصال Mosh جديد",
       find: "بحث",
+      findAll: "البحث في كل علامات التبويب",
       copy: "نسخ",
       paste: "لصق",
       selectAll: "تحديد الكل",

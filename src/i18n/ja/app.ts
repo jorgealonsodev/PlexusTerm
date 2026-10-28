@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "履歴",
     },
   },
+  findAll: {
+    title: "すべてのタブで検索",
+    placeholder: "すべてのターミナルで検索するテキストを入力…",
+    matchCase: "大文字と小文字を区別",
+    noResults: "このテキストを含むターミナルはありません。",
+    capped: "最初の {limit} 件を表示しています。",
+  },
   toolbar: {
     aiAssistant: "AI アシスタント",
     aiAssistantTitle: "AI アシスタント ({shortcut})",

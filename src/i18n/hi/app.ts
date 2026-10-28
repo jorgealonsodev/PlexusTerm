@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "इतिहास",
     },
   },
+  findAll: {
+    title: "सभी टैब में खोजें",
+    placeholder: "हर टर्मिनल में खोजने के लिए टेक्स्ट लिखें…",
+    matchCase: "अक्षरों का केस मिलाएँ",
+    noResults: "किसी टर्मिनल में यह टेक्स्ट नहीं है।",
+    capped: "पहले {limit} परिणाम दिखाए गए हैं।",
+  },
   toolbar: {
     aiAssistant: "AI सहायक",
     aiAssistantTitle: "AI सहायक ({shortcut})",

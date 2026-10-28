@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "Historial",
     },
   },
+  findAll: {
+    title: "Buscar en todas las pestañas",
+    placeholder: "Escribe el texto que buscar en todos los terminales…",
+    matchCase: "Distinguir mayúsculas",
+    noResults: "Ningún terminal tiene este texto.",
+    capped: "Se muestran los primeros {limit} resultados.",
+  },
   toolbar: {
     aiAssistant: "Asistente de IA",
     aiAssistantTitle: "Asistente de IA ({shortcut})",

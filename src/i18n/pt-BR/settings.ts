@@ -329,6 +329,7 @@ export const settings: Messages<typeof en> = {
       newTelnet: "Nova conexão Telnet",
       newMosh: "Nova conexão Mosh",
       find: "Localizar",
+      findAll: "Localizar em todas as abas",
       copy: "Copiar",
       paste: "Colar",
       selectAll: "Selecionar tudo",

@@ -327,6 +327,7 @@ export const settings = {
       newTelnet: "New Telnet connection",
       newMosh: "New Mosh connection",
       find: "Find",
+      findAll: "Find in all tabs",
       copy: "Copy",
       paste: "Paste",
       selectAll: "Select all",
