@@ -68,6 +68,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "Le port doit être un nombre compris entre 1 et 65535",
     keyPathRequired: "Le chemin de la clé privée est obligatoire",
     tmuxSessionInvalid: "Le nom de la session tmux ne peut contenir que des lettres, des chiffres, des points, des tirets bas et des tirets (64 au maximum)",
+    proxyCommandInvalid: "La commande proxy doit tenir sur une seule ligne de {max} caractères au maximum",
+    proxyWithJumps: "Utilisez des hôtes de rebond ou une commande proxy, pas les deux",
   },
   jumps: {
     legend: "Hôtes de rebond",
@@ -136,8 +138,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "Sessions {type}",
     skippedInclude: "Lignes Include (non suivies)",
     skippedMatch: "Blocs Match (non appliqués)",
-    skippedProxyCommand: "Hôtes avec ProxyCommand (importés sans)",
-    skippedJump: "Hôtes dont le ProxyJump n’est pas un hôte du fichier (importés sans)",
+    skippedProxyCommand: "Lignes ProxyCommand de plus de 2000 caractères (importés sans)",
+    skippedJump: "Hôtes dont le ProxyJump compte plus de 3 hôtes ou nomme l’hôte lui-même (importés sans)",
+    proxyCommands: "Ces sessions exécutent une commande sur cet ordinateur à chaque ouverture. Vérifiez-les avant d’importer :",
   },
   ssh: {
     title: "Session SSH",
@@ -152,6 +155,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "Garder le shell dans tmux",
     tmuxHelp: "Démarre le shell dans une session tmux sur le serveur (tmux new -A -s <nom>) : une reconnexion reprend là où vous en étiez, avec vos programmes toujours en cours. Sans tmux sur le serveur, le shell normal s'ouvre.",
     tmuxSession: "Nom de la session tmux",
+    proxyCommand: "Commande proxy (avancé)",
+    proxyCommandPlaceholder: "p. ex. cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "Se connecte via cette commande de votre ordinateur au lieu de directement, comme ProxyCommand d’OpenSSH : SSH passe par son entrée et sa sortie. %h est l’hôte, %p le port, %r l’utilisateur et %% un %. Par exemple : cloudflared access ssh --hostname %h, ou aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. Ses messages s’affichent en jaune dans le terminal. Incompatible avec les hôtes de rebond. Laissez vide pour vous connecter directement.",
   },
   hostKey: {
     unknownHost: "Hôte inconnu",

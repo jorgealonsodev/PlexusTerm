@@ -127,6 +127,41 @@ async fn local_forward_round_trips_bytes_and_reports_running() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[cfg(unix)]
+async fn a_tunnel_of_a_proxied_session_connects_through_its_proxy_command() {
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let Some(bridge) = ["socat", "nc"]
+        .into_iter()
+        .find(|tool| crate::platform::find_program(tool, &path).is_some())
+    else {
+        eprintln!("skipped: neither socat nor nc is installed");
+        return;
+    };
+    let server = test_server::start(1, None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mgr, _updates) = manager(&dir, &server);
+    let (echo, listen) = (echo_server().await, free_port().await);
+    let marker = dir.path().join("proxied");
+    let command = match bridge {
+        "socat" => format!("touch {}; socat STDIO TCP:%h:%p", marker.display()),
+        _ => format!("touch {}; nc %h %p", marker.display()),
+    };
+
+    mgr.start_proxied(
+        tunnel(TunnelKind::Local, listen, echo),
+        target(&server),
+        Some(command),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(marker.exists(), "the tunnel did not use the proxy command");
+    let mut tcp = TcpStream::connect(("127.0.0.1", listen)).await.unwrap();
+    assert_eq!(round_trip(&mut tcp, b"hello").await, b"hello");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn stop_closes_the_listener_and_open_connections() {
     let server = test_server::start(1, None).await;
     let dir = tempfile::tempdir().unwrap();

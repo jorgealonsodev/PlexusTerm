@@ -12,7 +12,24 @@ const form = (overrides: Partial<QuickConnectForm> = {}): QuickConnectForm => ({
   forwardAgent: false,
   tmux: false,
   tmuxSession: "plexus",
+  proxyCommand: "",
   ...overrides,
+});
+
+describe("parseQuickConnect: proxy command", () => {
+  it("keeps a trimmed proxy command and leaves a blank one out", () => {
+    const proxied = parseQuickConnect(form({ proxyCommand: "  cloudflared access ssh --hostname %h  " }));
+    expect(proxied.ok && proxied.target.proxyCommand).toBe("cloudflared access ssh --hostname %h");
+    const plain = parseQuickConnect(form({ proxyCommand: "   " }));
+    expect(plain.ok && plain.target).not.toHaveProperty("proxyCommand");
+  });
+
+  it.each(["a".repeat(2001), "nc %h %p\nrm -rf ~"])("rejects the proxy command %#", (proxyCommand) => {
+    expect(parseQuickConnect(form({ proxyCommand }))).toEqual({
+      ok: false,
+      error: "The proxy command must be one line of at most 2000 characters",
+    });
+  });
 });
 
 describe("parseQuickConnect", () => {

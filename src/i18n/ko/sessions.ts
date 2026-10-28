@@ -66,6 +66,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "포트는 1에서 65535 사이의 숫자여야 합니다",
     keyPathRequired: "개인 키 경로를 입력해야 합니다",
     tmuxSessionInvalid: "tmux 세션 이름에는 영문자, 숫자, 마침표, 밑줄, 하이픈만 쓸 수 있습니다(최대 64자)",
+    proxyCommandInvalid: "프록시 명령은 최대 {max}자인 한 줄이어야 합니다",
+    proxyWithJumps: "점프 호스트와 프록시 명령 중 하나만 사용하세요",
   },
   jumps: {
     legend: "점프 호스트",
@@ -119,8 +121,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} 세션",
     skippedInclude: "Include 줄 (따라가지 않음)",
     skippedMatch: "Match 블록 (적용하지 않음)",
-    skippedProxyCommand: "ProxyCommand가 있는 호스트 (제외하고 가져옴)",
-    skippedJump: "ProxyJump가 파일의 호스트가 아닌 호스트 (제외하고 가져옴)",
+    skippedProxyCommand: "2000자를 넘는 ProxyCommand 줄 (제외하고 가져옴)",
+    skippedJump: "ProxyJump의 호스트가 3개를 넘거나 자기 자신을 가리키는 호스트 (제외하고 가져옴)",
+    proxyCommands: "이 세션들은 열 때마다 이 컴퓨터에서 명령을 실행합니다. 가져오기 전에 확인하세요:",
   },
   ssh: {
     title: "SSH 세션",
@@ -135,6 +138,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "셸을 tmux에서 유지",
     tmuxHelp: "서버의 tmux 세션(tmux new -A -s <이름>) 안에서 셸을 시작하므로, 다시 연결하면 실행 중인 프로그램과 함께 하던 곳으로 돌아갑니다. 서버에 tmux가 없으면 일반 셸이 열립니다.",
     tmuxSession: "tmux 세션 이름",
+    proxyCommand: "프록시 명령 (고급)",
+    proxyCommandPlaceholder: "예: cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "직접 연결하는 대신 이 컴퓨터의 이 명령을 거쳐 연결합니다(OpenSSH의 ProxyCommand와 같음). SSH가 명령의 입력과 출력을 통해 오갑니다. %h는 호스트, %p는 포트, %r은 사용자, %%는 %입니다. 예: cloudflared access ssh --hostname %h 또는 aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. 명령의 메시지는 터미널에 노란색으로 표시됩니다. 점프 호스트와 함께 쓸 수 없습니다. 직접 연결하려면 비워 두세요.",
   },
   hostKey: {
     unknownHost: "알 수 없는 호스트",

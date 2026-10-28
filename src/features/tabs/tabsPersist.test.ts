@@ -213,4 +213,12 @@ describe("tabs.json", () => {
     const mosh = sanitizeTarget({ type: "mosh", ssh: { ...ssh, forwardAgent: true, tmuxSession: "work" } });
     expect(mosh).toEqual({ type: "mosh", ssh: { ...ssh, forwardAgent: true, tmuxSession: "work" } });
   });
+
+  it("keeps the proxy command of an SSH target and drops an invalid one", () => {
+    const ssh = { type: "ssh", host: "h", port: 22, username: "u", auth: { method: "agent" } };
+    expect(sanitizeTarget({ ...ssh, proxyCommand: "nc %h %p" })).toEqual({ ...ssh, proxyCommand: "nc %h %p" });
+    expect(sanitizeTarget({ ...ssh, proxyCommand: "a\nb" })).toEqual(ssh);
+    expect(sanitizeTarget({ ...ssh, proxyCommand: "x".repeat(2001) })).toEqual(ssh);
+    expect(sanitizeTarget({ ...ssh, proxyCommand: 3 })).toEqual(ssh);
+  });
 });

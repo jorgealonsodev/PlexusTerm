@@ -20,10 +20,14 @@
 //! A terminal tab may ask for [`ShellOptions`]: forwarding the local SSH agent to the target
 //! (never to its jump hosts), and starting the shell inside a tmux session that every
 //! reconnection resumes (see [`tmux_command`]).
+//!
+//! Instead of TCP, the target may be reached through a local proxy command's stdin and stdout
+//! (like OpenSSH's `ProxyCommand`, see [`proxy`]); it cannot be combined with jump hosts.
 
 pub mod cwd;
 #[cfg(test)]
 mod interop_tests;
+mod proxy;
 #[cfg(test)]
 pub(crate) mod test_server;
 
@@ -97,7 +101,8 @@ fn default_port() -> u16 {
     22
 }
 
-/// Per-tab options of an interactive shell (wire shape camelCase: `{ forwardAgent?, tmuxSession? }`).
+/// Per-tab options of an interactive shell (wire shape camelCase:
+/// `{ forwardAgent?, tmuxSession?, proxyCommand? }`).
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellOptions {
@@ -107,6 +112,10 @@ pub struct ShellOptions {
     /// Runs `tmux new -A -s <name>` instead of the plain login shell (see [`tmux_command`]).
     #[serde(default)]
     pub tmux_session: Option<String>,
+    /// Reaches the target through this local command instead of TCP (see [`proxy`]); its stderr
+    /// lines are shown in the terminal in yellow.
+    #[serde(default)]
+    pub proxy_command: Option<String>,
 }
 
 /// Whether `name` may be a tmux session name: 1 to 64 letters, digits, `.`, `_` or `-`. Nothing
@@ -227,6 +236,18 @@ fn connection(err: impl std::fmt::Display) -> SshError {
     SshError::Connection {
         message: err.to_string(),
     }
+}
+
+/// The next stderr line of a session's proxy command; never resolves without one (no proxy, or
+/// the command closed its stderr).
+async fn next_proxy_line(stderr: &mut Option<tokio::sync::mpsc::Receiver<String>>) -> String {
+    if let Some(receiver) = stderr {
+        if let Some(line) = receiver.recv().await {
+            return line;
+        }
+        *stderr = None;
+    }
+    std::future::pending().await
 }
 
 /// Display form used by OpenSSH: `host` for port 22, `[host]:port` otherwise.
@@ -402,6 +423,17 @@ pub struct SshTarget {
     pub jumps: Vec<JumpHost>,
 }
 
+/// An [`SshTarget`] with the proxy command its saved session may have (wire shape: the target's
+/// fields and an optional `proxyCommand`), for the connections that take a target (tunnels).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxiedTarget {
+    #[serde(flatten)]
+    pub target: SshTarget,
+    #[serde(default)]
+    pub proxy_command: Option<String>,
+}
+
 /// How [`connect_authenticated`] reaches the server and the saved passwords.
 #[derive(Clone, Copy)]
 pub(crate) struct ConnectContext<'a> {
@@ -484,6 +516,54 @@ struct Hop {
     storage: Option<PasswordStorage>,
     /// Set on the target of a session that forwards the agent, never on a jump host.
     agent: Option<AgentEndpoint>,
+    /// Set on the target of a proxied session: the transport is this command, not TCP.
+    proxy: Option<HopProxy>,
+}
+
+/// The expanded proxy command of a hop and where its stderr lines go.
+struct HopProxy {
+    command: String,
+    stderr: tokio::sync::mpsc::Sender<String>,
+}
+
+/// What [`connect_chain`] opened, beyond the [`Chain`].
+struct Opened {
+    chain: Chain,
+    /// Whether the target's connection serves agent channels.
+    forwarding_agent: bool,
+    /// The proxy command's stderr lines, when the target is proxied.
+    proxy_stderr: Option<tokio::sync::mpsc::Receiver<String>>,
+}
+
+/// Most stderr lines of a failed proxy command quoted in the error.
+const PROXY_ERROR_LINES: usize = 5;
+
+/// `err` with the last stderr lines of the proxy command that failed, which usually say why.
+async fn with_proxy_output(
+    err: SshError,
+    stderr: &mut tokio::sync::mpsc::Receiver<String>,
+) -> SshError {
+    let mut lines: Vec<String> = Vec::new();
+    // The command was killed with its connection; its last lines arrive right after.
+    let _ = tokio::time::timeout(Duration::from_secs(1), async {
+        while let Some(line) = stderr.recv().await {
+            lines.push(line);
+        }
+    })
+    .await;
+    while let Ok(line) = stderr.try_recv() {
+        lines.push(line);
+    }
+    let tail = lines.len().saturating_sub(PROXY_ERROR_LINES);
+    match err {
+        SshError::Connection { message } if lines.len() > tail => SshError::Connection {
+            message: format!(
+                "{message} (the proxy command said: {})",
+                lines[tail..].join(" / ")
+            ),
+        },
+        other => other,
+    }
 }
 
 /// Connects to `target` through its jump hosts (if any), applying the known_hosts
@@ -500,27 +580,82 @@ pub(crate) async fn connect_authenticated(
     ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
 ) -> Result<Chain, SshError> {
-    let (chain, _) =
-        connect_chain(target, trusted_fingerprint, storage, ctx, forwarded, false).await?;
-    Ok(chain)
+    connect_proxied(target, None, trusted_fingerprint, storage, ctx, forwarded).await
+}
+
+/// [`connect_authenticated`] through `proxy_command` (blank: none) instead of TCP; the command's
+/// stderr is not shown anywhere but in the error of a connection that failed.
+pub(crate) async fn connect_proxied(
+    target: SshTarget,
+    proxy_command: Option<String>,
+    trusted_fingerprint: Option<String>,
+    storage: Option<PasswordStorage>,
+    ctx: ConnectContext<'_>,
+    forwarded: Option<UnboundedSender<ForwardedChannel>>,
+) -> Result<Chain, SshError> {
+    let opened = connect_chain(
+        target,
+        proxy_command,
+        trusted_fingerprint,
+        storage,
+        ctx,
+        forwarded,
+        false,
+    )
+    .await?;
+    Ok(opened.chain)
 }
 
 /// [`connect_authenticated`], and with `forward_agent` the target's connection serves agent
 /// channels from the local agent. Also returns whether it does: an agent that cannot be reached
 /// turns forwarding off for this connection with a warning instead of failing the login.
+///
+/// With `proxy_command` (blank: none) the target is reached through that command (see
+/// [`proxy`]); it is refused, before anything runs, together with jump hosts, when too long or
+/// multi-line, or when the host or user it names could change its meaning to the shell.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "private; mirrors connect_proxied plus one flag"
+)]
 async fn connect_chain(
     target: SshTarget,
+    proxy_command: Option<String>,
     trusted_fingerprint: Option<String>,
     storage: Option<PasswordStorage>,
     ctx: ConnectContext<'_>,
     forwarded: Option<UnboundedSender<ForwardedChannel>>,
     forward_agent: bool,
-) -> Result<(Chain, bool), SshError> {
+) -> Result<Opened, SshError> {
     if target.jumps.len() > MAX_JUMPS {
         return Err(SshError::Connection {
             message: format!("at most {MAX_JUMPS} jump hosts are supported"),
         });
     }
+    let proxy_command = proxy_command
+        .map(|command| command.trim().to_string())
+        .filter(|command| !command.is_empty());
+    let (proxy, mut proxy_stderr) = match proxy_command {
+        None => (None, None),
+        Some(template) => {
+            if !target.jumps.is_empty() {
+                return Err(SshError::Connection {
+                    message: "a proxy command cannot be combined with jump hosts".into(),
+                });
+            }
+            let refused = |message| SshError::Connection { message };
+            proxy::check(&template).map_err(refused)?;
+            let command = proxy::expand(&template, &target.host, target.port, &target.username)
+                .map_err(refused)?;
+            let (tx, rx) = tokio::sync::mpsc::channel(proxy::STDERR_BACKLOG);
+            (
+                Some(HopProxy {
+                    command,
+                    stderr: tx,
+                }),
+                Some(rx),
+            )
+        }
+    };
     let mut jumps: Vec<Connection> = Vec::with_capacity(target.jumps.len());
     let mut warnings = Vec::new();
     for (index, jump) in target.jumps.into_iter().enumerate() {
@@ -533,6 +668,7 @@ async fn connect_chain(
             trusted_fingerprint: jump.trusted_fingerprint,
             storage: jump.storage,
             agent: None,
+            proxy: None,
         };
         match connect_hop(next, jumps.last(), ctx, None).await {
             Ok((connection, warning)) => {
@@ -570,6 +706,7 @@ async fn connect_chain(
         trusted_fingerprint,
         storage,
         agent,
+        proxy,
     };
     match connect_hop(last, jumps.last(), ctx, forwarded).await {
         Ok((connection, warning)) => {
@@ -579,11 +716,18 @@ async fn connect_chain(
                 jumps,
                 warnings,
             };
-            Ok((chain, forwarding_agent))
+            Ok(Opened {
+                chain,
+                forwarding_agent,
+                proxy_stderr,
+            })
         }
         Err(err) => {
             disconnect_jumps(&jumps).await;
-            Err(err)
+            Err(match &mut proxy_stderr {
+                Some(stderr) => with_proxy_output(err, stderr).await,
+                None => err,
+            })
         }
     }
 }
@@ -607,7 +751,14 @@ async fn connect_hop(
         storage_timeout,
         keepalive_interval,
     } = ctx;
-    let mut handle = open_hop(&hop, via, known_hosts, keepalive_interval, forwarded.clone()).await?;
+    let mut handle = open_hop(
+        &hop,
+        via,
+        known_hosts,
+        keepalive_interval,
+        forwarded.clone(),
+    )
+    .await?;
     let endpoint = endpoint(&hop.username, &hop.host, hop.port);
 
     if matches!(
@@ -686,9 +837,17 @@ async fn open_hop(
     let label = host_label(&hop.host, hop.port);
 
     let connecting = async {
-        let connected = match via {
-            None => client::connect(config, (hop.host.as_str(), hop.port), handler).await,
-            Some(jump) => {
+        let connected = match (via, &hop.proxy) {
+            (None, Some(proxy)) => {
+                let stream = proxy::spawn(&proxy.command, proxy.stderr.clone()).map_err(|err| {
+                    SshError::Connection {
+                        message: format!("the proxy command could not be started: {err}"),
+                    }
+                })?;
+                client::connect_stream(config, stream, handler).await
+            }
+            (None, None) => client::connect(config, (hop.host.as_str(), hop.port), handler).await,
+            (Some(jump), _) => {
                 let channel = jump
                     .channel_open_direct_tcpip(hop.host.clone(), hop.port.into(), "127.0.0.1", 0)
                     .await
@@ -1068,15 +1227,18 @@ impl SshManager {
             });
         }
         let ctx = self.terminal_context();
-        let (
-            Chain {
-                connection: handle,
-                jumps,
-                warnings,
-            },
+        let Opened {
+            chain:
+                Chain {
+                    connection: handle,
+                    jumps,
+                    warnings,
+                },
             forwarding_agent,
-        ) = connect_chain(
+            mut proxy_stderr,
+        } = connect_chain(
             target,
+            options.proxy_command.clone(),
             req.trusted_fingerprint,
             storage,
             ctx,
@@ -1206,6 +1368,10 @@ impl SshManager {
                 let message = tokio::select! {
                     message = reader.wait() => message,
                     _ = dead.notified() => None,
+                    line = next_proxy_line(&mut proxy_stderr) => {
+                        sink.data(format!("\x1b[33m{line}\x1b[0m\r\n"));
+                        continue;
+                    }
                 };
                 let Some(message) = message else {
                     break;
@@ -1271,7 +1437,10 @@ impl SshManager {
             let entry = sessions.get(&id).ok_or(SshError::UnknownSession { id })?;
             (entry.handle.clone(), entry.dead.clone())
         };
-        let answered = matches!(tokio::time::timeout(wait, handle.send_ping()).await, Ok(Ok(())));
+        let answered = matches!(
+            tokio::time::timeout(wait, handle.send_ping()).await,
+            Ok(Ok(()))
+        );
         if !answered {
             dead.notify_one();
         }
@@ -1837,7 +2006,10 @@ mod tests {
     fn only_terminal_tabs_send_keepalives_every_15_seconds() {
         let dir = tempfile::tempdir().unwrap();
         let mgr = SshManager::new(dir.path().join("known_hosts"));
-        assert_eq!(mgr.terminal_context().keepalive_interval, Duration::from_secs(15));
+        assert_eq!(
+            mgr.terminal_context().keepalive_interval,
+            Duration::from_secs(15)
+        );
         // SFTP, tunnels, Mosh's start and key installs keep the 30 s they had.
         assert_eq!(mgr.context().keepalive_interval, Duration::from_secs(30));
     }
@@ -1897,7 +2069,11 @@ mod tests {
         mgr.write(session.id, b"stall").unwrap();
         // The write goes through the writer task: let the server freeze before the ping leaves.
         tokio::time::sleep(Duration::from_millis(300)).await;
-        assert!(!mgr.probe(session.id, Duration::from_millis(300)).await.unwrap());
+        assert!(
+            !mgr.probe(session.id, Duration::from_millis(300))
+                .await
+                .unwrap()
+        );
         assert_eq!(session.end().await, Some(true));
     }
 
@@ -3089,14 +3265,14 @@ mod tests {
     fn forwarding() -> ShellOptions {
         ShellOptions {
             forward_agent: true,
-            tmux_session: None,
+            ..ShellOptions::default()
         }
     }
 
     fn in_tmux(name: &str) -> ShellOptions {
         ShellOptions {
-            forward_agent: false,
             tmux_session: Some(name.into()),
+            ..ShellOptions::default()
         }
     }
 
@@ -3342,5 +3518,204 @@ mod tests {
         let none: ShellOptions = serde_json::from_value(serde_json::json!({})).unwrap();
         assert!(!none.forward_agent);
         assert_eq!(none.tmux_session, None);
+        assert_eq!(none.proxy_command, None);
+        let proxied: ShellOptions =
+            serde_json::from_value(serde_json::json!({"proxyCommand": "nc %h %p"})).unwrap();
+        assert_eq!(proxied.proxy_command.as_deref(), Some("nc %h %p"));
+    }
+
+    // Proxy commands (terminal-features-3 S1).
+
+    /// A proxy command that connects its stdio to `%h:%p` over TCP, from the tools installed
+    /// here; None (the test is skipped) when there is none.
+    fn bridge() -> Option<&'static str> {
+        let path = std::env::var_os("PATH")?;
+        if platform::find_program("socat", &path).is_some() {
+            Some("socat STDIO TCP:%h:%p")
+        } else if platform::find_program("nc", &path).is_some() {
+            Some("nc %h %p")
+        } else {
+            eprintln!("skipped: neither socat nor nc is installed");
+            None
+        }
+    }
+
+    fn proxied(command: &str) -> ShellOptions {
+        ShellOptions {
+            proxy_command: Some(command.into()),
+            ..ShellOptions::default()
+        }
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn a_proxied_session_speaks_ssh_over_the_command_and_shows_its_stderr_in_yellow() {
+        let Some(bridge) = bridge() else { return };
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+        let command = format!("echo proxy says hi >&2; {bridge}");
+
+        let (id, mut rx) = shell_with(&mgr, req, proxied(&command)).await.unwrap();
+        let out = wait_for(&mut rx, "welcome").await.0;
+        let out = out + &wait_for(&mut rx, "proxy says hi").await.0;
+        assert!(out.contains("welcome"), "output was {out:?}");
+        assert!(
+            out.contains("\x1b[33mproxy says hi\x1b[0m\r\n"),
+            "output was {out:?}"
+        );
+        mgr.write(id, b"echo").unwrap();
+        assert_eq!(server.password_attempts(), 1);
+    }
+
+    #[tokio::test]
+    #[cfg(target_os = "linux")]
+    async fn the_proxy_command_and_what_it_started_end_with_the_session() {
+        let Some(bridge) = bridge() else { return };
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+        let pid_file = dir.path().join("proxy.pid");
+        // `sleep` and the bridge are children of the shell, which stays: the whole group must end.
+        let command = format!("echo $$ > {}; sleep 600 & {bridge}", pid_file.display());
+
+        let (id, mut rx) = shell_with(&mgr, req, proxied(&command)).await.unwrap();
+        wait_for(&mut rx, "welcome").await;
+        let group: i32 = std::fs::read_to_string(&pid_file)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        assert!(
+            live_in_group(group) >= 2,
+            "the proxy command is not running"
+        );
+
+        mgr.close(id).unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while live_in_group(group) > 0 && std::time::Instant::now() < deadline {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert_eq!(
+            live_in_group(group),
+            0,
+            "the proxy command outlived its session"
+        );
+    }
+
+    /// Processes of process group `group` that are not zombies (read from /proc).
+    #[cfg(target_os = "linux")]
+    fn live_in_group(group: i32) -> usize {
+        let Ok(entries) = std::fs::read_dir("/proc") else {
+            return 0;
+        };
+        entries
+            .flatten()
+            .filter_map(|entry| std::fs::read_to_string(entry.path().join("stat")).ok())
+            .filter(|stat| {
+                // `pid (comm) state ppid pgrp ...`; comm may hold spaces and parentheses.
+                let fields: Vec<&str> = stat
+                    .rsplit_once(')')
+                    .map(|(_, rest)| rest.split_whitespace().collect())
+                    .unwrap_or_default();
+                fields.len() > 2 && fields[0] != "Z" && fields[2] == group.to_string()
+            })
+            .count()
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn a_failing_proxy_command_fails_the_connection_with_its_stderr() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let Err(err) = shell_with(&mgr, req, proxied("echo no route to bastion >&2; exit 3")).await
+        else {
+            panic!("a failing proxy command connected");
+        };
+        let SshError::Connection { message } = &err else {
+            panic!("got {err:?}");
+        };
+        assert!(message.contains("no route to bastion"), "{message}");
+        assert_eq!(server.password_attempts(), 0);
+    }
+
+    #[tokio::test]
+    async fn a_proxy_command_with_jump_hosts_is_refused_before_anything_runs() {
+        let bastion = test_server::start(1, None).await;
+        let target = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(trust_all(&dir, &[&bastion, &target]));
+        let mut req = request(target.addr.port(), password(PASSWORD));
+        req.jumps = vec![jump("bastion", &bastion, password(PASSWORD))];
+        let marker = dir.path().join("ran");
+
+        let command = format!("touch {}", marker.display());
+        let Err(err) = shell_with(&mgr, req, proxied(&command)).await else {
+            panic!("jump hosts and a proxy command connected");
+        };
+        assert!(
+            err.to_string()
+                .contains("cannot be combined with jump hosts"),
+            "{err}"
+        );
+        assert!(!marker.exists(), "the proxy command ran");
+        assert_eq!(bastion.password_attempts(), 0);
+    }
+
+    #[tokio::test]
+    async fn a_host_the_shell_would_interpret_is_refused_before_the_command_runs() {
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = SshManager::new(dir.path().join("known_hosts"));
+        let marker = dir.path().join("ran");
+        let mut req = request(22, password(PASSWORD));
+        req.host = format!("x;touch {}", marker.display());
+
+        let Err(err) = shell_with(&mgr, req, proxied("nc %h %p")).await else {
+            panic!("connected");
+        };
+        assert!(
+            err.to_string()
+                .contains("cannot be used in a proxy command"),
+            "{err}"
+        );
+        assert!(!marker.exists(), "the host reached the shell");
+    }
+
+    #[tokio::test]
+    async fn a_blank_proxy_command_connects_over_tcp_as_before() {
+        let server = test_server::start(1, None).await;
+        let dir = tempfile::tempdir().unwrap();
+        let mgr = trusting(&dir, server.addr.port(), &server.host_key);
+        let req = request(server.addr.port(), password(PASSWORD));
+
+        let (_, mut rx) = shell_with(&mgr, req, proxied("   ")).await.unwrap();
+        assert!(wait_for(&mut rx, "welcome").await.0.contains("welcome"));
+    }
+
+    #[test]
+    fn a_proxied_target_deserializes_the_target_and_its_proxy_command() {
+        let value = serde_json::json!({
+            "host": "h", "port": 2222, "username": "u", "auth": {"method": "agent"},
+            "proxyCommand": "cloudflared access ssh --hostname %h",
+        });
+        let proxied: ProxiedTarget = serde_json::from_value(value).unwrap();
+        assert_eq!(proxied.target.host, "h");
+        assert_eq!(proxied.target.port, 2222);
+        assert!(matches!(proxied.target.auth, SshAuth::Agent));
+        assert_eq!(
+            proxied.proxy_command.as_deref(),
+            Some("cloudflared access ssh --hostname %h")
+        );
+        let plain: ProxiedTarget = serde_json::from_value(
+            serde_json::json!({"host": "h", "username": "u", "auth": {"method": "agent"}}),
+        )
+        .unwrap();
+        assert_eq!(plain.proxy_command, None);
+        assert_eq!(plain.target.port, 22);
     }
 }

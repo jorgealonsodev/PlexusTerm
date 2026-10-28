@@ -67,6 +67,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "El puerto debe ser un número entre 1 y 65535",
     keyPathRequired: "La ruta de la clave privada es obligatoria",
     tmuxSessionInvalid: "El nombre de la sesión de tmux solo puede tener letras, dígitos, puntos, guiones bajos y guiones (64 como máximo)",
+    proxyCommandInvalid: "El comando proxy debe ser una sola línea de {max} caracteres como máximo",
+    proxyWithJumps: "Usa hosts de salto o un comando proxy, no ambos",
   },
   jumps: {
     legend: "Hosts de salto",
@@ -134,8 +136,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "Sesiones {type}",
     skippedInclude: "Líneas Include (no se siguen)",
     skippedMatch: "Bloques Match (no se aplican)",
-    skippedProxyCommand: "Hosts con ProxyCommand (importados sin él)",
-    skippedJump: "Hosts cuyo ProxyJump no es un host del fichero (importados sin él)",
+    skippedProxyCommand: "Líneas ProxyCommand de más de 2000 caracteres (importados sin él)",
+    skippedJump: "Hosts cuyo ProxyJump tiene más de 3 hosts o nombra al propio host (importados sin él)",
+    proxyCommands: "Estas sesiones ejecutan un comando en este equipo cada vez que las abres. Revísalos antes de importar:",
   },
   ssh: {
     title: "Sesión SSH",
@@ -150,6 +153,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "Mantener la shell en tmux",
     tmuxHelp: "Inicia la shell dentro de una sesión de tmux en el servidor (tmux new -A -s <nombre>), así al reconectar vuelves a donde estabas, con tus programas en marcha. Si el servidor no tiene tmux, se abre la shell normal.",
     tmuxSession: "Nombre de la sesión de tmux",
+    proxyCommand: "Comando proxy (avanzado)",
+    proxyCommandPlaceholder: "p. ej. cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "Conecta a través de este comando de tu equipo en lugar de directamente, como ProxyCommand de OpenSSH: SSH viaja por su entrada y su salida. %h es el host, %p el puerto, %r el usuario y %% un %. Por ejemplo: cloudflared access ssh --hostname %h, o aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. Sus mensajes aparecen en amarillo en el terminal. No se puede usar junto con hosts de salto. Déjalo vacío para conectar directamente.",
   },
   hostKey: {
     unknownHost: "Host desconocido",

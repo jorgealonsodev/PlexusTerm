@@ -1,3 +1,4 @@
+import { isProxyCommand } from "../ssh/quickConnect";
 import { IMPORT_ROOT, type ImportedSession, type ParsedImport } from "./iniImport";
 import { MAX_JUMPS } from "./library";
 
@@ -8,10 +9,16 @@ export const SSH_CONFIG_FOLDER = `${IMPORT_ROOT}/SSH config`;
 const OPTIONS = ["hostname", "user", "port", "identityfile", "proxyjump", "proxycommand"] as const;
 type Option = (typeof OPTIONS)[number];
 
+/**
+ * The options of a block, plus `proxy`: which of ProxyJump and ProxyCommand came first, the one
+ * ssh uses (the later one never takes effect).
+ */
+type Options = Partial<Record<Option, string>> & { proxy?: "proxyjump" | "proxycommand" };
+
 interface Block {
   /** `null` for a Match block, which this import never applies. */
   patterns: string[] | null;
-  options: Partial<Record<Option, string>>;
+  options: Options;
 }
 
 const WILDCARD = /[*?]/;
@@ -56,6 +63,22 @@ function parsePort(value: string | undefined): number {
   return port >= 1 && port <= 65535 ? port : 22;
 }
 
+/** A ProxyJump hop: `[user@]host[:port]`, `[user@][IPv6]:port` or `ssh://` with either. */
+interface Hop {
+  user?: string;
+  host: string;
+  port?: number;
+}
+
+function parseHop(text: string): Hop | null {
+  const match = /^(?:ssh:\/\/)?(?:([^@\s]+)@)?(?:\[([^\]\s]+)\]|([^:@\s[\]]+))(?::(\d+))?$/.exec(text);
+  if (!match) return null;
+  const [, user, bracketed, plain, portText] = match;
+  const port = portText === undefined ? undefined : Number(portText);
+  if (port !== undefined && !(port >= 1 && port <= 65535)) return null;
+  return { ...(user ? { user } : {}), host: bracketed ?? plain, ...(port ? { port } : {}) };
+}
+
 /**
  * Reads the hosts of an OpenSSH client config (`~/.ssh/config`). Each concrete `Host` alias becomes
  * a session; wildcard blocks and options before the first `Host` give it defaults, the first value
@@ -88,17 +111,52 @@ export function parseSshConfig(text: string): ParsedImport {
       skip("include");
     } else if ((OPTIONS as readonly string[]).includes(key)) {
       const options = blocks[blocks.length - 1].options;
-      options[key as Option] ??= firstArgument(value);
+      // ProxyCommand is the rest of the line, as ssh hands it to the shell.
+      options[key as Option] ??= key === "proxycommand" ? value : firstArgument(value);
+      if (key === "proxyjump" || key === "proxycommand") options.proxy ??= key;
     }
   }
 
-  const resolve = (alias: string): Partial<Record<Option, string>> => {
-    const resolved: Partial<Record<Option, string>> = {};
+  const resolve = (alias: string): Options => {
+    const resolved: Options = {};
     for (const block of blocks) {
       if (!block.patterns || !blockMatches(block.patterns, alias)) continue;
       for (const option of OPTIONS) resolved[option] ??= block.options[option];
+      resolved.proxy ??= block.options.proxy;
     }
     return resolved;
+  };
+
+  /** Jump host sessions made for hops that are not hosts of the file, by hop text. */
+  const hopSessions = new Map<string, ImportedSession>();
+  /**
+   * The name of the session a ProxyJump hop goes through: the host of the file it names when the
+   * hop asks for nothing else, otherwise a session made for the hop (the settings of the host it
+   * names, with the hop's user and port). Null when the hop cannot be read.
+   */
+  const jumpName = (text: string, alias: string): string | null => {
+    if (aliases.includes(text)) return text === alias ? null : text;
+    const hop = parseHop(text);
+    if (!hop) return null;
+    const options = resolve(hop.host);
+    const username = hop.user ?? options.user ?? "";
+    const port = hop.port ?? parsePort(options.port);
+    if (aliases.includes(hop.host)) {
+      const same = username === (options.user ?? "") && port === parsePort(options.port);
+      if (same) return hop.host === alias ? null : hop.host;
+    }
+    if (!hopSessions.has(text)) {
+      hopSessions.set(text, {
+        kind: "ssh",
+        name: text,
+        folder: SSH_CONFIG_FOLDER,
+        host: (options.hostname ?? hop.host).replace(/%h/g, hop.host),
+        port,
+        username,
+        ...(options.identityfile ? { auth: { method: "key", path: options.identityfile.replace(/%d/g, "~") } } : {}),
+      });
+    }
+    return text;
   };
 
   const sessions: ImportedSession[] = [];
@@ -115,17 +173,19 @@ export function parseSshConfig(text: string): ParsedImport {
     if (options.identityfile) {
       session.auth = { method: "key", path: options.identityfile.replace(/%d/g, "~") };
     }
-    if (options.proxycommand && options.proxycommand.toLowerCase() !== "none") skip("proxyCommand");
-    const jump = options.proxyjump;
-    if (jump && jump.toLowerCase() !== "none") {
+    const command = options.proxy === "proxycommand" ? options.proxycommand : undefined;
+    if (command && command.toLowerCase() !== "none" && session.kind === "ssh") {
+      if (isProxyCommand(command)) session.proxyCommand = command;
+      else skip("proxyCommand");
+    }
+    const jump = options.proxy === "proxyjump" ? options.proxyjump : undefined;
+    if (jump && jump.toLowerCase() !== "none" && session.kind === "ssh") {
       const hops = jump.split(",").map((hop) => hop.trim()).filter(Boolean);
-      if (hops.length <= MAX_JUMPS && hops.every((hop) => aliases.includes(hop) && hop !== alias)) {
-        session.jumps = hops;
-      } else {
-        skip("jump");
-      }
+      const names = hops.length <= MAX_JUMPS ? hops.map((hop) => jumpName(hop, alias)) : [null];
+      if (names.every((name): name is string => name !== null)) session.jumps = names;
+      else skip("jump");
     }
     sessions.push(session);
   }
-  return { sessions, skipped };
+  return { sessions: [...sessions, ...hopSessions.values()], skipped };
 }

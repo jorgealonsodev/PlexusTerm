@@ -110,7 +110,8 @@ export function parseSessionForm(
   if (jumpIds.length > MAX_JUMPS) return { ok: false, error: t("sessions.form.tooManyJumps", { max: MAX_JUMPS }) };
   if (new Set(jumpIds).size !== jumpIds.length) return { ok: false, error: t("sessions.form.jumpTwice") };
   if (jumpIds.includes(id)) return { ok: false, error: t("sessions.form.ownJump") };
-  const { host, port, username, auth, forwardAgent, tmuxSession } = parsed.target;
+  const { host, port, username, auth, forwardAgent, tmuxSession, proxyCommand } = parsed.target;
+  if (proxyCommand && jumpIds.length) return { ok: false, error: t("sessions.form.proxyWithJumps") };
 
   const saved: SavedAuth =
     auth.method === "key"
@@ -129,6 +130,7 @@ export function parseSessionForm(
     ...(jumpIds.length ? { jumpIds: [...jumpIds] } : {}),
     ...(forwardAgent ? { forwardAgent: true } : {}),
     ...(tmuxSession ? { tmuxSession } : {}),
+    ...(proxyCommand ? { proxyCommand } : {}),
   };
   if (library && jumpIds.length) {
     // Check the chain as it will be once saved, so loops through other sessions are caught now.
@@ -150,6 +152,7 @@ const emptySsh: QuickConnectForm = {
   forwardAgent: false,
   tmux: false,
   tmuxSession: DEFAULT_TMUX_SESSION,
+  proxyCommand: "",
 };
 
 /**
@@ -198,6 +201,7 @@ function formWithName(session: LibrarySession): SessionForm {
     forwardAgent: session.forwardAgent === true,
     tmux: session.tmuxSession !== undefined,
     tmuxSession: session.tmuxSession ?? DEFAULT_TMUX_SESSION,
+    proxyCommand: session.proxyCommand ?? "",
     serial: defaultSerialForm,
     jumpIds: session.jumpIds ?? [],
   };

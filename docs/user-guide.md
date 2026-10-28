@@ -127,6 +127,25 @@ Saved password sessions (terminal tabs, Mosh and tunnels) connect first: PlexusT
 - Without a Secret Service the checkbox is disabled and passwords are asked on every connection.
 - Key passphrases are never saved.
 
+### Proxy command
+
+**Proxy command (advanced)**, in Quick connect and in a saved SSH session, reaches the server through a command on your computer instead of connecting to it directly, like OpenSSH's `ProxyCommand`: SSH runs over the command's input and output. It is how you go through access gateways such as Cloudflare Access or AWS Systems Manager, for example:
+
+- `cloudflared access ssh --hostname %h`
+- `aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p`
+- `ssh -W %h:%p bastion` (through a bastion of your own OpenSSH config)
+
+Leave it empty to connect directly (the default).
+
+- In the command, `%h` becomes the session's host, `%p` its port, `%r` its username and `%%` a single `%`; any other `%` sequence stays as typed. A host or username with characters the shell would interpret (spaces, `;`, `$`, quotes...) is refused with an error instead of being put in the command.
+- The command runs with `sh -c` (`cmd /C` on Windows), as typed, every time the session connects or reconnects. It must be one line of at most 2000 characters.
+- What the command writes to its error output appears in the terminal in yellow; when the connection fails, its last lines are in the error too (`... (the proxy command said: ...)`).
+- The command is stopped when the tab closes or the connection ends or fails to start. On Linux everything it started is stopped with it; on macOS and Windows the command itself is stopped, and what it started ends when its input closes, as with OpenSSH.
+- The server's host key is still checked against `~/.ssh/known_hosts` with the session's host and port, and the login works as for any SSH session.
+- A session uses either jump hosts or a proxy command, not both: the session dialog refuses to save both.
+- The tab's SFTP browser uses the same connection, and SSH tunnels of the session go through the command too. Mosh sessions and the SSH key generator's **Install** connect directly, without it.
+- **Copy SSH command** includes it as `-o ProxyCommand=...`.
+
 ### Jump hosts
 
 A saved SSH session can reach its server through up to 3 jump hosts (bastions), like `ssh -J`. In the session's edit dialog, **Jump hosts** lists other saved SSH sessions in the order they are crossed: add them from the list, move them up or down, or remove them. Quick-connect sessions have no jump hosts.
@@ -155,7 +174,9 @@ A saved SSH session can reach its server through up to 3 jump hosts (bastions), 
 
 - Each concrete `Host` alias becomes an SSH session named after it, under **Imported/SSH config**. Wildcard (`*`, `?`) and negated (`!`) patterns are not imported as sessions, but their options apply to the hosts they match, as do options before the first `Host`; like ssh, the first value of each option wins.
 - `HostName` (the alias when missing; `%h` is replaced by the alias), `User` (empty when missing), `Port` (22 when missing or invalid) and the first `IdentityFile` are read. A host with an `IdentityFile` uses that private key (`%d` becomes `~`); one without uses password authentication.
-- `ProxyJump` hops that are hosts of the same file become the session's jump hosts (at most 3). Other hops, such as `user@gateway:2222`, and `ProxyCommand` are not supported: the host is imported without them and counted in the preview.
+- `ProxyJump` hops become the session's jump hosts (at most 3). A hop that is a host of the same file is that host's session. Any other hop, such as `user@gateway:2222`, `gateway:2222`, `[fd00::1]:2022` or `ssh://user@gateway`, gets a session of its own named like the hop, with that user (or the file's `User`) and port (or 22); when it names a host of the file, it takes that host's `HostName` and `IdentityFile`. Several hosts going through the same hop share its session. A `ProxyJump` with more than 3 hops, one that names the host itself or a hop that cannot be read is counted in the preview and the host is imported without it.
+- `ProxyCommand` becomes the session's [proxy command](#proxy-command), as written (`ProxyCommand none` means none). Like ssh, whichever of `ProxyJump` and `ProxyCommand` comes first is used, never both. A command longer than 2000 characters is counted in the preview and the host is imported without it.
+- The preview lists every proxy command the import would add, with its session name, because it runs on this computer each time the session is opened: check them before importing a file someone else wrote. Importing an exported sessions file (**Import sessions → From a PlexusTerm export (.json)…**) keeps its proxy commands and lists them the same way.
 - `Include` lines and `Match` blocks are not followed and are counted in the preview. Every other option is ignored.
 - Hosts already imported the same way are skipped as duplicates, so importing again only adds new hosts.
 

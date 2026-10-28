@@ -123,6 +123,19 @@ describe("SessionEditDialog jump hosts", () => {
     ]);
   });
 
+  it("refuses to save jump hosts together with a proxy command", async () => {
+    mockedInvoke.mockResolvedValue(false);
+    const onSave = renderWithJumps({ ...web, jumpIds: ["a"] });
+    fireEvent.change(screen.getByLabelText(/Proxy command/), { target: { value: "nc %h %p" } });
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toBe("Use either jump hosts or a proxy command, not both");
+    fireEvent.click(screen.getByLabelText("Remove alpha"));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ proxyCommand: "nc %h %p" }));
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("jumpIds");
+  });
+
   it("shows jump hosts that no longer exist so they can be removed", async () => {
     mockedInvoke.mockResolvedValue(false);
     const onSave = renderWithJumps({ ...web, jumpIds: ["gone", "a"] });

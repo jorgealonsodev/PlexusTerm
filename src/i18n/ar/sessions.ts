@@ -66,6 +66,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "يجب أن يكون المنفذ رقمًا بين 1 و65535",
     keyPathRequired: "مسار المفتاح الخاص مطلوب",
     tmuxSessionInvalid: "لا يمكن أن يحتوي اسم جلسة tmux إلا على أحرف وأرقام ونقاط وشرطات سفلية وشرطات (64 كحد أقصى)",
+    proxyCommandInvalid: "يجب أن يكون أمر الوكيل سطرًا واحدًا من {max} حرف كحد أقصى",
+    proxyWithJumps: "استخدم مضيفات القفز أو أمر وكيل، لا كليهما",
   },
   jumps: {
     legend: "المضيفات الوسيطة",
@@ -145,8 +147,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "جلسات {type}",
     skippedInclude: "أسطر Include (لا تُتبع)",
     skippedMatch: "كتل Match (لا تُطبق)",
-    skippedProxyCommand: "مضيفون لديهم ProxyCommand (استُوردوا بدونه)",
-    skippedJump: "مضيفون ليس ProxyJump الخاص بهم مضيفًا في الملف (استُوردوا بدونه)",
+    skippedProxyCommand: "أسطر ProxyCommand أطول من 2000 حرف (استُوردت بدونه)",
+    skippedJump: "مضيفون يحتوي ProxyJump الخاص بهم على أكثر من 3 مضيفين أو يذكر المضيف نفسه (استُوردوا بدونه)",
+    proxyCommands: "تشغّل هذه الجلسات أمرًا على هذا الحاسوب في كل مرة تفتحها. راجعها قبل الاستيراد:",
   },
   ssh: {
     title: "جلسة SSH",
@@ -161,6 +164,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "إبقاء الصدفة داخل tmux",
     tmuxHelp: "يبدأ الصدفة داخل جلسة tmux على الخادم (tmux new -A -s <الاسم>)، فتعود عند إعادة الاتصال إلى حيث كنت وبرامجك لا تزال تعمل. إذا لم يكن tmux مثبتًا على الخادم، تُفتح الصدفة العادية.",
     tmuxSession: "اسم جلسة tmux",
+    proxyCommand: "أمر الوكيل (متقدم)",
+    proxyCommandPlaceholder: "مثلًا cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "يتصل عبر هذا الأمر على حاسوبك بدلًا من الاتصال المباشر، مثل ProxyCommand في OpenSSH: يمر SSH عبر مدخلاته ومخرجاته. %h هو المضيف و%p المنفذ و%r المستخدم و%% علامة %. مثلًا: cloudflared access ssh --hostname %h، أو aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p. تظهر رسائله باللون الأصفر في الطرفية. لا يمكن استخدامه مع مضيفات القفز. اتركه فارغًا للاتصال مباشرة.",
   },
   hostKey: {
     unknownHost: "مضيف غير معروف",

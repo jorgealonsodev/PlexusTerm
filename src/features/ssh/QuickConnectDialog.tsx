@@ -20,6 +20,7 @@ const emptyForm: QuickConnectForm = {
   forwardAgent: false,
   tmux: false,
   tmuxSession: DEFAULT_TMUX_SESSION,
+  proxyCommand: "",
 };
 
 export function QuickConnectDialog({ onConnect, onCancel }: QuickConnectDialogProps) {

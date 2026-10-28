@@ -17,6 +17,25 @@ const counter = () => {
   return () => `new-${++n}`;
 };
 
+describe("session export: proxy commands", () => {
+  it("keeps the proxy command of an imported file's session, for the preview to show it", () => {
+    const proxied: LibrarySession = {
+      kind: "ssh",
+      id: "p",
+      name: "cf",
+      folder: "",
+      host: "h",
+      port: 22,
+      username: "u",
+      auth: { method: "agent" },
+      proxyCommand: "cloudflared access ssh --hostname %h",
+    };
+    const file: SessionLibrary = { version: 1, folders: [], sessions: [proxied] };
+    const plan = planLibraryImport(emptyLibrary, exportLibrary(file), counter());
+    expect(plan.toAdd).toMatchObject([{ name: "cf", proxyCommand: "cloudflared access ssh --hostname %h" }]);
+  });
+});
+
 describe("session export", () => {
   it("writes the whole library as PlexusTerm reads it back, with no password field", () => {
     const json = exportLibrary(library);

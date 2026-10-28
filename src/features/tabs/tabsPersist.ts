@@ -7,7 +7,7 @@
  * or saved-password actions. Reading validates everything: a bad or foreign file restores nothing.
  */
 import { targetTitle, type JumpTarget, type SessionTarget, type SshAuth, type SshTarget } from "../sessions/types";
-import { isTmuxSessionName } from "../ssh/quickConnect";
+import { isProxyCommand, isTmuxSessionName } from "../ssh/quickConnect";
 import { clampRatio, closePane, leaf, MAX_PANES, paneIds, type PaneLayout } from "../panes/paneLayout";
 import type { Tab } from "./tabs";
 
@@ -77,11 +77,12 @@ function sanitizeLogin(value: unknown): Omit<JumpTarget, "name"> | null {
   return auth && { host: value.host, port: value.port, username: value.username, auth };
 }
 
-/** The shell options of an SSH target (not secret); an invalid tmux session name is dropped. */
-function shellOptions(value: Json): Pick<SshTarget, "forwardAgent" | "tmuxSession"> {
+/** The shell options of an SSH target (not secret); an invalid tmux session name or proxy command is dropped. */
+function shellOptions(value: Json): Pick<SshTarget, "forwardAgent" | "tmuxSession" | "proxyCommand"> {
   return {
     ...(value.forwardAgent === true ? { forwardAgent: true } : {}),
     ...(isText(value.tmuxSession) && isTmuxSessionName(value.tmuxSession) ? { tmuxSession: value.tmuxSession } : {}),
+    ...(isText(value.proxyCommand) && isProxyCommand(value.proxyCommand) ? { proxyCommand: value.proxyCommand } : {}),
   };
 }
 

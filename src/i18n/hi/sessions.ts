@@ -66,6 +66,8 @@ export const sessions: Messages<typeof en> = {
     portRange: "पोर्ट 1 और 65535 के बीच की संख्या होनी चाहिए",
     keyPathRequired: "प्राइवेट कुंजी का पथ आवश्यक है",
     tmuxSessionInvalid: "tmux सत्र के नाम में केवल अक्षर, अंक, बिंदु, अंडरस्कोर और डैश हो सकते हैं (अधिकतम 64)",
+    proxyCommandInvalid: "प्रॉक्सी कमांड अधिकतम {max} अक्षरों की एक ही पंक्ति होनी चाहिए",
+    proxyWithJumps: "जंप होस्ट या प्रॉक्सी कमांड में से एक ही इस्तेमाल करें, दोनों नहीं",
   },
   jumps: {
     legend: "जंप होस्ट",
@@ -123,8 +125,9 @@ export const sessions: Messages<typeof en> = {
     skippedType: "{type} सेशन",
     skippedInclude: "Include पंक्तियाँ (फ़ॉलो नहीं की जातीं)",
     skippedMatch: "Match ब्लॉक (लागू नहीं होते)",
-    skippedProxyCommand: "ProxyCommand वाले होस्ट (उसके बिना इम्पोर्ट)",
-    skippedJump: "ऐसे होस्ट जिनका ProxyJump फ़ाइल का होस्ट नहीं है (उसके बिना इम्पोर्ट)",
+    skippedProxyCommand: "2000 अक्षरों से लंबी ProxyCommand पंक्तियाँ (उसके बिना इम्पोर्ट)",
+    skippedJump: "ऐसे होस्ट जिनके ProxyJump में 3 से ज़्यादा होस्ट हैं या जो खुद उसी होस्ट का नाम लेता है (उसके बिना इम्पोर्ट)",
+    proxyCommands: "ये सेशन हर बार खोलने पर इस कंप्यूटर पर एक कमांड चलाते हैं। इम्पोर्ट करने से पहले इन्हें जाँच लें:",
   },
   ssh: {
     title: "SSH सेशन",
@@ -139,6 +142,9 @@ export const sessions: Messages<typeof en> = {
     tmux: "शेल को tmux में रखें",
     tmuxHelp: "सर्वर पर शेल को एक tmux सत्र (tmux new -A -s <नाम>) में शुरू करता है, ताकि दोबारा जुड़ने पर आप वहीं लौटें जहाँ थे, आपके प्रोग्राम चलते रहें। सर्वर पर tmux न हो तो सामान्य शेल खुलता है।",
     tmuxSession: "tmux सत्र का नाम",
+    proxyCommand: "प्रॉक्सी कमांड (उन्नत)",
+    proxyCommandPlaceholder: "उदा. cloudflared access ssh --hostname %h",
+    proxyCommandHelp: "सीधे कनेक्ट करने के बजाय आपके कंप्यूटर पर इस कमांड के ज़रिए कनेक्ट करता है, OpenSSH के ProxyCommand की तरह: SSH इसके इनपुट और आउटपुट से गुज़रता है। %h होस्ट है, %p पोर्ट, %r उपयोगकर्ता और %% एक %। उदाहरण: cloudflared access ssh --hostname %h या aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p। इसके संदेश टर्मिनल में पीले रंग में दिखते हैं। इसे जंप होस्ट के साथ इस्तेमाल नहीं किया जा सकता। सीधे कनेक्ट करने के लिए खाली छोड़ें।",
   },
   hostKey: {
     unknownHost: "अज्ञात होस्ट",
