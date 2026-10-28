@@ -20,6 +20,16 @@ export const terminal: Messages<typeof en> = {
     paste: "粘贴",
   },
   ruleMatched: "匹配 {pattern}",
+  copyMode: {
+    badge: "复制",
+    hint: "v 选择 · y 复制 · Esc 退出",
+  },
+  quickSelect: {
+    badge: "选择",
+    hint: "输入标签即可复制 · Shift+标签打开 · Esc 退出",
+    none: "屏幕上没有可选择的内容",
+    copied: "已复制",
+  },
   commandDot: {
     exit: "退出码 {code}",
     exitTime: "退出码 {code} · {duration}",

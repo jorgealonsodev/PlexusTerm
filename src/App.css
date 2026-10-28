@@ -267,6 +267,50 @@ textarea::placeholder {
   pointer-events: none;
 }
 
+/* Copy mode and quick select (S7): the keyboard cursor, the labels and the badge naming the mode. */
+.copy-mode__cursor {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+
+.quick-select__label {
+  position: absolute;
+  z-index: 2;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: monospace;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.quick-select__typed {
+  opacity: 0.5;
+}
+
+.keyboard-mode__badge {
+  position: absolute;
+  top: 6px;
+  right: 16px;
+  z-index: 5;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.keyboard-mode__badge strong {
+  color: var(--accent);
+}
+
 .tab-panes,
 .pane-grid {
   position: absolute;

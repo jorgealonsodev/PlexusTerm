@@ -24,6 +24,16 @@ export const terminal: Messages<typeof en> = {
     paste: "Colar",
   },
   ruleMatched: "Correspondência com {pattern}",
+  copyMode: {
+    badge: "CÓPIA",
+    hint: "v selecionar · y copiar · Esc sair",
+  },
+  quickSelect: {
+    badge: "SELEÇÃO",
+    hint: "Digite um rótulo para copiá-lo · Shift+rótulo abre · Esc sai",
+    none: "Nada para selecionar na tela",
+    copied: "Copiado",
+  },
   commandDot: {
     exit: "Código de saída {code}",
     exitTime: "Código de saída {code} · {duration}",

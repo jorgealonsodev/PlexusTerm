@@ -1571,6 +1571,8 @@ function AppContent() {
         case "copy":
         case "paste":
         case "selectAll":
+        case "copyMode":
+        case "quickSelect":
         case "clear":
         case "saveOutput":
         case "toggleLogging":

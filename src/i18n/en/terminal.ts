@@ -18,6 +18,16 @@ export const terminal = {
     paste: "Paste",
   },
   ruleMatched: "Matched {pattern}",
+  copyMode: {
+    badge: "COPY",
+    hint: "v select · y copy · Esc leave",
+  },
+  quickSelect: {
+    badge: "SELECT",
+    hint: "Type a label to copy it · Shift+label opens it · Esc leaves",
+    none: "Nothing to select on screen",
+    copied: "Copied",
+  },
   commandDot: {
     exit: "Exit code {code}",
     exitTime: "Exit code {code} · {duration}",

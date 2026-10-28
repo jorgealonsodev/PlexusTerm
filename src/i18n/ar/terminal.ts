@@ -27,6 +27,16 @@ export const terminal: Messages<typeof en> = {
     paste: "لصق",
   },
   ruleMatched: "مطابقة {pattern}",
+  copyMode: {
+    badge: "نسخ",
+    hint: "v تحديد · y نسخ · Esc خروج",
+  },
+  quickSelect: {
+    badge: "تحديد",
+    hint: "اكتب تسمية لنسخها · Shift+التسمية يفتحها · Esc للخروج",
+    none: "لا يوجد ما يمكن تحديده على الشاشة",
+    copied: "تم النسخ",
+  },
   commandDot: {
     exit: "رمز الخروج {code}",
     exitTime: "رمز الخروج {code} · {duration}",

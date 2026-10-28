@@ -311,6 +311,8 @@ export const settings: Messages<typeof en> = {
       copy: "コピー",
       paste: "貼り付け",
       selectAll: "すべて選択",
+      copyMode: "コピーモード（キーボードで選択）",
+      quickSelect: "クイック選択（URL・パス・ハッシュをコピー）",
       previousCommand: "前のコマンドへ移動",
       nextCommand: "次のコマンドへ移動",
       copyCommandOutput: "最後のコマンドの出力をコピー",

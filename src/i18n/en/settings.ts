@@ -309,6 +309,8 @@ export const settings = {
       copy: "Copy",
       paste: "Paste",
       selectAll: "Select all",
+      copyMode: "Copy mode (keyboard selection)",
+      quickSelect: "Quick select (copy a URL, path or hash)",
       previousCommand: "Scroll to the previous command",
       nextCommand: "Scroll to the next command",
       copyCommandOutput: "Copy the last command's output",

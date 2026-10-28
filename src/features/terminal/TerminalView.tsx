@@ -62,6 +62,9 @@ import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from 
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
+import { copyModeKey, scrollFor, selectionRange, startCopyMode, type CopyBuffer, type CopyState } from "./copyMode";
+import { findQuickMatches, labelHits, quickSelectKey, viewportLines, type QuickMatch } from "./quickSelect";
+import { KeyboardModes, type CellBox } from "./KeyboardModes";
 
 interface TerminalViewProps {
   target: SessionTarget;
@@ -250,6 +253,12 @@ const scrollback = (term: Terminal): BufferLine[] => {
 
 const textFilters = () => [{ name: t("terminal.view.textFiles"), extensions: ["txt", "log"] }];
 
+/** Copy mode's cursor, or quick select's labelled matches and the letters typed so far (S7). */
+type KeyMode = { kind: "copy"; cursor: CopyState } | { kind: "quick"; matches: QuickMatch[]; typed: string };
+
+/** How long "Copied" (or "Nothing to select") stays on the pane. */
+const MODE_NOTE_MS = 1500;
+
 interface PendingPaste {
   text: string;
   lineCount: number;
@@ -350,6 +359,18 @@ export function TerminalView({
   /** Sends data as if typed (set by the terminal effect), for keys the key handler translates. */
   const typedRef = useRef<(data: string) => void>(() => {});
   const [findOpen, setFindOpen] = useState(false);
+  /** Copy mode or quick select (S7): while one is on, every key is theirs and none reaches the shell. */
+  const [keyMode, setKeyMode] = useState<KeyMode | null>(null);
+  const keyModeRef = useRef<KeyMode | null>(null);
+  /** Handles a key while a mode is on (set on every render). */
+  const keyModeKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  /** The key that just ended a mode, kept from xterm until it is released. */
+  const modeEndKeyRef = useRef<string | null>(null);
+  /** Redraws the mode's overlay when the terminal scrolls under it. */
+  const [, setScrolled] = useState(0);
+  /** A short note after a mode ends ("Copied"), and its timer. */
+  const [modeNote, setModeNote] = useState<string | null>(null);
+  const modeNoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** `output` is the output of the command under the click, when the shell marks its commands. */
   const [menu, setMenu] = useState<{ x: number; y: number; selection: string; output: string | null } | null>(null);
   /** What the find bar opens with: the selection it was opened from, or nothing. */
@@ -436,6 +457,18 @@ export function TerminalView({
     // Find, copy, paste and the pane's menu actions (select all, clear, log…) are handled here.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type === "keydown") latencyMark("K");
+      // Copy mode and quick select take every key (keypress and keyup too), before anything else;
+      // the keypress of the key that ended one (y, q) would otherwise still be typed.
+      if (e.type === "keydown") modeEndKeyRef.current = null;
+      if (keyModeRef.current || (e.type !== "keydown" && modeEndKeyRef.current === e.key)) {
+        if (e.type === "keyup") modeEndKeyRef.current = null;
+        if (e.type === "keydown") {
+          e.preventDefault?.();
+          keyModeKeyRef.current(e);
+          if (!keyModeRef.current) modeEndKeyRef.current = e.key;
+        }
+        return false;
+      }
       if (acceptRef.current(e)) return false;
       // The assistant shortcut (S3) is the window's, like the app shortcuts below.
       if (matchesShortcut(e, settingsRef.current.assistantShortcut)) return false;
@@ -1456,6 +1489,8 @@ export function TerminalView({
 
   /** Pastes as if typed (multi-execution included), asking first for several lines (S15.3). */
   const pasteText = (text: string) => {
+    // Nothing is typed while copy mode or quick select has the keys.
+    if (keyModeRef.current) return;
     const plan = pastePlan(text, settingsRef.current);
     if (plan.kind === "direct") termRef.current?.paste(plan.text);
     else if (plan.kind === "confirm") setPendingPaste(plan);
@@ -1537,6 +1572,181 @@ export function TerminalView({
     callbacks.current.onLogging?.(path);
   };
 
+  /** What copy mode reads of the active buffer. */
+  const copyBuffer = (term: Terminal): CopyBuffer => {
+    const buffer = term.buffer.active;
+    return {
+      length: buffer.length,
+      cols: term.cols,
+      rows: term.rows,
+      viewportY: buffer.viewportY,
+      lineText: (y) => buffer.getLine(y)?.translateToString(true) ?? "",
+    };
+  };
+
+  const setMode = (mode: KeyMode | null) => {
+    keyModeRef.current = mode;
+    setKeyMode(mode);
+  };
+
+  const showModeNote = (note: string) => {
+    if (modeNoteTimer.current) clearTimeout(modeNoteTimer.current);
+    setModeNote(note);
+    modeNoteTimer.current = setTimeout(() => {
+      modeNoteTimer.current = null;
+      setModeNote(null);
+    }, MODE_NOTE_MS);
+  };
+  useEffect(() => () => void (modeNoteTimer.current && clearTimeout(modeNoteTimer.current)), []);
+
+  const leaveKeyMode = () => {
+    termRef.current?.clearSelection();
+    setMode(null);
+  };
+
+  const copyText = (text: string) => {
+    void writeText(text).catch(() => {});
+    showModeNote(t("terminal.quickSelect.copied"));
+  };
+
+  /** Moves the copy cursor: the selection follows it, and the screen scrolls to keep it in sight. */
+  const moveCopyCursor = (term: Terminal, cursor: CopyState) => {
+    const range = selectionRange(cursor, term.cols);
+    if (range) term.select(range.column, range.row, range.length);
+    else term.clearSelection();
+    const top = scrollFor(cursor.y, term.buffer.active.viewportY, term.rows);
+    if (top !== null) term.scrollToLine(top);
+    setMode({ kind: "copy", cursor });
+  };
+
+  const startCopy = () => {
+    const term = termRef.current;
+    if (!term) return;
+    setModeNote(null);
+    term.clearSelection();
+    moveCopyCursor(term, startCopyMode(term.buffer.active, term.cols));
+  };
+
+  /** Labels the URLs, paths, IP addresses, hashes and e-mail addresses on screen. */
+  const startQuickSelect = () => {
+    const term = termRef.current;
+    if (!term) return;
+    const buffer = term.buffer.active;
+    const rows = Array.from({ length: term.rows }, (_, i) => {
+      const line = buffer.getLine(buffer.viewportY + i);
+      // A row the next one continues keeps its trailing blanks: they are part of the line.
+      const continued = buffer.getLine(buffer.viewportY + i + 1)?.isWrapped ?? false;
+      return { text: line?.translateToString(!continued) ?? "", wrapped: (i > 0 && line?.isWrapped) || false };
+    });
+    const matches = labelHits(findQuickMatches(viewportLines(rows, buffer.viewportY), term.cols));
+    if (matches.length === 0) return showModeNote(t("terminal.quickSelect.none"));
+    setModeNote(null);
+    setMode({ kind: "quick", matches, typed: "" });
+  };
+
+  /** Shift+label: a URL opens in the browser, a path as Ctrl+click opens it; anything else is copied. */
+  const openMatch = (match: QuickMatch) => {
+    if (match.kind === "url") void openUrl(match.text).catch(() => {});
+    else if (match.kind === "path") {
+      const links = fileLinksRef.current;
+      void links
+        ?.resolve(match.text)
+        .then((path) => path !== null && links.open(path))
+        .catch(() => {});
+    } else copyText(match.text);
+  };
+
+  keyModeKeyRef.current = (e) => {
+    const term = termRef.current;
+    const mode = keyModeRef.current;
+    if (!term || !mode) return;
+    // The mode's own shortcut ends it; the other mode's starts that one.
+    const shortcut = shortcutFor(e, settingsRef.current.shortcuts);
+    if (shortcut?.type === "copyMode" || shortcut?.type === "quickSelect") {
+      leaveKeyMode();
+      if (shortcut.type === "copyMode" && mode.kind !== "copy") startCopy();
+      if (shortcut.type === "quickSelect" && mode.kind !== "quick") startQuickSelect();
+      return;
+    }
+    if (mode.kind === "copy") {
+      const { state, action } = copyModeKey(mode.cursor, e, copyBuffer(term));
+      if (action === "exit") return leaveKeyMode();
+      if (action === "copy") {
+        const range = selectionRange(state, term.cols);
+        if (range) {
+          term.select(range.column, range.row, range.length);
+          copyText(term.getSelection());
+        }
+        return leaveKeyMode();
+      }
+      return moveCopyCursor(term, state);
+    }
+    const step = quickSelectKey(mode.typed, e, mode.matches);
+    if (step.exit) return leaveKeyMode();
+    if (step.pick) {
+      leaveKeyMode();
+      if (step.pick.open) openMatch(step.pick.match);
+      else copyText(step.pick.match.text);
+      return;
+    }
+    setMode({ ...mode, typed: step.typed });
+  };
+
+  // The overlay follows the screen when it scrolls (output, the mouse wheel) while a mode is on.
+  const keyModeOn = keyMode !== null;
+  useEffect(() => {
+    const term = termRef.current;
+    if (!keyModeOn || !term) return;
+    const sub = term.onScroll(() => setScrolled((n) => n + 1));
+    return () => sub.dispose();
+  }, [keyModeOn]);
+
+  /** Where screen cell (`col`, `row`) is drawn in the pane. */
+  const cellBox = (col: number, row: number): CellBox => {
+    const term = termRef.current;
+    const screen = hostRef.current?.querySelector<HTMLElement>(".xterm-screen");
+    if (!term || !screen) return { left: 0, top: 0, width: 0, height: 0 };
+    const width = screen.clientWidth / term.cols;
+    const height = screen.clientHeight / term.rows;
+    const origin = screen.getBoundingClientRect();
+    const pane = paneRef.current?.getBoundingClientRect();
+    return {
+      left: origin.left - (pane?.left ?? 0) + col * width,
+      top: origin.top - (pane?.top ?? 0) + row * height,
+      width,
+      height,
+    };
+  };
+
+  const keyModeOverlay = () => {
+    const viewportY = termRef.current?.buffer.active.viewportY ?? 0;
+    if (keyMode?.kind === "copy") {
+      const { x, y } = keyMode.cursor;
+      return (
+        <KeyboardModes
+          badge={t("terminal.copyMode.badge")}
+          hint={t("terminal.copyMode.hint")}
+          cursor={{ col: x, row: y, box: cellBox(x, y - viewportY) }}
+        />
+      );
+    }
+    if (keyMode?.kind === "quick") {
+      const typed = keyMode.typed.toLowerCase();
+      const labels = keyMode.matches
+        .filter((match) => match.label.startsWith(typed))
+        .map((match) => ({ label: match.label, typed: typed.length, box: cellBox(match.col, match.row - viewportY) }));
+      return <KeyboardModes badge={t("terminal.quickSelect.badge")} hint={t("terminal.quickSelect.hint")} labels={labels} />;
+    }
+    if (modeNote) {
+      return (
+        <div className="keyboard-mode__badge" role="status">
+          {modeNote}
+        </div>
+      );
+    }
+    return null;
+  };
+
   /** Opens the find bar; with `text` (a selection) it starts again with that text. */
   const openFind = (text = "") => {
     if (text) {
@@ -1613,6 +1823,8 @@ export function TerminalView({
     else if (shortcut.type === "nextFailedCommand") blocksRef.current?.jump("next", true);
     else if (shortcut.type === "rerunFailedCommand") rerunFailedRef.current();
     else if (shortcut.type === "copyCommandOutput") copyCommandOutput();
+    else if (shortcut.type === "copyMode") startCopy();
+    else if (shortcut.type === "quickSelect") startQuickSelect();
   };
 
   /**
@@ -1656,6 +1868,7 @@ export function TerminalView({
           {ghost.text}
         </div>
       )}
+      {keyModeOverlay()}
       {findOpen && <FindBar key={findSeed} initialText={findText} onFind={find} onClose={closeFind} />}
       {menu && (
         <TerminalContextMenu

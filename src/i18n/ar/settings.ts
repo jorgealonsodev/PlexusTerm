@@ -311,6 +311,8 @@ export const settings: Messages<typeof en> = {
       copy: "نسخ",
       paste: "لصق",
       selectAll: "تحديد الكل",
+      copyMode: "وضع النسخ (التحديد بلوحة المفاتيح)",
+      quickSelect: "التحديد السريع (نسخ رابط أو مسار أو تجزئة)",
       previousCommand: "الانتقال إلى الأمر السابق",
       nextCommand: "الانتقال إلى الأمر التالي",
       copyCommandOutput: "نسخ مخرجات آخر أمر",

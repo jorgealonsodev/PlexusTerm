@@ -24,6 +24,16 @@ export const terminal: Messages<typeof en> = {
     paste: "Pegar",
   },
   ruleMatched: "Coincidencia con {pattern}",
+  copyMode: {
+    badge: "COPIA",
+    hint: "v seleccionar · y copiar · Esc salir",
+  },
+  quickSelect: {
+    badge: "SELECCIÓN",
+    hint: "Escribe una etiqueta para copiarla · Mayús+etiqueta la abre · Esc sale",
+    none: "No hay nada que seleccionar en pantalla",
+    copied: "Copiado",
+  },
   commandDot: {
     exit: "Código de salida {code}",
     exitTime: "Código de salida {code} · {duration}",

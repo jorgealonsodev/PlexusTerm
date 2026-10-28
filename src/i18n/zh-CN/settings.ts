@@ -308,6 +308,8 @@ export const settings: Messages<typeof en> = {
       copy: "复制",
       paste: "粘贴",
       selectAll: "全选",
+      copyMode: "复制模式（键盘选择）",
+      quickSelect: "快速选择（复制 URL、路径或哈希）",
       previousCommand: "跳到上一条命令",
       nextCommand: "跳到下一条命令",
       copyCommandOutput: "复制最后一条命令的输出",
