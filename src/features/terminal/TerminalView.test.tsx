@@ -1285,6 +1285,31 @@ describe("TerminalView", () => {
       expect(unregister).toHaveBeenCalled();
     });
 
+    it("hands Find in all tabs its buffer rows and a way to select a match in them (S3)", () => {
+      let find: import("../search/findAll").FindTarget | null = null;
+      const unregister = vi.fn();
+      const { unmount } = renderView({
+        registerFindTarget: (target) => {
+          find = target;
+          return unregister;
+        },
+      });
+      const t = term();
+      t.line = "say hello world";
+      expect(find!.rows()).toEqual([{ text: "say hello world", wrapped: false }]);
+      const focus = vi.fn();
+      (t as unknown as { focus: () => void }).focus = focus;
+      find!.reveal(0, 4, 5);
+      expect(t.select).toHaveBeenCalledWith(4, 0, 5);
+      // The row is on screen already: no scrolling.
+      expect(t.scrollToLine).not.toHaveBeenCalled();
+      expect(focus).toHaveBeenCalled();
+      // Nothing is typed or sent to the session.
+      expect(backend.write).not.toHaveBeenCalled();
+      unmount();
+      expect(unregister).toHaveBeenCalled();
+    });
+
     it("links the paths it prints to the files its fileLinks find, opened with Ctrl+click", async () => {
       const first = { resolve: vi.fn(async () => null), open: vi.fn() };
       const { rerender } = renderView({ fileLinks: first });

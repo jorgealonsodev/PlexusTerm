@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Terminal, type FontWeight, type IBuffer, type IMarker } from "@xterm/xterm";
+import { Terminal, type FontWeight, type IBuffer, type IBufferLine, type IMarker } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -66,6 +66,7 @@ import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from 
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
 import { t } from "../../i18n/i18n";
+import type { BufferRow, FindTarget } from "../search/findAll";
 import { copyModeKey, scrollFor, selectionRange, startCopyMode, type CopyBuffer, type CopyState } from "./copyMode";
 import { findQuickMatches, labelHits, quickSelectKey, viewportLines, type QuickMatch } from "./quickSelect";
 import { KeyboardModes, type CellBox } from "./KeyboardModes";
@@ -107,6 +108,8 @@ interface TerminalViewProps {
   history?: HistoryStore;
   /** Hands out what the assistant needs from this pane (S3); returns its unregister function. */
   registerAssistTarget?: (target: AssistTarget) => () => void;
+  /** Hands out what Find in all tabs reads and selects in this pane; returns its unregister function. */
+  registerFindTarget?: (target: FindTarget) => () => void;
   /** Opens this pane's AI chat with its selection attached; without it the menu has no "Ask the AI". */
   onAskAi?: () => void;
   /** A failed command's dot was clicked: ask the AI about `text` (the command and its output) with `question`. */
@@ -184,6 +187,21 @@ export const PROMPT_QUIET_MS = 500;
 export const ACTIVITY_QUIET_MS = 1500;
 /** Output this soon after a key is taken as its echo. */
 const ECHO_MS = 150;
+
+/**
+ * The cell a character index of a row's text falls on: a wide character takes two cells but is one
+ * character of `translateToString`.
+ */
+const cellColumn = (line: IBufferLine | undefined, index: number) => {
+  if (!line) return index;
+  let x = 0;
+  for (let i = 0; i < index && x < line.length; ) {
+    const cell = line.getCell(x);
+    i += Math.max(1, cell?.getChars().length ?? 1);
+    x += Math.max(1, cell?.getWidth() ?? 1);
+  }
+  return x;
+};
 
 /** xterm's buffer as the shell marks read it. */
 const rowsOf = (buffer: IBuffer, cols: number): ScreenRows => ({
@@ -319,6 +337,7 @@ export function TerminalView({
   aiSuggest,
   history = commandHistory,
   registerAssistTarget,
+  registerFindTarget,
   onAskAi,
   onExplainFailure,
   onAttention,
@@ -1931,6 +1950,32 @@ export function TerminalView({
   // The command palette runs this pane's actions as their keys would; the pane lives as long as its id.
   const registerPaneShortcutsRef = useRef(registerPaneShortcuts);
   useEffect(() => registerPaneShortcutsRef.current?.((shortcut) => paneShortcutRef.current(shortcut)), []);
+  // Find in all tabs reads the active buffer in memory and selects in it; nothing reaches the session.
+  const registerFindTargetRef = useRef(registerFindTarget);
+  useEffect(
+    () =>
+      registerFindTargetRef.current?.({
+        rows: () => {
+          const buffer = termRef.current?.buffer.active;
+          if (!buffer) return [];
+          const rows: BufferRow[] = [];
+          for (let y = 0; y < buffer.length; y++) {
+            const line = buffer.getLine(y);
+            rows.push({ text: line?.translateToString(false) ?? "", wrapped: line?.isWrapped ?? false });
+          }
+          return rows;
+        },
+        reveal: (row, column, length) => {
+          const term = termRef.current;
+          if (!term) return;
+          const top = scrollFor(row, term.buffer.active.viewportY, term.rows);
+          if (top !== null) term.scrollToLine(top);
+          term.select(cellColumn(term.buffer.active.getLine(row), column), row, length);
+          term.focus();
+        },
+      }),
+    [],
+  );
   paneShortcutRef.current = (shortcut) => {
     const action = paneMenuActions[shortcut.type];
     if (action) runMenuAction(action);
