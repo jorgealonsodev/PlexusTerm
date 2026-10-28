@@ -76,6 +76,7 @@ import { loadSidebarView, saveSidebarView } from "./features/sidebar/uiMemory";
 import type { MoshTarget, SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
 import { useSessionSync } from "./features/sessions/useSessionSync";
+import { useSettingsSync } from "./features/settings/useSettingsSync";
 import { QuickConnectDialog } from "./features/ssh/QuickConnectDialog";
 import { TabBar } from "./features/tabs/TabBar";
 import { parseTabsDocument, planRestore, serializeTabs, snapshotTabs, type TabsDocument } from "./features/tabs/tabsPersist";
@@ -405,6 +406,11 @@ function AppContent() {
   };
   const sessions = useSessionLibrary();
   const sessionSync = useSessionSync(sessions, terminalSettings.settings.syncFolder);
+  const settingsSync = useSettingsSync(
+    terminalSettings,
+    terminalSettings.settings.settingsSyncFolder,
+    modal?.kind === "settings",
+  );
   // Tunnels run over SSH, so they only see SSH sessions.
   const sshSessions = useMemo(() => sessions.library.sessions.filter(isSshSession), [sessions.library.sessions]);
   const tunnels = useTunnels();
@@ -2475,6 +2481,7 @@ function AppContent() {
           onSave={(next) => terminalSettings.update(next)}
           onLanguageNow={(language) => terminalSettings.update({ language })}
           syncStatus={sessionSync}
+          settingsSyncStatus={settingsSync}
         />
       )}
       {modal?.kind === "share" && (

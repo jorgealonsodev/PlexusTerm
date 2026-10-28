@@ -92,6 +92,8 @@ interface SettingsDialogProps {
   onLanguageNow?: (language: LanguageSetting) => void;
   /** How the sync of the saved sessions went last (Connections). */
   syncStatus?: SyncStatus;
+  /** How the sync of the settings went last, when it is on. */
+  settingsSyncStatus?: SyncStatus;
 }
 
 const PREVIEW_COLOURS = ["red", "green", "yellow", "blue", "magenta", "cyan"] as const;
@@ -341,7 +343,7 @@ const WEIGHT_NAMES: Record<number, AppKey> = {
   600: "settings.appearance.weightSemibold",
 };
 
-export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus }: SettingsDialogProps) {
+export function SettingsDialog({ settings, onSave, onCancel, initialSection, onLanguageNow, syncStatus, settingsSyncStatus }: SettingsDialogProps) {
   const [licensesOpen, setLicensesOpen] = useState(false);
   const t = useT();
   const platform = usePlatform();
@@ -372,6 +374,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [commandNotifySeconds, setCommandNotifySeconds] = useState(String(settings.commandNotifySeconds));
   const [highlightRules, setHighlightRules] = useState(settings.highlightRules);
   const [syncFolder, setSyncFolder] = useState(settings.syncFolder);
+  const [settingsSyncFolder, setSettingsSyncFolder] = useState(settings.settingsSyncFolder);
   const [gpuAcceleration, setGpuAcceleration] = useState(settings.gpuAcceleration);
   const [inlineImages, setInlineImages] = useState(settings.inlineImages);
   const [devCommands, setDevCommands] = useState(() => devCommandsText(settings.devCommands));
@@ -523,6 +526,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       shellIntegration,
       logTimestamps,
       syncFolder: syncFolder.trim(),
+      settingsSyncFolder: settingsSyncFolder.trim(),
       theme,
       fontFamily: cleanFontFamily(fontFamily),
       remoteMonitor,
@@ -1198,6 +1202,48 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                       : t("settings.ssh.syncing")}
                 </span>
               )}
+            </div>
+            <h3 className="settings__group">{t("settings.groups.settingsSync")}</h3>
+            <div className="field">
+              <label htmlFor="settings-settings-sync-folder">
+                <span className="setting-title">
+                  {t("settings.ssh.settingsSyncFolder")} <HelpTip text={t("settings.ssh.settingsSyncFolderHelp")} />
+                </span>
+              </label>
+              <div className="form-row field__picker">
+                <input
+                  id="settings-settings-sync-folder"
+                  value={settingsSyncFolder}
+                  placeholder={t("settings.ssh.settingsSyncFolderPlaceholder")}
+                  spellCheck={false}
+                  onChange={(e) => setSettingsSyncFolder(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={t("settings.ssh.chooseSettingsSyncFolder")}
+                  onClick={() =>
+                    void open({ title: t("settings.ssh.chooseSettingsSyncFolder"), multiple: false, directory: true })
+                      .then((dir) => typeof dir === "string" && setSettingsSyncFolder(dir))
+                      .catch(() => {})
+                  }
+                >
+                  {t("common.browse")}
+                </button>
+              </div>
+              {settingsSyncStatus &&
+                settingsSyncFolder.trim() === settings.settingsSyncFolder &&
+                settingsSyncFolder.trim() !== "" && (
+                  <span className={settingsSyncStatus.state === "error" ? "form-error" : "muted"} role="status">
+                    {settingsSyncStatus.state === "synced"
+                      ? t("settings.ssh.syncedAt", { time: new Date(settingsSyncStatus.at).toLocaleTimeString() })
+                      : settingsSyncStatus.state === "error"
+                        ? settingsSyncStatus.foreign
+                          ? t("settings.ssh.syncSettingsForeign")
+                          : t("settings.ssh.syncError", { error: settingsSyncStatus.message })
+                        : t("settings.ssh.syncing")}
+                  </span>
+                )}
             </div>
           </div>
 

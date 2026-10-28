@@ -61,6 +61,8 @@ export interface TerminalSettings {
   sshAutoReconnect: boolean;
   /** The folder the saved sessions are synced through (Syncthing, Drive…); "" when they are not. */
   syncFolder: string;
+  /** The folder the settings are synced through, apart from the ones of each computer; "" when they are not. */
+  settingsSyncFolder: string;
   /**
    * Program that "Open with default text editor" uses: a program path, or a command line
    * with arguments; empty uses the system's default text editor.
@@ -274,6 +276,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   remoteMonitor: true,
   sshAutoReconnect: true,
   syncFolder: "",
+  settingsSyncFolder: "",
   textEditor: "",
   fileDetails: false,
   terminalFollowsBrowser: true,
@@ -511,6 +514,8 @@ export function parseSettings(json: string | null): TerminalSettings {
     remoteMonitor: bool(value.remoteMonitor, d.remoteMonitor),
     sshAutoReconnect: bool(value.sshAutoReconnect, d.sshAutoReconnect),
     syncFolder: typeof value.syncFolder === "string" ? value.syncFolder.trim() : d.syncFolder,
+    settingsSyncFolder:
+      typeof value.settingsSyncFolder === "string" ? value.settingsSyncFolder.trim() : d.settingsSyncFolder,
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
     terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),
