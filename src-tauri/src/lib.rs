@@ -4,6 +4,7 @@ mod diaglog;
 mod git;
 mod history;
 mod launch;
+mod links;
 mod localfs;
 mod mosh;
 mod platform;
@@ -748,6 +749,7 @@ pub fn run() {
     }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(links::plugin())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_notification::init())
