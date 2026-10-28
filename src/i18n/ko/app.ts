@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "기록",
     },
   },
+  findAll: {
+    title: "모든 탭에서 찾기",
+    placeholder: "모든 터미널에서 찾을 텍스트를 입력하세요…",
+    matchCase: "대/소문자 구분",
+    noResults: "이 텍스트가 있는 터미널이 없습니다.",
+    capped: "처음 {limit}개 결과를 표시합니다.",
+  },
   toolbar: {
     aiAssistant: "AI 도우미",
     aiAssistantTitle: "AI 도우미({shortcut})",

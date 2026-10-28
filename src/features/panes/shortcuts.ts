@@ -23,6 +23,8 @@ export type Shortcut =
   | { type: "focus"; direction: FocusDirection }
   /** Pane-local: handled by the focused terminal itself (S15.1, S15.3). */
   | { type: "find" }
+  /** Searches every terminal's buffer, in every tab, and jumps to the match chosen (S3). */
+  | { type: "findAll" }
   | { type: "copy" }
   | { type: "paste" }
   | { type: "selectAll" }
@@ -100,6 +102,7 @@ export const SHORTCUT_ACTIONS = {
   newTelnet: { shortcut: { type: "newTelnet" }, group: "connections", defaults: [] },
   newMosh: { shortcut: { type: "newMosh" }, group: "connections", defaults: [] },
   find: { shortcut: { type: "find" }, group: "terminal", defaults: ["Ctrl+Shift+F"] },
+  findAll: { shortcut: { type: "findAll" }, group: "terminal", defaults: ["Ctrl+Shift+G"] },
   copy: { shortcut: { type: "copy" }, group: "terminal", defaults: ["Ctrl+Shift+C"] },
   paste: { shortcut: { type: "paste" }, group: "terminal", defaults: ["Ctrl+Shift+V"] },
   selectAll: { shortcut: { type: "selectAll" }, group: "terminal", defaults: [] },

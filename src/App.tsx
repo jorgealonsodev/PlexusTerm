@@ -101,6 +101,8 @@ import { noticeText } from "./features/share/labels";
 import { SharedView } from "./features/share/SharedView";
 import { OpenSharedDialog } from "./features/share/OpenSharedDialog";
 import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
+import { FindAllDialog } from "./features/search/FindAllDialog";
+import { findInPanes, searchablePanes, type FindResult, type FindTarget } from "./features/search/findAll";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
 import { setChatSaving } from "./features/ai/chatHistory";
 import { aiComplete, describeAiError } from "./features/ai/aiClient";
@@ -478,10 +480,13 @@ function AppContent() {
   /** The values last typed for each macro's variables, by macro id; memory only, never saved (S4). */
   const macroValues = useRef(new Map<string, Record<string, string>>());
   const [assistTargets] = useState(() => createTargetRegistry<AssistTarget>());
+  /** What Find in all tabs reads and selects in each terminal pane. */
+  const [findTargets] = useState(() => createTargetRegistry<FindTarget>());
   const [chatDrops] = useState(() => createTargetRegistry<ChatTarget>());
   /** Each terminal's own actions (find, copy, clear…), for the command palette. */
   const [paneShortcuts] = useState(() => createTargetRegistry<(shortcut: Shortcut) => void>());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [findAllOpen, setFindAllOpen] = useState(false);
   /** The history search: the commands of the focused terminal's computer, newest first. */
   const [historyItems, setHistoryItems] = useState<PaletteItem[] | null>(null);
   /** The app's actions as the keyboard runs them, kept by the shortcut effect below. */
@@ -1566,6 +1571,8 @@ function AppContent() {
           return setPaletteOpen(true);
         case "searchHistory":
           return openHistorySearch();
+        case "findAll":
+          return setFindAllOpen(true);
         case "newTerminal":
           return openLocal();
         case "quickConnect":
@@ -1676,6 +1683,24 @@ function AppContent() {
         })),
       );
     });
+  };
+
+  /** Searches the buffer of every terminal pane in every tab (S3); nothing is sent to the sessions. */
+  const findInAllTabs = (query: string, matchCase: boolean) => {
+    const paneTitleOf = (paneId: string) => {
+      const tab = state.tabs.find((candidate) => paneIds(candidate.layout).includes(paneId));
+      const n = tab ? paneIds(tab.layout).filter((p) => isTerminalPane(tab, p)).indexOf(paneId) + 1 : 1;
+      return paneMeta[paneId]?.title || t("app.tabs.terminalN", { n });
+    };
+    return findInPanes(searchablePanes(state.tabs, findTargets.get, paneTitleOf), query, { matchCase });
+  };
+
+  /** Shows a Find in all tabs result: its tab and pane come to the front and the match is selected. */
+  const revealFound = (result: FindResult) => {
+    dispatch({ type: "activate", key: result.tabKey });
+    dispatch({ type: "focusPane", key: result.tabKey, paneId: result.paneId });
+    // Once the tab is on screen.
+    setTimeout(() => findTargets.get(result.paneId)?.reveal(result.row, result.column, result.length), 0);
   };
 
   /** What the command palette offers: actions, saved sessions, macros, open tabs and Settings sections. */
@@ -2251,6 +2276,7 @@ function AppContent() {
                             triggerMacro={(id) => macros.list.macros.find((macro) => macro.id === id)}
                             registerPaneShortcuts={(run) => paneShortcuts.register(paneId, run)}
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
+                            registerFindTarget={(target) => findTargets.register(paneId, target)}
                             registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}
                             aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
                             settings={terminalSettings.settings}
@@ -2524,6 +2550,16 @@ function AppContent() {
           onClose={(run) => {
             setHistoryItems(null);
             if (run) setTimeout(run, 0);
+          }}
+        />
+      )}
+      {findAllOpen && (
+        <FindAllDialog
+          search={findInAllTabs}
+          onClose={(chosen) => {
+            setFindAllOpen(false);
+            // After the dialog is gone, so the terminal keeps the focus.
+            if (chosen) setTimeout(() => revealFound(chosen), 0);
           }}
         />
       )}

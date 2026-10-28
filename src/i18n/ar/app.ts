@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "السجل",
     },
   },
+  findAll: {
+    title: "البحث في كل علامات التبويب",
+    placeholder: "اكتب النص المطلوب البحث عنه في كل الطرفيات…",
+    matchCase: "مطابقة حالة الأحرف",
+    noResults: "لا توجد طرفية تحتوي على هذا النص.",
+    capped: "تُعرض أول {limit} نتيجة.",
+  },
   toolbar: {
     aiAssistant: "مساعد الذكاء الاصطناعي",
     aiAssistantTitle: "مساعد الذكاء الاصطناعي ({shortcut})",

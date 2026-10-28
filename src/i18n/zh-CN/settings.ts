@@ -319,6 +319,7 @@ export const settings: Messages<typeof en> = {
       newTelnet: "新建 Telnet 连接",
       newMosh: "新建 Mosh 连接",
       find: "查找",
+      findAll: "在所有标签页中查找",
       copy: "复制",
       paste: "粘贴",
       selectAll: "全选",

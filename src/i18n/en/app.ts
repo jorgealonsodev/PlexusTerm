@@ -15,6 +15,13 @@ export const app = {
       history: "History",
     },
   },
+  findAll: {
+    title: "Find in all tabs",
+    placeholder: "Type the text to find in every terminal…",
+    matchCase: "Match case",
+    noResults: "No terminal has this text.",
+    capped: "First {limit} results shown.",
+  },
   toolbar: {
     aiAssistant: "AI assistant",
     aiAssistantTitle: "AI assistant ({shortcut})",

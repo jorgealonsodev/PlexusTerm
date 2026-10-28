@@ -161,3 +161,17 @@ describe("copy mode and quick select (S7)", () => {
     expect(shortcutFor(key("y", { altKey: true }), { quickSelect: "Alt+Y" })).toEqual({ type: "quickSelect" });
   });
 });
+
+describe("find in all tabs (S3)", () => {
+  it("is a terminal action on Ctrl+Shift+G, beside the find bar's Ctrl+Shift+F", () => {
+    expect(SHORTCUT_ACTIONS.findAll).toMatchObject({ group: "terminal", defaults: ["Ctrl+Shift+G"] });
+    expect(shortcutFor(ctrlShift("g"))).toEqual({ type: "findAll" });
+    expect(shortcutFor(ctrlShift("F"))).toEqual({ type: "find" });
+  });
+
+  it("takes a combination no other default, fixed key or the AI assistant uses", () => {
+    for (const combo of SHORTCUT_ACTIONS.findAll.defaults) {
+      expect(shortcutConflict(combo, {}, { action: "findAll", assistantShortcut: "Ctrl+Shift+Space" })).toBeNull();
+    }
+  });
+});

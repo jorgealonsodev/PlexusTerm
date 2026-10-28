@@ -322,6 +322,7 @@ export const settings: Messages<typeof en> = {
       newTelnet: "새 Telnet 연결",
       newMosh: "새 Mosh 연결",
       find: "찾기",
+      findAll: "모든 탭에서 찾기",
       copy: "복사",
       paste: "붙여넣기",
       selectAll: "모두 선택",

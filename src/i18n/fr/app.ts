@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "Historique",
     },
   },
+  findAll: {
+    title: "Rechercher dans tous les onglets",
+    placeholder: "Saisissez le texte à chercher dans tous les terminaux…",
+    matchCase: "Respecter la casse",
+    noResults: "Aucun terminal ne contient ce texte.",
+    capped: "Les {limit} premiers résultats sont affichés.",
+  },
   toolbar: {
     aiAssistant: "Assistant IA",
     aiAssistantTitle: "Assistant IA ({shortcut})",

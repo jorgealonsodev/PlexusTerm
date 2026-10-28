@@ -17,6 +17,13 @@ export const app: Messages<typeof en> = {
       history: "Verlauf",
     },
   },
+  findAll: {
+    title: "In allen Tabs suchen",
+    placeholder: "Text eingeben, der in allen Terminals gesucht wird…",
+    matchCase: "Groß-/Kleinschreibung beachten",
+    noResults: "Kein Terminal enthält diesen Text.",
+    capped: "Die ersten {limit} Ergebnisse werden angezeigt.",
+  },
   toolbar: {
     aiAssistant: "KI-Assistent",
     aiAssistantTitle: "KI-Assistent ({shortcut})",
