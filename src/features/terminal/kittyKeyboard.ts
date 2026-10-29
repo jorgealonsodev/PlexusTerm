@@ -1,8 +1,9 @@
 /**
  * A minimal kitty keyboard protocol (https://sw.kovidgoyal.net/kitty/keyboard-protocol/) until
  * xterm.js ships its own: AI command-line tools (Claude Code, Codex…) turn it on to tell
- * Ctrl+Enter and Shift+Enter from Enter. Only flag 1 (disambiguate escape codes) is supported,
- * and only for Escape and modified Enter, Tab and Backspace; every other key stays xterm's.
+ * Ctrl+Enter and Shift+Enter from Enter. Only flag 1 (disambiguate escape codes) is supported:
+ * Escape, modified Enter, Tab and Backspace, and a character key with Alt, Super or Ctrl+Shift
+ * (pi takes Alt+A only this way once the protocol is on); every other key stays xterm's.
  * Shells never turn it on, so their keys are exactly as without it.
  */
 
@@ -77,6 +78,9 @@ export interface KittyKey {
   metaKey: boolean;
   isComposing?: boolean;
   keyCode?: number;
+  /** The physical key ("KeyA", "Digit3", "Slash"): names a letter or digit whatever Shift does to it. */
+  code?: string;
+  getModifierState?: (key: string) => boolean;
 }
 
 /** Key codes of the keys this terminal encodes. */
@@ -89,9 +93,24 @@ const CODES: Record<string, number> = { Escape: 27, Enter: 13, Tab: 9, Backspace
 export const encodeKittyKey = (e: KittyKey, flags: number): string | null => {
   if ((flags & KITTY_SUPPORTED_FLAGS) === 0) return null;
   if (e.isComposing || e.keyCode === 229) return null;
-  const code = CODES[e.key];
-  if (code === undefined) return null;
   const mods = 1 + (e.shiftKey ? 1 : 0) + (e.altKey ? 2 : 0) + (e.ctrlKey ? 4 : 0) + (e.metaKey ? 8 : 0);
+  const code = CODES[e.key] ?? characterCode(e);
+  if (code === undefined) return null;
   if (mods === 1) return code === 27 ? "\x1b[27u" : null;
   return `\x1b[${code};${mods}u`;
 };
+
+/**
+ * The unshifted key of a character key xterm cannot tell apart (Alt, Super or Ctrl+Shift with it),
+ * or undefined while it types: no such modifier, AltGr, or a character the modifiers made (macOS
+ * Option+A is å, Shift+Alt+1 is !), which has no unshifted key to name.
+ */
+function characterCode(e: KittyKey): number | undefined {
+  if ([...e.key].length !== 1) return undefined;
+  if (!(e.altKey || e.metaKey || (e.ctrlKey && e.shiftKey))) return undefined;
+  if (e.getModifierState?.("AltGraph")) return undefined;
+  const physical = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(e.code ?? "");
+  const base = physical ? (physical[1]?.toLowerCase() ?? physical[2]) : e.shiftKey ? undefined : e.key;
+  if (base === undefined || e.key.toLowerCase() !== base) return undefined;
+  return base.codePointAt(0);
+}

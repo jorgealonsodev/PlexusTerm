@@ -1221,6 +1221,21 @@ describe("TerminalView", () => {
         expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[?0u");
       });
 
+      it("sends Alt+letter and Ctrl+Shift+letter as CSI u once on, as pi reads them, and ESC a / Ctrl+A while off", async () => {
+        await connected();
+        expect(press("a", { altKey: true, code: "KeyA" })).toBe(true);
+        expect(press("A", { ctrlKey: true, shiftKey: true, code: "KeyA" })).toBe(true);
+        turnOn();
+        expect(press("a", { altKey: true, code: "KeyA" })).toBe(false);
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[97;3u");
+        expect(press("A", { ctrlKey: true, shiftKey: true, code: "KeyA" })).toBe(false);
+        expect(backend.write).toHaveBeenLastCalledWith(7, "\x1b[97;6u");
+        // Application shortcuts still win (Ctrl+Shift+T opens a terminal).
+        backend.write.mockClear();
+        press("T", { ctrlKey: true, shiftKey: true, code: "KeyT" });
+        expect(backend.write).not.toHaveBeenCalled();
+      });
+
       it("keeps the alternate screen's flags apart from the main screen's", async () => {
         await connected();
         term().bufferType = "alternate";

@@ -160,7 +160,38 @@ describe("encodeKittyKey", () => {
     }
   });
 
+  it("encodes Alt, Ctrl+Alt, Shift+Alt and Super with a letter, digit or symbol by its unshifted key", () => {
+    expect(encodeKittyKey(key("a", { altKey: true, code: "KeyA" }), 1)).toBe("\x1b[97;3u");
+    expect(encodeKittyKey(key("K", { altKey: true, shiftKey: true, code: "KeyK" }), 1)).toBe("\x1b[107;4u");
+    expect(encodeKittyKey(key("w", { altKey: true, ctrlKey: true, code: "KeyW" }), 1)).toBe("\x1b[119;7u");
+    expect(encodeKittyKey(key("3", { altKey: true, code: "Digit3" }), 1)).toBe("\x1b[51;3u");
+    expect(encodeKittyKey(key("/", { altKey: true, code: "Slash" }), 1)).toBe("\x1b[47;3u");
+    expect(encodeKittyKey(key("]", { altKey: true, ctrlKey: true, code: "BracketRight" }), 1)).toBe("\x1b[93;7u");
+    expect(encodeKittyKey(key("/", { metaKey: true, code: "Slash" }), 1)).toBe("\x1b[47;9u");
+  });
+
+  it("encodes Ctrl+Shift with a letter, which xterm sends as the bare Ctrl+letter", () => {
+    expect(encodeKittyKey(key("A", { ctrlKey: true, shiftKey: true, code: "KeyA" }), 1)).toBe("\x1b[97;6u");
+    expect(encodeKittyKey(key("J", { ctrlKey: true, shiftKey: true, code: "KeyJ" }), 1)).toBe("\x1b[106;6u");
+  });
+
+  it("leaves typing to xterm: plain and shifted characters, Ctrl+letter, AltGr and characters a modifier makes", () => {
+    for (const [k, code] of [["a", "KeyA"], ["A", "KeyA"], ["/", "Slash"], ["?", "Slash"]] as const) {
+      expect(encodeKittyKey(key(k, { code }), 1)).toBeNull();
+      expect(encodeKittyKey(key(k, { code, shiftKey: k !== k.toLowerCase() || k === "?" }), 1)).toBeNull();
+    }
+    expect(encodeKittyKey(key("c", { ctrlKey: true, code: "KeyC" }), 1)).toBeNull();
+    // AltGr (Ctrl+Alt on Windows) writes characters such as @ and €.
+    expect(encodeKittyKey(key("@", { ctrlKey: true, altKey: true, code: "Digit2", getModifierState: (m) => m === "AltGraph" }), 1)).toBeNull();
+    expect(encodeKittyKey(key("q", { ctrlKey: true, altKey: true, code: "KeyQ", getModifierState: (m) => m === "AltGraph" }), 1)).toBeNull();
+    // macOS Option makes its own characters (Option+A is å).
+    expect(encodeKittyKey(key("å", { altKey: true, code: "KeyA" }), 1)).toBeNull();
+    // A shifted symbol with Alt has no unshifted key to name: it stays xterm's.
+    expect(encodeKittyKey(key("!", { altKey: true, shiftKey: true, code: "Digit1" }), 1)).toBeNull();
+  });
+
   it("leaves a key being composed by an input method alone", () => {
+    expect(encodeKittyKey(key("a", { altKey: true, code: "KeyA", isComposing: true }), 1)).toBeNull();
     expect(encodeKittyKey(key("Enter", { ctrlKey: true, isComposing: true }), 1)).toBeNull();
     expect(encodeKittyKey(key("Escape", { keyCode: 229 }), 1)).toBeNull();
   });
