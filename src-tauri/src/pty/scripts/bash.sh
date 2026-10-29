@@ -51,4 +51,19 @@ if [[ $- == *i* && -z ${__plexus_integration-} ]]; then
   fi
   # Shown once a command line is read, before it runs (bash 4.4 and later).
   PS0='\e]133;C\a'"${PS0-}"
+  # agy 1.4 serves its plan usage only to whoever knows the token on its command line: PlexusTerm
+  # gives it one, so the bar under the terminal can show the usage. Only when this agy knows the
+  # flag (checked once), and never over an agy alias or function of the user's.
+  if [[ -n ${PLEXUS_AGY_CSRF-} ]] && ! alias agy >/dev/null 2>&1 && ! declare -F agy >/dev/null; then
+    agy() {
+      if [[ -z ${__plexus_agy_flag-} ]]; then
+        if command agy --csrf_token=check help >/dev/null 2>&1; then __plexus_agy_flag=1; else __plexus_agy_flag=0; fi
+      fi
+      if [[ $__plexus_agy_flag == 1 ]]; then
+        command agy --csrf_token="$PLEXUS_AGY_CSRF" "$@"
+      else
+        command agy "$@"
+      fi
+    }
+  fi
 fi

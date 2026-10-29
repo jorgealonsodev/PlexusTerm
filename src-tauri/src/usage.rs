@@ -617,12 +617,13 @@ fn flag_value(args: &str, name: &str) -> Option<String> {
     None
 }
 
-/// Antigravity language servers in `pid args` lines, with their CSRF token (the IDE's and
-/// `agy`'s). Other editors' language servers have no `--csrf_token`.
+/// Antigravity language servers in `pid args` lines, with their CSRF token: the IDE's, and `agy`
+/// 1.4's own, which carries one when a PlexusTerm terminal started it (shell integration gives it
+/// `--csrf_token`). Other editors' language servers have no `--csrf_token`.
 pub fn language_servers(processes: &str) -> Vec<(u32, String)> {
     processes
         .lines()
-        .filter(|line| line.contains("language_server"))
+        .filter(|line| line.contains("language_server") || is_agy(line))
         .filter_map(|line| {
             let line = line.trim();
             let (pid, args) = line.split_once(char::is_whitespace)?;
@@ -630,6 +631,36 @@ pub fn language_servers(processes: &str) -> Vec<(u32, String)> {
             Some((pid.trim().parse().ok()?, csrf))
         })
         .collect()
+}
+
+/// The CSRF token PlexusTerm's terminals give `agy` (`PLEXUS_AGY_CSRF`, which shell integration
+/// passes as `--csrf_token`), so its language server answers the quota summary: random, one per
+/// run of the app; empty when the system has no random source.
+pub fn agy_csrf_token() -> &'static str {
+    use rand::TryRng;
+    static TOKEN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    TOKEN.get_or_init(|| {
+        let mut bytes = [0u8; 16];
+        // Without a random source agy gets no token, and its usage is not read.
+        if rand::rngs::SysRng.try_fill_bytes(&mut bytes).is_err() {
+            return String::new();
+        }
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    })
+}
+
+/// Whether the `agy` command-line tool is among the `pid args` lines. From 1.4 it runs its
+/// language server inside itself; started elsewhere than in a PlexusTerm terminal, without the
+/// CSRF token on its command line, its usage cannot be asked for.
+pub fn agy_cli_running(processes: &str) -> bool {
+    processes.lines().any(is_agy)
+}
+
+/// Whether a `pid args` line is the `agy` command-line tool.
+fn is_agy(line: &str) -> bool {
+    let program = line.split_whitespace().nth(1).unwrap_or("");
+    let name = program.rsplit(['/', '\\']).next().unwrap_or("");
+    name == "agy" || name.eq_ignore_ascii_case("agy.exe")
 }
 
 /// The loopback ports `pid` listens on, from `ss -ltnpH` (Linux), `lsof -Fn` (macOS) or
@@ -679,7 +710,7 @@ async fn process_list() -> Option<String> {
     if cfg!(windows) {
         run(
             "powershell",
-            &["-NoProfile", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like 'language_server%'\" | ForEach-Object { \"$($_.ProcessId) $($_.CommandLine)\" }"],
+            &["-NoProfile", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like 'language_server%' or Name = 'agy.exe'\" | ForEach-Object { \"$($_.ProcessId) $($_.CommandLine)\" }"],
         )
         .await
     } else {
@@ -747,8 +778,10 @@ async fn read_agy() -> Result<Usage, String> {
         .map_err(|err| err.to_string())?;
     let known = AGY_SERVER.lock().ok().and_then(|s| s.clone());
     let mut candidates: Vec<(u16, String)> = known.into_iter().collect();
+    let mut cli_only = false;
     if candidates.is_empty() {
         let processes = process_list().await.unwrap_or_default();
+        cli_only = agy_cli_running(&processes);
         for (pid, csrf) in language_servers(&processes) {
             for port in ports_of(pid).await {
                 candidates.push((port, csrf.clone()));
@@ -767,6 +800,12 @@ async fn read_agy() -> Result<Usage, String> {
     if had_known {
         // The language server it answered on has gone: look for the running one again.
         return Box::pin(read_agy()).await;
+    }
+    if cli_only {
+        return Err(
+            "This agy was not started in a PlexusTerm terminal, so its usage cannot be read: start agy again in one (with shell integration on), or open the Antigravity IDE."
+                .into(),
+        );
     }
     Err("Antigravity is not running: its usage is read while the IDE or agy is open.".into())
 }
@@ -1303,6 +1342,19 @@ mod tests {
             language_servers(ps),
             vec![(293393, "abc".to_string()), (500, "def".to_string())]
         );
+        // agy 1.4 started from a PlexusTerm terminal carries the token of its own server.
+        let ps = " 647688 /home/me/.local/bin/agy --csrf_token=tok --continue\n 621746 agy\n";
+        assert_eq!(language_servers(ps), vec![(647688, "tok".to_string())]);
+    }
+
+    #[test]
+    fn the_agy_cli_is_found_among_the_processes() {
+        assert!(agy_cli_running("  PID ARGS\n 621746 agy\n"));
+        assert!(agy_cli_running(" 7 /home/me/.local/bin/agy --continue\n"));
+        assert!(agy_cli_running(" 8 C:\\Users\\me\\bin\\agy.exe -c\n"));
+        assert!(!agy_cli_running(
+            " 9 /usr/bin/vim agy.md\n 10 /opt/agy-tools/run\n 11 grep agy\n"
+        ));
     }
 
     #[test]

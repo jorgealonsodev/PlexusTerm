@@ -182,6 +182,12 @@ impl PtyManager {
         }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+        // agy started in this terminal gets it as --csrf_token (shell integration), so the bar
+        // under the terminal can read its plan usage.
+        let agy_token = crate::usage::agy_csrf_token();
+        if !agy_token.is_empty() {
+            cmd.env("PLEXUS_AGY_CSRF", agy_token);
+        }
         for (name, value) in &integration.env {
             cmd.env(name, value);
         }
@@ -393,6 +399,21 @@ mod tests {
         mgr.spawn(request, s).unwrap();
         let (out, _) = wait_for(&rx, "value=abc123");
         assert!(out.contains("value=abc123"), "output was {out:?}");
+    }
+
+    #[test]
+    fn local_shells_get_the_token_agy_serves_its_usage_with() {
+        let token = crate::usage::agy_csrf_token();
+        assert_eq!(token.len(), 32);
+        assert!(token.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(crate::usage::agy_csrf_token(), token);
+        let mgr = PtyManager::default();
+        let (s, rx) = sink();
+        mgr.spawn(req("/bin/sh", &["-c", "echo \"agy=$PLEXUS_AGY_CSRF\""]), s)
+            .unwrap();
+        let expected = format!("agy={token}");
+        let (out, _) = wait_for(&rx, &expected);
+        assert!(out.contains(&expected), "output was {out:?}");
     }
 
     #[test]

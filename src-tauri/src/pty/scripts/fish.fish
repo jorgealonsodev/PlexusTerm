@@ -24,4 +24,23 @@ if status is-interactive; and not set -q __plexus_integration
         __plexus_prompt
         printf '\e]133;B\a'
     end
+    # agy 1.4 serves its plan usage only to whoever knows the token on its command line: PlexusTerm
+    # gives it one, so the bar under the terminal can show the usage. Only when this agy knows the
+    # flag (checked once), and never over an agy function or abbreviation of the user's.
+    if set -q PLEXUS_AGY_CSRF; and not functions -q agy; and not abbr -q agy
+        function agy
+            if not set -q __plexus_agy_flag
+                if command agy --csrf_token=check help >/dev/null 2>&1
+                    set -g __plexus_agy_flag 1
+                else
+                    set -g __plexus_agy_flag 0
+                end
+            end
+            if test $__plexus_agy_flag = 1
+                command agy --csrf_token=$PLEXUS_AGY_CSRF $argv
+            else
+                command agy $argv
+            end
+        end
+    end
 end

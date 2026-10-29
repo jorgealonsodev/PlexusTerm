@@ -553,6 +553,69 @@ mod tests {
         ))
     }
 
+    /// What a fake `agy` on PATH was called with, when `shell` (with PlexusTerm's integration and
+    /// `PLEXUS_AGY_CSRF`) runs `agy run`; the fake one accepts `--csrf_token` when `knows_flag`.
+    #[cfg(unix)]
+    fn agy_called_with(shell: &str, knows_flag: bool) -> Option<String> {
+        use std::os::unix::fs::PermissionsExt;
+        let program = crate::platform::find_program(shell, &std::env::var_os("PATH")?)?;
+        let tmp = tempfile::tempdir().unwrap();
+        let scripts = tmp.path().join("scripts");
+        install_scripts(&scripts).unwrap();
+        let home = tmp.path().join("home");
+        std::fs::create_dir_all(home.join(".config/fish")).unwrap();
+        let bin = tmp.path().join("bin");
+        std::fs::create_dir(&bin).unwrap();
+        let fake = bin.join("agy");
+        let check = if knows_flag { "exit 0" } else { "exit 2" };
+        std::fs::write(
+            &fake,
+            format!("#!/bin/sh\ncase \"$*\" in *help) {check} ;; esac\necho \"<agy $*>\"\n"),
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let program = program.to_string_lossy().into_owned();
+        let it = integration(
+            &program,
+            &[],
+            Inherited {
+                scripts: Some(&scripts),
+                ..Default::default()
+            },
+        );
+        let path = format!(
+            "{}:{}",
+            bin.display(),
+            std::env::var("PATH").unwrap_or_default()
+        );
+        let mut env = it.env;
+        env.push(("PATH".into(), path));
+        env.push(("PLEXUS_AGY_CSRF".into(), "tok123".into()));
+        let out = run_in_pty(
+            &program,
+            it.args.unwrap_or_default(),
+            env,
+            &home,
+            b"agy run\rexit\r",
+            true,
+        );
+        let start = out.rfind("<agy ")?;
+        Some(out[start + 5..start + out[start..].find('>')?].to_string())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn agy_gets_the_token_of_its_server_only_when_it_knows_the_flag() {
+        for shell in ["bash", "zsh", "fish"] {
+            let Some(called) = agy_called_with(shell, true) else {
+                eprintln!("{shell} is not installed: not checked");
+                continue;
+            };
+            assert_eq!(called, "--csrf_token=tok123 run", "{shell}");
+            assert_eq!(agy_called_with(shell, false).unwrap(), "run", "{shell}");
+        }
+    }
+
     #[cfg(unix)]
     #[test]
     fn bash_zsh_and_fish_report_their_folder_at_every_prompt_percent_encoded() {
