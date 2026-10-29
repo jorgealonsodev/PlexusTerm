@@ -5,10 +5,29 @@ if [ -r ~/.bashrc ]; then . ~/.bashrc; fi
 
 if [[ $- == *i* && -z ${__plexus_integration-} ]]; then
   __plexus_integration=1
-  # First at every prompt, while $? is still the command's: D with its exit code, then A.
+  # The folder as OSC 7 reports it (file://host/path), percent-encoded byte by byte.
+  __plexus_cwd() {
+    local LC_ALL=C path=$PWD out= c i
+    if [[ $path == *[!a-zA-Z0-9/._~-]* ]]; then
+      for ((i = 0; i < ${#path}; i++)); do
+        c=${path:i:1}
+        case $c in
+          [a-zA-Z0-9/._~-]) out+=$c ;;
+          *) printf -v c '%%%02X' "'$c"; out+=$c ;;
+        esac
+      done
+    else
+      out=$path
+    fi
+    printf '\e]7;file://%s%s\a' "${HOSTNAME-}" "$out"
+  }
+  # First at every prompt, while $? is still the command's: D with its exit code, the folder
+  # (OSC 7: the Explorer follows it at once), then A.
   __plexus_precmd() {
     local status=$?
-    printf '\e]133;D;%s\a\e]133;A\a' "$status"
+    printf '\e]133;D;%s\a' "$status"
+    __plexus_cwd
+    printf '\e]133;A\a'
     return "$status"
   }
   # Last at every prompt: B ends the prompt, also one a prompt theme rewrote just before. Only

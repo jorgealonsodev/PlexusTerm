@@ -8,10 +8,20 @@ unset PLEXUS_USER_ZDOTDIR PLEXUS_ZDOTDIR_WAS_SET __plexus_zdotdir
 
 if [[ -o interactive && -z ${__plexus_integration-} ]]; then
   __plexus_integration=1
-  # First at every prompt, while $? is still the command's: D with its exit code, then A.
+  # The folder as OSC 7 reports it (file://host/path), percent-encoded byte by byte.
+  __plexus_cwd() {
+    emulate -L zsh
+    setopt extended_glob
+    local LC_ALL=C
+    print -n "\e]7;file://${HOST}${PWD//(#m)[^a-zA-Z0-9\/._~-]/%${(l:2::0:)$(( [##16] #MATCH ))}}\a"
+  }
+  # First at every prompt, while $? is still the command's: D with its exit code, the folder
+  # (OSC 7: the Explorer follows it at once), then A.
   __plexus_precmd() {
     local exit_status=$?
-    print -n "\e]133;D;${exit_status}\a\e]133;A\a"
+    print -n "\e]133;D;${exit_status}\a"
+    __plexus_cwd
+    print -n "\e]133;A\a"
     return $exit_status
   }
   # Last at every prompt: B ends the prompt, also one a prompt theme rewrote just before. %{ %}

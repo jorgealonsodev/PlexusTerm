@@ -17,6 +17,8 @@ if status is-interactive; and not set -q __plexus_integration
     functions -c fish_prompt __plexus_prompt
     function fish_prompt
         set -l last $status
+        # The folder (OSC 7: the Explorer follows it at once), percent-encoded.
+        printf '\e]7;file://%s%s\a' (prompt_hostname) (string escape --style=url -- $PWD)
         printf '\e]133;A\a'
         __plexus_status $last
         __plexus_prompt

@@ -516,6 +516,12 @@ mod tests {
     /// installed.
     #[cfg(unix)]
     fn run_marked(shell: &str, rc: &str) -> Option<String> {
+        run_marked_typing(shell, rc, b"false\rexit\r", false)
+    }
+
+    /// Like [`run_marked`], typing `input` (one line per prompt when `paced`).
+    #[cfg(unix)]
+    fn run_marked_typing(shell: &str, rc: &str, input: &[u8], paced: bool) -> Option<String> {
         let program = crate::platform::find_program(shell, &std::env::var_os("PATH")?)?;
         let tmp = tempfile::tempdir().unwrap();
         let scripts = tmp.path().join("scripts");
@@ -542,9 +548,36 @@ mod tests {
             it.args.unwrap_or_default(),
             it.env,
             &home,
-            b"false\rexit\r",
-            false,
+            input,
+            paced,
         ))
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bash_zsh_and_fish_report_their_folder_at_every_prompt_percent_encoded() {
+        let tmp = tempfile::tempdir().unwrap();
+        let folder = tmp.path().join("my notes ñ");
+        std::fs::create_dir(&folder).unwrap();
+        let input = format!("cd '{}'\rexit\r", folder.display());
+        let encoded = format!("{}/my%20notes%20%C3%B1\x07", tmp.path().display());
+        for shell in ["bash", "zsh", "fish"] {
+            let Some(out) = run_marked_typing(shell, "", input.as_bytes(), true) else {
+                eprintln!("{shell} is not installed: not checked");
+                continue;
+            };
+            let reports: Vec<&str> = out
+                .split("\x1b]7;file://")
+                .skip(1)
+                .map(|rest| rest.split_once('/').map_or("", |(_, path)| path))
+                .collect();
+            assert!(
+                reports
+                    .iter()
+                    .any(|path| format!("/{path}").starts_with(&encoded)),
+                "{shell} did not report {encoded:?}: {out:?}"
+            );
+        }
     }
 
     /// Runs `program` in a pty with `home` as its home, types `input` and returns what it printed
@@ -697,7 +730,10 @@ mod tests {
             return;
         };
         assert_eq!(plain, "scalar=zdot");
-        assert_eq!(zdotdir_after("export ZDOTDIR=$HOME/zdot\n").unwrap(), "scalar-export=zdot");
+        assert_eq!(
+            zdotdir_after("export ZDOTDIR=$HOME/zdot\n").unwrap(),
+            "scalar-export=zdot"
+        );
     }
 
     #[cfg(unix)]
