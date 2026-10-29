@@ -1311,7 +1311,11 @@ body.is-moving-tab {
   border-color: var(--border);
 }
 
+/* The Explorer and the SFTP browser have their own text size (Settings → Appearance). */
 .sftp {
+  --ui-scale: var(--explorer-scale, 1);
+  /* The rows inherit this size: the root's was computed with the interface's scale. */
+  font-size: calc(13px * var(--ui-scale));
   border-radius: 6px;
   outline: 1px dashed transparent;
   outline-offset: 2px;

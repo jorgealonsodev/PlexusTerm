@@ -102,6 +102,7 @@ describe("parseSettings", () => {
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
+      explorerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
       devColumnCollapsed: false,
@@ -247,6 +248,7 @@ describe("parseSettings", () => {
       uiFontSize: 13,
       chatFontSize: 13,
       viewerFontSize: 13,
+      explorerFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
       devColumnCollapsed: false,
@@ -463,6 +465,7 @@ describe("serializeSettings", () => {
       uiFontSize: 15,
       chatFontSize: 17,
       viewerFontSize: 13,
+      explorerFontSize: 13,
       devCommands: ["aider"],
       tabColumnWidth: 300,
       devColumnCollapsed: true,
@@ -651,6 +654,15 @@ describe("interface and chat text sizes", () => {
     expect(parseSettings(JSON.stringify({ viewerFontSize: 1 })).viewerFontSize).toBe(10);
     expect(parseSettings(JSON.stringify({ viewerFontSize: 16.4 })).viewerFontSize).toBe(16);
     expect(parseSettings(JSON.stringify({ viewerFontSize: "big" })).viewerFontSize).toBe(13);
+  });
+
+  it("give the Explorer its own text size, the interface's until chosen, between 10 and 24", () => {
+    expect(DEFAULT_SETTINGS.explorerFontSize).toBe(13);
+    expect(parseSettings(JSON.stringify({ uiFontSize: 16 })).explorerFontSize).toBe(16);
+    expect(parseSettings(JSON.stringify({ uiFontSize: 16, explorerFontSize: 12 })).explorerFontSize).toBe(12);
+    expect(parseSettings(JSON.stringify({ explorerFontSize: 99 })).explorerFontSize).toBe(24);
+    expect(parseSettings(JSON.stringify({ explorerFontSize: 1 })).explorerFontSize).toBe(10);
+    expect(parseSettings(JSON.stringify({ explorerFontSize: "big" })).explorerFontSize).toBe(13);
   });
 
   it("default to 13 px and stay within their ranges", () => {

@@ -76,13 +76,15 @@ describe("App settings (S15.2, S15.6)", () => {
     fireEvent.change(screen.getByLabelText("Interface text size"), { target: { value: "16" } });
     fireEvent.change(screen.getByLabelText("AI chat text size"), { target: { value: "18" } });
     fireEvent.change(screen.getByLabelText("File viewer text size"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Explorer text size"), { target: { value: "15" } });
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(String(16 / 13));
     expect(document.documentElement.style.getPropertyValue("--chat-scale")).toBe(String(18 / 13));
     expect(document.documentElement.style.getPropertyValue("--viewer-scale")).toBe(String(20 / 13));
+    expect(document.documentElement.style.getPropertyValue("--explorer-scale")).toBe(String(15 / 13));
     expect(screen.getByTestId("terminal").textContent).toBe("font 14");
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(saved().slice(-1)[0]).toMatchObject({ uiFontSize: 16, chatFontSize: 18, viewerFontSize: 20, fontSize: 14 });
+    expect(saved().slice(-1)[0]).toMatchObject({ uiFontSize: 16, chatFontSize: 18, viewerFontSize: 20, explorerFontSize: 15, fontSize: 14 });
   });
 
   it("edits the settings from the toolbar gear", async () => {

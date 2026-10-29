@@ -25,6 +25,7 @@ import {
   clampFontSize,
   clampChatFontSize,
   clampViewerFontSize,
+  clampExplorerFontSize,
   clampUiFontSize,
   CURSOR_SHAPES,
   FONT_WEIGHTS,
@@ -34,10 +35,12 @@ import {
   MIN_CHAT_FONT_SIZE,
   MAX_CHAT_FONT_SIZE,
   MIN_VIEWER_FONT_SIZE,
+  MIN_EXPLORER_FONT_SIZE,
   clampRecentFolderLimit,
   clampCommandNotifySeconds,
   MAX_COMMAND_NOTIFY_SECONDS,
   MAX_VIEWER_FONT_SIZE,
+  MAX_EXPLORER_FONT_SIZE,
   cleanAiBaseUrl,
   cleanShareUrl,
   cleanAiModel,
@@ -478,6 +481,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [cursorBlink, setCursorBlink] = useState(settings.cursorBlink);
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
+  const [explorerFontSize, setExplorerFontSize] = useState(String(settings.explorerFontSize));
   const [focusBorderColor, setFocusBorderColor] = useState(settings.focusBorderColor);
   const [focusBorderStrength, setFocusBorderStrength] = useState(settings.focusBorderStrength);
   const [paneFooterHeight, setPaneFooterHeight] = useState(String(settings.paneFooterHeight));
@@ -622,6 +626,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const uiSize = Number.parseFloat(uiFontSize);
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
+    const explorerSize = Number.parseFloat(explorerFontSize);
     const recentLimit = Number.parseFloat(recentFolderLimit);
     const notifySeconds = Number.parseFloat(commandNotifySeconds);
     const context = Number.parseFloat(aiHistoryContext);
@@ -636,6 +641,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       cursorBlink,
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
+      explorerFontSize: Number.isFinite(explorerSize) ? clampExplorerFontSize(explorerSize) : settings.explorerFontSize,
       focusBorderColor: cleanHexColor(focusBorderColor),
       focusBorderStrength: clampFocusBorderStrength(focusBorderStrength),
       paneFooterHeight: Number.isFinite(Number.parseFloat(paneFooterHeight))
@@ -1034,6 +1040,18 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 max={MAX_VIEWER_FONT_SIZE}
                 value={viewerFontSize}
                 onChange={(e) => setViewerFontSize(e.target.value)}
+              />
+            </label>
+            <label className="field field--size">
+              <span className="setting-title">
+                {t("settings.appearance.explorerFontSize")} <HelpTip text={t("settings.appearance.explorerFontSizeHelp")} />
+              </span>
+              <input
+                type="number"
+                min={MIN_EXPLORER_FONT_SIZE}
+                max={MAX_EXPLORER_FONT_SIZE}
+                value={explorerFontSize}
+                onChange={(e) => setExplorerFontSize(e.target.value)}
               />
             </label>
             <h3 className="settings__group">{t("settings.groups.layout")}</h3>

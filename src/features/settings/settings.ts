@@ -162,6 +162,8 @@ export interface TerminalSettings {
   chatFontSize: number;
   /** Text size of the file viewer's code and Markdown in pixels, 10..24. */
   viewerFontSize: number;
+  /** Text size of the Explorer and the SFTP browser in pixels, 10..24; the interface's until chosen. */
+  explorerFontSize: number;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
@@ -260,6 +262,8 @@ export const MIN_CHAT_FONT_SIZE = 10;
 export const MAX_CHAT_FONT_SIZE = 24;
 export const MIN_VIEWER_FONT_SIZE = 10;
 export const MAX_VIEWER_FONT_SIZE = 24;
+export const MIN_EXPLORER_FONT_SIZE = 10;
+export const MAX_EXPLORER_FONT_SIZE = 24;
 export const MAX_TEXT_EDITOR_LENGTH = 1024;
 export const MAX_AI_HISTORY_CONTEXT = 20;
 export const MAX_AI_MODEL_LENGTH = 200;
@@ -326,6 +330,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   uiFontSize: 13,
   chatFontSize: 13,
   viewerFontSize: 13,
+  explorerFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
   shareRelayUrl: "",
@@ -363,6 +368,8 @@ export const clampCommandNotifySeconds = (seconds: number) =>
   Math.min(MAX_COMMAND_NOTIFY_SECONDS, Math.max(0, Math.round(seconds)));
 export const clampViewerFontSize = (size: number) =>
   Math.min(MAX_VIEWER_FONT_SIZE, Math.max(MIN_VIEWER_FONT_SIZE, Math.round(size)));
+export const clampExplorerFontSize = (size: number) =>
+  Math.min(MAX_EXPLORER_FONT_SIZE, Math.max(MIN_EXPLORER_FONT_SIZE, Math.round(size)));
 const size = (value: unknown, clamp: (size: number) => number, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? clamp(value) : fallback;
 
@@ -599,6 +606,12 @@ export function parseSettings(json: string | null): TerminalSettings {
     uiFontSize: size(value.uiFontSize, clampUiFontSize, d.uiFontSize),
     chatFontSize: size(value.chatFontSize, clampChatFontSize, d.chatFontSize),
     viewerFontSize: size(value.viewerFontSize, clampViewerFontSize, d.viewerFontSize),
+    // Settings from before it existed keep the Explorer at the interface's size.
+    explorerFontSize: size(
+      value.explorerFontSize,
+      clampExplorerFontSize,
+      clampExplorerFontSize(size(value.uiFontSize, clampUiFontSize, d.uiFontSize)),
+    ),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)
@@ -632,6 +645,12 @@ export type FontStep = "increase" | "decrease" | "reset";
 export function stepFontSize(size: number, step: FontStep): number {
   if (step === "reset") return DEFAULT_SETTINGS.fontSize;
   return clampFontSize(size + (step === "increase" ? 1 : -1));
+}
+
+/** Ctrl+wheel over the Explorer or the SFTP browser changes their text only. */
+export function stepExplorerFontSize(size: number, step: FontStep): number {
+  if (step === "reset") return DEFAULT_SETTINGS.explorerFontSize;
+  return clampExplorerFontSize(size + (step === "increase" ? 1 : -1));
 }
 
 /** The same keys while the AI chat has the focus change its text only. */

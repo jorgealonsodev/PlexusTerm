@@ -52,7 +52,8 @@ import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
 import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
-import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepFontSize } from "./features/settings/settings";
+import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize } from "./features/settings/settings";
+import { attachWheelZoom } from "./features/settings/wheelZoom";
 import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
 import { useSettings } from "./features/settings/useSettings";
@@ -377,14 +378,15 @@ function AppContent() {
   // The whole window follows the terminal colour scheme, like an editor theme.
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
-  // The interface, the AI chat and the file viewer scale their text apart from the terminal (App.css: --ui-scale).
-  const { uiFontSize, chatFontSize, viewerFontSize } = terminalSettings.settings;
+  // The interface, the AI chat, the file viewer and the Explorer scale their text apart from the terminal (App.css: --ui-scale).
+  const { uiFontSize, chatFontSize, viewerFontSize, explorerFontSize } = terminalSettings.settings;
   useLayoutEffect(() => {
     const root = document.documentElement.style;
     root.setProperty("--ui-scale", String(uiFontSize / BASE_TEXT_SIZE));
     root.setProperty("--chat-scale", String(chatFontSize / BASE_TEXT_SIZE));
     root.setProperty("--viewer-scale", String(viewerFontSize / BASE_TEXT_SIZE));
-  }, [uiFontSize, chatFontSize, viewerFontSize]);
+    root.setProperty("--explorer-scale", String(explorerFontSize / BASE_TEXT_SIZE));
+  }, [uiFontSize, chatFontSize, viewerFontSize, explorerFontSize]);
   // The focused pane's border, as Settings → Appearance choose it.
   const { focusBorderColor, focusBorderStrength } = terminalSettings.settings;
   useLayoutEffect(() => {
@@ -1155,6 +1157,22 @@ function AppContent() {
 
   const { updateWith: updateSettingsWith } = terminalSettings;
   const settings = terminalSettings.settings;
+  // Ctrl+wheel sizes the text of the terminals, the AI chat or the Explorer under the pointer, like Ctrl+= / Ctrl+-.
+  const updateSettingsRef = useRef(updateSettingsWith);
+  updateSettingsRef.current = updateSettingsWith;
+  useEffect(
+    () =>
+      attachWheelZoom(window, (where, step) =>
+        updateSettingsRef.current((s) =>
+          where === "chat"
+            ? { chatFontSize: stepChatFontSize(s.chatFontSize, step) }
+            : where === "explorer"
+              ? { explorerFontSize: stepExplorerFontSize(s.explorerFontSize, step) }
+              : { fontSize: stepFontSize(s.fontSize, step) },
+        ),
+      ),
+    [],
+  );
   // Settings → AI → keep conversations (S9): read before the first chat is listed.
   setChatSaving(settings.aiSaveChats);
 
