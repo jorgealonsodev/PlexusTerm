@@ -173,6 +173,7 @@ export const app = {
     monthlyName: "Month",
     windowLine: "{window}: {percent}% used",
     resets: "resets {time}",
+    resetsIn: "Resets in {duration} · {time}",
     limited: "limit reached",
     click: "Click to choose whose usage to show",
     refresh: "Refresh now",

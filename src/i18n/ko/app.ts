@@ -172,6 +172,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "월",
     windowLine: "{window}: {percent}% 사용",
     resets: "{time}에 초기화",
+    resetsIn: "{duration} 후 초기화 · {time}",
     limited: "한도 도달",
     click: "표시할 사용량을 선택하려면 클릭",
     refresh: "지금 새로 고침",

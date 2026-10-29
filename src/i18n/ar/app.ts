@@ -187,6 +187,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "الشهر",
     windowLine: "{window}: استُخدم {percent}%",
     resets: "يُعاد الضبط {time}",
+    resetsIn: "يُعاد التعيين خلال {duration} · {time}",
     limited: "تم بلوغ الحد",
     click: "انقر لاختيار الاستخدام المعروض",
     refresh: "تحديث الآن",

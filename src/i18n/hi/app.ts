@@ -175,6 +175,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "महीना",
     windowLine: "{window}: {percent}% उपयोग",
     resets: "{time} पर रीसेट",
+    resetsIn: "{duration} में रीसेट · {time}",
     limited: "सीमा पूरी हुई",
     click: "किसका उपयोग दिखाना है, चुनने के लिए क्लिक करें",
     refresh: "अभी रीफ़्रेश करें",

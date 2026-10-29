@@ -578,7 +578,7 @@ The folder is the one the shell reports with OSC 7; for shells that do not, Plex
 
 ### AI plan usage
 
-The bar under a terminal can show how much of an AI plan's limits is spent, next to the DEV button: for example `5h 42%  7d 18%`, the 5-hour window and the week. A window at 80% or more turns amber, a reached limit red. Hover over it for each window's reset time (OpenCode Go also has a monthly window, shown there).
+The bar under a terminal can show how much of an AI plan's limits is spent, next to the DEV button: for example `5h 42%  7d 18%`, the 5-hour window and the week. A window at 80% or more turns amber, a reached limit red. Rest the pointer on it (or reach it with the keyboard) to open a card with every window: a bar of how much is used, the percentage, and how long until it resets and at what time (OpenCode Go also has a monthly window, and Antigravity one row per group of models, shown there).
 
 It is **Off** until you choose what it shows: the bar keeps only an "off" icon. **Auto** follows the [DEV mode](#dev-mode) command-line tool running in the terminal: Claude Code, Codex, Antigravity (`agy`), or OpenCode for OpenCode Go; other programs show nothing. Click it to show one provider in every terminal instead, back to **Auto**, or **Refresh now**. **Off** stops reading the usage and leaves only an "off" icon in the bar; click it and choose a provider or **Auto** to turn it on again. **Settings → DEV mode → Show AI plan usage in the bar under each terminal** turns it off, and **Usage shown** makes the same choice.
 

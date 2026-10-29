@@ -172,6 +172,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "月",
     windowLine: "{window}：已用 {percent}%",
     resets: "{time} 重置",
+    resetsIn: "{duration} 后重置 · {time}",
     limited: "已达上限",
     click: "点击选择显示谁的用量",
     refresh: "立即刷新",

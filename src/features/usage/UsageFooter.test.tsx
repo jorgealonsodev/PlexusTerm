@@ -50,7 +50,33 @@ describe("UsageFooter", () => {
     expect(await screen.findAllByText("5h 3%")).toHaveLength(2);
     expect(screen.getAllByText("7d 85%")[0].className).toContain("usage-footer__window--high");
     expect(mockedInvoke.mock.calls.filter(([command]) => command === "usage_codex")).toHaveLength(1);
-    expect(screen.getAllByRole("button")[0].title).toContain("Codex plan usage");
+    expect(screen.getAllByRole("button")[0].getAttribute("aria-label")).toContain("Codex plan usage");
+  });
+
+  it("opens a card with every window's bar, percentage and reset when the pointer rests on it", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: 1_792_690_000_000 });
+    try {
+      mockedInvoke.mockImplementation(async (command: string) => (command === "usage_codex" ? CODEX : null));
+      render(<UsageFooter provider="codex" choice="auto" active onChoose={vi.fn()} />);
+      const button = await screen.findByRole("button");
+      await screen.findByText("5h 3%");
+      expect(button.title).toBe("");
+      fireEvent.mouseEnter(button);
+      const card = await screen.findByRole("tooltip");
+      expect(card.textContent).toContain("Codex plan usage");
+      expect(card.textContent).toContain("5-hour window");
+      expect(card.textContent).toContain("Resets in 1 h 37 min");
+      const bars = card.querySelectorAll<HTMLElement>(".usage-card__fill");
+      expect([...bars].map((bar) => bar.style.width)).toEqual(["3%", "85%"]);
+      expect(bars[1].className).toContain("usage-card__fill--high");
+      fireEvent.mouseLeave(button);
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+      // The keyboard opens it too.
+      fireEvent.focus(button);
+      expect(await screen.findByRole("tooltip")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the fullest model group of each window and every group in the tooltip", async () => {
@@ -66,7 +92,10 @@ describe("UsageFooter", () => {
     expect(await screen.findByText("5h 90%")).toBeTruthy();
     expect(screen.getByText("7d 25%")).toBeTruthy();
     expect(screen.queryByText("5h 0%")).toBeNull();
-    expect(screen.getByRole("button").title).toContain("Gemini Models: 5-hour window: 0% used");
+    fireEvent.mouseEnter(screen.getByRole("button"));
+    const card = await screen.findByRole("tooltip");
+    expect(card.textContent).toContain("Gemini Models · 5-hour window0%");
+    expect(card.textContent).toContain("Claude and GPT models · 5-hour window90%");
   });
 
   it("is not read while the bar is off screen", () => {
@@ -80,7 +109,9 @@ describe("UsageFooter", () => {
       return null;
     });
     render(<UsageFooter provider="opencodeGo" choice="auto" active onChoose={vi.fn()} />);
-    await waitFor(() => expect(screen.getByRole("button").title).toContain("No OpenCode Go API key is saved."));
+    await waitFor(() => expect(screen.getByRole("button").getAttribute("aria-label")).toContain("No OpenCode Go API key is saved."));
+    fireEvent.mouseEnter(screen.getByRole("button"));
+    expect((await screen.findByRole("tooltip")).textContent).toContain("No OpenCode Go API key is saved.");
   });
 
   it("chooses whose usage to show from its menu", async () => {

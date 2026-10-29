@@ -179,6 +179,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "Mes",
     windowLine: "{window}: {percent}% usado",
     resets: "se reinicia {time}",
+    resetsIn: "Se reinicia en {duration} · {time}",
     limited: "límite alcanzado",
     click: "Haz clic para elegir de quién mostrar el uso",
     refresh: "Actualizar ahora",

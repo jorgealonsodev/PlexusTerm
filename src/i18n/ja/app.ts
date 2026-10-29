@@ -173,6 +173,7 @@ export const app: Messages<typeof en> = {
     monthlyName: "月",
     windowLine: "{window}: {percent}% 使用",
     resets: "{time} にリセット",
+    resetsIn: "{duration} 後にリセット · {time}",
     limited: "上限に到達",
     click: "クリックして表示する使用量を選択",
     refresh: "今すぐ更新",
