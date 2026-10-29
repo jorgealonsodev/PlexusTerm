@@ -661,6 +661,17 @@ describe("SettingsDialog", () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileDetails: true }));
     });
 
+    it("chooses how often the Explorer's list is read again, every 3 seconds by default, and saves it", () => {
+      const { onSave } = setup();
+      fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+      const every = screen.getByLabelText(/Refresh the Explorer's list every/) as HTMLSelectElement;
+      expect(every.value).toBe("3");
+      expect([...every.options].map((o) => o.value)).toEqual(["1", "2", "3", "5", "10", "30"]);
+      fireEvent.change(every, { target: { value: "10" } });
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fileListRefreshSeconds: 10 }));
+    });
+
     it("chooses the terminal line height, 1.0 by default, warns what a taller one does, and saves it", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Appearance" }));

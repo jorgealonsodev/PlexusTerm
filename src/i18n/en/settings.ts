@@ -236,6 +236,12 @@ export const settings = {
     systemDefault: "System default",
     useSystemDefault: "Use system default",
     details: "Show size and date in file lists",
+    refreshEvery: "Refresh the Explorer's list every",
+    refreshEveryHelp: "How often the Explorer's list reads its folder again, so files and folders created by other programs appear. It is read only while the Explorer is on screen, and when the window gets the focus back; the list is redrawn only when something changed. DEV mode follows the terminal instead.",
+    seconds: {
+      one: "{count} second",
+      other: "{count} seconds",
+    },
     gitStatus: "Show git status in file lists",
     gitStatusHelp: "Inside a git repository, the Explorer and the SFTP browser colour each entry like VS Code: modified, added, deleted, renamed, untracked, ignored or in conflict, with its letter at the right; a folder takes the colour of the most important change inside it. It is read again when the folder is listed, when the prompt comes back and while the terminal prints (at most every 2 seconds). SSH lists run git on the server over the same connection. It applies only to the file lists of DEV mode.",
     autoSave: "Save edited files automatically",

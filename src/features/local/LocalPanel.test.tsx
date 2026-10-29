@@ -900,6 +900,55 @@ describe("LocalPanel lists files created by the terminal", () => {
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(calls()).toBe(once + 2);
   });
+
+  it("shows files and folders created by other programs in the normal list as often as asked, only while it is on screen, without redrawing its rows", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const git = { enabled: false, visible: true, prompt: 0 };
+    const { rerender } = render(panel({ git, refreshSeconds: 5 }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    const calls = () => mocked.list.mock.calls.filter(([path]) => path === "/home/me").length;
+    const row = screen.getByText("notes.txt").closest(".sftp-row");
+    // Nothing changed: the rows stay as they are.
+    const first = calls();
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(calls()).toBe(first + 1);
+    expect(screen.getByText("notes.txt").closest(".sftp-row")).toBe(row);
+    mocked.list.mockImplementation(async (path) =>
+      path === "/home/me" ? [entry("src", "dir"), entry("docs", "dir"), entry("notes.txt", "file"), entry("PRD.md", "file")] : [],
+    );
+    // Not before the chosen interval.
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    expect(screen.queryByText("PRD.md")).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(await screen.findByText("PRD.md")).toBeTruthy();
+    expect(screen.getByText("docs")).toBeTruthy();
+    expect(screen.getByText("notes.txt").closest(".sftp-row")).toBe(row);
+    expect(document.querySelector(".sftp-row--selected")?.textContent).toContain("notes.txt");
+    // Hidden, the folder is not read.
+    rerender(panel({ git: { ...git, visible: false }, refreshSeconds: 5 }));
+    const hidden = calls();
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(calls()).toBe(hidden);
+    // Back on screen, and when the window gets the focus again, it is.
+    rerender(panel({ git, refreshSeconds: 5 }));
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(calls()).toBe(hidden + 1);
+    act(() => void window.dispatchEvent(new Event("focus")));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(calls()).toBe(hidden + 2);
+  });
+
+  it("reads the normal list again every 3 seconds by default", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(panel({ git: { enabled: false, visible: true, prompt: 0 } }));
+    await screen.findByText("notes.txt");
+    const calls = () => mocked.list.mock.calls.filter(([path]) => path === "/home/me").length;
+    const first = calls();
+    await act(() => vi.advanceTimersByTimeAsync(2900));
+    expect(calls()).toBe(first);
+    await act(() => vi.advanceTimersByTimeAsync(100));
+    expect(calls()).toBe(first + 1);
+  });
 });
 
 describe("LocalPanel toolbar", () => {

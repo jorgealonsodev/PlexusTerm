@@ -75,6 +75,8 @@ export interface TerminalSettings {
   textEditor: string;
   /** File lists (SFTP, Explorer) show each entry's size and date (L15). */
   fileDetails: boolean;
+  /** Seconds between reads of the Explorer's normal list, one of FILE_LIST_REFRESH_SECONDS. */
+  fileListRefreshSeconds: number;
   /** Opening a folder in the SFTP browser or the Explorer runs `cd` to it in the terminal (L16). */
   terminalFollowsBrowser: boolean;
   /** How the sidebar opens with PlexusTerm: as it was left, always open or always folded (L17). */
@@ -250,6 +252,8 @@ export const FONT_WEIGHTS = [300, 400, 500, 600];
 export const BOLD_STEP = 300;
 export const boldWeight = (weight: number) => Math.min(900, weight + BOLD_STEP);
 /** Terminal line heights offered. */
+/** The intervals the Explorer's normal list can be read again at, in seconds. */
+export const FILE_LIST_REFRESH_SECONDS = [1, 2, 3, 5, 10, 30];
 export const LINE_HEIGHTS = [1, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3];
 /** Terminal cursor shapes offered (xterm.js's cursorStyle values). */
 export const CURSOR_SHAPES = ["bar", "block", "underline"] as const;
@@ -291,6 +295,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   settingsSyncFolder: "",
   textEditor: "",
   fileDetails: false,
+  fileListRefreshSeconds: 3,
   terminalFollowsBrowser: true,
   sidebarAtStartup: "last",
   inlineSuggestions: true,
@@ -539,6 +544,9 @@ export function parseSettings(json: string | null): TerminalSettings {
       typeof value.settingsSyncFolder === "string" ? value.settingsSyncFolder.trim() : d.settingsSyncFolder,
     textEditor: cleanTextEditor(value.textEditor),
     fileDetails: bool(value.fileDetails, d.fileDetails),
+    fileListRefreshSeconds: FILE_LIST_REFRESH_SECONDS.includes(value.fileListRefreshSeconds as number)
+      ? (value.fileListRefreshSeconds as number)
+      : d.fileListRefreshSeconds,
     terminalFollowsBrowser: bool(value.terminalFollowsBrowser, d.terminalFollowsBrowser),
     sidebarAtStartup: sidebarAtStartupOf(value.sidebarAtStartup),
     inlineSuggestions: bool(value.inlineSuggestions, d.inlineSuggestions),

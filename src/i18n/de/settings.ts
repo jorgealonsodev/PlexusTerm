@@ -239,6 +239,12 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Systemstandard",
     useSystemDefault: "Systemstandard verwenden",
     details: "Größe und Datum in Dateilisten anzeigen",
+    refreshEvery: "Liste des Explorers aktualisieren alle",
+    refreshEveryHelp: "Wie oft die Liste des Explorers ihren Ordner neu liest, damit von anderen Programmen erstellte Dateien und Ordner erscheinen. Gelesen wird nur, solange der Explorer sichtbar ist, und wenn das Fenster den Fokus zurückerhält; die Liste wird nur neu gezeichnet, wenn sich etwas geändert hat. Der DEV-Modus folgt dem Terminal.",
+    seconds: {
+      one: "{count} Sekunde",
+      other: "{count} Sekunden",
+    },
     gitStatus: "Git-Status in Dateilisten anzeigen",
     gitStatusHelp: "In einem Git-Repository färben der Explorer und der SFTP-Browser jeden Eintrag wie VS Code: geändert, hinzugefügt, gelöscht, umbenannt, nicht verfolgt, ignoriert oder im Konflikt, mit seinem Buchstaben rechts; ein Ordner übernimmt die Farbe der wichtigsten Änderung darin. Er wird neu gelesen, wenn der Ordner aufgelistet wird, wenn die Eingabeaufforderung zurückkehrt und während das Terminal ausgibt (höchstens alle 2 Sekunden). Bei SSH läuft git auf dem Server über dieselbe Verbindung. Gilt nur für die Dateilisten des DEV-Modus.",
     autoSave: "Bearbeitete Dateien automatisch speichern",

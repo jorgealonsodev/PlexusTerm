@@ -2146,6 +2146,7 @@ function AppContent() {
                   }}
                   textEditor={terminalSettings.settings.textEditor}
                   details={terminalSettings.settings.fileDetails}
+                  refreshSeconds={terminalSettings.settings.fileListRefreshSeconds}
                   iconPacks={fileIconPacks}
                   onOpenInTerminal={openInTerminal}
                   onView={(path) => viewInTab({ kind: "local" }, path)}

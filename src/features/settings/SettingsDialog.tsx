@@ -29,6 +29,7 @@ import {
   clampUiFontSize,
   CURSOR_SHAPES,
   FONT_WEIGHTS,
+  FILE_LIST_REFRESH_SECONDS,
   LINE_HEIGHTS,
   MIN_UI_FONT_SIZE,
   MAX_UI_FONT_SIZE,
@@ -554,6 +555,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   };
   const [textEditor, setTextEditor] = useState(settings.textEditor);
   const [fileDetails, setFileDetails] = useState(settings.fileDetails);
+  const [fileListRefreshSeconds, setFileListRefreshSeconds] = useState(settings.fileListRefreshSeconds);
   const [gitFileStatus, setGitFileStatus] = useState(settings.gitFileStatus);
   const [viewerAutoSave, setViewerAutoSave] = useState(settings.viewerAutoSave);
   const [viewerPosition, setViewerPosition] = useState(settings.viewerPosition);
@@ -662,6 +664,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       sshAutoReconnect,
       textEditor: cleanTextEditor(textEditor),
       fileDetails,
+      fileListRefreshSeconds,
       gitFileStatus,
       viewerAutoSave,
       viewerPosition,
@@ -1435,6 +1438,18 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             <label className="check">
               <input type="checkbox" checked={fileDetails} onChange={(e) => setFileDetails(e.target.checked)} />
               {t("settings.files.details")}
+            </label>
+            <label className="field field--size">
+              <span className="setting-title">
+                {t("settings.files.refreshEvery")} <HelpTip text={t("settings.files.refreshEveryHelp")} />
+              </span>
+              <select value={fileListRefreshSeconds} onChange={(e) => setFileListRefreshSeconds(Number(e.target.value))}>
+                {FILE_LIST_REFRESH_SECONDS.map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {t("settings.files.seconds", { count: seconds })}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="check">
               <input type="checkbox" checked={gitFileStatus} onChange={(e) => setGitFileStatus(e.target.checked)} />

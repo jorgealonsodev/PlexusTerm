@@ -239,6 +239,11 @@ export const settings: Messages<typeof en> = {
     systemDefault: "시스템 기본값",
     useSystemDefault: "시스템 기본값 사용",
     details: "파일 목록에 크기와 날짜 표시",
+    refreshEvery: "탐색기 목록 새로 고침 간격",
+    refreshEveryHelp: "탐색기 목록이 폴더를 다시 읽는 간격입니다. 다른 프로그램이 만든 파일과 폴더가 나타납니다. 탐색기가 화면에 있을 때와 창이 다시 포커스를 받을 때만 읽으며, 무언가 바뀌었을 때만 목록을 다시 그립니다. DEV 모드는 터미널을 따릅니다.",
+    seconds: {
+      other: "{count}초",
+    },
     gitStatus: "파일 목록에 git 상태 표시",
     gitStatusHelp: "git 저장소 안에서는 탐색기와 SFTP 브라우저가 VS Code처럼 각 항목에 색을 입힙니다: 수정, 추가, 삭제, 이름 변경, 추적되지 않음, 무시됨, 충돌이며 오른쪽에 글자가 표시되고, 폴더는 그 안의 가장 중요한 변경 색을 따릅니다. 폴더를 나열할 때, 프롬프트가 돌아올 때, 터미널이 출력하는 동안(최대 2초마다) 다시 읽습니다. SSH에서는 같은 연결로 서버의 git을 실행합니다. DEV 모드의 파일 목록에만 적용됩니다.",
     autoSave: "편집한 파일 자동 저장",

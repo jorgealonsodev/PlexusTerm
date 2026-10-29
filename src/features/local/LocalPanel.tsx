@@ -67,6 +67,8 @@ interface LocalPanelProps {
    */
   /** A file to show (Ctrl+click on a path in the terminal): selected, its folders opened. */
   reveal?: Reveal;
+  /** Seconds between reads of the normal list, so files other programs create appear (3 by default). */
+  refreshSeconds?: number;
   recent?: {
     folders: readonly string[];
     onOpen: (folder: string) => void;
@@ -124,7 +126,7 @@ function OptionChip({ icon: Icon, label, short, help, checked, onChange }: {
 }
 
 /** File browser of the local disk (S3), optionally following the active local terminal's folder. */
-export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinnedChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal }: LocalPanelProps) {
+export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinnedChange, onPathToTerminal, textEditor, details = false, iconPacks = DEFAULT_ICON_PACKS, onUserNavigate, git, onOpenInTerminal, devStyle = false, startAt = null, onView, workspace, recent, reveal, refreshSeconds = 3 }: LocalPanelProps) {
   const t = useT();
   const dialogs = useDialogs();
   const platform = usePlatform();
@@ -242,6 +244,30 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     promptSeen.current = prompt;
     if (visible) void reloadQuietly();
   }, [prompt, visible, reloadQuietly]);
+
+  // The normal list also follows other programs (a file manager, an editor): its folder is read
+  // every `refreshSeconds` while on screen and when the window gets the focus back; only a
+  // changed listing updates the view and the git status.
+  useEffect(() => {
+    if (devStyle || !visible) return;
+    const poll = async () => {
+      const dir = current.current.path;
+      if (dir === null || document.hidden) return;
+      const seq = listSeq.current;
+      const list = await local.list(dir).catch(() => null);
+      if (list === null || seq !== listSeq.current || current.current.path !== dir) return;
+      if (sameList(current.current.entries, list ?? [])) return;
+      setEntries(list ?? []);
+      setLoads((n) => n + 1);
+    };
+    const timer = setInterval(() => void poll(), refreshSeconds * 1000);
+    const onFocus = () => void poll();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [devStyle, visible, refreshSeconds]);
 
   /** Opens a file in a desktop program; the file itself is edited, no copy is made. */
   const openWith = (entry: SftpEntry, how: OpenWith) =>

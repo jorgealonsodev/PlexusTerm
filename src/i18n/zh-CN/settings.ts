@@ -239,6 +239,11 @@ export const settings: Messages<typeof en> = {
     systemDefault: "系统默认",
     useSystemDefault: "使用系统默认",
     details: "在文件列表中显示大小和日期",
+    refreshEvery: "资源管理器列表刷新间隔",
+    refreshEveryHelp: "资源管理器列表重新读取其文件夹的频率,以便显示其他程序创建的文件和文件夹。仅在资源管理器显示时以及窗口重新获得焦点时读取;只有内容变化时才重新绘制列表。DEV 模式跟随终端。",
+    seconds: {
+      other: "{count} 秒",
+    },
     gitStatus: "在文件列表中显示 git 状态",
     gitStatusHelp: "在 git 仓库中,资源管理器和 SFTP 浏览器会像 VS Code 一样为每个条目着色:已修改、已添加、已删除、已重命名、未跟踪、已忽略或冲突,并在右侧显示字母;文件夹采用其中最重要的更改的颜色。列出文件夹时、提示符返回时以及终端输出期间(最多每 2 秒一次)会重新读取。SSH 会通过同一连接在服务器上运行 git。仅适用于 DEV 模式的文件列表。",
     autoSave: "自动保存编辑的文件",

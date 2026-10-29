@@ -239,6 +239,12 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Predeterminado del sistema",
     useSystemDefault: "Usar el predeterminado del sistema",
     details: "Mostrar tamaño y fecha en las listas de archivos",
+    refreshEvery: "Actualizar la lista del explorador cada",
+    refreshEveryHelp: "Cada cuánto vuelve a leer su carpeta la lista del explorador, para que aparezcan los archivos y carpetas creados por otros programas. Solo se lee mientras el explorador está a la vista y cuando la ventana recupera el foco; la lista solo se vuelve a dibujar si algo cambió. El modo DEV sigue al terminal.",
+    seconds: {
+      one: "{count} segundo",
+      other: "{count} segundos",
+    },
     gitStatus: "Mostrar el estado de git en las listas de archivos",
     gitStatusHelp: "Dentro de un repositorio git, el Explorador y el navegador SFTP colorean cada elemento como VS Code: modificado, añadido, eliminado, renombrado, sin seguimiento, ignorado o en conflicto, con su letra a la derecha; una carpeta toma el color del cambio más importante que contiene. Se vuelve a leer al listar la carpeta, cuando vuelve el prompt y mientras la terminal escribe (como mucho cada 2 segundos). En SSH se ejecuta git en el servidor por la misma conexión. Solo se aplica a las listas de archivos del modo DEV.",
     autoSave: "Guardar automáticamente los archivos editados",

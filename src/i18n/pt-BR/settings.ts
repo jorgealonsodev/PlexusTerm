@@ -239,6 +239,12 @@ export const settings: Messages<typeof en> = {
     systemDefault: "Padrão do sistema",
     useSystemDefault: "Usar o padrão do sistema",
     details: "Mostrar tamanho e data nas listas de arquivos",
+    refreshEvery: "Atualizar a lista do explorador a cada",
+    refreshEveryHelp: "Com que frequência a lista do explorador lê sua pasta de novo, para que apareçam arquivos e pastas criados por outros programas. Ela só é lida enquanto o explorador está na tela e quando a janela recebe o foco de volta; a lista só é redesenhada quando algo mudou. O modo DEV segue o terminal.",
+    seconds: {
+      one: "{count} segundo",
+      other: "{count} segundos",
+    },
     gitStatus: "Mostrar o status do git nas listas de arquivos",
     gitStatusHelp: "Dentro de um repositório git, o Explorador e o navegador SFTP colorem cada item como o VS Code: modificado, adicionado, excluído, renomeado, não rastreado, ignorado ou em conflito, com sua letra à direita; uma pasta assume a cor da alteração mais importante dentro dela. O status é lido de novo quando a pasta é listada, quando o prompt volta e enquanto o terminal imprime (no máximo a cada 2 segundos). No SSH, o git roda no servidor pela mesma conexão. Vale apenas para as listas de arquivos do modo DEV.",
     autoSave: "Salvar automaticamente os arquivos editados",

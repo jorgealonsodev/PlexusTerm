@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_RULE } from "../terminal/highlightRules";
-import { cleanShareUrl, CURSOR_SHAPES, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
+import { cleanShareUrl, CURSOR_SHAPES, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS,
+  FILE_LIST_REFRESH_SECONDS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
   it("keeps a highlight rule's action through a save and a load (S3)", () => {
@@ -77,6 +78,7 @@ describe("parseSettings", () => {
       restoreTabs: true,
       aiSaveChats: true,
       fileDetails: false,
+      fileListRefreshSeconds: 3,
       terminalFollowsBrowser: true,
       sidebarAtStartup: "last",
       language: "system",
@@ -221,6 +223,7 @@ describe("parseSettings", () => {
       restoreTabs: true,
       aiSaveChats: false,
       fileDetails: true,
+      fileListRefreshSeconds: 3,
       terminalFollowsBrowser: false,
       sidebarAtStartup: "collapsed",
       language: "ja",
@@ -434,6 +437,7 @@ describe("serializeSettings", () => {
       devNewTerminalFolder: "start" as const,
       aiSaveChats: false,
       fileDetails: true,
+      fileListRefreshSeconds: 3,
       terminalFollowsBrowser: false,
       sidebarAtStartup: "last" as const,
       sidebarWidth: 480,
@@ -728,6 +732,16 @@ describe("terminal cursor", () => {
     expect(parseSettings(JSON.stringify({ cursorShape: 3 })).cursorShape).toBe("bar");
     const saved = parseSettings(serializeSettings({ ...DEFAULT_SETTINGS, cursorShape: "underline", cursorBlink: false }));
     expect(saved).toMatchObject({ cursorShape: "underline", cursorBlink: false });
+  });
+});
+
+describe("file list refresh", () => {
+  it("is every 3 seconds by default and only one of the offered intervals", () => {
+    expect(DEFAULT_SETTINGS.fileListRefreshSeconds).toBe(3);
+    expect(parseSettings(JSON.stringify({ fileListRefreshSeconds: 10 })).fileListRefreshSeconds).toBe(10);
+    expect(parseSettings(JSON.stringify({ fileListRefreshSeconds: 7 })).fileListRefreshSeconds).toBe(3);
+    expect(parseSettings(JSON.stringify({ fileListRefreshSeconds: "fast" })).fileListRefreshSeconds).toBe(3);
+    expect(FILE_LIST_REFRESH_SECONDS).toEqual([1, 2, 3, 5, 10, 30]);
   });
 });
 
