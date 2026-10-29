@@ -175,7 +175,11 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
 
   const goHome = useCallback(async (user = false) => {
     try {
-      await navigate(await local.home(), user);
+      const seq = listSeq.current;
+      const home = await local.home();
+      // A folder asked for meanwhile (the terminal's, arriving after the panel opened) wins.
+      if (seq !== listSeq.current) return;
+      await navigate(home, user);
     } catch (err) {
       setError(describeLocalError(err));
     }

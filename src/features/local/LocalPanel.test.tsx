@@ -146,6 +146,17 @@ describe("LocalPanel", () => {
     expect(mocked.list).not.toHaveBeenCalledWith("/var");
   });
 
+  it("goes to the terminal folder that arrives while the home folder is still being looked up", async () => {
+    let homeFound: (home: string) => void = () => {};
+    mocked.home.mockImplementationOnce(() => new Promise((resolve) => (homeFound = resolve)));
+    const { rerender } = render(panel({ cwd: null }));
+    rerender(panel({ cwd: "/tmp" }));
+    await waitFor(() => expect(mocked.list).toHaveBeenLastCalledWith("/tmp"));
+    await act(async () => homeFound("/home/me"));
+    expect(mocked.list).not.toHaveBeenCalledWith("/home/me");
+    expect((screen.getByLabelText("Local path") as HTMLInputElement).value).toBe("/tmp");
+  });
+
   it("shows DEV mode's Follow and Pin options as chips in one row, each a checkbox lit while on", async () => {
     const onFollowChange = vi.fn();
     const onPinnedChange = vi.fn();
