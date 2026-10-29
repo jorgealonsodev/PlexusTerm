@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes,
 import { DEFAULT_ICON_PACKS, type FileIconPacks } from "../files/iconPacks";
 import { ToolButton } from "../files/ToolButton";
 import { GitBranch, Laptop } from "lucide-react";
-import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Pencil, Save, Trash2, RefreshCw, LocateFixed, Pin, type LucideIcon } from "lucide-react";
+import { ChevronsDownUp, FilePlus, History, FolderInput, FolderOpen, FolderPlus, Layers, Pencil, Save, Trash2, RefreshCw, LocateFixed, Pin, type LucideIcon } from "lucide-react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { useT } from "../../i18n/i18n";
@@ -547,6 +547,19 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     workspace.onAdd(dir);
   };
 
+  /** Opens a folder chosen in the system dialog: listed here, or in DEV mode in a new DEV tab. */
+  const openFolder = async () => {
+    const dir = await open({
+      title: t("sftp.panel.openFolderTitle"),
+      multiple: false,
+      directory: true,
+      ...(path ? { defaultPath: path } : {}),
+    }).catch(() => null);
+    if (typeof dir !== "string") return;
+    if (devStyle && workspace) workspace.onOpenFolders([dir]);
+    else void navigate(dir, true);
+  };
+
   const workspaceFilters = () => [{ name: t("sftp.panel.workspace.fileType"), extensions: [WORKSPACE_EXTENSION] }];
 
   /** Saves the main folder and the added ones to a VS Code workspace file. */
@@ -738,34 +751,46 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
             onChange={(e) => setInput(e.target.value)}
           />
         </form>
+        {/* Grouped by what they do: open, create, change the selection, workspace, view. */}
         <div className="sftp__toolbar">
-          <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newEntry("folder")} />
-          <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newEntry("file")} />
-          <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
-          <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
+          <div className="sftp__tool-group">
+            <ToolButton
+              icon={FolderOpen}
+              label={devStyle && workspace ? t("sftp.panel.openFolderDev") : t("sftp.panel.openFolder")}
+              onClick={() => void openFolder()}
+            />
+            {devStyle && recent && (
+              <ToolButton
+                icon={History}
+                label={t("sftp.panel.recent")}
+                disabled={recent.folders.length === 0 && (recent.workspaces?.length ?? 0) === 0}
+                onClick={(e) => {
+                  const box = e.currentTarget.getBoundingClientRect();
+                  setRecentMenu({ x: box.left, y: box.bottom });
+                }}
+              />
+            )}
+          </div>
+          <div className="sftp__tool-group">
+            <ToolButton icon={FilePlus} label={t("sftp.panel.newFile")} disabled={busy} onClick={() => void newEntry("file")} />
+            <ToolButton icon={FolderPlus} label={t("sftp.panel.newFolder")} disabled={busy} onClick={() => void newEntry("folder")} />
+          </div>
+          <div className="sftp__tool-group">
+            <ToolButton icon={Pencil} label={t("common.rename")} disabled={!selectedEntry} onClick={() => void renameEntry(selectedEntry)} />
+            <ToolButton icon={Trash2} label={t("common.delete")} disabled={!selectedEntry} onClick={() => void deleteEntry(selectedEntry)} />
+          </div>
           {showWorkspace && (
-            <>
+            <div className="sftp__tool-group">
               <ToolButton icon={FolderInput} label={t("sftp.panel.workspace.add")} onClick={() => void addFolder()} />
+              <ToolButton icon={Layers} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
               <ToolButton icon={Save} label={t("sftp.panel.workspace.save")} disabled={busy} onClick={() => void saveWorkspace()} />
-              <ToolButton icon={FolderOpen} label={t("sftp.panel.workspace.open")} onClick={() => void openWorkspace()} />
-            </>
+            </div>
           )}
           {devStyle && (
-            <>
+            <div className="sftp__tool-group">
               <ToolButton icon={RefreshCw} label={t("sftp.panel.refreshAll")} disabled={busy} onClick={refresh} />
               <ToolButton icon={ChevronsDownUp} label={t("sftp.panel.collapseAll")} onClick={collapseAll} />
-              {recent && (
-                <ToolButton
-                  icon={History}
-                  label={t("sftp.panel.recent")}
-                  disabled={recent.folders.length === 0 && (recent.workspaces?.length ?? 0) === 0}
-                  onClick={(e) => {
-                    const box = e.currentTarget.getBoundingClientRect();
-                    setRecentMenu({ x: box.left, y: box.bottom });
-                  }}
-                />
-              )}
-            </>
+            </div>
           )}
         </div>
         <div className="sftp__chips">

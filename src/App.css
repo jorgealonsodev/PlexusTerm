@@ -1348,7 +1348,18 @@ body.is-moving-tab {
 .sftp__toolbar {
   display: flex;
   flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+/* One group of related actions; a thin line parts it from the group before it. */
+.sftp__tool-group {
+  display: flex;
   gap: 4px;
+}
+
+.sftp__tool-group + .sftp__tool-group {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
 }
 
 /* The toolbar's actions: square icons, like the path bar's ↑ ⌂ ⟳; they keep their size. */

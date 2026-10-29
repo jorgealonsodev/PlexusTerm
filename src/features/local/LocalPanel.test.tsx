@@ -576,6 +576,42 @@ describe("workspace folders in DEV mode", () => {
       return [];
     });
 
+  it("opens a folder chosen in the system dialog: here outside DEV mode, in a new DEV tab in DEV mode", async () => {
+    vi.mocked(open).mockResolvedValue("/work/api");
+    const onUserNavigate = vi.fn();
+    const onOpenFolders = vi.fn();
+    const workspace = { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders };
+    const { unmount } = render(panel({ onUserNavigate, workspace }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Open folder" }));
+    await waitFor(() => expect(mocked.list).toHaveBeenLastCalledWith("/work/api"));
+    expect(onUserNavigate).toHaveBeenCalledWith("/work/api");
+    expect(open).toHaveBeenLastCalledWith(expect.objectContaining({ directory: true, multiple: false, defaultPath: "/home/me" }));
+    expect(onOpenFolders).not.toHaveBeenCalled();
+    unmount();
+    render(panel({ devStyle: true, workspace }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "Open folder in a new DEV tab" }));
+    await waitFor(() => expect(onOpenFolders).toHaveBeenCalledWith(["/work/api"]));
+  });
+
+  it("groups the toolbar's actions: open, create, change the selection, workspace, view", async () => {
+    const recent = { folders: ["/work"], onOpen: () => {} };
+    render(panel({ devStyle: true, recent, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
+    await screen.findByText("notes.txt");
+    const toolbar = document.querySelector(".sftp__toolbar")!;
+    const groups = [...toolbar.querySelectorAll(".sftp__tool-group")].map((group) =>
+      [...group.querySelectorAll("button")].map((button) => button.getAttribute("aria-label")),
+    );
+    expect(groups).toEqual([
+      ["Open folder in a new DEV tab", "Open recent"],
+      ["New file", "New folder"],
+      ["Rename", "Delete"],
+      ["Add folder", "Open workspace", "Save workspace"],
+      ["Refresh Explorer", "Collapse Folders in Explorer"],
+    ]);
+  });
+
   it("adds a folder chosen in the system dialog, only in DEV mode", async () => {
     vi.mocked(open).mockResolvedValue("/work/api");
     const onAdd = vi.fn();
