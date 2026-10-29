@@ -33,9 +33,9 @@ const keepSame =
 
 /**
  * The git status of the files under `root`, read with `read` when the folder changes, when the
- * list loads, when the prompt comes back and while the terminal prints, at most once every
- * {@link GIT_STATUS_MIN_INTERVAL_MS} and only while visible; never polled when idle. A failed read
- * shows no decorations.
+ * list loads (also its periodic refresh), when the prompt comes back and while the terminal
+ * prints, at most once every {@link GIT_STATUS_MIN_INTERVAL_MS} and only while visible. A failed
+ * read shows no decorations.
  */
 export function useGitStatus(
   read: (root: string) => Promise<GitStatusEntry[]>,

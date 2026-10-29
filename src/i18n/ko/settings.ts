@@ -240,7 +240,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "시스템 기본값 사용",
     details: "파일 목록에 크기와 날짜 표시",
     refreshEvery: "탐색기 목록 새로 고침 간격",
-    refreshEveryHelp: "탐색기 목록이 폴더를 다시 읽는 간격입니다. 다른 프로그램이 만든 파일과 폴더가 나타납니다. 탐색기가 화면에 있을 때와 창이 다시 포커스를 받을 때만 읽으며, 무언가 바뀌었을 때만 목록을 다시 그립니다. DEV 모드는 터미널을 따릅니다.",
+    refreshEveryHelp: "탐색기 목록이 폴더를 다시 읽는 간격입니다. 다른 프로그램이 만든 파일과 폴더가 나타납니다. 탐색기가 화면에 있을 때와 창이 다시 포커스를 받을 때만 읽으며, 무언가 바뀌었을 때만 목록을 다시 그립니다. DEV 모드에서는 트리의 열린 폴더와 git 상태도 다시 읽습니다.",
     seconds: {
       other: "{count}초",
     },

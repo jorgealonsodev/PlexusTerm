@@ -240,7 +240,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "Utiliser la valeur par défaut du système",
     details: "Afficher la taille et la date dans les listes de fichiers",
     refreshEvery: "Actualiser la liste de l'explorateur toutes les",
-    refreshEveryHelp: "Fréquence à laquelle la liste de l'explorateur relit son dossier, pour faire apparaître les fichiers et dossiers créés par d'autres programmes. Elle n'est relue que lorsque l'explorateur est affiché et quand la fenêtre reprend le focus ; la liste n'est redessinée que si quelque chose a changé. Le mode DEV suit le terminal.",
+    refreshEveryHelp: "Fréquence à laquelle la liste de l'explorateur relit son dossier, pour faire apparaître les fichiers et dossiers créés par d'autres programmes. Elle n'est relue que lorsque l'explorateur est affiché et quand la fenêtre reprend le focus ; la liste n'est redessinée que si quelque chose a changé. En mode DEV, les dossiers ouverts de l'arborescence et l'état git sont aussi relus.",
     seconds: {
       one: "{count} seconde",
       other: "{count} secondes",

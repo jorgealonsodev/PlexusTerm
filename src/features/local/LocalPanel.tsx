@@ -245,14 +245,16 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     if (visible) void reloadQuietly();
   }, [prompt, visible, reloadQuietly]);
 
-  // The normal list also follows other programs (a file manager, an editor): its folder is read
-  // every `refreshSeconds` while on screen and when the window gets the focus back; only a
-  // changed listing updates the view and the git status.
+  // The list also follows other programs (a file manager, an editor): its folder is read every
+  // `refreshSeconds` while on screen and when the window gets the focus back. A normal list
+  // updates only when its listing changed; DEV mode's tree also reads its open folders, the added
+  // ones and the git status, whose rows stay as they are when nothing changed.
   useEffect(() => {
-    if (devStyle || !visible) return;
+    if (!visible) return;
     const poll = async () => {
       const dir = current.current.path;
       if (dir === null || document.hidden) return;
+      if (devStyle) return reloadQuietly();
       const seq = listSeq.current;
       const list = await local.list(dir).catch(() => null);
       if (list === null || seq !== listSeq.current || current.current.path !== dir) return;
@@ -267,7 +269,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [devStyle, visible, refreshSeconds]);
+  }, [devStyle, visible, refreshSeconds, reloadQuietly]);
 
   /** Opens a file in a desktop program; the file itself is edited, no copy is made. */
   const openWith = (entry: SftpEntry, how: OpenWith) =>

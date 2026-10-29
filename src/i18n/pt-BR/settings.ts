@@ -240,7 +240,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "Usar o padrão do sistema",
     details: "Mostrar tamanho e data nas listas de arquivos",
     refreshEvery: "Atualizar a lista do explorador a cada",
-    refreshEveryHelp: "Com que frequência a lista do explorador lê sua pasta de novo, para que apareçam arquivos e pastas criados por outros programas. Ela só é lida enquanto o explorador está na tela e quando a janela recebe o foco de volta; a lista só é redesenhada quando algo mudou. O modo DEV segue o terminal.",
+    refreshEveryHelp: "Com que frequência a lista do explorador lê sua pasta de novo, para que apareçam arquivos e pastas criados por outros programas. Ela só é lida enquanto o explorador está na tela e quando a janela recebe o foco de volta; a lista só é redesenhada quando algo mudou. No modo DEV, as pastas abertas da árvore e o status do git também são lidos de novo.",
     seconds: {
       one: "{count} segundo",
       other: "{count} segundos",

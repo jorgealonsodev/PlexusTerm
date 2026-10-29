@@ -237,7 +237,7 @@ export const settings = {
     useSystemDefault: "Use system default",
     details: "Show size and date in file lists",
     refreshEvery: "Refresh the Explorer's list every",
-    refreshEveryHelp: "How often the Explorer's list reads its folder again, so files and folders created by other programs appear. It is read only while the Explorer is on screen, and when the window gets the focus back; the list is redrawn only when something changed. DEV mode follows the terminal instead.",
+    refreshEveryHelp: "How often the Explorer's list reads its folder again, so files and folders created by other programs appear. It is read only while the Explorer is on screen, and when the window gets the focus back; the list is redrawn only when something changed. In DEV mode the open folders of the tree and the git status are read again too.",
     seconds: {
       one: "{count} second",
       other: "{count} seconds",

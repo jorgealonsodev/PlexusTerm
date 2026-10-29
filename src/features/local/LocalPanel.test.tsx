@@ -871,7 +871,8 @@ describe("LocalPanel lists files created by the terminal", () => {
       return () => void listeners.splice(listeners.indexOf(listener), 1);
     };
     const git = { enabled: false, visible: true, prompt: 0, subscribeOutput };
-    const { rerender } = render(panel({ devStyle: true, git }));
+    // The periodic refresh is the slowest one here, so only the terminal reads the folder.
+    const { rerender } = render(panel({ devStyle: true, git, refreshSeconds: 30 }));
     fireEvent.click(await screen.findByText("notes.txt"));
     const calls = () => mocked.list.mock.calls.filter(([path]) => path === "/home/me").length;
     const before = calls();
@@ -896,7 +897,7 @@ describe("LocalPanel lists files created by the terminal", () => {
     });
     await act(() => vi.advanceTimersByTimeAsync(FILE_LIST_REFRESH_MS));
     expect(calls()).toBe(once + 1);
-    rerender(panel({ devStyle: true, git: { ...git, prompt: 1 } }));
+    rerender(panel({ devStyle: true, git: { ...git, prompt: 1 }, refreshSeconds: 30 }));
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(calls()).toBe(once + 2);
   });
@@ -936,6 +937,25 @@ describe("LocalPanel lists files created by the terminal", () => {
     act(() => void window.dispatchEvent(new Event("focus")));
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(calls()).toBe(hidden + 2);
+  });
+
+  it("shows what other programs create in DEV mode's tree too, in its open folders, without redrawing its rows", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let src = [entry("a.ts", "file", "/home/me/src")];
+    let root = [entry("src", "dir"), entry("notes.txt", "file")];
+    mocked.list.mockImplementation(async (path) => (path === "/home/me" ? root : path === "/home/me/src" ? src : []));
+    render(panel({ devStyle: true, git: { enabled: false, visible: true, prompt: 0 }, refreshSeconds: 5 }));
+    fireEvent.click(await screen.findByText("src"));
+    await screen.findByText("a.ts");
+    const row = screen.getByText("a.ts").closest("li");
+    src = [entry("a.ts", "file", "/home/me/src"), entry("b.ts", "file", "/home/me/src")];
+    root = [entry("docs", "dir"), entry("src", "dir"), entry("notes.txt", "file")];
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    expect(screen.queryByText("b.ts")).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(await screen.findByText("b.ts")).toBeTruthy();
+    expect(screen.getByText("docs")).toBeTruthy();
+    expect(screen.getByText("a.ts").closest("li")).toBe(row);
   });
 
   it("reads the normal list again every 3 seconds by default", async () => {

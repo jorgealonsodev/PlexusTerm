@@ -240,7 +240,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "Systemstandard verwenden",
     details: "Größe und Datum in Dateilisten anzeigen",
     refreshEvery: "Liste des Explorers aktualisieren alle",
-    refreshEveryHelp: "Wie oft die Liste des Explorers ihren Ordner neu liest, damit von anderen Programmen erstellte Dateien und Ordner erscheinen. Gelesen wird nur, solange der Explorer sichtbar ist, und wenn das Fenster den Fokus zurückerhält; die Liste wird nur neu gezeichnet, wenn sich etwas geändert hat. Der DEV-Modus folgt dem Terminal.",
+    refreshEveryHelp: "Wie oft die Liste des Explorers ihren Ordner neu liest, damit von anderen Programmen erstellte Dateien und Ordner erscheinen. Gelesen wird nur, solange der Explorer sichtbar ist, und wenn das Fenster den Fokus zurückerhält; die Liste wird nur neu gezeichnet, wenn sich etwas geändert hat. Im DEV-Modus werden auch die geöffneten Ordner des Baums und der Git-Status neu gelesen.",
     seconds: {
       one: "{count} Sekunde",
       other: "{count} Sekunden",

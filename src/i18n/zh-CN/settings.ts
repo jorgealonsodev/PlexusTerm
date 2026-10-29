@@ -240,7 +240,7 @@ export const settings: Messages<typeof en> = {
     useSystemDefault: "使用系统默认",
     details: "在文件列表中显示大小和日期",
     refreshEvery: "资源管理器列表刷新间隔",
-    refreshEveryHelp: "资源管理器列表重新读取其文件夹的频率,以便显示其他程序创建的文件和文件夹。仅在资源管理器显示时以及窗口重新获得焦点时读取;只有内容变化时才重新绘制列表。DEV 模式跟随终端。",
+    refreshEveryHelp: "资源管理器列表重新读取其文件夹的频率,以便显示其他程序创建的文件和文件夹。仅在资源管理器显示时以及窗口重新获得焦点时读取;只有内容变化时才重新绘制列表。在 DEV 模式下,树中已展开的文件夹和 git 状态也会重新读取。",
     seconds: {
       other: "{count} 秒",
     },
