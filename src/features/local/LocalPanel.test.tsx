@@ -757,6 +757,28 @@ describe("workspace folders in DEV mode", () => {
     expect(screen.getByRole<HTMLInputElement>("textbox", { name: /path|folder/i }).value).toBe("/work/api");
   });
 
+  it("hides the added folders outside the workspace's main folder (Up, Home) and shows them again back in it", async () => {
+    listing();
+    const workspace = { folders: ["/work/api"], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} };
+    render(panel({ devStyle: true, startAt: "/work/proj", workspace }));
+    await screen.findByRole("group", { name: "proj" });
+    expect(await screen.findByRole("group", { name: "api" })).toBeTruthy();
+    // Home leaves the workspace: only the home folder is listed.
+    fireEvent.click(screen.getByTitle("Home folder"));
+    await screen.findByRole("group", { name: "me" });
+    expect(screen.queryByRole("group", { name: "api" })).toBeNull();
+    // Back in the main folder, its added folders show again.
+    const input = screen.getByRole<HTMLInputElement>("textbox", { name: /path|folder/i });
+    fireEvent.change(input, { target: { value: "/work/proj" } });
+    fireEvent.submit(input.form!);
+    await screen.findByRole("group", { name: "proj" });
+    expect(await screen.findByRole("group", { name: "api" })).toBeTruthy();
+    // Up, to the folder above the main one, leaves it too.
+    fireEvent.click(screen.getByTitle("Up"));
+    await screen.findByRole("group", { name: "work" });
+    expect(screen.queryByRole("group", { name: "api" })).toBeNull();
+  });
+
   it("shows the folder as a root even while no folder is added, without Remove folder from workspace", async () => {
     render(panel({ devStyle: true, workspace: { folders: [], onAdd: () => {}, onRemove: () => {}, onOpenFolders: () => {} } }));
     const main = await screen.findByRole("group", { name: "me" });

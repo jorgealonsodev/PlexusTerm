@@ -531,6 +531,14 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     subscribeOutput: git?.subscribeOutput,
   };
   const showWorkspace = devStyle && workspace !== undefined;
+  /** The workspace's main folder: where DEV mode opened, else the first folder listed. */
+  const [workspaceMain, setWorkspaceMain] = useState<string | null>(startAt);
+  useEffect(() => {
+    if (workspaceMain === null && path !== null) setWorkspaceMain(path);
+  }, [path, workspaceMain]);
+  /** The added folders show only in the main folder or below it: Up or Home out of it leaves the workspace. */
+  const showAdded =
+    showWorkspace && path !== null && workspaceMain !== null && (path === workspaceMain || isInside(path, workspaceMain));
 
   // The repository of the selected entry, as VS Code's status bar shows it (DEV mode, git status on).
   const [repo, setRepo] = useState<{ root: string; branch: string; dirty: boolean } | null>(null);
@@ -557,7 +565,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
   const collapseAll = () => {
     setCollapse((n) => n + 1);
     // With added folders the roots close too; alone, the main one stays open.
-    if (showWorkspace && workspace.folders.length > 0) setMainOpen(false);
+    if (showAdded && workspace.folders.length > 0) setMainOpen(false);
   };
 
   /** Adds a folder chosen in the system dialog to the workspace, once. */
@@ -717,7 +725,10 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
   /** The main folder leaves the workspace: the first added folder becomes the main one, as in VS Code. */
   const removeMain = async () => {
     const next = workspace?.folders[0];
-    if (next && (await navigate(next, true))) workspace?.onRemove(next);
+    if (next && (await navigate(next, true))) {
+      setWorkspaceMain(next);
+      workspace?.onRemove(next);
+    }
   };
 
   const busy = path === null;
@@ -852,7 +863,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
               onToggle={() => setMainOpen((v) => !v)}
               decoration={rootDecoration(gitEntries)}
               // Alone, the main folder cannot leave the workspace.
-              titleProps={rootProps(path, showWorkspace && workspace.folders.length > 0 ? () => void removeMain() : undefined)}
+              titleProps={rootProps(path, showAdded && workspace.folders.length > 0 ? () => void removeMain() : undefined)}
             >
               {mainTree}
             </WorkspaceRoot>
@@ -870,7 +881,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
             rowProps={rowProps}
           />
         )}
-        {showWorkspace &&
+        {showAdded &&
           workspace.folders.map((folder) => (
             <WorkspaceFolder
               key={folder}
