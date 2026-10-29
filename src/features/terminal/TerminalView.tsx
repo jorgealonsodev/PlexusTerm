@@ -63,6 +63,7 @@ import { attachCommandBlocks, jumpColor, type CommandBlocks } from "./commandBlo
 import { actionInput, compileRules, type RuleAction } from "./highlightRules";
 import { attachRuleHighlight, type RuleHighlight } from "./ruleHighlight";
 import { createCommandTimer, formatDuration, shortCommand, type FinishedCommand } from "./commandTimer";
+import { pathCompletion, pathQuery, type FolderEntry } from "./pathCompletion";
 import { createOsc99Reader, parseOsc777, parseOsc9, type AttentionNotice } from "./attention";
 import type { SharePane } from "../share/sharePane";
 import type { AppKey } from "../../i18n/catalogs";
@@ -107,6 +108,11 @@ interface TerminalViewProps {
   aiSuggest?: (context: AiSuggestContext) => Promise<string | null>;
   /** The command history behind inline suggestions (S1); the app's history when omitted. */
   history?: HistoryStore;
+  /**
+   * Reads this computer's folders, so inline suggestions complete the path typed at the end of the
+   * line when the history has nothing for it; local terminals only.
+   */
+  paths?: PathSource;
   /** Hands out what the assistant needs from this pane (S3); returns its unregister function. */
   registerAssistTarget?: (target: AssistTarget) => () => void;
   /** Hands out what Find in all tabs reads and selects in this pane; returns its unregister function. */
@@ -179,6 +185,17 @@ export interface AiSuggestContext {
   /** The host's last commands, oldest first (`aiHistoryContext` of them). */
   history: string[];
 }
+
+/** What path completion reads on this computer. */
+export interface PathSource {
+  list: (folder: string) => Promise<FolderEntry[]>;
+  home: () => Promise<string>;
+  /** The shell's folder from its pty, when it reports none (OSC 7). */
+  cwd: (sessionId: number) => Promise<string | null>;
+}
+
+/** A folder listed for path completion is reused this long: one listing serves a burst of keys. */
+const PATH_LISTING_MS = 2000;
 
 /** Pause in typing before the AI is asked (S2). */
 export const AI_SUGGEST_DELAY_MS = 400;
@@ -345,6 +362,7 @@ export function TerminalView({
   registerPaneShortcuts,
   aiSuggest,
   history = commandHistory,
+  paths,
   registerAssistTarget,
   registerFindTarget,
   onAskAi,
@@ -384,6 +402,8 @@ export function TerminalView({
   settingsRef.current = settings;
   const historyRef = useRef(history);
   historyRef.current = history;
+  const pathsRef = useRef(paths);
+  pathsRef.current = paths;
   /** Visible and holding the keyboard: the only state that shows suggestions. */
   const shownRef = useRef(active && focused);
   shownRef.current = active && focused;
@@ -1103,6 +1123,33 @@ export function TerminalView({
       }, AI_SUGGEST_DELAY_MS);
     };
 
+    let listing: { folder: string; at: number; entries: Promise<FolderEntry[]> } | null = null;
+    /** Completes the path at the end of the line from its folder's files; without one, asks the AI. */
+    const askPaths = () => {
+      const source = pathsRef.current;
+      if (!source || fullScreen() || atSecretPrompt()) return askAi();
+      const seq = aiSeq;
+      const asked = line.text;
+      const windows = platformRef.current === "windows";
+      void (async () => {
+        const folder = cwd ?? (sessionId !== null ? await source.cwd(sessionId) : null);
+        const home = asked.includes("~") ? await source.home() : null;
+        const query = folder ? pathQuery(asked, folder, home, windows) : null;
+        if (!query) return null;
+        if (!listing || listing.folder !== query.folder || performance.now() - listing.at > PATH_LISTING_MS) {
+          listing = { folder: query.folder, at: performance.now(), entries: source.list(query.folder) };
+        }
+        return pathCompletion(query, await listing.entries);
+      })()
+        .catch(() => null)
+        .then((rest) => {
+          if (seq !== aiSeq) return;
+          if (!rest) return askAi();
+          suggestion = { line: asked, rest };
+          scheduleGhost();
+        });
+    };
+
     const updateSuggestion = () => {
       aiSeq++;
       if (aiTimer) clearTimeout(aiTimer);
@@ -1112,7 +1159,7 @@ export function TerminalView({
       if (s.inlineSuggestions && !line.uncertain && line.text) {
         const full = s.commandHistory ? historyRef.current.suggest(hostKey, line.text) : null;
         if (full) suggestion = { line: line.text, rest: full.slice(line.text.length) };
-        else askAi();
+        else askPaths();
       }
       // What → would accept changes now, not at the next frame.
       ghostRestRef.current = null;

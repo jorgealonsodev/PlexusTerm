@@ -113,7 +113,7 @@ import { AuditLogDialog } from "./features/share/AuditLogDialog";
 import { noticeText } from "./features/share/labels";
 import { SharedView } from "./features/share/SharedView";
 import { OpenSharedDialog } from "./features/share/OpenSharedDialog";
-import { TerminalView, type AiSuggestContext, type AssistTarget } from "./features/terminal/TerminalView";
+import { TerminalView, type AiSuggestContext, type AssistTarget, type PathSource } from "./features/terminal/TerminalView";
 import { FindAllDialog } from "./features/search/FindAllDialog";
 import { findInPanes, locate, searchablePanes, type FindResult, type FindTarget } from "./features/search/findAll";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
@@ -291,6 +291,9 @@ const draftTunnel = (): Tunnel => ({
 
 /** Most commands the history search lists. */
 const HISTORY_SHOWN = 1000;
+
+/** This computer's folders, for path completion in local terminals. */
+const LOCAL_PATHS: PathSource = { list: local.list, home: local.home, cwd: local.shellCwd };
 
 
 /** Runs `f` once the layout after the current change was drawn (two frames: the fit runs in the first). */
@@ -2435,6 +2438,7 @@ function AppContent() {
                             registerFindTarget={(target) => findTargets.register(paneId, target)}
                             registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}
                             aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
+                            paths={tab.target.type === "local" ? LOCAL_PATHS : undefined}
                             settings={terminalSettings.settings}
                             onSettingsChange={terminalSettings.update}
                             onLogging={(path) => updatePane(paneId, { logging: path !== null })}

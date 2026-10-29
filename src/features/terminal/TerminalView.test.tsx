@@ -2442,6 +2442,42 @@ describe("TerminalView", () => {
       expect(ghost(container)).toBe("tus");
     });
 
+    it("completes a path from the files of the shell's folder when the history has nothing", async () => {
+      const list = vi.fn(async (folder: string) =>
+        folder === "/home/u"
+          ? [
+              { name: "notes", kind: "dir" as const },
+              { name: "deploy.sh", kind: "file" as const },
+            ]
+          : [],
+      );
+      const paths = { list, home: async () => "/home/u", cwd: async () => "/home/u" };
+      const { container } = await renderView({ history: historyWith("git status"), paths });
+      typeAt("$ ", "cd n");
+      await settle();
+      nextFrame();
+      expect(ghost(container)).toBe("otes/");
+      expect(key("ArrowRight")).toBe(false);
+      expect(backend.write).toHaveBeenLastCalledWith(7, "otes/");
+      act(() => {
+        term().line = "$ cd notes/";
+        term().type("\r");
+      });
+      // The history still comes first.
+      typeAt("$ ", "git st");
+      await settle();
+      nextFrame();
+      expect(ghost(container)).toBe("atus");
+      // A command name is looked up in PATH, not in the folder.
+      list.mockClear();
+      act(() => term().type("\u0015"));
+      typeAt("$ ", "dep");
+      await settle();
+      nextFrame();
+      expect(list).not.toHaveBeenCalled();
+      expect(ghost(container)).toBeNull();
+    });
+
     it("accepts the whole suggestion with End and one word with Ctrl+Right", async () => {
       const { container } = await renderView({ history: historyWith("docker compose up -d") });
       typeAt("$ ", "dock");
