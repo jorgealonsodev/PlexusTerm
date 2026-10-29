@@ -768,26 +768,19 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
             </>
           )}
         </div>
-        {devStyle ? (
-          <div className="sftp__chips">
-            <OptionChip icon={LocateFixed} label={t("sftp.panel.follow")} short={t("sftp.panel.followShort")} checked={follow} onChange={onFollowChange} />
-            {onPinnedChange && (
-              <OptionChip
-                icon={Pin}
-                label={t("sftp.panel.pin")}
-                short={t("sftp.panel.pinShort")}
-                help={t("sftp.panel.pinHelp")}
-                checked={pinned}
-                onChange={onPinnedChange}
-              />
-            )}
-          </div>
-        ) : (
-          <label className="sftp__follow">
-            <input type="checkbox" checked={follow} onChange={(e) => onFollowChange(e.target.checked)} />
-            {t("sftp.panel.follow")}
-          </label>
-        )}
+        <div className="sftp__chips">
+          <OptionChip icon={LocateFixed} label={t("sftp.panel.follow")} short={t("sftp.panel.followShort")} checked={follow} onChange={onFollowChange} />
+          {devStyle && onPinnedChange && (
+            <OptionChip
+              icon={Pin}
+              label={t("sftp.panel.pin")}
+              short={t("sftp.panel.pinShort")}
+              help={t("sftp.panel.pinHelp")}
+              checked={pinned}
+              onChange={onPinnedChange}
+            />
+          )}
+        </div>
       </div>
       <div className="sftp__body">
         {error && (

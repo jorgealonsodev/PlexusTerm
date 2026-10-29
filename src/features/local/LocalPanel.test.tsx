@@ -177,12 +177,15 @@ describe("LocalPanel", () => {
     expect(onFollowChange).toHaveBeenCalledWith(false);
   });
 
-  it("keeps the plain Follow terminal folder checkbox, and no Pin option, outside DEV mode", async () => {
-    render(panel({ onPinnedChange: () => {} }));
+  it("shows Follow as the same chip outside DEV mode, with no Pin option", async () => {
+    const onFollowChange = vi.fn();
+    render(panel({ onFollowChange, onPinnedChange: () => {} }));
     await screen.findByText("notes.txt");
-    const follow = screen.getByRole("checkbox", { name: "Follow terminal folder" });
-    expect(follow.closest(".sftp__chip")).toBeNull();
-    expect(follow.closest("label")?.textContent).toBe("Follow terminal folder");
+    const follow = screen.getByRole("checkbox", { name: "Follow terminal folder" }) as HTMLInputElement;
+    expect(follow.closest(".sftp__chip")?.textContent).toBe("Follow terminal");
+    expect(follow.checked).toBe(true);
+    fireEvent.click(follow);
+    expect(onFollowChange).toHaveBeenCalledWith(false);
     expect(screen.queryByRole("checkbox", { name: "Pin Explorer view" })).toBeNull();
   });
 
