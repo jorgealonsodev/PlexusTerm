@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import App from "../../App";
 import { DEFAULT_SETTINGS } from "../settings/settings";
+import { saveSidebarView } from "../sidebar/uiMemory";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
@@ -105,6 +106,23 @@ describe("Explorer tab", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("pty_cwd", { id: 5 }));
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/srv/app" }));
     expect(screen.getByRole("tab", { name: "SFTP" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("works as shown when the SFTP tab, left chosen from an SSH tab, gives way to it in a local tab", async () => {
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
+      if (cmd === "settings_load") return JSON.stringify(DEFAULT_SETTINGS);
+      if (cmd === "pty_cwd") return "/srv/app";
+      if (cmd === "local_home") return "/home/me";
+      if (cmd === "local_list") return [entry(`${(args as { path: string }).path}/readme.md`)];
+      return null;
+    });
+    saveSidebarView("sftp");
+    render(<App />);
+    await screen.findByTestId("terminal");
+    // The Explorer is on screen: it follows the shell's folder and reads its git status.
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("pty_cwd", { id: 5 }));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("local_list", { path: "/srv/app" }));
+    expect(await screen.findByText("readme.md")).toBeTruthy();
   });
 
   it("drops a row on the terminal: cd into a folder on an empty line, otherwise types the path", async () => {

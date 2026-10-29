@@ -6,6 +6,15 @@ import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, clampSidebarWidth } from "../sett
 export const SIDEBAR_VIEWS = ["sessions", "sftp", "explorer", "tunnels", "macros"] as const;
 export type SidebarView = (typeof SIDEBAR_VIEWS)[number];
 
+/**
+ * The view the sidebar shows for the chosen `view`: a file browser that does not fit the active tab
+ * gives way to the one that does (SFTP for SSH, Explorer for a local terminal), otherwise to Sessions.
+ */
+export function shownSidebarView(view: SidebarView, sftpAvailable: boolean, localAvailable: boolean): SidebarView {
+  const fileView: SidebarView = sftpAvailable ? "sftp" : localAvailable ? "explorer" : "sessions";
+  return (view === "sftp" && !sftpAvailable) || (view === "explorer" && !localAvailable) ? fileView : view;
+}
+
 interface SidebarProps {
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
@@ -52,11 +61,7 @@ export function Sidebar({
   const [dragged, setDragged] = useState<number | null>(null);
   /** Ends the drag in progress (removes its window listeners); null when not dragging. */
   const stopDrag = useRef<(() => void) | null>(null);
-  // A file browser that does not fit the active tab gives way to the one that does (SFTP for SSH,
-  // Explorer for a local terminal), otherwise to Sessions.
-  const fileView: SidebarView = sftpAvailable ? "sftp" : localAvailable ? "explorer" : "sessions";
-  const shown: SidebarView =
-    (view === "sftp" && !sftpAvailable) || (view === "explorer" && !localAvailable) ? fileView : view;
+  const shown = shownSidebarView(view, sftpAvailable, localAvailable);
   const shownWidth = dragged ?? width;
   // An unmount in the middle of a drag must not leave listeners or the no-selection class behind.
   useEffect(() => () => stopDrag.current?.(), []);

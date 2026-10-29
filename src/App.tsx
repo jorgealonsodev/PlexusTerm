@@ -75,7 +75,7 @@ import { forgetSecrets } from "./features/sessions/secrets";
 import { SessionEditDialog } from "./features/sessions/SessionEditDialog";
 import { SessionsPanel } from "./features/sessions/SessionsPanel";
 import { SftpPanel } from "./features/sftp/SftpPanel";
-import { Sidebar, SIDEBAR_VIEWS, type SidebarView } from "./features/sidebar/Sidebar";
+import { shownSidebarView, Sidebar, SIDEBAR_VIEWS, type SidebarView } from "./features/sidebar/Sidebar";
 import { loadSidebarView, saveSidebarView } from "./features/sidebar/uiMemory";
 import type { MoshTarget, SessionTarget, SshTarget } from "./features/sessions/types";
 import { useSessionLibrary } from "./features/sessions/useSessionLibrary";
@@ -683,12 +683,15 @@ function AppContent() {
   const explorerAnchor = explorerDev ? (explorerDev.root ?? explorerDev.folder) : null;
   // The Explorer tab belongs to a local terminal; its pty id lets the backend read the shell's folder.
   const localPtyId = explorerTab?.target.type === "local" ? explorerSession.sessionId : null;
-  const localShown = localPtyId !== null && sidebarView === "explorer" && !terminalSettings.settings.sidebarCollapsed;
+  // What the sidebar shows, not only the tab chosen: SFTP chosen on an SSH tab shows the Explorer
+  // for a local one, and the Explorer chosen shows SFTP for an SSH tab.
+  const shownView = terminalSettings.settings.sidebarCollapsed
+    ? null
+    : shownSidebarView(sidebarView, sftpSessionId !== null, localPtyId !== null);
+  const localShown = localPtyId !== null && shownView === "explorer";
   const localCwd = useShellCwd(localPtyId, explorerSession.cwd, localShown && followLocalCwd);
-  // SFTP follows a remote shell without OSC 7 by reading its folder on the server; the sidebar
-  // shows SFTP for an SSH tab on either file tab.
-  const sftpShown =
-    sftpSessionId !== null && (sidebarView === "sftp" || sidebarView === "explorer") && !terminalSettings.settings.sidebarCollapsed;
+  // SFTP follows a remote shell without OSC 7 by reading its folder on the server.
+  const sftpShown = sftpSessionId !== null && shownView === "sftp";
   const sftpCwd = useShellCwd(sftpSessionId, activeSession.cwd, sftpShown && followCwd, sftp.shellCwd);
   // The file lists read their git status again while the active terminal prints (AI CLIs edit
   // files as they go), through the same output feed macros wait on.
