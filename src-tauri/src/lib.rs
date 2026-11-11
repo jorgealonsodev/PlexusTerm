@@ -60,6 +60,108 @@ enum TerminalEvent {
     Zmodem(zmodem::Notice),
 }
 
+/// Where a session's events go: the window showing it, or, while its tab moves to another window
+/// (between [`terminal_detach`] and [`terminal_attach`]), a queue the next window receives first.
+#[derive(Default)]
+struct Route {
+    state: std::sync::Mutex<RouteState>,
+}
+
+#[derive(Default)]
+struct RouteState {
+    channel: Option<Channel<TerminalEvent>>,
+    held: std::collections::VecDeque<TerminalEvent>,
+    held_bytes: usize,
+    /// The session ended: its exit is sent (or held), and the route leaves the registry once a
+    /// window has it.
+    ended: bool,
+}
+
+/// Output held for a moving tab at most; beyond it the oldest output is dropped (a move takes a
+/// moment, a program printing this much meanwhile only loses what scrolled away first).
+const HELD_MAX_BYTES: usize = 8 * 1024 * 1024;
+
+fn event_bytes(event: &TerminalEvent) -> usize {
+    match event {
+        TerminalEvent::Output(text) | TerminalEvent::SharedOutput { data: text, .. } => text.len(),
+        _ => 0,
+    }
+}
+
+impl Route {
+    /// Sends `event` to the window, or holds it while none has the session. `Err` when the
+    /// window is gone without letting the session go.
+    fn send(&self, event: TerminalEvent) -> Result<(), ()> {
+        let mut state = self.state.lock().unwrap();
+        if let Some(channel) = &state.channel {
+            return channel.send(event).map_err(|_| ());
+        }
+        state.held_bytes += event_bytes(&event);
+        state.held.push_back(event);
+        while state.held_bytes > HELD_MAX_BYTES {
+            let Some(index) = state.held.iter().position(|e| event_bytes(e) > 0) else {
+                break;
+            };
+            let dropped = state
+                .held
+                .remove(index)
+                .map(|e| event_bytes(&e))
+                .unwrap_or(0);
+            state.held_bytes -= dropped;
+        }
+        Ok(())
+    }
+}
+
+/// The routes of the running sessions, by share tap.
+type Routes = std::sync::Mutex<std::collections::HashMap<u64, std::sync::Arc<Route>>>;
+
+fn routes() -> &'static Routes {
+    static ROUTES: std::sync::OnceLock<Routes> = std::sync::OnceLock::new();
+    ROUTES.get_or_init(Default::default)
+}
+
+/// The tab of share tap `tap`'s session leaves its window: from now on its events are held for
+/// the window that attaches it next. False when no such session runs.
+#[tauri::command]
+fn terminal_detach(tap: u64) -> bool {
+    let Some(route) = routes().lock().unwrap().get(&tap).cloned() else {
+        return false;
+    };
+    route.state.lock().unwrap().channel = None;
+    diaglog::info(&format!("terminal tap {tap}: detached from its window"));
+    true
+}
+
+/// A window takes the session of share tap `tap`: it gets the tap, then what was held for it in
+/// order, then the session's events as they come. Reading resumes (the new pane pauses it again
+/// when it has too much to draw).
+#[tauri::command]
+fn terminal_attach(tap: u64, on_event: Channel<TerminalEvent>) -> Result<(), String> {
+    let route = routes()
+        .lock()
+        .unwrap()
+        .get(&tap)
+        .cloned()
+        .ok_or_else(|| format!("No terminal session {tap} to attach"))?;
+    let ended = {
+        let mut state = route.state.lock().unwrap();
+        let _ = on_event.send(TerminalEvent::Tap(tap));
+        while let Some(event) = state.held.pop_front() {
+            let _ = on_event.send(event);
+        }
+        state.held_bytes = 0;
+        state.channel = Some(on_event);
+        state.ended
+    };
+    if ended {
+        routes().lock().unwrap().remove(&tap);
+    }
+    terminal::flow::gates().set_paused(tap, false);
+    diaglog::info(&format!("terminal tap {tap}: attached to a window"));
+    Ok(())
+}
+
 /// Sends a session's events to the webview through a thread that gathers bursts of output
 /// (see [`terminal::coalesce`]). Each batch goes through the session's share tap first, so a
 /// shared tab's viewers get the output in the order the pane renders it.
@@ -102,6 +204,9 @@ impl ChannelSink {
         let flow = std::sync::Arc::new(terminal::FlowGate::new());
         terminal::flow::gates().register(tap_id, &flow);
         let _ = channel.send(TerminalEvent::Tap(tap_id));
+        let route = std::sync::Arc::new(Route::default());
+        route.state.lock().unwrap().channel = Some(channel);
+        routes().lock().unwrap().insert(tap_id, route.clone());
         let gate = flow.clone();
         let lost = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let was_lost = lost.clone();
@@ -109,7 +214,7 @@ impl ChannelSink {
             coalesce::forward(rx, |event| match event {
                 coalesce::Event::Output(text) => {
                     diag::mark("S", text.len());
-                    let sent = channel.send(match tap.output(text.as_bytes()) {
+                    let sent = route.send(match tap.output(text.as_bytes()) {
                         Some(seq) => TerminalEvent::SharedOutput { data: text, seq },
                         None => TerminalEvent::Output(text),
                     });
@@ -119,16 +224,23 @@ impl ChannelSink {
                     }
                 }
                 coalesce::Event::Zmodem(notice) => {
-                    let _ = channel.send(TerminalEvent::Zmodem(notice));
+                    let _ = route.send(TerminalEvent::Zmodem(notice));
                 }
                 coalesce::Event::Exit(code) => {
                     gate.close();
                     tap.exited();
-                    let _ = channel.send(if was_lost.load(std::sync::atomic::Ordering::SeqCst) {
+                    let _ = route.send(if was_lost.load(std::sync::atomic::Ordering::SeqCst) {
                         TerminalEvent::Lost
                     } else {
                         TerminalEvent::Exit(code)
                     });
+                    // Gone once a window has the exit; while the tab moves, it waits for the next.
+                    let mut state = route.state.lock().unwrap();
+                    state.ended = true;
+                    if state.channel.is_some() {
+                        drop(state);
+                        routes().lock().unwrap().remove(&tap_id);
+                    }
                 }
             })
         });
@@ -1088,6 +1200,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             terminal_flow,
+            terminal_detach,
+            terminal_attach,
             zmodem_enabled,
             zmodem_receive,
             zmodem_send,
@@ -1316,6 +1430,92 @@ mod tests {
                 r#"{"event":"exit","data":0}"#.to_string(),
             ]
         );
+    }
+
+    /// A channel whose events arrive, as JSON, on the returned receiver.
+    fn channel() -> (Channel<TerminalEvent>, std::sync::mpsc::Receiver<String>) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let channel = Channel::new(move |body| {
+            if let InvokeResponseBody::Json(json) = body {
+                let _ = tx.send(json);
+            }
+            Ok(())
+        });
+        (channel, rx)
+    }
+
+    /// The text of the output events among `events`, joined (bursts may be gathered).
+    fn output_of(events: &[String]) -> String {
+        events
+            .iter()
+            .filter_map(|json| serde_json::from_str::<serde_json::Value>(json).ok())
+            .filter(|v| v["event"] == "output")
+            .map(|v| v["data"].as_str().unwrap_or_default().to_string())
+            .collect()
+    }
+
+    fn drain(rx: &std::sync::mpsc::Receiver<String>) -> Vec<String> {
+        let mut events = Vec::new();
+        while let Ok(json) = rx.recv_timeout(Duration::from_millis(500)) {
+            events.push(json);
+        }
+        events
+    }
+
+    #[test]
+    fn output_while_detached_is_held_and_reaches_the_window_attached_next_in_order() {
+        let (sink, old) = sink();
+        let tap = sink.tap;
+        sink.data("a".into());
+        // The first window drew "a" before the tab left it.
+        while !output_of(&[old.recv_timeout(Duration::from_secs(5)).unwrap()]).contains('a') {}
+        assert!(terminal_detach(tap));
+        sink.data("b".into());
+        sink.data("c".into());
+        let (next, new) = channel();
+        terminal_attach(tap, next).unwrap();
+        sink.data("d".into());
+        sink.exit(Some(0));
+        drop(sink);
+        let events = drain(&new);
+        assert_eq!(
+            events.first().map(String::as_str),
+            Some(format!(r#"{{"event":"tap","data":{tap}}}"#).as_str())
+        );
+        assert_eq!(output_of(&events), "bcd");
+        assert_eq!(
+            events.last().map(String::as_str),
+            Some(r#"{"event":"exit","data":0}"#)
+        );
+        // Nothing reached the first window after it let the tab go.
+        assert_eq!(output_of(&drain(&old)), "");
+    }
+
+    #[test]
+    fn an_exit_while_detached_reaches_the_window_attached_next() {
+        let (sink, _old) = sink();
+        let tap = sink.tap;
+        assert!(terminal_detach(tap));
+        sink.data("bye".into());
+        sink.exit(Some(2));
+        drop(sink);
+        std::thread::sleep(Duration::from_millis(200));
+        let (next, new) = channel();
+        terminal_attach(tap, next).unwrap();
+        let events = drain(&new);
+        assert_eq!(output_of(&events), "bye");
+        assert_eq!(
+            events.last().map(String::as_str),
+            Some(r#"{"event":"exit","data":2}"#)
+        );
+        // Delivered: the session is gone and cannot be attached again.
+        assert!(terminal_attach(tap, channel().0).is_err());
+    }
+
+    #[test]
+    fn a_session_that_is_not_running_cannot_be_detached_or_attached() {
+        assert!(!terminal_detach(u64::MAX));
+        assert!(terminal_attach(u64::MAX, channel().0).is_err());
     }
 
     #[test]
