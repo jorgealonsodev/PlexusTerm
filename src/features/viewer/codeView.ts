@@ -48,6 +48,38 @@ const theme = EditorView.theme({
   },
   ".cm-searchMatch": { backgroundColor: "color-mix(in srgb, var(--warning) 35%, transparent)" },
   ".cm-panels": { backgroundColor: "var(--surface)", color: "var(--text)" },
+  ".cm-panels-top": { borderBottom: "1px solid var(--border)" },
+  // The search panel styled as the terminal's find bar (.find-bar in App.css): CodeMirror's light
+  // defaults (white fields, grey gradient buttons with grey labels) are unreadable on a dark surface.
+  ".cm-panel.cm-search": { padding: "4px 6px", fontSize: "calc(12px * var(--ui-scale, 1))" },
+  ".cm-panel.cm-search label": { color: "var(--muted)", whiteSpace: "nowrap" },
+  ".cm-textfield": {
+    padding: "4px 6px",
+    font: "inherit",
+    color: "var(--text)",
+    backgroundColor: "var(--bg)",
+    border: "1px solid var(--border)",
+    borderRadius: "5px",
+  },
+  ".cm-textfield::placeholder": { color: "var(--muted)", opacity: "1" },
+  ".cm-textfield:focus": { outline: "none", borderColor: "var(--accent)" },
+  ".cm-button": {
+    padding: "2px 6px",
+    font: "inherit",
+    color: "var(--muted)",
+    background: "none",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  ".cm-button:hover, .cm-button:active": {
+    color: "var(--text)",
+    background: "var(--surface-2)",
+  },
+  ".cm-button:focus-visible": { outline: "1px solid var(--accent)" },
+  ".cm-panel.cm-search input[type=checkbox]": { accentColor: "var(--accent)" },
+  ".cm-panel.cm-search [name=close]": { color: "var(--muted)", cursor: "pointer" },
+  ".cm-panel.cm-search [name=close]:hover": { color: "var(--text)" },
   // VS Code's gutter colours for added, modified and deleted lines.
   ".cm-changes .cm-gutterElement": { width: "3px", padding: "0", position: "relative" },
   ".cm-change": { position: "absolute", inset: "0" },
