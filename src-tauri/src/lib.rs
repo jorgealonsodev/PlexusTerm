@@ -116,6 +116,20 @@ impl Route {
     }
 }
 
+impl Route {
+    /// Sends (or holds) the session's last event and marks it over, in one step: a move cannot
+    /// start between them and take a session that already ended.
+    fn end(&self, event: TerminalEvent) -> Result<(), ()> {
+        let mut state = self.state.lock().unwrap();
+        state.ended = true;
+        if let Some(channel) = &state.channel {
+            return channel.send(event).map_err(|_| ());
+        }
+        state.held.push_back(event);
+        Ok(())
+    }
+}
+
 /// The routes of the running sessions, by share tap.
 type Routes = std::sync::Mutex<std::collections::HashMap<u64, std::sync::Arc<Route>>>;
 
@@ -131,7 +145,15 @@ fn terminal_detach(tap: u64) -> bool {
     let Some(route) = routes().lock().unwrap().get(&tap).cloned() else {
         return false;
     };
-    if let Some(channel) = route.state.lock().unwrap().channel.take() {
+    {
+        let mut state = route.state.lock().unwrap();
+        // Already moving (a second move would wait for a `detached` that never comes), or over.
+        if state.ended {
+            return false;
+        }
+        let Some(channel) = state.channel.take() else {
+            return false;
+        };
         let _ = channel.send(TerminalEvent::Detached);
     }
     diaglog::info(&format!("terminal tap {tap}: detached from its window"));
@@ -234,20 +256,24 @@ impl ChannelSink {
                 coalesce::Event::Exit(code) => {
                     gate.close();
                     tap.exited();
-                    let _ = route.send(if was_lost.load(std::sync::atomic::Ordering::SeqCst) {
+                    let _ = route.end(if was_lost.load(std::sync::atomic::Ordering::SeqCst) {
                         TerminalEvent::Lost
                     } else {
                         TerminalEvent::Exit(code)
                     });
-                    // Gone once a window has the exit; while the tab moves, it waits for the next.
-                    let mut state = route.state.lock().unwrap();
-                    state.ended = true;
-                    if state.channel.is_some() {
-                        drop(state);
-                        routes().lock().unwrap().remove(&tap_id);
-                    }
                 }
-            })
+            });
+            // The session is over, with an exit or without one (a failed connect, a serial port
+            // closed): its route goes once a window has its end; while the tab moves, the next
+            // window takes it ([`terminal_attach`]).
+            let attached = {
+                let mut state = route.state.lock().unwrap();
+                state.ended = true;
+                state.channel.is_some()
+            };
+            if attached {
+                routes().lock().unwrap().remove(&tap_id);
+            }
         });
         Self {
             tx,
@@ -1284,6 +1310,12 @@ pub fn run() {
         })
         // Closing the window with shared tabs asks first ("Stop sharing and quit?").
         .on_window_event(|window, event| {
+            // As with a single window, closing the main one quits PlexusTerm: the windows of moved
+            // tabs (and their sessions) go with it instead of running on without it.
+            if matches!(event, tauri::WindowEvent::Destroyed) && window.label() == "main" {
+                window.app_handle().exit(0);
+                return;
+            }
             let tauri::WindowEvent::CloseRequested { api, .. } = event else {
                 return;
             };
@@ -1627,6 +1659,105 @@ mod tests {
     fn a_session_that_is_not_running_cannot_be_detached_or_attached() {
         assert!(!terminal_detach(u64::MAX));
         assert!(terminal_attach(u64::MAX, channel().0).is_err());
+    }
+
+    #[test]
+    fn many_outputs_racing_repeated_moves_are_neither_lost_nor_duplicated() {
+        let (sink, first) = sink();
+        let tap = sink.tap;
+        let sink = std::sync::Arc::new(sink);
+        let writer = {
+            let sink = sink.clone();
+            std::thread::spawn(move || {
+                for i in 0..20000 {
+                    sink.data(format!("{i},"));
+                }
+            })
+        };
+        let mut receivers = vec![first];
+        for _ in 0..50 {
+            std::thread::sleep(Duration::from_micros(300));
+            assert!(terminal_detach(tap));
+            let (next, rx) = channel();
+            terminal_attach(tap, next).unwrap();
+            receivers.push(rx);
+        }
+        writer.join().unwrap();
+        sink.exit(Some(0));
+        drop(sink);
+        let mut all = String::new();
+        let n = receivers.len();
+        for (k, rx) in receivers.iter().enumerate() {
+            let events = drain(rx);
+            all.push_str(&output_of(&events));
+            if k + 1 < n {
+                assert_eq!(
+                    events.last().map(String::as_str),
+                    Some(r#"{"event":"detached"}"#),
+                    "window {k}"
+                );
+            } else {
+                assert_eq!(
+                    events.last().map(String::as_str),
+                    Some(r#"{"event":"exit","data":0}"#)
+                );
+            }
+        }
+        let expected: String = (0..20000).map(|i| format!("{i},")).collect();
+        assert_eq!(all.len(), expected.len());
+        assert!(
+            all == expected,
+            "output lost, duplicated or reordered across moves"
+        );
+        assert!(
+            !routes().lock().unwrap().contains_key(&tap),
+            "route left after exit"
+        );
+    }
+
+    #[test]
+    fn a_session_whose_sink_drops_without_an_exit_leaves_no_route_behind() {
+        // A failed connect (ssh/pty/serial/telnet) or a serial port closed by the user drops the
+        // sink without an exit event: at baseline the channel went away with the thread.
+        let (sink, _rx) = sink();
+        let tap = sink.tap;
+        drop(sink);
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(
+            !routes().lock().unwrap().contains_key(&tap),
+            "route of tap {tap} leaked"
+        );
+    }
+
+    #[test]
+    fn held_output_is_capped_at_8_mib_keeping_the_newest() {
+        let (sink, _old) = sink();
+        let tap = sink.tap;
+        assert!(terminal_detach(tap));
+        let chunk = "x".repeat(64 * 1024);
+        for _ in 0..(9 * 16) {
+            sink.data(chunk.clone());
+        }
+        sink.data("END".into());
+        std::thread::sleep(Duration::from_millis(500));
+        let (next, rx) = channel();
+        terminal_attach(tap, next).unwrap();
+        sink.exit(Some(0));
+        drop(sink);
+        let out = output_of(&drain(&rx));
+        assert!(out.len() <= HELD_MAX_BYTES, "held {} bytes", out.len());
+        assert!(out.ends_with("END"));
+    }
+
+    #[test]
+    fn a_session_already_detached_cannot_be_detached_again() {
+        let (sink, _old) = sink();
+        let tap = sink.tap;
+        assert!(terminal_detach(tap));
+        // A second move would wait for a `detached` that never comes.
+        assert!(!terminal_detach(tap));
+        terminal_attach(tap, channel().0).unwrap();
+        assert!(terminal_detach(tap));
     }
 
     #[test]

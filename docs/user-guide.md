@@ -390,10 +390,10 @@ Tab sets are kept in `tab-sets.json` in the app config directory (atomic, mode `
 
 ## Moving a tab to a new window
 
-Right-click a tab (on top or in DEV mode's column) and choose **Open in new window** to take it out of this window and go on with it in a new PlexusTerm window. Nothing is restarted: its terminals keep running there (the shell, an AI command-line tool, an SSH, Mosh, Telnet or serial connection), each showing what it showed here, scrollback included, and nothing they print during the move is lost. The tab keeps its split panes, title, colour and DEV mode with the folders added to its workspace.
+Right-click a tab (on top or in DEV mode's column) and choose **Open in new window** to take it out of this window and go on with it in a new PlexusTerm window. Nothing is restarted: its terminals keep running there (the shell, an AI command-line tool, an SSH, Mosh, Telnet or serial connection), each showing what it showed here, scrollback included; what they print during the move is kept for the new window (up to 8 MB, beyond which the oldest of it is dropped). The tab keeps its split panes, title, colour and DEV mode with the folders added to its workspace.
 
 - **Left behind:** AI chats and file viewers of the tab close, and logging or recording of its output stops. A shared tab cannot be moved (the option is greyed out) until its share ends; a tab watching another PlexusTerm's share has no such option.
-- **The new window** works like the first one, with its own tab bar and sidebar. It closes when its last tab closes, and closing it closes its tabs first (their terminals end with them; unsaved file edits ask first). Its tabs are not saved in `tabs.json`, so they do not come back at the next start; only the first window's tabs do.
+- **The new window** works like the first one, with its own tab bar and sidebar. It closes when its last tab closes, and closing it closes its tabs first (their terminals end with them; unsaved file edits ask first). Its tabs are not saved in `tabs.json`, so they do not come back at the next start; only the first window's tabs do. Closing the first window quits PlexusTerm, with every window opened for a moved tab.
 - **Only the first window** opens a folder or a workspace file given to PlexusTerm from outside, and is the one the [drop-down shortcut](#drop-down-window) brings down. Settings changed in one window reach the other ones the next time PlexusTerm starts.
 - When the new window cannot open, the tab stays where it was, its terminals still running, and a notice says why.
 
