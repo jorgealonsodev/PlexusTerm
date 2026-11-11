@@ -138,6 +138,8 @@ export const app = {
   tabs: {
     terminalN: "Terminal {n}",
     copyHost: "Copy host address ({host})",
+    openInNewWindow: "Open in new window",
+    moveFailed: "Could not open the tab in a new window: {error}",
     duplicate: "Duplicate tab",
     showInExplorer: "Show folder in Explorer",
     colour: "Tab colour…",

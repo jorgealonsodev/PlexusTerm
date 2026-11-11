@@ -51,6 +51,8 @@ interface TabBarProps {
   onClose: (key: string) => void;
   onNew: () => void;
   /** Right-click menu actions (the menu leaves out the ones not given). */
+  /** Moves the tab, its sessions still running, to a new window. */
+  onMoveToWindow?: (key: string) => void;
   onDuplicate?: (key: string) => void;
   onCloseOthers?: (key: string) => void;
   onCloseRight?: (key: string) => void;
@@ -234,6 +236,13 @@ export function TabBar(props: TabBarProps) {
         (tab.target.type === "local" || tab.target.type === "ssh") && {
           label: t("app.tabs.showInExplorer"),
           onSelect: () => props.onShowInExplorer!(key),
+        },
+      props.onMoveToWindow &&
+        !watching && {
+          label: t("app.tabs.openInNewWindow"),
+          onSelect: () => props.onMoveToWindow!(key),
+          // A shared tab stays where its share runs.
+          disabled: props.shared?.has(key) ?? false,
         },
       props.onDuplicate && { label: t("app.tabs.duplicate"), onSelect: () => props.onDuplicate!(key) },
       props.onColor && menu && { label: t("app.tabs.colour"), onSelect: () => setColorMenu({ key, x: menu.x, y: menu.y }) },

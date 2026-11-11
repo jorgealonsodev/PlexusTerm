@@ -1,4 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
+import { listenHere } from "../windows/currentWindow";
 import { useEffect, useRef } from "react";
 import { useDialogs } from "../dialogs/DialogProvider";
 import { t } from "../../i18n/i18n";
@@ -37,7 +37,7 @@ export function EditUploads({ onNotice }: { onNotice: (text: string) => void }) 
     let unlisten: (() => void) | undefined;
     let disposed = false;
     try {
-      listen<EditSaved>(EDIT_SAVED_EVENT, ({ payload }) => void onSaved(payload))
+      listenHere<EditSaved>(EDIT_SAVED_EVENT, ({ payload }) => void onSaved(payload))
         .then((stop) => (disposed ? stop() : (unlisten = stop)))
         .catch(() => {});
     } catch {

@@ -79,6 +79,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "Verbindung zu {target} über {jumps} wird hergestellt...",
     stillConnecting: "Warte auf den Host … {seconds} s (Strg+C bricht ab)",
     connectCancelled: "Verbindung abgebrochen",
+    moveFailed: "Dieses Terminal konnte nicht in das andere Fenster verschoben werden",
     connectionLost: "Verbindung verloren",
     reconnectWait: "Neu verbinden … Versuch {attempt} von {max} in {seconds} s (Strg+C bricht ab)",
     reconnecting: "Neu verbinden mit {target} (Versuch {attempt} von {max}) ...",

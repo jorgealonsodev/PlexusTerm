@@ -79,6 +79,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "{jumps} के माध्यम से {target} से कनेक्ट हो रहा है...",
     stillConnecting: "होस्ट की प्रतीक्षा… {seconds} से. (Ctrl+C रद्द करता है)",
     connectCancelled: "कनेक्शन रद्द किया गया",
+    moveFailed: "इस टर्मिनल को दूसरी विंडो में नहीं ले जाया जा सका",
     connectionLost: "कनेक्शन टूट गया",
     reconnectWait: "फिर से कनेक्ट हो रहा है… प्रयास {attempt}/{max}, {seconds} से. में (Ctrl+C रद्द करता है)",
     reconnecting: "{target} से फिर से कनेक्ट हो रहा है (प्रयास {attempt}/{max})...",

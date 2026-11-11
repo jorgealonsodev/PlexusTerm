@@ -15,7 +15,9 @@ export type TerminalEvent =
   /** SSH only, instead of `exit`: the connection went away under the session (no exit status). */
   | { event: "lost" }
   /** A ZMODEM transfer started by `sz`/`rz` on the other end (not in Mosh sessions). */
-  | { event: "zmodem"; data: ZmodemNotice };
+  | { event: "zmodem"; data: ZmodemNotice }
+  /** Last event of a pane whose tab moved to another window: the rest goes there. */
+  | { event: "detached" };
 
 export interface StartOptions {
   cols: number;
@@ -54,6 +56,19 @@ function channelFor(onEvent: (event: TerminalEvent) => void) {
   const channel = new Channel<TerminalEvent>();
   channel.onmessage = onEvent;
   return channel;
+}
+
+/**
+ * The session of share tap `tap` leaves this window (its tab moves to another one): it ends its
+ * events with `detached`. Resolves to false when the session no longer runs.
+ */
+export function detachTerminal(tap: number) {
+  return invoke<boolean>("terminal_detach", { tap });
+}
+
+/** This window takes the session of share tap `tap`: its tap, what it printed meanwhile, then its events. */
+export function attachTerminal(tap: number, onEvent: (event: TerminalEvent) => void) {
+  return invoke<void>("terminal_attach", { tap, onEvent: channelFor(onEvent) });
 }
 
 function commands(prefix: "pty" | "ssh") {

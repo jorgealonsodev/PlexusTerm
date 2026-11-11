@@ -39,7 +39,7 @@ import type { Macro } from "../macros/macros";
 import { shortcutFor, type Shortcut } from "../panes/shortcuts";
 import { matchesShortcut } from "../settings/shortcutCapture";
 import { readText, writeText } from "./clipboard";
-import { backendFor, setTerminalFlow, type StartOptions } from "./backend";
+import { attachTerminal, backendFor, detachTerminal, setTerminalFlow, type StartOptions, type TerminalEvent } from "./backend";
 import { createOutputFlow } from "./flowControl";
 import { attemptAfterDrop, MAX_RECONNECT_ATTEMPTS, reconnectDelay, retriesAfter } from "./reconnect";
 import { runningShellOf } from "./localShell";
@@ -152,7 +152,32 @@ interface TerminalViewProps {
   fileLinks?: FileLinks;
   /** Hands out what terminal sharing needs from this pane; returns its unregister function. */
   registerSharePane?: (pane: SharePane) => () => void;
+  /**
+   * A session already running, moved here with its tab from another window: the pane shows what
+   * it showed there and takes the session instead of starting one.
+   */
+  adopt?: Adoption;
+  /**
+   * Hands out how to let this pane's session go to another window (its tab moves there); returns
+   * its unregister function. See {@link PaneDetach}.
+   */
+  registerDetach?: (detach: PaneDetach) => () => void;
 }
+
+/** A running session handed from one window to another: its ids and what its pane showed. */
+export interface Adoption {
+  sessionId: number;
+  tap: number;
+  /** The pane's screen and scrollback, serialized. */
+  content: string;
+}
+
+/**
+ * Lets the pane's session go: once it resolves the session's output waits for the window that
+ * adopts it, and unmounting the pane no longer ends the session. Null when the pane has no running
+ * session (it ended, or never connected). `undo` takes the session back when the move fails.
+ */
+export type PaneDetach = () => Promise<{ adoption: Adoption; undo: () => void } | null>;
 
 /** What the on-demand assistant uses from a pane (S3). */
 export interface AssistTarget {
@@ -374,6 +399,8 @@ export function TerminalView({
   onActivity,
   fileLinks,
   registerSharePane,
+  adopt,
+  registerDetach,
 }: TerminalViewProps) {
   const paneRef = useRef<HTMLDivElement>(null);
   const onAskAiRef = useRef(onAskAi);
@@ -469,8 +496,10 @@ export function TerminalView({
         ? savedLoginOf(sshLogin)
         : null;
   // Keep callbacks current without re-creating the terminal.
-  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure });
-  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure };
+  const callbacks = useRef({ onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure, registerDetach });
+  callbacks.current = { onTitle, onExit, onCwd, onSession, onInput, registerWriter, onLogging, registerMacroTarget, aiSuggest, registerAssistTarget, onAttention, onPrompt, onCommand, onOutputQuiet, onActivity, registerSharePane, onExplainFailure, registerDetach };
+  /** Read once, by the first start. */
+  const adoptRef = useRef(adopt);
   // The platform arrives from the backend after the first render.
   const platform = usePlatform();
   const platformRef = useRef(platform);
@@ -793,7 +822,96 @@ export function TerminalView({
       waitToReconnect(attemptAfterDrop(lastAttempt, Date.now() - connectedAt));
     };
 
+    /** Ends a move of the pane's session to another window once its last event came (`detached`). */
+    let detachDone: (() => void) | null = null;
+    /** The session went to another window: unmounting the pane must not end it. */
+    let detached = false;
+    /** What the pane does with its session's events, for start `seq` (a later start drops them). */
+    const eventHandler = (seq: number) => (event: TerminalEvent) => {
+      if (event.event === "detached") {
+        detachDone?.();
+        return;
+      }
+      // A disposed view (e.g. StrictMode's first mount) must not close the live tab, nor
+      // can an abandoned reconnection attempt.
+      if (disposed || seq !== startSeq) return;
+      // Shared output is output like any other, numbered for the snapshots of the share.
+      let msg = event;
+      if (msg.event === "sharedOutput") {
+        outputSeq = msg.data.seq;
+        msg = { event: "output", data: msg.data.data };
+      }
+      if (msg.event === "tap") tap = tapRef.current = msg.data;
+      else if (msg.event === "zmodem") {
+        const notice = msg.data;
+        setTransfer(zmodemView(notice));
+        if (notice.phase === "offer" && tap !== null) {
+          const title = t(notice.direction === "receive" ? "terminal.zmodem.pickFolder" : "terminal.zmodem.pickFiles");
+          const offerTap = tap;
+          answerZmodemOffer(offerTap, notice.direction, title)
+            .catch((err: unknown) => {
+              // It could not start (an unreadable file, a folder gone): the remote is told to stop.
+              void zmodemCancel(offerTap).catch(() => {});
+              setTransfer({ kind: "failed", direction: notice.direction, message: String(err) });
+            })
+            .finally(() => termRef.current?.focus());
+        }
+      }
+      else if (msg.event === "output") {
+        latencyMark("O", msg.data.length);
+        term.write(msg.data, outputFlow.queued(msg.data.length));
+        logRef.current?.write(msg.data);
+        recordRef.current?.output(msg.data);
+        // The echo of a key in an idle pane is not a program at work.
+        const echo = !activityTimer && performance.now() - lastTyped < ECHO_MS;
+        outputListeners.forEach((listener) => listener(msg.data, echo));
+        active();
+        if (awaitingPrompt) {
+          if (promptTimer) clearTimeout(promptTimer);
+          promptTimer = setTimeout(() => promptCame(false), PROMPT_QUIET_MS);
+        }
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = callbacks.current.onOutputQuiet
+          ? setTimeout(() => {
+              quietTimer = null;
+              callbacks.current.onOutputQuiet?.(cursorRow().toCursor);
+            }, PROMPT_QUIET_MS)
+          : null;
+      }
+      else if (msg.event === "lost" && target.type === "ssh" && settingsRef.current.sshAutoReconnect) {
+        connectionLost();
+      } else {
+        // A lost connection without reconnecting ends like an exit without a status.
+        const code = msg.event === "exit" ? msg.data : null;
+        if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
+        else if (target.type === "mosh" && code !== 0) {
+          endKeepingPane(
+            code === null ? t("terminal.view.moshExited") : t("terminal.view.moshExitedCode", { code }),
+          );
+        } else {
+          callbacks.current.onSession?.(null);
+          callbacks.current.onExit(code);
+        }
+      }
+    };
+
     const start = (trustedFingerprint?: string) => {
+      const adoption = adoptRef.current;
+      if (adoption) {
+        // The session runs already: show what its pane showed in the other window, then take it.
+        adoptRef.current = undefined;
+        const seq = ++startSeq;
+        kitty.reset();
+        term.write(adoption.content);
+        tap = tapRef.current = adoption.tap;
+        sessionId = adoption.sessionId;
+        connectedAt = Date.now();
+        callbacks.current.onSession?.(adoption.sessionId);
+        void attachTerminal(adoption.tap, eventHandler(seq)).catch(() => endKeepingPane(t("terminal.view.moveFailed")));
+        // This window's pane may have another size than the one it came from.
+        void backend.resize(adoption.sessionId, term.cols, term.rows).catch(() => {});
+        return;
+      }
       const seq = ++startSeq;
       // A new session (or a reconnection) starts with the keys of a fresh terminal.
       kitty.reset();
@@ -851,69 +969,7 @@ export function TerminalView({
         ...typedLogin.current,
       };
       backend
-        .start(options, (event) => {
-          // A disposed view (e.g. StrictMode's first mount) must not close the live tab, nor
-          // can an abandoned reconnection attempt.
-          if (disposed || seq !== startSeq) return;
-          // Shared output is output like any other, numbered for the snapshots of the share.
-          let msg = event;
-          if (msg.event === "sharedOutput") {
-            outputSeq = msg.data.seq;
-            msg = { event: "output", data: msg.data.data };
-          }
-          if (msg.event === "tap") tap = tapRef.current = msg.data;
-          else if (msg.event === "zmodem") {
-            const notice = msg.data;
-            setTransfer(zmodemView(notice));
-            if (notice.phase === "offer" && tap !== null) {
-              const title = t(notice.direction === "receive" ? "terminal.zmodem.pickFolder" : "terminal.zmodem.pickFiles");
-              const offerTap = tap;
-              answerZmodemOffer(offerTap, notice.direction, title)
-                .catch((err: unknown) => {
-                  // It could not start (an unreadable file, a folder gone): the remote is told to stop.
-                  void zmodemCancel(offerTap).catch(() => {});
-                  setTransfer({ kind: "failed", direction: notice.direction, message: String(err) });
-                })
-                .finally(() => termRef.current?.focus());
-            }
-          }
-          else if (msg.event === "output") {
-            latencyMark("O", msg.data.length);
-            term.write(msg.data, outputFlow.queued(msg.data.length));
-            logRef.current?.write(msg.data);
-            recordRef.current?.output(msg.data);
-            // The echo of a key in an idle pane is not a program at work.
-            const echo = !activityTimer && performance.now() - lastTyped < ECHO_MS;
-            outputListeners.forEach((listener) => listener(msg.data, echo));
-            active();
-            if (awaitingPrompt) {
-              if (promptTimer) clearTimeout(promptTimer);
-              promptTimer = setTimeout(() => promptCame(false), PROMPT_QUIET_MS);
-            }
-            if (quietTimer) clearTimeout(quietTimer);
-            quietTimer = callbacks.current.onOutputQuiet
-              ? setTimeout(() => {
-                  quietTimer = null;
-                  callbacks.current.onOutputQuiet?.(cursorRow().toCursor);
-                }, PROMPT_QUIET_MS)
-              : null;
-          }
-          else if (msg.event === "lost" && target.type === "ssh" && settingsRef.current.sshAutoReconnect) {
-            connectionLost();
-          } else {
-            // A lost connection without reconnecting ends like an exit without a status.
-            const code = msg.event === "exit" ? msg.data : null;
-            if (target.type === "serial") endKeepingPane(t("terminal.view.serialEnded"));
-            else if (target.type === "mosh" && code !== 0) {
-              endKeepingPane(
-                code === null ? t("terminal.view.moshExited") : t("terminal.view.moshExitedCode", { code }),
-              );
-            } else {
-              callbacks.current.onSession?.(null);
-              callbacks.current.onExit(code);
-            }
-          }
-        })
+        .start(options, eventHandler(seq))
         .then((id) => {
           if (seq === startSeq) stopWaiting();
           if (disposed || ended || seq !== startSeq) void backend.close(id).catch(() => {});
@@ -1277,6 +1333,29 @@ export function TerminalView({
       notice: (text) => term.write(`\r\n${red(text)}`),
     });
 
+    const unregisterDetach = callbacks.current.registerDetach?.(async () => {
+      if (sessionId === null || tap === null || ended || reconnectWait) return null;
+      const id = sessionId;
+      const moving = tap;
+      // Every event sent before the session left reaches the pane first (the last one is `detached`).
+      const done = new Promise<void>((resolve) => (detachDone = resolve));
+      if (!(await detachTerminal(moving).catch(() => false))) {
+        detachDone = null;
+        return null;
+      }
+      await done;
+      detachDone = null;
+      detached = true;
+      const content = await new Promise<string>((resolve) => term.write("", () => resolve(serializer.serialize())));
+      return {
+        adoption: { sessionId: id, tap: moving, content },
+        undo: () => {
+          detached = false;
+          void attachTerminal(moving, eventHandler(++startSeq)).catch(() => endKeepingPane(t("terminal.view.moveFailed")));
+        },
+      };
+    });
+
     const unregisterSharePane = callbacks.current.registerSharePane?.({
       tap: () => tap,
       size: () => ({ cols: term.cols, rows: term.rows }),
@@ -1530,6 +1609,7 @@ export function TerminalView({
       unregisterMacroTarget?.();
       unregisterAssistTarget?.();
       unregisterSharePane?.();
+      unregisterDetach?.();
       resizeListeners.clear();
       outputListeners.clear();
       observer.disconnect();
@@ -1551,7 +1631,8 @@ export function TerminalView({
       webglRef.current = null;
       exactCanvasRef.current?.();
       exactCanvasRef.current = null;
-      if (sessionId !== null) void backend.close(sessionId);
+      // A session moved to another window goes on there.
+      if (sessionId !== null && !detached) void backend.close(sessionId);
       kitty.reset();
       term.dispose();
     };

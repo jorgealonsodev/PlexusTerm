@@ -51,7 +51,6 @@ import { local } from "./features/local/localClient";
 import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
 import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { listen } from "@tauri-apps/api/event";
 import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize } from "./features/settings/settings";
 import { attachWheelZoom } from "./features/settings/wheelZoom";
 import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
@@ -114,7 +113,9 @@ import { AuditLogDialog } from "./features/share/AuditLogDialog";
 import { noticeText } from "./features/share/labels";
 import { SharedView } from "./features/share/SharedView";
 import { OpenSharedDialog } from "./features/share/OpenSharedDialog";
-import { TerminalView, type AiSuggestContext, type AssistTarget, type PathSource } from "./features/terminal/TerminalView";
+import { TerminalView, type Adoption, type AiSuggestContext, type AssistTarget, type PaneDetach, type PathSource } from "./features/terminal/TerminalView";
+import { parseMovedTab, type MovedTab } from "./features/tabs/movedTab";
+import { listenHere } from "./features/windows/currentWindow";
 import { FindAllDialog } from "./features/search/FindAllDialog";
 import { findInPanes, locate, searchablePanes, type FindResult, type FindTarget } from "./features/search/findAll";
 import { ChatPane, type ChatTarget } from "./features/ai/ChatPane";
@@ -336,13 +337,33 @@ function AppContent() {
   const connectedPanes = useRef(new Set<string>());
   /** Opened with a workspace or a folder: its tabs never replace the saved ones in tabs.json. */
   const explicitLaunch = useRef(false);
+  /** This window was opened for a tab moved out of another one; it closes with its last tab. */
+  const [movedWindow, setMovedWindow] = useState(false);
+  /** The tab moved here, until its tab is open: its sessions by the pane ids of the other window. */
+  const movedIn = useRef<MovedTab | null>(null);
+  /** Sessions moved here from another window, by their pane id here (each pane reads its own once). */
+  const adoptions = useRef(new Map<string, Adoption>());
+  /** How each terminal pane lets its session go to another window, by pane id. */
+  const paneDetachers = useRef(new Map<string, PaneDetach>());
   useEffect(() => {
     if (!terminalSettings.loaded || started.current) return;
     started.current = true;
+    // A window opened for a tab moved out of another one opens that tab, with its sessions, and
+    // nothing else; it never reads or writes tabs.json.
+    void invoke<string | null>("window_handoff_take")
+      .catch(() => null)
+      .then((handoff) => {
+        const moved = parseMovedTab(handoff);
+        if (!moved) return startAsUsual();
+        explicitLaunch.current = true;
+        movedIn.current = moved;
+        setMovedWindow(true);
+        setPendingRestore(moved.doc);
+      });
     // Opened with a VS Code workspace file: its DEV tab instead of the usual terminal; opened with
     // a folder: the usual terminal, started there; otherwise the tabs of the last run when
     // Settings say so.
-    void invoke<string | null>("launch_workspace_take")
+    const startAsUsual = () => void invoke<string | null>("launch_workspace_take")
       .catch(() => null)
       .then(async (file) => ({ file, folders: file ? await workspaceFoldersOf(file) : [] }))
       .then(async ({ file, folders }) => {
@@ -487,7 +508,7 @@ function AppContent() {
   sharesRef.current = shares;
   // Quitting with shares asks first; the backend holds the window until the answer.
   useEffect(() => {
-    const stop = listen("share-quit-requested", () => {
+    const stop = listenHere("share-quit-requested", () => {
       const all = Object.keys(sharesRef.current.byPane);
       const count = sharesRef.current.viewersOf(all);
       void dialogs
@@ -496,6 +517,13 @@ function AppContent() {
     });
     return () => void stop.then((unlisten) => unlisten()).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // A moved tab's window being closed: its tabs close first, their sessions with them (unsaved
+  // edits ask, and can keep it open), then it closes itself once it has none (see moveToWindow).
+  const closeMovedWindow = useRef<() => void>(() => {});
+  useEffect(() => {
+    const stop = listenHere("moved-window-close-requested", () => closeMovedWindow.current());
+    return () => void stop.then((unlisten) => unlisten()).catch(() => {});
   }, []);
   const macros = useMacros();
   const [macroTargets] = useState(() => createTargetRegistry<MacroTarget>());
@@ -941,14 +969,14 @@ function AppContent() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let disposed = false;
-    listen<string>("open-workspace", ({ payload }) => {
+    listenHere<string>("open-workspace", ({ payload }) => {
       void workspaceFoldersOf(payload).then((folders) => folders.length > 0 && openWorkspaceFileRef.current(payload, folders));
     })
       .then((stop) => (disposed ? stop() : (unlisten = stop)))
       .catch(() => {});
     // A folder given to a second launch opens as a new terminal here.
     let unlistenFolder: (() => void) | undefined;
-    listen<string>("open-folder", ({ payload }) => openFolderRef.current(payload))
+    listenHere<string>("open-folder", ({ payload }) => openFolderRef.current(payload))
       .then((stop) => (disposed ? stop() : (unlistenFolder = stop)))
       .catch(() => {});
     return () => {
@@ -1027,6 +1055,20 @@ function AppContent() {
     );
     const plan = planRestore(doc, targets, stateRef.current);
     if (plan.tabs.length === 0) return 0;
+    const moved = movedIn.current;
+    if (moved) {
+      movedIn.current = null;
+      // The panes keep their order: each running session goes to the pane that takes its place.
+      const before = paneIds(doc.tabs[0].layout);
+      const after = paneIds(plan.tabs[0].layout);
+      before.forEach((pane, i) => {
+        const adoption = moved.panes[pane];
+        if (!adoption) return;
+        adoptions.current.set(after[i], adoption);
+        // The shell is in its folder already: nothing is typed into it.
+        delete plan.cwds[after[i]];
+      });
+    }
     for (const tab of plan.tabs) {
       if (tab.target.type !== "local" || !tab.target.cwd) continue;
       for (const pane of paneIds(tab.layout)) restoredCwds.current.set(pane, plan.cwds[pane] ?? tab.target.cwd);
@@ -1036,6 +1078,7 @@ function AppContent() {
     const added = plan.dev.filter((d) => d.folders.length > 0);
     if (added.length) setWorkspaceFolders((prev) => ({ ...prev, ...Object.fromEntries(added.map((d) => [d.key, d.folders])) }));
     dispatch({ type: "restore", tabs: plan.tabs, activeKey: activateFirst ? plan.tabs[0].key : plan.activeKey });
+    if (moved?.title) dispatch({ type: "rename", key: plan.tabs[0].key, title: moved.title });
     return plan.tabs.length;
   };
   // The tabs of the last run reopen once the saved sessions they refer to are known (S2.2): a
@@ -1077,6 +1120,53 @@ function AppContent() {
       },
       workspaceOf: (key) => workspaceFolders[key],
     });
+  /**
+   * Moves tab `key`, live, to a new window: its sessions leave this window without ending, the new
+   * window shows what their panes showed and takes them, and the tab leaves this window's list.
+   * When the window cannot open, the panes take their sessions back.
+   */
+  const moveToWindow = async (key: string) => {
+    const tab = state.tabs.find((t) => t.key === key);
+    if (!tab || tab.target.type === "shared" || sharedTabs.has(key)) return;
+    const doc = snapshotTabs({
+      tabs: [tab],
+      activeKey: key,
+      cwdOf: (pane) => paneMeta[pane]?.cwd ?? restoredCwds.current.get(pane) ?? null,
+      devOf: (k) => {
+        const tabDev = dev.state[k];
+        return tabDev && { pane: tabDev.pane, folder: tabDev.folder ?? tabDev.root };
+      },
+      workspaceOf: (k) => workspaceFolders[k],
+    });
+    const saved = doc.tabs[0];
+    if (!saved) return;
+    const moved: { pane: string; adoption: Adoption; undo: () => void }[] = [];
+    for (const pane of paneIds(saved.layout)) {
+      const result = await paneDetachers.current.get(pane)?.().catch(() => null);
+      if (result) moved.push({ pane, ...result });
+    }
+    const handoff: MovedTab = {
+      doc,
+      panes: Object.fromEntries(moved.map(({ pane, adoption }) => [pane, adoption])),
+      title: tab.title,
+    };
+    try {
+      await invoke("window_open_tab", { handoff: JSON.stringify(handoff), title: tab.title });
+    } catch (err) {
+      moved.forEach(({ undo }) => undo());
+      setNotice(t("app.tabs.moveFailed", { error: String(err) }));
+      return;
+    }
+    dispatch({ type: "close", key });
+  };
+  closeMovedWindow.current = () => {
+    if (stateRef.current.tabs.length === 0) void invoke("window_close_self").catch(() => {});
+    else void dispatchKeepingEdits({ type: "closeAll" });
+  };
+  // A window opened for a moved tab closes once its last tab is closed (or moved on).
+  useEffect(() => {
+    if (movedWindow && startupDone && state.tabs.length === 0) void invoke("window_close_self").catch(() => {});
+  }, [movedWindow, startupDone, state.tabs.length]);
   // tabs.json follows the open tabs, a moment after they change, once startup has opened its own (S2.1).
   const { restoreTabs } = terminalSettings.settings;
   const lastSavedTabs = useRef<string | null>(null);
@@ -2309,6 +2399,7 @@ function AppContent() {
               dispatch({ type: "duplicate", key });
             }}
             onColor={colorTab}
+            onMoveToWindow={(key) => void moveToWindow(key)}
             onCloseOthers={(key) => void dispatchKeepingEdits({ type: "closeOthers", key })}
             onCloseRight={(key) => void dispatchKeepingEdits({ type: "closeRight", key })}
             onCloseAll={() => void dispatchKeepingEdits({ type: "closeAll" })}
@@ -2461,6 +2552,11 @@ function AppContent() {
                             registerAssistTarget={(target) => assistTargets.register(paneId, target)}
                             registerFindTarget={(target) => findTargets.register(paneId, target)}
                             registerSharePane={(pane) => sharesRef.current.registerPane(paneId, pane)}
+                            adopt={adoptions.current.get(paneId)}
+                            registerDetach={(detach) => {
+                              paneDetachers.current.set(paneId, detach);
+                              return () => paneDetachers.current.delete(paneId);
+                            }}
                             aiSuggest={settings.aiSuggestions ? aiSuggestFor(paneId, tab.target) : undefined}
                             paths={tab.target.type === "local" ? LOCAL_PATHS : undefined}
                             settings={terminalSettings.settings}

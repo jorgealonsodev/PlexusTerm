@@ -135,7 +135,8 @@ pub fn listen(app: AppHandle) {
 fn on_forwarded(app: &AppHandle, file: PathBuf) {
     use tauri::{Emitter, Manager};
     let event = if file.is_dir() { OPEN_FOLDER_EVENT } else { OPEN_WORKSPACE_EVENT };
-    let _ = app.emit(event, file.to_string_lossy().into_owned());
+    // Only the main window opens it: a window holding a moved tab is not the one launches go to.
+    let _ = app.emit_to("main", event, file.to_string_lossy().into_owned());
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.set_focus();

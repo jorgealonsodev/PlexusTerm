@@ -34,6 +34,33 @@ describe("TabBar", () => {
     expect(onShare).toHaveBeenCalledWith("t2");
   });
 
+  it("offers Open in new window, except on a tab that watches a share, and not while the tab is shared", () => {
+    const onMoveToWindow = vi.fn();
+    const watching = {
+      ...tab("t3", "Shared · relay.example.com"),
+      target: { type: "shared" as const, url: "https://view.example.com/s/a#b", relayUrl: "wss://relay.example.com", relayHost: "relay.example.com" },
+    };
+    render(
+      <TabBar
+        tabs={[tab("t1", "one"), tab("t2", "two"), watching]}
+        activeKey="t1"
+        onActivate={() => {}}
+        onNew={() => {}}
+        onClose={() => {}}
+        onMoveToWindow={onMoveToWindow}
+        shared={new Map([["t2", 1]])}
+      />,
+    );
+    fireEvent.contextMenu(screen.getByTitle("one"), { clientX: 5, clientY: 5 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open in new window" }));
+    expect(onMoveToWindow).toHaveBeenCalledWith("t1");
+    fireEvent.contextMenu(screen.getByTitle("two"), { clientX: 5, clientY: 5 });
+    expect((screen.getByRole("menuitem", { name: "Open in new window" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.contextMenu(screen.getByTitle("Shared · relay.example.com"), { clientX: 5, clientY: 5 });
+    expect(screen.queryByRole("menuitem", { name: "Open in new window" })).toBeNull();
+  });
+
   it("marks the tabs whose output is logged to a file", () => {
     render(
       <TabBar

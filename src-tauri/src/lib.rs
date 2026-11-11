@@ -58,6 +58,9 @@ enum TerminalEvent {
     Lost,
     /// A ZMODEM file transfer's offer or progress (see [`zmodem`]).
     Zmodem(zmodem::Notice),
+    /// Last event of a window whose tab moves to another one ([`terminal_detach`]): everything
+    /// sent before it is the window's, everything after goes to the next window.
+    Detached,
 }
 
 /// Where a session's events go: the window showing it, or, while its tab moves to another window
@@ -128,7 +131,9 @@ fn terminal_detach(tap: u64) -> bool {
     let Some(route) = routes().lock().unwrap().get(&tap).cloned() else {
         return false;
     };
-    route.state.lock().unwrap().channel = None;
+    if let Some(channel) = route.state.lock().unwrap().channel.take() {
+        let _ = channel.send(TerminalEvent::Detached);
+    }
     diaglog::info(&format!("terminal tap {tap}: detached from its window"));
     true
 }
@@ -320,6 +325,93 @@ async fn zmodem_send(tap: u64, paths: Vec<String>) -> Result<(), String> {
 #[tauri::command]
 fn zmodem_cancel(tap: u64) -> Result<(), String> {
     zmodem::cancel(tap)
+}
+
+/// Tabs handed to the windows opened for them, by window label, until each window takes its own.
+#[derive(Default)]
+struct Handoffs {
+    next: std::sync::atomic::AtomicU32,
+    waiting: std::sync::Mutex<std::collections::HashMap<String, String>>,
+}
+
+/// Label prefix of the windows a tab is moved to; the main window is "main".
+const TAB_WINDOW_PREFIX: &str = "tab-";
+
+/// Opens a new PlexusTerm window for a tab moved out of another one; `handoff` (the tab and its
+/// sessions, as the frontend wrote it) waits for the new window ([`window_handoff_take`]).
+#[tauri::command]
+async fn window_open_tab(
+    handoff: String,
+    title: Option<String>,
+    app: AppHandle,
+    handoffs: State<'_, Handoffs>,
+) -> Result<(), String> {
+    let n = handoffs
+        .next
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        + 1;
+    let label = format!("{TAB_WINDOW_PREFIX}{n}");
+    handoffs
+        .waiting
+        .lock()
+        .unwrap()
+        .insert(label.clone(), handoff);
+    let built =
+        tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App("index.html".into()))
+            .title(title.unwrap_or_else(|| "PlexusTerm".into()))
+            .inner_size(1200.0, 760.0)
+            .build();
+    if let Err(e) = built {
+        handoffs.waiting.lock().unwrap().remove(&label);
+        diaglog::warn(&format!("window for a moved tab failed to open: {e}"));
+        return Err(e.to_string());
+    }
+    diaglog::info(&format!("window {label} opened for a moved tab"));
+    Ok(())
+}
+
+/// The tab handed to the calling window, once; None for the main window or a window started
+/// without one.
+#[tauri::command]
+fn window_handoff_take(
+    window: tauri::WebviewWindow,
+    handoffs: State<'_, Handoffs>,
+) -> Option<String> {
+    handoffs.waiting.lock().unwrap().remove(window.label())
+}
+
+/// Asks a moved tab's window to close its tabs (their sessions end with them) before it goes.
+const MOVED_WINDOW_CLOSE_EVENT: &str = "moved-window-close-requested";
+
+#[derive(Debug, PartialEq, Eq)]
+enum CloseAction {
+    Close,
+    /// A moved tab's window: its tabs close first, then it closes itself ([`window_close_self`]),
+    /// so no session is left running without a window.
+    CloseTabsFirst,
+    /// The main window with a live share: the user confirms quitting.
+    ConfirmQuit,
+}
+
+/// What closing window `label` does; `must_confirm_quit` is asked only for the main window.
+fn close_action(label: &str, must_confirm_quit: impl FnOnce() -> bool) -> CloseAction {
+    if label.starts_with(TAB_WINDOW_PREFIX) {
+        CloseAction::CloseTabsFirst
+    } else if must_confirm_quit() {
+        CloseAction::ConfirmQuit
+    } else {
+        CloseAction::Close
+    }
+}
+
+/// Closes the calling window once its tabs are closed (a moved tab's window).
+#[tauri::command]
+fn window_close_self(window: tauri::WebviewWindow) -> Result<(), String> {
+    if !window.label().starts_with(TAB_WINDOW_PREFIX) {
+        return Err("Only a moved tab's window closes itself".into());
+    }
+    // Destroyed, not closed: closing would ask the window to close its tabs again.
+    window.destroy().map_err(|e| e.to_string())
 }
 
 /// Pauses (or resumes) reading the session of share tap `tap` while its pane has too much output
@@ -1156,6 +1248,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_notification::init())
+        .manage(Handoffs::default())
         .manage(PtyManager::default())
         .manage(SerialManager::default())
         .manage(TelnetManager::default())
@@ -1191,17 +1284,30 @@ pub fn run() {
         })
         // Closing the window with shared tabs asks first ("Stop sharing and quit?").
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event
-                && window.state::<share::ShareManager>().must_confirm_quit()
-            {
-                api.prevent_close();
-                let _ = window.emit(share::commands::QUIT_REQUESTED_EVENT, ());
+            let tauri::WindowEvent::CloseRequested { api, .. } = event else {
+                return;
+            };
+            let label = window.label();
+            let confirm = || window.state::<share::ShareManager>().must_confirm_quit();
+            match close_action(label, confirm) {
+                CloseAction::Close => {}
+                CloseAction::CloseTabsFirst => {
+                    api.prevent_close();
+                    let _ = window.emit_to(label, MOVED_WINDOW_CLOSE_EVENT, ());
+                }
+                CloseAction::ConfirmQuit => {
+                    api.prevent_close();
+                    let _ = window.emit_to(label, share::commands::QUIT_REQUESTED_EVENT, ());
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
             terminal_flow,
             terminal_detach,
             terminal_attach,
+            window_open_tab,
+            window_handoff_take,
+            window_close_self,
             zmodem_enabled,
             zmodem_receive,
             zmodem_send,
@@ -1487,8 +1593,13 @@ mod tests {
             events.last().map(String::as_str),
             Some(r#"{"event":"exit","data":0}"#)
         );
-        // Nothing reached the first window after it let the tab go.
-        assert_eq!(output_of(&drain(&old)), "");
+        // The first window got the end of its stream, then nothing more.
+        let rest = drain(&old);
+        assert_eq!(output_of(&rest), "");
+        assert_eq!(
+            rest.last().map(String::as_str),
+            Some(r#"{"event":"detached"}"#)
+        );
     }
 
     #[test]
@@ -1516,6 +1627,16 @@ mod tests {
     fn a_session_that_is_not_running_cannot_be_detached_or_attached() {
         assert!(!terminal_detach(u64::MAX));
         assert!(terminal_attach(u64::MAX, channel().0).is_err());
+    }
+
+    #[test]
+    fn a_moved_tabs_window_closes_its_tabs_first_and_only_the_main_window_confirms_a_share() {
+        assert_eq!(
+            close_action("tab-3", || panic!("never asked")),
+            CloseAction::CloseTabsFirst
+        );
+        assert_eq!(close_action("main", || true), CloseAction::ConfirmQuit);
+        assert_eq!(close_action("main", || false), CloseAction::Close);
     }
 
     #[test]

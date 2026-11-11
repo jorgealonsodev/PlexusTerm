@@ -79,6 +79,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "{jumps}을(를) 거쳐 {target}에 연결하는 중...",
     stillConnecting: "호스트를 기다리는 중… {seconds}초 (Ctrl+C로 취소)",
     connectCancelled: "연결이 취소되었습니다",
+    moveFailed: "이 터미널을 다른 창으로 옮기지 못했습니다",
     connectionLost: "연결이 끊겼습니다",
     reconnectWait: "다시 연결하는 중… {max}회 중 {attempt}번째 시도까지 {seconds}초 (Ctrl+C로 취소)",
     reconnecting: "{target}에 다시 연결하는 중 ({max}회 중 {attempt}번째 시도)...",

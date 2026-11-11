@@ -152,6 +152,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "الطرفية {n}",
     copyHost: "نسخ عنوان المضيف ({host})",
+    openInNewWindow: "فتح في نافذة جديدة",
+    moveFailed: "تعذّر فتح علامة التبويب في نافذة جديدة: {error}",
     duplicate: "تكرار علامة التبويب",
     showInExplorer: "عرض المجلد في المستكشف",
     colour: "لون علامة التبويب…",

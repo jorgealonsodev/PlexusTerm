@@ -77,6 +77,7 @@ export const terminal = {
     connectingVia: "Connecting to {target} via {jumps}...",
     stillConnecting: "Waiting for the host… {seconds} s (Ctrl+C cancels)",
     connectCancelled: "Connection cancelled",
+    moveFailed: "Could not move this terminal to the other window",
     connectionLost: "Connection lost",
     reconnectWait: "Reconnecting… attempt {attempt} of {max} in {seconds} s (Ctrl+C cancels)",
     reconnecting: "Reconnecting to {target} (attempt {attempt} of {max})...",

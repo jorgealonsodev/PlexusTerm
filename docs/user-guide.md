@@ -12,6 +12,7 @@ How each feature works, its limits and where its data is stored. For installing,
 | [File explorer](#file-explorer) | Local files of the active local tab, VS Code-style lists and workspaces in DEV mode, viewing files, dropping files on terminals and on the AI chat |
 | [SSH tunnels](#ssh-tunnels) | Local, remote and dynamic (SOCKS5) forwards |
 | [Split panes and multi-execution](#split-panes-and-multi-execution) | Panes, typing into several terminals |
+| [Moving a tab to a new window](#moving-a-tab-to-a-new-window) | Taking a tab, its terminals still running, to a window of its own |
 | [Drop-down window](#drop-down-window) | A global shortcut that brings the window down from the top of the screen and hides it |
 | [Sharing a tab](#sharing-a-tab) | A link to watch and type into a tab from another computer or a phone, through your own relay |
 | [Interface language](#interface-language) | The ten languages, the system default and getting back to English |
@@ -386,6 +387,15 @@ A tab set is a named copy of the tabs open now, such as "Production" or "Project
 - **Renaming and deleting:** **Rename** and **Delete** next to each set in **Tab sets…**; deleting asks first and leaves its tabs that are open as they are.
 
 Tab sets are kept in `tab-sets.json` in the app config directory (atomic, mode `0600`) on this computer only: they are not [synced](#sync-settings-between-computers). A file that cannot be understood shows no sets.
+
+## Moving a tab to a new window
+
+Right-click a tab (on top or in DEV mode's column) and choose **Open in new window** to take it out of this window and go on with it in a new PlexusTerm window. Nothing is restarted: its terminals keep running there (the shell, an AI command-line tool, an SSH, Mosh, Telnet or serial connection), each showing what it showed here, scrollback included, and nothing they print during the move is lost. The tab keeps its split panes, title, colour and DEV mode with the folders added to its workspace.
+
+- **Left behind:** AI chats and file viewers of the tab close, and logging or recording of its output stops. A shared tab cannot be moved (the option is greyed out) until its share ends; a tab watching another PlexusTerm's share has no such option.
+- **The new window** works like the first one, with its own tab bar and sidebar. It closes when its last tab closes, and closing it closes its tabs first (their terminals end with them; unsaved file edits ask first). Its tabs are not saved in `tabs.json`, so they do not come back at the next start; only the first window's tabs do.
+- **Only the first window** opens a folder or a workspace file given to PlexusTerm from outside, and is the one the [drop-down shortcut](#drop-down-window) brings down. Settings changed in one window reach the other ones the next time PlexusTerm starts.
+- When the new window cannot open, the tab stays where it was, its terminals still running, and a notice says why.
 
 ## Drop-down window
 
@@ -803,7 +813,7 @@ Menus show each action's shortcut beside it, discreetly at the right: the termin
 | Ctrl+Enter | In AI command-line tools that turn on the keyboard protocol (Claude Code…), their own Ctrl+Enter, e.g. to send a message while the tool works (see [AI command-line tools](#ai-command-line-tools)) |
 | Middle click on a tab | Close that tab |
 | Drag a tab | Put it in another place, on top or in DEV mode's column; a line shows where it lands |
-| Right click on a tab | Share… (Sharing… while shared), Copy host address (SSH, Telnet and Mosh tabs), Show folder in Explorer (local and SSH tabs), Duplicate tab, Tab colour…, Close tab, Close other tabs, Close tabs to the right (Close tabs below in DEV mode's column), Close all tabs |
+| Right click on a tab | Share… (Sharing… while shared), Copy host address (SSH, Telnet and Mosh tabs), Show folder in Explorer (local and SSH tabs), Open in new window, Duplicate tab, Tab colour…, Close tab, Close other tabs, Close tabs to the right (Close tabs below in DEV mode's column), Close all tabs |
 
 These are the defaults. Shortcuts handled by the app never reach the shell.
 

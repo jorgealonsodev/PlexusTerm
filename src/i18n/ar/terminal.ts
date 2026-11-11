@@ -86,6 +86,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "جارٍ الاتصال بـ {target} عبر {jumps}...",
     stillConnecting: "بانتظار المضيف… {seconds} ث (Ctrl+C للإلغاء)",
     connectCancelled: "أُلغي الاتصال",
+    moveFailed: "تعذّر نقل هذه الطرفية إلى النافذة الأخرى",
     connectionLost: "انقطع الاتصال",
     reconnectWait: "جارٍ إعادة الاتصال… المحاولة {attempt} من {max} بعد {seconds} ث (Ctrl+C للإلغاء)",
     reconnecting: "جارٍ إعادة الاتصال بـ {target} (المحاولة {attempt} من {max})...",

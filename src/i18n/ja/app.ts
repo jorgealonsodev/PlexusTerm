@@ -138,6 +138,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "ターミナル {n}",
     copyHost: "ホストアドレスをコピー ({host})",
+    openInNewWindow: "新しいウィンドウで開く",
+    moveFailed: "タブを新しいウィンドウで開けませんでした: {error}",
     duplicate: "タブを複製",
     showInExplorer: "エクスプローラーでフォルダーを表示",
     colour: "タブの色…",

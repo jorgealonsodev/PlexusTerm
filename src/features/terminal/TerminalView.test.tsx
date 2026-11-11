@@ -12,7 +12,12 @@ const backend = vi.hoisted(() => ({
 }));
 
 const flow = vi.hoisted(() => ({ setTerminalFlow: vi.fn(async (_tap: number, _paused: boolean, _pending?: number) => {}) }));
-vi.mock("./backend", () => ({ backendFor: () => backend, setTerminalFlow: flow.setTerminalFlow }));
+/** Moving a pane's session between windows; `attach` keeps the handler it was given. */
+const moves = vi.hoisted(() => ({
+  detachTerminal: vi.fn(async (_tap: number) => true),
+  attachTerminal: vi.fn(async (_tap: number, _onEvent: (event: unknown) => void) => {}),
+}));
+vi.mock("./backend", () => ({ backendFor: () => backend, setTerminalFlow: flow.setTerminalFlow, ...moves }));
 /** While `held`, the fake xterm keeps write callbacks (output not parsed yet) until `release`. */
 const parsing = vi.hoisted(() => ({
   held: false,
@@ -2887,6 +2892,95 @@ describe("TerminalView", () => {
         await act(() => vi.advanceTimersByTimeAsync(1000));
         expect(aiSuggest).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("moving to another window", () => {
+    const running = async () => {
+      let emit: (event: unknown) => void = () => {};
+      backend.start.mockImplementation((_options, onEvent) => {
+        emit = onEvent as (event: unknown) => void;
+        return Promise.resolve(5);
+      });
+      let detach: import("./TerminalView").PaneDetach | null = null;
+      const onSession = vi.fn();
+      const view = render(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          onSession={onSession}
+          registerDetach={(d) => ((detach = d), () => {})}
+        />,
+      );
+      await vi.waitFor(() => expect(onSession).toHaveBeenCalledWith(5));
+      return { emit: (event: unknown) => act(async () => emit(event)), detach: () => detach!(), view };
+    };
+
+    it("lets its session go with what it showed, once the last event before the move came, and does not end it", async () => {
+      moves.detachTerminal.mockClear();
+      const { emit, detach, view } = await running();
+      await emit({ event: "tap", data: 42 });
+      await emit({ event: "output", data: "hello" });
+      const moved = detach();
+      await vi.waitFor(() => expect(moves.detachTerminal).toHaveBeenCalledWith(42));
+      // Output already on its way to this window still belongs to it.
+      await emit({ event: "output", data: " world" });
+      await emit({ event: "detached" });
+      const result = await moved;
+      expect(result?.adoption).toEqual({ sessionId: 5, tap: 42, content: expect.stringContaining("hello world") });
+      backend.close.mockClear();
+      view.unmount();
+      expect(backend.close).not.toHaveBeenCalled();
+    });
+
+    it("takes its session back when the move fails, and ends it again when closed", async () => {
+      moves.attachTerminal.mockClear();
+      const { emit, detach, view } = await running();
+      await emit({ event: "tap", data: 8 });
+      const moved = detach();
+      await vi.waitFor(() => expect(moves.detachTerminal).toHaveBeenCalledWith(8));
+      await emit({ event: "detached" });
+      (await moved)!.undo();
+      expect(moves.attachTerminal).toHaveBeenCalledWith(8, expect.any(Function));
+      backend.close.mockClear();
+      view.unmount();
+      expect(backend.close).toHaveBeenCalledWith(5);
+    });
+
+    it("has nothing to move while its session is not running", async () => {
+      moves.detachTerminal.mockClear();
+      let detach: import("./TerminalView").PaneDetach | null = null;
+      render(<TerminalView target={{ type: "local" }} active onTitle={() => {}} onExit={() => {}} registerDetach={(d) => ((detach = d), () => {})} />);
+      await vi.waitFor(() => expect(backend.start).toHaveBeenCalled());
+      await expect(detach!()).resolves.toBeNull();
+      expect(moves.detachTerminal).not.toHaveBeenCalled();
+    });
+
+    it("takes a session moved from another window instead of starting one, showing what it showed there", async () => {
+      backend.start.mockClear();
+      backend.resize.mockClear();
+      moves.attachTerminal.mockClear();
+      const onSession = vi.fn();
+      render(
+        <TerminalView
+          target={{ type: "local" }}
+          active
+          onTitle={() => {}}
+          onExit={() => {}}
+          onSession={onSession}
+          adopt={{ sessionId: 7, tap: 9, content: "BEFORE THE MOVE" }}
+        />,
+      );
+      await vi.waitFor(() => expect(moves.attachTerminal).toHaveBeenCalledWith(9, expect.any(Function)));
+      expect(backend.start).not.toHaveBeenCalled();
+      expect(onSession).toHaveBeenCalledWith(7);
+      expect(lastTerm().written.join("")).toContain("BEFORE THE MOVE");
+      expect(backend.resize).toHaveBeenCalledWith(7, expect.any(Number), expect.any(Number));
+      const onEvent = moves.attachTerminal.mock.calls[0][1];
+      await act(async () => onEvent({ event: "output", data: "after the move" }));
+      expect(lastTerm().written.join("")).toContain("after the move");
     });
   });
 

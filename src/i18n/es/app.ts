@@ -144,6 +144,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "Terminal {n}",
     copyHost: "Copiar dirección del host ({host})",
+    openInNewWindow: "Abrir en una ventana nueva",
+    moveFailed: "No se pudo abrir la pestaña en una ventana nueva: {error}",
     duplicate: "Duplicar pestaña",
     showInExplorer: "Ver carpeta en el Explorador",
     colour: "Color de la pestaña…",

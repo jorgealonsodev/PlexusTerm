@@ -144,6 +144,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "Terminal {n}",
     copyHost: "Copier l'adresse de l'hôte ({host})",
+    openInNewWindow: "Ouvrir dans une nouvelle fenêtre",
+    moveFailed: "Impossible d'ouvrir l'onglet dans une nouvelle fenêtre : {error}",
     duplicate: "Dupliquer l'onglet",
     showInExplorer: "Afficher le dossier dans l'Explorateur",
     colour: "Couleur de l’onglet…",

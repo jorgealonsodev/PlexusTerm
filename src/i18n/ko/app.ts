@@ -137,6 +137,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "터미널 {n}",
     copyHost: "호스트 주소 복사({host})",
+    openInNewWindow: "새 창에서 열기",
+    moveFailed: "탭을 새 창에서 열지 못했습니다: {error}",
     duplicate: "탭 복제",
     showInExplorer: "탐색기에서 폴더 보기",
     colour: "탭 색…",

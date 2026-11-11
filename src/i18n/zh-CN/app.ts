@@ -137,6 +137,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "终端 {n}",
     copyHost: "复制主机地址 ({host})",
+    openInNewWindow: "在新窗口中打开",
+    moveFailed: "无法在新窗口中打开标签页：{error}",
     duplicate: "复制标签页",
     showInExplorer: "在资源管理器中显示文件夹",
     colour: "标签页颜色…",

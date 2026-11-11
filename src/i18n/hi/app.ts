@@ -140,6 +140,8 @@ export const app: Messages<typeof en> = {
   tabs: {
     terminalN: "टर्मिनल {n}",
     copyHost: "होस्ट पता कॉपी करें ({host})",
+    openInNewWindow: "नई विंडो में खोलें",
+    moveFailed: "टैब को नई विंडो में नहीं खोला जा सका: {error}",
     duplicate: "टैब की प्रतिलिपि बनाएँ",
     showInExplorer: "एक्सप्लोरर में फ़ोल्डर दिखाएँ",
     colour: "टैब का रंग…",

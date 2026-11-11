@@ -83,6 +83,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "Connexion à {target} via {jumps}...",
     stillConnecting: "En attente de l'hôte… {seconds} s (Ctrl+C annule)",
     connectCancelled: "Connexion annulée",
+    moveFailed: "Impossible de déplacer ce terminal vers l'autre fenêtre",
     connectionLost: "Connexion perdue",
     reconnectWait: "Reconnexion… tentative {attempt} sur {max} dans {seconds} s (Ctrl+C annule)",
     reconnecting: "Reconnexion à {target} (tentative {attempt} sur {max})...",

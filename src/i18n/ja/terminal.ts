@@ -79,6 +79,7 @@ export const terminal: Messages<typeof en> = {
     connectingVia: "{jumps} 経由で {target} に接続しています...",
     stillConnecting: "ホストを待っています… {seconds} 秒（Ctrl+C でキャンセル）",
     connectCancelled: "接続をキャンセルしました",
+    moveFailed: "このターミナルを別のウィンドウに移動できませんでした",
     connectionLost: "接続が切れました",
     reconnectWait: "再接続しています… {attempt}/{max} 回目まであと {seconds} 秒（Ctrl+C でキャンセル）",
     reconnecting: "{target} に再接続しています（{attempt}/{max} 回目）...",

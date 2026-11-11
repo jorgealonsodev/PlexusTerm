@@ -87,18 +87,21 @@ pub async fn sftp_edit(
     remote: String,
     with: OpenWith,
     app: AppHandle,
+    window: tauri::WebviewWindow,
     ssh: State<'_, SshManager>,
     temp: State<'_, TempFiles>,
 ) -> Result<String, SftpError> {
     let sftp = ssh.sftp(id).await?;
     let local = download_copy(&sftp, &temp, id, EDIT, &remote).await?;
+    // Uploaded by the window that opened it, once (every window hears an event sent to all).
+    let label = window.label().to_string();
     let saved = EditSaved {
         id,
         remote: remote.clone(),
         local: local.to_string_lossy().into_owned(),
     };
     temp.watch(id, EDIT, &remote, edit::WATCH_INTERVAL, move || {
-        let _ = app.emit(EDIT_SAVED_EVENT, saved.clone());
+        let _ = app.emit_to(label.as_str(), EDIT_SAVED_EVENT, saved.clone());
     });
     launch(&with, &local)?;
     Ok(local.to_string_lossy().into_owned())
