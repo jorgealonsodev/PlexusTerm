@@ -1,8 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="nt-title">
   <title id="nt-title">PlexusTerm</title>
   <!-- The "x" of PlexusTerm drawn as two routes crossing: where connections meet. -->
-  <rect x="16" y="16" width="480" height="480" rx="108" fill="#0f1419" stroke="#26313c" stroke-width="8"/>
-  <path d="M150 140 L362 372" stroke="#5ec4ff" stroke-width="64" stroke-linecap="round"/>
-  <path d="M362 140 L150 372" stroke="#0f1419" stroke-width="104" stroke-linecap="round"/>
-  <path d="M362 140 L150 372" stroke="#8bd49c" stroke-width="64" stroke-linecap="round"/>
+  <mask id="nt-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+    <rect width="512" height="512" fill="#fff"/>
+    <path d="M394 105 L118 407" stroke="#000" stroke-width="135" stroke-linecap="round"/>
+  </mask>
+  <rect width="512" height="512" rx="72" fill="#0f1419"/>
+  <path d="M118 105 L394 407" stroke="#5ec4ff" stroke-width="83" stroke-linecap="round" mask="url(#nt-gap)"/>
+  <path d="M394 105 L118 407" stroke="#8bd49c" stroke-width="83" stroke-linecap="round"/>
 </svg>
