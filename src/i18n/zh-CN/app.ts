@@ -153,6 +153,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "需要你的关注",
     branch: "git 分支：{branch}",
     switchBranch: "git 分支：{branch}。点击切换到其他分支",
+    branchCurrent: "{branch}（当前）",
     branchRemote: "{branch}（远程）",
     branchSwitched: "已切换到 {branch}。",
     branchSwitchFailed: "无法切换到 {branch}：{error}",

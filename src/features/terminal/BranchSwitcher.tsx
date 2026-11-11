@@ -19,8 +19,9 @@ async function folderOf(ptyId: number, cwd: string | null): Promise<string | nul
 }
 
 /**
- * The branch in the bar under a local DEV mode terminal: clicking it lists the repository's other
- * branches, and choosing one runs `git switch` in the terminal's folder (nothing is typed into it).
+ * The branch in the bar under a local DEV mode terminal: clicking it lists the branch in use
+ * (marked, not selectable) and the repository's other branches, and choosing one runs `git switch`
+ * in the terminal's folder (nothing is typed into it).
  */
 export function BranchSwitcher({
   branch,
@@ -61,10 +62,18 @@ export function BranchSwitcher({
         onSelect: () => void switchTo(folder!, name),
       })),
     ];
+    // The branch in use comes first, marked, and cannot be chosen.
+    const current: ContextMenuItem[] = [
+      { label: t("app.tabs.branchCurrent", { branch }), onSelect: () => {}, disabled: true },
+      { separator: true },
+    ];
     setMenu({
       x: rect.left,
       y: rect.top,
-      items: items.length > 0 ? items : [{ label: t("app.tabs.noOtherBranches"), onSelect: () => {}, disabled: true }],
+      items: [
+        ...current,
+        ...(items.length > 0 ? items : [{ label: t("app.tabs.noOtherBranches"), onSelect: () => {}, disabled: true }]),
+      ],
     });
   };
 

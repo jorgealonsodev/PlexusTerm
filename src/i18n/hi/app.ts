@@ -156,6 +156,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "आपका ध्यान चाहिए",
     branch: "git ब्रांच: {branch}",
     switchBranch: "git ब्रांच: {branch}. दूसरी ब्रांच पर जाने के लिए क्लिक करें",
+    branchCurrent: "{branch} (वर्तमान)",
     branchRemote: "{branch} (रिमोट)",
     branchSwitched: "{branch} पर स्विच किया।",
     branchSwitchFailed: "{branch} पर स्विच नहीं हो सका: {error}",

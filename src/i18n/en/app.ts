@@ -154,6 +154,7 @@ export const app = {
     attentionNotice: "Needs your attention",
     branch: "Git branch: {branch}",
     switchBranch: "Git branch: {branch}. Click to switch to another branch",
+    branchCurrent: "{branch} (current)",
     branchRemote: "{branch} (remote)",
     branchSwitched: "Switched to {branch}.",
     branchSwitchFailed: "Could not switch to {branch}: {error}",

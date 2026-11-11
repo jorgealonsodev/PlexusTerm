@@ -154,6 +154,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "確認が必要です",
     branch: "git ブランチ: {branch}",
     switchBranch: "git ブランチ: {branch}。クリックして別のブランチに切り替え",
+    branchCurrent: "{branch}（現在）",
     branchRemote: "{branch}（リモート）",
     branchSwitched: "{branch} に切り替えました。",
     branchSwitchFailed: "{branch} に切り替えられませんでした: {error}",

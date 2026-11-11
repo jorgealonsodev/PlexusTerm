@@ -168,6 +168,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "يحتاج إلى انتباهك",
     branch: "فرع git: {branch}",
     switchBranch: "فرع git: {branch}. انقر للتبديل إلى فرع آخر",
+    branchCurrent: "{branch} (الحالي)",
     branchRemote: "{branch} (بعيد)",
     branchSwitched: "تم التبديل إلى {branch}.",
     branchSwitchFailed: "تعذّر التبديل إلى {branch}: {error}",

@@ -153,6 +153,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "확인이 필요합니다",
     branch: "git 브랜치: {branch}",
     switchBranch: "git 브랜치: {branch}. 클릭하면 다른 브랜치로 전환합니다",
+    branchCurrent: "{branch} (현재)",
     branchRemote: "{branch} (원격)",
     branchSwitched: "{branch}(으)로 전환했습니다.",
     branchSwitchFailed: "{branch}(으)로 전환할 수 없습니다: {error}",

@@ -157,6 +157,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "Braucht deine Aufmerksamkeit",
     branch: "Git-Branch: {branch}",
     switchBranch: "Git-Branch: {branch}. Klicken, um zu einem anderen Branch zu wechseln",
+    branchCurrent: "{branch} (aktuell)",
     branchRemote: "{branch} (remote)",
     branchSwitched: "Zu {branch} gewechselt.",
     branchSwitchFailed: "Wechsel zu {branch} nicht möglich: {error}",

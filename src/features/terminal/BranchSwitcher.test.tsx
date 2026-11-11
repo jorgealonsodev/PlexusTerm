@@ -28,12 +28,13 @@ beforeEach(() => mockedInvoke.mockReset());
 afterEach(cleanup);
 
 describe("BranchSwitcher", () => {
-  it("lists the other branches, local first, and switches the terminal's folder to the one chosen", async () => {
+  it("lists the current branch first, marked and not selectable, then the others, local first, and switches the terminal's folder to the one chosen", async () => {
     backend({ local: ["feat/log", "main"], remote: ["release"] });
     const { onSwitched, onNotice } = renderSwitcher();
     fireEvent.click(screen.getByRole("button", { name: "main" }));
     const items = await screen.findAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["feat/log", "release (remote)"]);
+    expect(items.map((item) => item.textContent)).toEqual(["main (current)", "feat/log", "release (remote)"]);
+    expect(items[0].hasAttribute("disabled")).toBe(true);
     expect(mockedInvoke).toHaveBeenCalledWith("git_branches", { path: "/work/app" });
 
     fireEvent.click(screen.getByRole("menuitem", { name: "feat/log" }));
@@ -53,10 +54,12 @@ describe("BranchSwitcher", () => {
     expect(onSwitched).not.toHaveBeenCalled();
   });
 
-  it("says so when there is no other branch", async () => {
+  it("says so when there is no other branch, under the current one", async () => {
     backend({ local: ["main"], remote: [] });
     renderSwitcher();
     fireEvent.click(screen.getByRole("button", { name: "main" }));
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((entry) => entry.textContent)).toEqual(["main (current)", "No other branches"]);
     const item = await screen.findByRole("menuitem", { name: "No other branches" });
     expect(item.hasAttribute("disabled") || item.getAttribute("aria-disabled") === "true").toBe(true);
   });

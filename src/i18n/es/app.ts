@@ -160,6 +160,7 @@ export const app: Messages<typeof en> = {
     attentionNotice: "Requiere tu atención",
     branch: "Rama de git: {branch}",
     switchBranch: "Rama de git: {branch}. Haz clic para cambiar a otra rama",
+    branchCurrent: "{branch} (en uso)",
     branchRemote: "{branch} (remota)",
     branchSwitched: "Cambiado a {branch}.",
     branchSwitchFailed: "No se pudo cambiar a {branch}: {error}",
