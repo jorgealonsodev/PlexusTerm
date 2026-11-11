@@ -118,7 +118,7 @@ export const settings = {
     paneFooterHeight: "Height of the bar under the terminals (px)",
     paneFooterHeightHelp: "The bar under each terminal and file viewer (folder, branch, AI usage, DEV), from 18 to 48 px; 22 by default. Its text grows with it, up to 1.6 times its size.",
     focusBorderHelp: "The border that marks the pane with the keyboard focus. Its colour is the colour scheme's accent unless you choose another; the intensity mixes it with the background, from a faint line (10%) to the full colour (100%).",
-    viewerFontSizeHelp: "Size of the text of a file in the file viewer (code and Markdown), in pixels.",
+    viewerFontSizeHelp: "Size of the text of a file in the file viewer (code and Markdown), in pixels. Ctrl with the mouse wheel over the file's text changes it too.",
     explorerFontSizeHelp: "Size of the text of the Explorer and the SFTP browser, in pixels. Ctrl with the mouse wheel over them changes it too.",
     hideSidebar: "Hide the sidebar completely when folded",
     sidebarAtStartup: "Sidebar when PlexusTerm opens",

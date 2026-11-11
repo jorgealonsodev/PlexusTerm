@@ -15,7 +15,7 @@ describe("attachWheelZoom", () => {
     document.body.innerHTML = "";
   });
   const setup = () => {
-    document.body.innerHTML = `<div class="terminal-pane"><canvas></canvas></div><section class="chat"><p></p></section><div class="sidebar__panel sftp"><ul><li></li></ul></div><nav></nav>`;
+    document.body.innerHTML = `<div class="terminal-pane"><canvas></canvas></div><section class="chat"><p></p></section><div class="sidebar__panel sftp"><ul><li></li></ul></div><section class="viewer"><header></header><div class="viewer__code"><span></span></div><article class="viewer__markdown"><em></em></article></section><nav></nav>`;
     const onStep = vi.fn();
     detach = attachWheelZoom(window, onStep);
     return {
@@ -24,6 +24,9 @@ describe("attachWheelZoom", () => {
       chat: document.querySelector("p")!,
       explorer: document.querySelector("li")!,
       nav: document.querySelector("nav")!,
+      code: document.querySelector("span")!,
+      markdown: document.querySelector("em")!,
+      viewerBar: document.querySelector("header")!,
     };
   };
 
@@ -31,6 +34,16 @@ describe("attachWheelZoom", () => {
     const { onStep, explorer } = setup();
     expect(wheel(explorer, 100).defaultPrevented).toBe(true);
     expect(onStep).toHaveBeenLastCalledWith("explorer", "decrease");
+  });
+
+  it("sizes the file viewer's text over a file's code or Markdown, not over the viewer's bar", () => {
+    const { onStep, code, markdown, viewerBar } = setup();
+    expect(wheel(code, -100).defaultPrevented).toBe(true);
+    expect(onStep).toHaveBeenLastCalledWith("viewer", "increase");
+    expect(wheel(markdown, 100).defaultPrevented).toBe(true);
+    expect(onStep).toHaveBeenLastCalledWith("viewer", "decrease");
+    expect(wheel(viewerBar, -100).defaultPrevented).toBe(false);
+    expect(onStep).toHaveBeenCalledTimes(2);
   });
 
   it("makes the text bigger with Ctrl and the wheel up and smaller with the wheel down, over a terminal or the AI chat", () => {

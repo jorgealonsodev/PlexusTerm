@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "Altura de la barra bajo los terminales (px)",
     paneFooterHeightHelp: "La barra bajo cada terminal y visor de archivos (carpeta, rama, uso de IA, DEV), de 18 a 48 px; 22 por defecto. Su texto crece con ella, hasta 1,6 veces su tamaño.",
     focusBorderHelp: "El borde que marca el panel que tiene el foco del teclado. Su color es el de acento del esquema de colores, salvo que elijas otro; la intensidad lo mezcla con el fondo, desde una línea tenue (10 %) hasta el color pleno (100 %).",
-    viewerFontSizeHelp: "Tamaño del texto de un archivo en el visor de archivos (código y Markdown), en píxeles.",
+    viewerFontSizeHelp: "Tamaño del texto de un archivo en el visor de archivos (código y Markdown), en píxeles. Ctrl con la rueda del ratón sobre el texto del archivo también lo cambia.",
     explorerFontSizeHelp: "Tamaño del texto del explorador y del navegador SFTP, en píxeles. Ctrl con la rueda del ratón sobre ellos también lo cambia.",
     hideSidebar: "Ocultar por completo la barra lateral al plegarla",
     sidebarAtStartup: "Barra lateral al abrir PlexusTerm",

@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "Altura da barra abaixo dos terminais (px)",
     paneFooterHeightHelp: "A barra abaixo de cada terminal e visualizador de arquivos (pasta, branch, uso de IA, DEV), de 18 a 48 px; 22 por padrão. O texto cresce junto, até 1,6 vez o tamanho.",
     focusBorderHelp: "A borda que marca o painel com o foco do teclado. Sua cor é a de destaque do esquema de cores, a menos que você escolha outra; a intensidade a mistura com o fundo, de uma linha suave (10%) à cor plena (100%).",
-    viewerFontSizeHelp: "Tamanho do texto de um arquivo no visualizador (código e Markdown), em pixels.",
+    viewerFontSizeHelp: "Tamanho do texto de um arquivo no visualizador (código e Markdown), em pixels. Ctrl com a roda do mouse sobre o texto do arquivo também o altera.",
     explorerFontSizeHelp: "Tamanho do texto do explorador e do navegador SFTP, em pixels. Ctrl com a roda do mouse sobre eles também o altera.",
     hideSidebar: "Ocultar completamente a barra lateral quando recolhida",
     sidebarAtStartup: "Barra lateral ao abrir o PlexusTerm",

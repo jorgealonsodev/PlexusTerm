@@ -661,6 +661,12 @@ export function stepExplorerFontSize(size: number, step: FontStep): number {
   return clampExplorerFontSize(size + (step === "increase" ? 1 : -1));
 }
 
+/** Ctrl+wheel over a file's text in the file viewer changes its text only. */
+export function stepViewerFontSize(size: number, step: FontStep): number {
+  if (step === "reset") return DEFAULT_SETTINGS.viewerFontSize;
+  return clampViewerFontSize(size + (step === "increase" ? 1 : -1));
+}
+
 /** The same keys while the AI chat has the focus change its text only. */
 export function stepChatFontSize(size: number, step: FontStep): number {
   if (step === "reset") return DEFAULT_SETTINGS.chatFontSize;

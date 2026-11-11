@@ -51,7 +51,7 @@ import { local } from "./features/local/localClient";
 import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
 import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize } from "./features/settings/settings";
+import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize, stepViewerFontSize } from "./features/settings/settings";
 import { attachWheelZoom } from "./features/settings/wheelZoom";
 import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
@@ -1250,7 +1250,7 @@ function AppContent() {
 
   const { updateWith: updateSettingsWith } = terminalSettings;
   const settings = terminalSettings.settings;
-  // Ctrl+wheel sizes the text of the terminals, the AI chat or the Explorer under the pointer, like Ctrl+= / Ctrl+-.
+  // Ctrl+wheel sizes the text of the terminals, the AI chat, the Explorer or the file viewer under the pointer, like Ctrl+= / Ctrl+-.
   const updateSettingsRef = useRef(updateSettingsWith);
   updateSettingsRef.current = updateSettingsWith;
   useEffect(
@@ -1261,7 +1261,9 @@ function AppContent() {
             ? { chatFontSize: stepChatFontSize(s.chatFontSize, step) }
             : where === "explorer"
               ? { explorerFontSize: stepExplorerFontSize(s.explorerFontSize, step) }
-              : { fontSize: stepFontSize(s.fontSize, step) },
+              : where === "viewer"
+                ? { viewerFontSize: stepViewerFontSize(s.viewerFontSize, step) }
+                : { fontSize: stepFontSize(s.fontSize, step) },
         ),
       ),
     [],

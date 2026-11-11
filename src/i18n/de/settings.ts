@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "Höhe der Leiste unter den Terminals (px)",
     paneFooterHeightHelp: "Die Leiste unter jedem Terminal und Dateibetrachter (Ordner, Branch, KI-Nutzung, DEV), von 18 bis 48 px; standardmäßig 22. Ihr Text wächst mit, bis zum 1,6-Fachen seiner Größe.",
     focusBorderHelp: "Der Rahmen, der den Bereich mit dem Tastaturfokus markiert. Seine Farbe ist die Akzentfarbe des Farbschemas, sofern du keine andere wählst; die Intensität mischt sie mit dem Hintergrund, von einer zarten Linie (10 %) bis zur vollen Farbe (100 %).",
-    viewerFontSizeHelp: "Größe des Dateitextes im Dateibetrachter (Code und Markdown), in Pixeln.",
+    viewerFontSizeHelp: "Größe des Dateitextes im Dateibetrachter (Code und Markdown), in Pixeln. Strg mit dem Mausrad über dem Dateitext ändert sie ebenfalls.",
     explorerFontSizeHelp: "Größe des Textes im Explorer und im SFTP-Browser, in Pixeln. Strg mit dem Mausrad darüber ändert sie ebenfalls.",
     hideSidebar: "Seitenleiste beim Einklappen vollständig ausblenden",
     sidebarAtStartup: "Seitenleiste beim Start von PlexusTerm",

@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "터미널 아래 막대 높이(px)",
     paneFooterHeightHelp: "각 터미널과 파일 뷰어 아래 막대(폴더, 브랜치, AI 사용량, DEV)로 18~48px이며 기본값은 22입니다. 글자도 최대 1.6배까지 함께 커집니다.",
     focusBorderHelp: "키보드 포커스가 있는 창을 표시하는 테두리입니다. 다른 색을 고르지 않으면 색 구성표의 강조색을 사용하며, 강도는 배경과 섞는 정도로 옅은 선(10%)부터 원래 색(100%)까지입니다.",
-    viewerFontSizeHelp: "파일 뷰어에 표시되는 파일 글자 크기(코드와 Markdown), 픽셀 단위.",
+    viewerFontSizeHelp: "파일 뷰어에 표시되는 파일 글자 크기(코드와 Markdown), 픽셀 단위. 파일 글자 위에서 Ctrl과 마우스 휠로도 바꿀 수 있습니다.",
     explorerFontSizeHelp: "탐색기와 SFTP 브라우저의 글자 크기(픽셀)입니다. 그 위에서 Ctrl과 마우스 휠로도 바꿀 수 있습니다.",
     hideSidebar: "접을 때 사이드바를 완전히 숨기기",
     sidebarAtStartup: "PlexusTerm을 열 때 사이드바",

@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "终端下方栏的高度（px）",
     paneFooterHeightHelp: "每个终端和文件查看器下方的栏（文件夹、分支、AI 用量、DEV），18 到 48 px，默认 22。其文字随之变大，最多 1.6 倍。",
     focusBorderHelp: "标示键盘焦点所在窗格的边框。除非你选择其他颜色，否则使用配色方案的强调色；强度控制它与背景的混合，从淡淡的线条（10%）到完整颜色（100%）。",
-    viewerFontSizeHelp: "文件查看器中文件文字的大小(代码和 Markdown,像素)。",
+    viewerFontSizeHelp: "文件查看器中文件文字的大小(代码和 Markdown,像素)。在文件文字上按住 Ctrl 滚动鼠标滚轮也可更改。",
     explorerFontSizeHelp: "资源管理器和 SFTP 浏览器中文字的大小(像素)。在其上按住 Ctrl 滚动鼠标滚轮也可更改。",
     hideSidebar: "折叠时完全隐藏侧边栏",
     sidebarAtStartup: "PlexusTerm 启动时的侧边栏",

@@ -121,7 +121,7 @@ export const settings: Messages<typeof en> = {
     paneFooterHeight: "ターミナル下のバーの高さ (px)",
     paneFooterHeightHelp: "各ターミナルとファイルビューアーの下のバー（フォルダー、ブランチ、AI 使用量、DEV）。18〜48 px、既定は 22。文字もバーに合わせて大きくなります（最大 1.6 倍）。",
     focusBorderHelp: "キーボードフォーカスのあるペインを示す枠です。色は、別の色を選ばない限り配色のアクセントカラーです。強さは背景との混ぜ具合で、淡い線（10%）から本来の色（100%）まで変えられます。",
-    viewerFontSizeHelp: "ファイルビューアーに表示されるファイルの文字サイズ(コードと Markdown、ピクセル)。",
+    viewerFontSizeHelp: "ファイルビューアーに表示されるファイルの文字サイズ(コードと Markdown、ピクセル)。ファイルのテキストの上で Ctrl を押しながらマウスホイールを回しても変わります。",
     explorerFontSizeHelp: "エクスプローラーと SFTP ブラウザーの文字サイズ(ピクセル)。上で Ctrl を押しながらマウスホイールを回しても変わります。",
     hideSidebar: "折りたたみ時にサイドバーを完全に隠す",
     sidebarAtStartup: "PlexusTerm 起動時のサイドバー",
