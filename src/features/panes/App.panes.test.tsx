@@ -59,6 +59,8 @@ afterEach(cleanup);
 const renderApp = async () => {
   render(<App />);
   await screen.findByTestId("terminal");
+  // Let React finish the render that showed it (its effects included) before keys are pressed.
+  await act(async () => {});
 };
 
 describe("App panes", () => {

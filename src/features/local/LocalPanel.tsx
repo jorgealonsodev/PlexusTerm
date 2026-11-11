@@ -532,10 +532,13 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
   };
   const showWorkspace = devStyle && workspace !== undefined;
   /** The workspace's main folder: where DEV mode opened, else the first folder listed. */
-  const [workspaceMain, setWorkspaceMain] = useState<string | null>(startAt);
+  const [chosenMain, setWorkspaceMain] = useState<string | null>(startAt);
   useEffect(() => {
-    if (workspaceMain === null && path !== null) setWorkspaceMain(path);
-  }, [path, workspaceMain]);
+    if (chosenMain === null && path !== null) setWorkspaceMain(path);
+  }, [path, chosenMain]);
+  // Already the first folder listed while the effect above records it: the render in between must
+  // not hide the added folders, nor leave Remove folder from workspace out of the main folder's menu.
+  const workspaceMain = chosenMain ?? path;
   /** The added folders show only in the main folder or below it: Up or Home out of it leaves the workspace. */
   const showAdded =
     showWorkspace && path !== null && workspaceMain !== null && (path === workspaceMain || isInside(path, workspaceMain));

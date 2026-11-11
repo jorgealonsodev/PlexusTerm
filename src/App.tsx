@@ -1609,8 +1609,10 @@ function AppContent() {
     sidebarCollapsed: settings.sidebarCollapsed,
   };
 
-  // Terminals let these keys through unhandled (see TerminalView), so the window sees them.
-  useEffect(() => {
+  // Terminals let these keys through unhandled (see TerminalView), so the window sees them. A layout
+  // effect: the listener knows a new tab as soon as it is on screen, so a shortcut pressed right
+  // after it opens (Split, Close pane) is never ignored as if no tab were open.
+  useLayoutEffect(() => {
     /** The tab `step` places after (or before) the active one, wrapping around. */
     const tabBeside = (step: 1 | -1) => {
       const { tabs, activeKey } = shortcutKeys.current;
