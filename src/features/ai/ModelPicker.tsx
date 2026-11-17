@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import { aiKeyStatus, aiModels, describeAiError, type AiModelInfo, type AiProvider } from "./aiClient";
 
-/** Provider names; "OpenAI-compatible" describes the endpoint, so it is translated. */
-const PROVIDER_NAMES: Record<Exclude<AiProvider, "openai-compatible">, string> = {
+/** Provider names; "OpenAI-compatible" and "ChatGPT plan" describe what is used, so they are translated. */
+const PROVIDER_NAMES: Record<Exclude<AiProvider, "openai-compatible" | "chatgpt">, string> = {
   anthropic: "Anthropic",
   gemini: "Gemini",
   openai: "OpenAI",
@@ -12,10 +12,13 @@ const PROVIDER_NAMES: Record<Exclude<AiProvider, "openai-compatible">, string> =
 };
 
 /** A provider's label in the current language. */
-export const aiProviderLabel = (provider: AiProvider) =>
-  provider === "openai-compatible" ? translate("ai.providers.openaiCompatible") : PROVIDER_NAMES[provider];
+export function aiProviderLabel(provider: AiProvider): string {
+  if (provider === "openai-compatible") return translate("ai.providers.openaiCompatible");
+  if (provider === "chatgpt") return translate("ai.providers.chatgpt");
+  return PROVIDER_NAMES[provider];
+}
 
-const ORDER: AiProvider[] = ["anthropic", "gemini", "openai", "opencode-go", "openai-compatible"];
+const ORDER: AiProvider[] = ["anthropic", "gemini", "openai", "chatgpt", "opencode-go", "openai-compatible"];
 
 /** One provider's part of the list: its models, or why they could not be read. */
 interface Group {

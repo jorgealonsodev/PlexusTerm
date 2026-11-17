@@ -16,14 +16,18 @@ import { DEFAULT_ICON_PACKS, isIconPack, type IconPack } from "../files/iconPack
 import { EXAMPLE_RULE, parseHighlightRules, type HighlightRule } from "../terminal/highlightRules";
 
 /** AI providers (S2, S4). */
-export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "openai-compatible", "opencode-go"] as const;
+export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "chatgpt", "openai-compatible", "opencode-go"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
-/** The model a provider starts with; OpenAI, compatible endpoints and OpenCode Go leave it to the user. */
+/**
+ * The model a provider starts with; OpenAI, the ChatGPT plan (its models are listed by the plan),
+ * compatible endpoints and OpenCode Go leave it to the user.
+ */
 export const DEFAULT_AI_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-opus-5-5",
   gemini: "gemini-3.5-flash-lite",
   openai: "",
+  chatgpt: "",
   "openai-compatible": "",
   "opencode-go": "",
 };

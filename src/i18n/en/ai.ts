@@ -3,6 +3,7 @@ export const ai = {
     openaiCompatible: "OpenAI-compatible",
     /** The provider as the object of a sentence ("No API key is saved for …"). */
     openaiCompatibleEndpoint: "the OpenAI-compatible endpoint",
+    chatgpt: "ChatGPT plan",
   },
   errors: {
     noKey: "No API key is saved for this provider.",
@@ -33,6 +34,7 @@ export const ai = {
     question: "Question",
     asking: "Asking…",
     noKey: "No API key is saved for {provider}. Add one in Settings → AI.",
+    noChatGpt: "Not signed in to ChatGPT, or plan use isn't enabled. Use “Continue with ChatGPT” in Settings → AI.",
     openSettings: "Open AI settings",
     selectedText: "Selected text to send",
     removeSelection: "Remove selected text",

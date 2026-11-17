@@ -670,6 +670,17 @@ describe("AI chat pane (S3, S5, S9)", () => {
     expect(screen.queryByLabelText("Selected text to send")).toBeNull();
   });
 
+  it("asks to sign in with ChatGPT when the ChatGPT plan is not ready", async () => {
+    withSettings({ aiProvider: "chatgpt", aiModel: "gpt-x" });
+    answers.ai_key_status = () => false;
+    await renderApp();
+    pressShortcut();
+    await settle();
+    expect(within(chat()).getByText(/Not signed in to ChatGPT, or plan use isn't enabled/)).toBeTruthy();
+    expect(within(chat()).queryByText(/No API key is saved/)).toBeNull();
+    expect(calls("ai_key_status").some((c) => c.provider === "chatgpt")).toBe(true);
+  });
+
   it("says when no key is saved and opens Settings on the AI section from there", async () => {
     answers.ai_key_status = () => false;
     await renderApp();

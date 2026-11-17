@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "Compatible OpenAI",
     openaiCompatibleEndpoint: "le point de terminaison compatible OpenAI",
+    chatgpt: "Forfait ChatGPT",
   },
   errors: {
     noKey: "Aucune clé d'API n'est enregistrée pour ce fournisseur.",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "Question",
     asking: "Question en cours…",
     noKey: "Aucune clé d'API n'est enregistrée pour {provider}. Ajoutez-en une dans Paramètres → IA.",
+    noChatGpt: "Vous n'êtes pas connecté à ChatGPT, ou l'utilisation du forfait n'est pas autorisée. Utilisez « Continue with ChatGPT » dans Paramètres → IA.",
     openSettings: "Ouvrir les paramètres de l'IA",
     selectedText: "Texte sélectionné à envoyer",
     removeSelection: "Retirer le texte sélectionné",

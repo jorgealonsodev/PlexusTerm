@@ -6,6 +6,10 @@ import {
   aiKeyDelete,
   aiKeySave,
   aiKeyStatus,
+  aiChatGptCancel,
+  aiChatGptSignIn,
+  aiChatGptSignOut,
+  aiChatGptStatus,
   describeAiError,
   isAiError,
   type AiConfig,
@@ -31,6 +35,21 @@ describe("aiClient commands", () => {
     expect(invoke).toHaveBeenCalledWith("ai_key_save", { provider: "gemini", key: "AIza-test" });
     await aiKeyDelete("gemini");
     expect(invoke).toHaveBeenCalledWith("ai_key_delete", { provider: "gemini" });
+  });
+
+  it("reads, starts, cancels and ends the ChatGPT sign-in through its commands", async () => {
+    const status = { signedIn: true, email: "me@example.com", planEnabled: true };
+    vi.mocked(invoke).mockResolvedValueOnce(status);
+    await expect(aiChatGptStatus()).resolves.toEqual(status);
+    expect(invoke).toHaveBeenLastCalledWith("ai_chatgpt_status");
+    vi.mocked(invoke).mockResolvedValueOnce(status);
+    await expect(aiChatGptSignIn()).resolves.toEqual(status);
+    expect(invoke).toHaveBeenLastCalledWith("ai_chatgpt_sign_in");
+    await aiChatGptCancel();
+    expect(invoke).toHaveBeenLastCalledWith("ai_chatgpt_cancel");
+    vi.mocked(invoke).mockResolvedValueOnce({ revoked: false });
+    await expect(aiChatGptSignOut()).resolves.toEqual({ revoked: false });
+    expect(invoke).toHaveBeenLastCalledWith("ai_chatgpt_sign_out");
   });
 
   it("requests a completion with the config and only the given context", async () => {

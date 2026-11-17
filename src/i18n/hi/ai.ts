@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI-संगत",
     openaiCompatibleEndpoint: "OpenAI-संगत एंडपॉइंट",
+    chatgpt: "ChatGPT प्लान",
   },
   errors: {
     noKey: "इस प्रदाता के लिए कोई API कुंजी सहेजी नहीं गई है।",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "प्रश्न",
     asking: "पूछा जा रहा है…",
     noKey: "{provider} के लिए कोई API कुंजी सहेजी नहीं गई है। सेटिंग्स → AI में एक जोड़ें।",
+    noChatGpt: "ChatGPT में साइन इन नहीं है, या प्लान का उपयोग सक्षम नहीं है। सेटिंग्स → AI में “Continue with ChatGPT” का उपयोग करें।",
     openSettings: "AI सेटिंग्स खोलें",
     selectedText: "भेजने के लिए चुना गया टेक्स्ट",
     removeSelection: "चुना गया टेक्स्ट निकालें",

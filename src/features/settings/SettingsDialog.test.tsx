@@ -41,9 +41,23 @@ const go = vi.hoisted(() => {
   });
   return { models, initial: models };
 });
+/** The ChatGPT account of the `ai_chatgpt_*` commands; `signIn` and `signOut` are swapped by a test. */
+const chatgpt = vi.hoisted(() => {
+  const signedOut = { signedIn: false, email: null as string | null, planEnabled: false };
+  return {
+    signedOut,
+    status: signedOut,
+    signIn: async (): Promise<unknown> => signedOut,
+    signOut: async (): Promise<unknown> => ({ revoked: true }),
+  };
+});
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class { onmessage = (_message: unknown) => {}; },
   invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string; refresh?: boolean }) => {
+    if (cmd === "ai_chatgpt_status") return chatgpt.status;
+    if (cmd === "ai_chatgpt_sign_in") return chatgpt.signIn();
+    if (cmd === "ai_chatgpt_sign_out") return chatgpt.signOut();
+    if (cmd === "ai_chatgpt_cancel") return null;
     if (cmd === "ai_opencode_models") return go.models(args!.refresh!);
     if (cmd === "ai_key_status") return keys.has(args!.provider!);
     if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
@@ -65,6 +79,9 @@ afterEach(() => {
   cleanup();
   keys.clear();
   go.models = go.initial;
+  chatgpt.status = chatgpt.signedOut;
+  chatgpt.signIn = async () => chatgpt.signedOut;
+  chatgpt.signOut = async () => ({ revoked: true });
   vi.mocked(invoke).mockClear();
 });
 
@@ -502,6 +519,7 @@ describe("SettingsDialog", () => {
         "Anthropic",
         "Gemini",
         "OpenAI",
+        "ChatGPT plan",
         "OpenAI-compatible",
         "OpenCode Go",
       ]);
@@ -590,6 +608,83 @@ describe("SettingsDialog", () => {
       ).toBeTruthy();
       expect(screen.queryByText(/\[object Object\]/)).toBeNull();
       expect(aiKey().getByText("No key saved")).toBeTruthy();
+    });
+
+    describe("ChatGPT plan (S8)", () => {
+      const account = () => within(screen.getByRole("group", { name: "ChatGPT account" }));
+
+      it("keeps the API key field for a key provider such as OpenAI", async () => {
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "openai" } });
+        expect(await aiKey().findByText("No key saved")).toBeTruthy();
+        expect(screen.queryByRole("group", { name: "ChatGPT account" })).toBeNull();
+      });
+
+      it("shows the ChatGPT account instead of an API key, with the plan note and the usage link", async () => {
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        expect(await account().findByText("Not signed in")).toBeTruthy();
+        expect(screen.queryByLabelText("API key")).toBeNull();
+        expect(invoke).toHaveBeenCalledWith("ai_chatgpt_status");
+        expect(account().getByText("Eligible AI requests in PlexusTerm use your ChatGPT plan.")).toBeTruthy();
+        expect(account().getByRole("button", { name: "Continue with ChatGPT" })).toBeTruthy();
+        expect(account().queryByRole("button", { name: "Sign out" })).toBeNull();
+        const usage = account().getByRole("link", { name: "Manage usage" });
+        expect(usage.getAttribute("href")).toBe("https://chatgpt.com/settings/usage");
+        opener.openUrl.mockClear();
+        fireEvent.click(usage);
+        expect(opener.openUrl).toHaveBeenCalledWith("https://chatgpt.com/settings/usage");
+      });
+
+      it("waits for the browser sign-in with a Cancel button, and shows why it ended", async () => {
+        let reject = (_err: unknown) => {};
+        chatgpt.signIn = () => new Promise((_resolve, fail) => (reject = fail));
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        fireEvent.click(await account().findByRole("button", { name: "Continue with ChatGPT" }));
+        expect(await account().findByText("Finish signing in in your browser…")).toBeTruthy();
+        expect(invoke).toHaveBeenCalledWith("ai_chatgpt_sign_in");
+        expect(account().queryByRole("button", { name: "Continue with ChatGPT" })).toBeNull();
+        fireEvent.click(account().getByRole("button", { name: "Cancel" }));
+        expect(invoke).toHaveBeenCalledWith("ai_chatgpt_cancel");
+        await act(async () => reject({ kind: "config", message: "The sign-in was cancelled." }));
+        expect(await account().findByText("Could not sign in: The sign-in was cancelled.")).toBeTruthy();
+        expect(account().queryByText("Finish signing in in your browser…")).toBeNull();
+        expect(account().getByRole("button", { name: "Continue with ChatGPT" })).toBeTruthy();
+      });
+
+      it("shows the signed-in email and signs out, saying when the revocation was not confirmed", async () => {
+        const signedIn = { signedIn: true, email: "me@example.com", planEnabled: true };
+        chatgpt.signIn = async () => signedIn;
+        chatgpt.signOut = async () => ({ revoked: false });
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        fireEvent.click(await account().findByRole("button", { name: "Continue with ChatGPT" }));
+        expect(await account().findByText("Signed in as me@example.com")).toBeTruthy();
+        expect(account().getByText("Plan use is enabled.")).toBeTruthy();
+        fireEvent.click(account().getByRole("button", { name: "Sign out" }));
+        expect(await account().findByText("Not signed in")).toBeTruthy();
+        expect(invoke).toHaveBeenCalledWith("ai_chatgpt_sign_out");
+        expect(
+          account().getByText(
+            "Signed out on this computer, but the remote revocation was not confirmed. You can disconnect PlexusTerm in ChatGPT Settings.",
+          ),
+        ).toBeTruthy();
+      });
+
+      it("explains that plan use is not enabled and that signing in again allows it", async () => {
+        chatgpt.status = { signedIn: true, email: "me@example.com", planEnabled: false };
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        expect(await account().findByText("Signed in as me@example.com")).toBeTruthy();
+        expect(
+          account().getByText(
+            "Plan use isn't enabled for this account. Sign in again and allow PlexusTerm to use your ChatGPT plan.",
+          ),
+        ).toBeTruthy();
+        expect(account().getByRole("button", { name: "Continue with ChatGPT" })).toBeTruthy();
+        expect(account().getByRole("button", { name: "Sign out" })).toBeTruthy();
+      });
     });
 
     it("offers OpenCode Go models in a list fetched by the backend, with a refresh and a usage note", async () => {

@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI-kompatibel",
     openaiCompatibleEndpoint: "den OpenAI-kompatiblen Endpunkt",
+    chatgpt: "ChatGPT-Abo",
   },
   errors: {
     noKey: "Für diesen Anbieter ist kein API-Schlüssel gespeichert.",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "Frage",
     asking: "Wird gefragt…",
     noKey: "Für {provider} ist kein API-Schlüssel gespeichert. Füge unter Einstellungen → KI einen hinzu.",
+    noChatGpt: "Du bist nicht bei ChatGPT angemeldet, oder die Nutzung des Plans ist nicht freigegeben. Verwende „Continue with ChatGPT“ unter Einstellungen → KI.",
     openSettings: "KI-Einstellungen öffnen",
     selectedText: "Zu sendender markierter Text",
     removeSelection: "Markierten Text entfernen",

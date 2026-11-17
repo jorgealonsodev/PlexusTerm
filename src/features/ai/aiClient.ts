@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { t } from "../../i18n/i18n";
 
 /** Provider ids (Rust `ai::Provider`). */
-export type AiProvider = "anthropic" | "gemini" | "openai" | "openai-compatible" | "opencode-go";
+export type AiProvider = "anthropic" | "gemini" | "openai" | "chatgpt" | "openai-compatible" | "opencode-go";
 
 /** Provider settings sent with every request; API keys stay in the backend keyring. */
 export interface AiConfig {
@@ -121,6 +121,29 @@ export const aiKeyStatus = (provider: AiProvider) => invoke<boolean>("ai_key_sta
 export const aiKeySave = (provider: AiProvider, key: string) => invoke<void>("ai_key_save", { provider, key });
 
 export const aiKeyDelete = (provider: AiProvider) => invoke<void>("ai_key_delete", { provider });
+
+/** The ChatGPT account of the `chatgpt` provider; its tokens never leave the backend. */
+export interface ChatGptStatus {
+  signedIn: boolean;
+  email: string | null;
+  /** Whether the account allowed PlexusTerm to use its ChatGPT plan (no inference is sent otherwise). */
+  planEnabled: boolean;
+}
+
+export interface ChatGptSignOut {
+  /** False when the sign-in could not be revoked at OpenAI; it is cleared on this computer anyway. */
+  revoked: boolean;
+}
+
+export const aiChatGptStatus = () => invoke<ChatGptStatus>("ai_chatgpt_status");
+
+/** Opens the browser at OpenAI's sign-in and resolves once it completes; rejects on denial, cancel or timeout. */
+export const aiChatGptSignIn = () => invoke<ChatGptStatus>("ai_chatgpt_sign_in");
+
+/** Ends a pending sign-in. */
+export const aiChatGptCancel = () => invoke<void>("ai_chatgpt_cancel");
+
+export const aiChatGptSignOut = () => invoke<ChatGptSignOut>("ai_chatgpt_sign_out");
 
 /** OpenCode Go models with names and API formats; `refresh` skips the 24 h cache. */
 export const aiOpenCodeModels = (refresh: boolean) => invoke<GoModels>("ai_opencode_models", { refresh });

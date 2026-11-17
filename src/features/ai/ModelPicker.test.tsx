@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, aiProviderLabel } from "./ModelPicker";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 
@@ -124,6 +124,15 @@ describe("ModelPicker (S10)", () => {
     expect(screen.getAllByRole("option")).toHaveLength(1);
     fireEvent.keyDown(screen.getByRole("searchbox", { name: "Filter models" }), { key: "Escape" });
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("names the ChatGPT plan provider and lists its models once signed in with plan use", async () => {
+    expect(aiProviderLabel("chatgpt")).toBe("ChatGPT plan");
+    backend(["chatgpt"], { chatgpt: [{ id: "gpt-5.5", name: "GPT-5.5", supported: true }] });
+    renderPicker();
+    open();
+    const list = await screen.findByRole("listbox", { name: "AI models" });
+    await waitFor(() => expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(["GPT-5.5ChatGPT plan"]));
   });
 
   it("says when no provider has a key", async () => {

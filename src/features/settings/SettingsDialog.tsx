@@ -10,7 +10,16 @@ import type { AppKey } from "../../i18n/catalogs";
 import packageJson from "../../../package.json";
 import wordmarkUrl from "../../assets/plexusterm-wordmark.svg";
 import wordmarkLightUrl from "../../assets/plexusterm-wordmark-light.svg";
-import { aiOpenCodeModels, describeAiError, type GoModels } from "../ai/aiClient";
+import {
+  aiChatGptCancel,
+  aiChatGptSignIn,
+  aiChatGptSignOut,
+  aiChatGptStatus,
+  aiOpenCodeModels,
+  describeAiError,
+  type ChatGptStatus,
+  type GoModels,
+} from "../ai/aiClient";
 import { aiProviderLabel } from "../ai/ModelPicker";
 import { commandHistory } from "../history/historyStore";
 import { programsDir } from "../platform/programsDir";
@@ -329,6 +338,118 @@ function ApiKeyField({ provider, usage = false }: { provider: AiProvider; usage?
       </div>
       <span className="muted">{label[status]}</span>
       {usage && status !== "saved" && <span className="muted">{t("settings.terminal.aiUsageKeyHelp")}</span>}
+      {error && <span className="form-error">{error}</span>}
+    </div>
+  );
+}
+
+/** Where a ChatGPT plan's usage and limits are seen and managed. */
+const CHATGPT_USAGE_URL = "https://chatgpt.com/settings/usage";
+
+/**
+ * The ChatGPT plan's account, in place of an API key (S8): who is signed in, whether the account
+ * allowed plan use, and the browser sign-in. Signing in and out apply at once, not on Save.
+ */
+function ChatGptAccountField() {
+  const t = useT();
+  /** Null while it is read. */
+  const [status, setStatus] = useState<ChatGptStatus | null>(null);
+  const [pending, setPending] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  /** A sign-in still waiting for the browser when the field goes away is ended with it. */
+  const pendingRef = useRef(false);
+
+  useEffect(() => {
+    let current = true;
+    Promise.resolve()
+      .then(aiChatGptStatus)
+      .then((read) => current && setStatus(read))
+      .catch((err) => {
+        if (!current) return;
+        setStatus({ signedIn: false, email: null, planEnabled: false });
+        setError(t("settings.ai.chatgpt.statusFailed", { error: describeAiError(err) }));
+      });
+    return () => {
+      current = false;
+      if (pendingRef.current) void aiChatGptCancel().catch(() => {});
+    };
+    // Read once each time the field shows.
+  }, []);
+
+  const signIn = () => {
+    pendingRef.current = true;
+    setPending(true);
+    setError(null);
+    setNote(null);
+    Promise.resolve()
+      .then(aiChatGptSignIn)
+      .then(setStatus)
+      .catch((err) => setError(t("settings.ai.chatgpt.signInFailed", { error: describeAiError(err) })))
+      .finally(() => {
+        pendingRef.current = false;
+        setPending(false);
+      });
+  };
+
+  const signOut = () => {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    Promise.resolve()
+      .then(aiChatGptSignOut)
+      .then(({ revoked }) => {
+        setStatus({ signedIn: false, email: null, planEnabled: false });
+        if (!revoked) setNote(t("settings.ai.chatgpt.signOutUnconfirmed"));
+      })
+      .catch((err) => setError(t("settings.ai.chatgpt.signOutFailed", { error: describeAiError(err) })))
+      .finally(() => setBusy(false));
+  };
+
+  let account = t("settings.ai.chatgpt.checking");
+  if (status?.signedIn) {
+    account = status.email ? t("settings.ai.chatgpt.signedInAs", { email: status.email }) : t("settings.ai.chatgpt.signedIn");
+  } else if (status) {
+    account = t("settings.ai.chatgpt.notSignedIn");
+  }
+  return (
+    <div className="field" role="group" aria-labelledby="settings-chatgpt-account">
+      <span id="settings-chatgpt-account">{t("settings.ai.chatgpt.account")}</span>
+      <span className="muted">{account}</span>
+      {status?.signedIn && (
+        <span className="muted">
+          {status.planEnabled ? t("settings.ai.chatgpt.planEnabled") : t("settings.ai.chatgpt.planNotEnabled")}
+        </span>
+      )}
+      <div className="form-row">
+        {pending ? (
+          <>
+            <span className="muted" role="status">
+              {t("settings.ai.chatgpt.waiting")}
+            </span>
+            <button type="button" className="btn" onClick={() => void aiChatGptCancel().catch(() => {})}>
+              {t("common.cancel")}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn" disabled={busy || status === null} onClick={signIn}>
+            {t("settings.ai.chatgpt.continue")}
+          </button>
+        )}
+        {status?.signedIn && (
+          <button type="button" className="btn" disabled={busy || pending} onClick={signOut}>
+            {t("settings.ai.chatgpt.signOut")}
+          </button>
+        )}
+      </div>
+      <span className="muted">
+        {t("settings.ai.chatgpt.planNote")}{" "}
+        <a href={CHATGPT_USAGE_URL} onClick={(e) => openLink(e, CHATGPT_USAGE_URL)}>
+          {t("settings.ai.chatgpt.manageUsage")}
+        </a>
+      </span>
+      {note && <span className="muted">{note}</span>}
       {error && <span className="form-error">{error}</span>}
     </div>
   );
@@ -1604,7 +1725,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 />
               </label>
             )}
-            <ApiKeyField provider={aiProvider} />
+            {aiProvider === "chatgpt" ? <ChatGptAccountField /> : <ApiKeyField provider={aiProvider} />}
             <h3 className="settings__group">{t("settings.groups.chat")}</h3>
             <label className="check">
               <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />

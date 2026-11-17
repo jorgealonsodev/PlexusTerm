@@ -16,7 +16,10 @@ export function aiConfigOf(settings: TerminalSettings, sessionId?: string): AiCo
 /** A new conversation ID (a UUID: letters, digits and '-', as OpenCode's session header expects). */
 export const newAiSessionId = () => crypto.randomUUID();
 
-/** Local OpenAI-compatible servers (Ollama, LM Studio) work without a key. */
+/**
+ * Local OpenAI-compatible servers (Ollama, LM Studio) work without a key. The ChatGPT plan has no
+ * API key, but its key status is the signed-in account with plan use, so it is checked the same way.
+ */
 export const needsApiKey = (provider: AiProvider) => provider !== "openai-compatible";
 
 /** The short status hint a failed AI suggestion leaves in its pane. */

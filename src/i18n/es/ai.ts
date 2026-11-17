@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "Compatible con OpenAI",
     openaiCompatibleEndpoint: "el endpoint compatible con OpenAI",
+    chatgpt: "Plan de ChatGPT",
   },
   errors: {
     noKey: "No hay ninguna clave de API guardada para este proveedor.",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "Pregunta",
     asking: "Preguntando…",
     noKey: "No hay ninguna clave de API guardada para {provider}. Añade una en Ajustes → IA.",
+    noChatGpt: "No has iniciado sesión en ChatGPT o el uso del plan no está habilitado. Usa «Continue with ChatGPT» en Ajustes → IA.",
     openSettings: "Abrir los ajustes de IA",
     selectedText: "Texto seleccionado para enviar",
     removeSelection: "Quitar el texto seleccionado",

@@ -14,7 +14,7 @@ import { formatDate } from "../sftp/format";
 import { chatHistory, type ChatHistory } from "./chatHistory";
 import { MAX_ATTACHED_FILES, describeAttachError, fileName, readAttachment, type AttachedText } from "./attachments";
 
-const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible">, string> = {
+const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-compatible" | "chatgpt">, string> = {
   anthropic: "Anthropic",
   gemini: "Gemini",
   openai: "OpenAI",
@@ -22,7 +22,7 @@ const PROVIDER_NAMES: Record<Exclude<TerminalSettings["aiProvider"], "openai-com
 };
 
 /** The provider as the object of a sentence ("No API key is saved for …"). */
-const providerName = (provider: TerminalSettings["aiProvider"]) =>
+const providerName = (provider: Exclude<TerminalSettings["aiProvider"], "chatgpt">) =>
   provider === "openai-compatible" ? translate("ai.providers.openaiCompatibleEndpoint") : PROVIDER_NAMES[provider];
 
 /** What the app can attach to an open chat's next question. */
@@ -419,7 +419,11 @@ export function ChatPane({ conversationKey, settings, context, selection, questi
       </div>
       {keyMissing && (
         <div className="assistant__notice" role="alert">
-          <p>{t("ai.chat.noKey", { provider: providerName(provider) })}</p>
+          <p>
+            {provider === "chatgpt"
+              ? t("ai.chat.noChatGpt")
+              : t("ai.chat.noKey", { provider: providerName(provider) })}
+          </p>
           <button type="button" className="btn" onClick={onOpenSettings}>
             {t("ai.chat.openSettings")}
           </button>

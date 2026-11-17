@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 호환",
     openaiCompatibleEndpoint: "OpenAI 호환 엔드포인트",
+    chatgpt: "ChatGPT 요금제",
   },
   errors: {
     noKey: "이 공급자에 저장된 API 키가 없습니다.",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "질문",
     asking: "질문하는 중…",
     noKey: "{provider}에 저장된 API 키가 없습니다. 설정 → AI에서 추가하십시오.",
+    noChatGpt: "ChatGPT에 로그인하지 않았거나 플랜 사용이 허용되지 않았습니다. 설정 → AI에서 \"Continue with ChatGPT\"를 사용하십시오.",
     openSettings: "AI 설정 열기",
     selectedText: "보낼 선택한 텍스트",
     removeSelection: "선택한 텍스트 제거",

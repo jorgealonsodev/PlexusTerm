@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 互換",
     openaiCompatibleEndpoint: "OpenAI 互換エンドポイント",
+    chatgpt: "ChatGPT プラン",
   },
   errors: {
     noKey: "このプロバイダーの API キーは保存されていません。",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "質問",
     asking: "問い合わせ中…",
     noKey: "{provider} の API キーは保存されていません。［設定］→［AI］で追加してください。",
+    noChatGpt: "ChatGPT にサインインしていないか、プランの利用が許可されていません。［設定］→［AI］で「Continue with ChatGPT」を使用してください。",
     openSettings: "AI 設定を開く",
     selectedText: "送信する選択テキスト",
     removeSelection: "選択テキストを削除",

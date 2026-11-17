@@ -338,6 +338,11 @@ describe("parseSettings", () => {
     expect(parseSettings('{"aiProvider":"openai","aiModel":7}').aiModel).toBe("");
   });
 
+  it("knows the ChatGPT plan provider, whose model is picked from the plan's list", () => {
+    expect(parseSettings('{"aiProvider":"chatgpt"}')).toMatchObject({ aiProvider: "chatgpt", aiModel: "" });
+    expect(parseSettings('{"aiProvider":"chatgpt","aiModel":" gpt-5.5 "}').aiModel).toBe("gpt-5.5");
+  });
+
   it("knows OpenCode Go, whose model is left for the user to pick", () => {
     expect(parseSettings('{"aiProvider":"opencode-go"}')).toMatchObject({ aiProvider: "opencode-go", aiModel: "" });
     expect(parseSettings('{"aiProvider":"opencode-go","aiModel":" kimi-k3 "}').aiModel).toBe("kimi-k3");

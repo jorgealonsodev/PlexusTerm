@@ -34,6 +34,11 @@ describe("needsApiKey", () => {
     expect(needsApiKey("openai")).toBe(true);
     expect(needsApiKey("openai-compatible")).toBe(false);
   });
+
+  it("is true for the ChatGPT plan, whose key status is the signed-in account with plan use", () => {
+    expect(needsApiKey("chatgpt")).toBe(true);
+    expect(aiConfigOf({ ...DEFAULT_SETTINGS, aiProvider: "chatgpt", aiModel: "gpt-5.5" })).toEqual({ provider: "chatgpt", model: "gpt-5.5" });
+  });
 });
 
 describe("truncateSelection", () => {

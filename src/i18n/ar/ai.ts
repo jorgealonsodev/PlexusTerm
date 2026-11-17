@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "متوافق مع OpenAI",
     openaiCompatibleEndpoint: "نقطة النهاية المتوافقة مع OpenAI",
+    chatgpt: "خطة ChatGPT",
   },
   errors: {
     noKey: "لا يوجد مفتاح API محفوظ لهذا المزوّد.",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "السؤال",
     asking: "جارٍ السؤال…",
     noKey: "لا يوجد مفتاح API محفوظ لـ {provider}. أضف واحدًا في الإعدادات ← الذكاء الاصطناعي.",
+    noChatGpt: "لم تسجّل الدخول إلى ChatGPT، أو أن استخدام الخطة غير مفعّل. استخدم «Continue with ChatGPT» في الإعدادات ← الذكاء الاصطناعي.",
     openSettings: "فتح إعدادات الذكاء الاصطناعي",
     selectedText: "النص المحدد المراد إرساله",
     removeSelection: "إزالة النص المحدد",

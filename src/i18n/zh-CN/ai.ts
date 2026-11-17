@@ -5,6 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 兼容",
     openaiCompatibleEndpoint: "OpenAI 兼容端点",
+    chatgpt: "ChatGPT 套餐",
   },
   errors: {
     noKey: "未为此提供商保存 API 密钥。",
@@ -35,6 +36,7 @@ export const ai: Messages<typeof en> = {
     question: "问题",
     asking: "正在提问…",
     noKey: "未为{provider}保存 API 密钥。请在“设置 → AI”中添加。",
+    noChatGpt: "尚未登录 ChatGPT，或未允许使用套餐。请在“设置 → AI”中使用“Continue with ChatGPT”。",
     openSettings: "打开 AI 设置",
     selectedText: "要发送的选中文本",
     removeSelection: "移除选中文本",
