@@ -265,6 +265,25 @@ pub fn build(
                 shape: Shape::Gemini,
             }
         }
+        Provider::ChatGpt => {
+            if let Some(key) = key {
+                headers.push(("authorization", format!("Bearer {}", key.expose())));
+            }
+            // The plan API needs a stream, no stored response, `input` as a list and the
+            // system prompt in `instructions`; it rejects `max_output_tokens`.
+            Call {
+                url: format!("{}/responses", endpoints.chatgpt_api.trim_end_matches('/')),
+                headers,
+                body: json!({
+                    "model": model,
+                    "instructions": system,
+                    "input": chat_messages(&prompt, "assistant"),
+                    "store": false,
+                    "stream": true,
+                }),
+                shape: Shape::OpenAiResponses,
+            }
+        }
         Provider::OpenAi | Provider::OpenAiCompatible => {
             let url = if provider == Provider::OpenAi {
                 endpoints.openai.clone()

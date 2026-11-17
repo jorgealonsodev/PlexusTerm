@@ -23,6 +23,8 @@ struct Seen {
     path: String,
     headers: HashMap<String, String>,
     body: Value,
+    /// The body as text (form bodies are not JSON).
+    raw_body: String,
 }
 
 impl Seen {
@@ -64,11 +66,13 @@ async fn read_seen(socket: &mut tokio::net::TcpStream) -> Seen {
         raw.extend_from_slice(&buf[..n]);
     }
     let body = serde_json::from_slice(&raw[head_end..]).unwrap_or(Value::Null);
+    let raw_body = String::from_utf8_lossy(&raw[head_end..]).to_string();
     Seen {
         method,
         path,
         headers,
         body,
+        raw_body,
     }
 }
 
@@ -140,6 +144,8 @@ fn endpoints(base: &str) -> Endpoints {
         opencode_go: format!("{base}/inference/go/v1"),
         models_dev: format!("{base}/api.json"),
         opencode_go_usage: format!("{base}/zen/go/v1/usage"),
+        chatgpt_auth: base.to_string(),
+        chatgpt_api: format!("{base}/v1"),
     }
 }
 
@@ -2081,4 +2087,637 @@ async fn opencode_go_usage_prefers_the_key_saved_for_the_usage() {
         seen.headers.get("authorization").map(String::as_str),
         Some("Bearer usage-key")
     );
+}
+
+// ---- ChatGPT plan (Sign in with ChatGPT) ----
+
+type Routes = Arc<std::sync::Mutex<Vec<(&'static str, u16, String)>>>;
+
+/// Like `mock_routes`, with routes the test can change while the server runs.
+async fn mock_shared(routes: Routes) -> (String, Log) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let log: Log = Arc::default();
+    let seen_log = log.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let seen = read_seen(&mut socket).await;
+            let route = routes
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|(path, _, _)| *path == seen.path.split('?').next().unwrap())
+                .cloned();
+            seen_log.lock().unwrap().push(seen);
+            let (status, body) = route.map_or((404, "{}".to_string()), |(_, s, b)| (s, b));
+            respond(&mut socket, status, "", &body).await;
+        }
+    });
+    (base, log)
+}
+
+fn form(seen: &Seen) -> HashMap<String, String> {
+    chatgpt::parse_query(&seen.raw_body)
+}
+
+fn id_token(client_id: &str, nonce: &str, sub: &str) -> String {
+    let claims = json!({
+        "iss": "https://auth.openai.com", "aud": client_id, "exp": 4_000_000_000u64,
+        "nonce": nonce, "sub": sub, "email": "dev@example.com"
+    });
+    format!(
+        "{}.{}.sig",
+        chatgpt::base64url(br#"{"alg":"RS256"}"#),
+        chatgpt::base64url(claims.to_string().as_bytes())
+    )
+}
+
+const PLAN_SCOPES: &str =
+    "chatgpt.tokens.use.direct email offline_access openid profile resource.invoke";
+
+/// A client whose ChatGPT sign-in file lives in `dir`.
+fn chatgpt_client(base: &str, dir: &tempfile::TempDir) -> (AiClient, std::path::PathBuf) {
+    let ai = client(base);
+    let path = dir.path().join("chatgpt-auth.json");
+    ai.set_chatgpt_file(Some(path.clone()));
+    (ai, path)
+}
+
+fn write_record(path: &std::path::Path, record: Value) {
+    std::fs::write(path, record.to_string()).unwrap();
+}
+
+fn read_record(path: &std::path::Path) -> Value {
+    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+}
+
+fn signed_in_record(expires_at: u64, scopes: &str) -> Value {
+    json!({
+        "hostId": "urn:uuid:00000000-0000-4000-8000-000000000000",
+        "clientId": "oaiapp_test",
+        "subject": "user-1",
+        "email": "dev@example.com",
+        "idToken": "old.id.token",
+        "accessToken": "access-1",
+        "refreshToken": "refresh-1",
+        "scopes": scopes.split(' ').collect::<Vec<_>>(),
+        "expiresAt": expires_at,
+    })
+}
+
+fn now() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
+fn sse_completed(text: &str) -> String {
+    let done = json!({
+        "type": "response.completed",
+        "response": {"status": "completed", "output": [
+            {"type": "message", "content": [{"type": "output_text", "text": text}]}
+        ]}
+    });
+    format!(
+        "event: response.output_text.delta\ndata: {}\n\nevent: response.completed\ndata: {done}\n\n",
+        json!({"type": "response.output_text.delta", "delta": text})
+    )
+}
+
+/// Plays the browser: reads the authorization URL and calls the loopback callback with
+/// `extra` query parameters (plus the right `state` unless `extra` has one).
+fn browser(
+    extra: Vec<(&'static str, String)>,
+    seen_url: Arc<std::sync::Mutex<Option<String>>>,
+    routes: Routes,
+    client_for_token: &'static str,
+) -> impl FnOnce(&str) -> Result<(), String> {
+    move |url: &str| {
+        *seen_url.lock().unwrap() = Some(url.to_string());
+        let q = chatgpt::parse_query(url.split_once('?').unwrap().1);
+        let nonce = q["nonce"].clone();
+        routes.lock().unwrap().push((
+            "/api/accounts/oauth/token",
+            200,
+            json!({
+                "access_token": "access-new", "refresh_token": "refresh-new",
+                "id_token": id_token(client_for_token, &nonce, "user-1"),
+                "token_type": "Bearer", "expires_in": 3600, "scope": PLAN_SCOPES
+            })
+            .to_string(),
+        ));
+        let mut params = vec![("state", q["state"].clone())];
+        params.retain(|(k, _)| !extra.iter().any(|(e, _)| e == k));
+        params.extend(extra);
+        let query = params
+            .iter()
+            .map(|(k, v)| format!("{k}={}", v.replace(' ', "+")))
+            .collect::<Vec<_>>()
+            .join("&");
+        let callback = format!("{}?{query}", q["redirect_uri"]);
+        tokio::spawn(async move {
+            // A stray request first: it must not end the sign-in.
+            let origin = callback.split("/auth/").next().unwrap().to_string();
+            let _ = reqwest::get(format!("{origin}/favicon.ico")).await;
+            let _ = reqwest::get(callback).await;
+        });
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn chatgpt_first_sign_in_registers_and_saves_the_token_set() {
+    let routes: Routes = Arc::default();
+    let (base, log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    let url = Arc::new(std::sync::Mutex::new(None));
+    let status = ai
+        .chatgpt_sign_in(browser(
+            vec![
+                ("code", "code-1".into()),
+                ("client_id", "oaiapp_new".into()),
+                ("scope", PLAN_SCOPES.into()),
+            ],
+            url.clone(),
+            routes,
+            "oaiapp_new",
+        ))
+        .await
+        .unwrap();
+    assert!(status.signed_in && status.plan_enabled);
+    assert_eq!(status.email.as_deref(), Some("dev@example.com"));
+
+    let url = url.lock().unwrap().clone().unwrap();
+    let q = chatgpt::parse_query(url.split_once('?').unwrap().1);
+    assert!(url.starts_with(&format!("{base}/api/accounts/authorize?")));
+    assert_eq!(q["client_id"], "dynamic_agent_client");
+    assert_eq!(q["agent_name_hint"], "PlexusTerm");
+    assert!(q["redirect_uri"].starts_with("http://127.0.0.1:"));
+    assert!(q["redirect_uri"].ends_with("/auth/callback"));
+
+    let seen = log.lock().unwrap();
+    let token = seen
+        .iter()
+        .find(|s| s.path == "/api/accounts/oauth/token")
+        .unwrap();
+    assert_eq!(token.method, "POST");
+    assert_eq!(
+        token.header("content-type"),
+        Some("application/x-www-form-urlencoded")
+    );
+    let f = form(token);
+    assert_eq!(f["grant_type"], "authorization_code");
+    assert_eq!(f["client_id"], "oaiapp_new");
+    assert_eq!(f["code"], "code-1");
+    assert_eq!(f["redirect_uri"], q["redirect_uri"]);
+    assert_eq!(f["resource"], "https://api.openai.com/v1");
+    assert_eq!(
+        chatgpt::pkce_challenge(&f["code_verifier"]),
+        q["code_challenge"]
+    );
+
+    let record = read_record(&path);
+    assert_eq!(record["clientId"], "oaiapp_new");
+    assert_eq!(record["hostId"], q["ext_agent_host_id"]);
+    assert!(record["hostId"].as_str().unwrap().starts_with("urn:uuid:"));
+    assert_eq!(record["accessToken"], "access-new");
+    assert_eq!(record["refreshToken"], "refresh-new");
+    assert_eq!(record["subject"], "user-1");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+}
+
+#[tokio::test]
+async fn chatgpt_sign_in_without_an_issued_client_is_incomplete() {
+    let routes: Routes = Arc::default();
+    let (base, log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    let url = Arc::new(std::sync::Mutex::new(None));
+    let err = ai
+        .chatgpt_sign_in(browser(vec![("code", "c".into())], url, routes, "x"))
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    assert!(
+        log.lock()
+            .unwrap()
+            .iter()
+            .all(|s| s.path != "/api/accounts/oauth/token")
+    );
+    assert!(read_record(&path)["accessToken"].is_null());
+}
+
+#[tokio::test]
+async fn chatgpt_declined_consent_exchanges_nothing() {
+    let routes: Routes = Arc::default();
+    let (base, log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, _) = chatgpt_client(&base, &dir);
+    let url = Arc::new(std::sync::Mutex::new(None));
+    let err = ai
+        .chatgpt_sign_in(browser(
+            vec![("error", "access_denied".into())],
+            url,
+            routes,
+            "x",
+        ))
+        .await
+        .unwrap_err();
+    assert!(err.message.contains("declined"), "{}", err.message);
+    assert!(
+        log.lock()
+            .unwrap()
+            .iter()
+            .all(|s| s.path != "/api/accounts/oauth/token")
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_reauthorization_reuses_the_client_and_refuses_another_one() {
+    let routes: Routes = Arc::default();
+    let (base, _log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    let mut record = signed_in_record(0, PLAN_SCOPES);
+    record["accessToken"] = Value::Null;
+    record["refreshToken"] = Value::Null;
+    write_record(&path, record);
+
+    let url = Arc::new(std::sync::Mutex::new(None));
+    let err = ai
+        .chatgpt_sign_in(browser(
+            vec![("code", "c".into()), ("client_id", "oaiapp_other".into())],
+            url.clone(),
+            routes.clone(),
+            "oaiapp_test",
+        ))
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    let q = chatgpt::parse_query(
+        url.lock()
+            .unwrap()
+            .clone()
+            .unwrap()
+            .split_once('?')
+            .unwrap()
+            .1,
+    );
+    assert_eq!(q["client_id"], "oaiapp_test");
+    assert_eq!(q["id_token_hint"], "old.id.token");
+    assert_eq!(q["login_hint"], "dev@example.com");
+    assert_eq!(
+        q["ext_agent_host_id"],
+        "urn:uuid:00000000-0000-4000-8000-000000000000"
+    );
+    assert!(!q.contains_key("agent_name_hint"));
+
+    routes.lock().unwrap().clear();
+    let status = ai
+        .chatgpt_sign_in(browser(
+            vec![("code", "c".into())],
+            Arc::default(),
+            routes,
+            "oaiapp_test",
+        ))
+        .await
+        .unwrap();
+    assert!(status.plan_enabled);
+    assert_eq!(read_record(&path)["clientId"], "oaiapp_test");
+}
+
+#[tokio::test]
+async fn chatgpt_sign_in_can_be_cancelled() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, _) = chatgpt_client("http://127.0.0.1:9", &dir);
+    let ai = Arc::new(ai);
+    let waiting = ai.clone();
+    let task = tokio::spawn(async move { waiting.chatgpt_sign_in(|_| Ok(())).await });
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    ai.chatgpt.cancel();
+    let err = tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap_err();
+    assert!(err.message.contains("cancelled"), "{}", err.message);
+}
+
+#[tokio::test]
+async fn chatgpt_completion_streams_from_the_responses_api() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![(
+        "/v1/responses",
+        200,
+        sse_completed("git status"),
+    )]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 3600, PLAN_SCOPES));
+    let out = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("git sta"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(out.completion, "tus");
+    let seen = log.lock().unwrap();
+    assert_eq!(seen.len(), 1);
+    let req = &seen[0];
+    assert_eq!(req.header("authorization"), Some("Bearer access-1"));
+    assert_eq!(req.body["model"], "gpt-x");
+    assert_eq!(req.body["store"], false);
+    assert_eq!(req.body["stream"], true);
+    assert!(req.body["instructions"].is_string());
+    assert!(req.body["input"].is_array());
+    assert_eq!(
+        req.body["input"].as_array().unwrap().last().unwrap()["role"],
+        "user"
+    );
+    for unsupported in ["max_output_tokens", "temperature", "max_tokens", "messages"] {
+        assert!(
+            req.body.get(unsupported).is_none(),
+            "{unsupported} must not be sent"
+        );
+    }
+}
+
+#[tokio::test]
+async fn chatgpt_usage_limit_in_the_stream_is_reported() {
+    let failed = format!(
+        "data: {}\n\n",
+        json!({"type": "response.failed", "response": {"error": {"code": "subscription_sharing_usage_limit_exceeded"}}})
+    );
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![("/v1/responses", 200, failed)]));
+    let (base, _) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 3600, PLAN_SCOPES));
+    let err = ai
+        .assist(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &ask("hi"),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::RateLimit);
+    assert!(err.message.contains("chatgpt.com/settings/usage"));
+}
+
+#[tokio::test]
+async fn chatgpt_refreshes_a_token_about_to_expire() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![
+        (
+            "/api/accounts/oauth/token",
+            200,
+            json!({"access_token": "access-2", "refresh_token": "refresh-2", "expires_in": 3600, "scope": PLAN_SCOPES}).to_string(),
+        ),
+        ("/v1/responses", 200, sse_completed("ok")),
+    ]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 30, PLAN_SCOPES));
+    ai.complete(
+        &store_with(Provider::ChatGpt, None),
+        &config(Provider::ChatGpt, "gpt-x"),
+        &line("ls "),
+    )
+    .await
+    .unwrap();
+    let seen = log.lock().unwrap();
+    let f = form(&seen[0]);
+    assert_eq!(seen[0].path, "/api/accounts/oauth/token");
+    assert_eq!(f["grant_type"], "refresh_token");
+    assert_eq!(f["client_id"], "oaiapp_test");
+    assert_eq!(f["refresh_token"], "refresh-1");
+    assert_eq!(f["resource"], "https://api.openai.com/v1");
+    assert!(!f.contains_key("scope"));
+    assert_eq!(seen[1].header("authorization"), Some("Bearer access-2"));
+    let record = read_record(&path);
+    assert_eq!(record["accessToken"], "access-2");
+    assert_eq!(record["refreshToken"], "refresh-2");
+    assert!(record["expiresAt"].as_u64().unwrap() > now() + 3000);
+}
+
+#[tokio::test]
+async fn chatgpt_terminal_refresh_error_forgets_the_tokens_only() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![(
+        "/api/accounts/oauth/token",
+        400,
+        json!({"error": "refresh_token_reused"}).to_string(),
+    )]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now(), PLAN_SCOPES));
+    let err = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("ls "),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::NoKey);
+    assert_eq!(log.lock().unwrap().len(), 1);
+    let record = read_record(&path);
+    assert!(record["accessToken"].is_null() && record["refreshToken"].is_null());
+    assert_eq!(record["clientId"], "oaiapp_test");
+    assert_eq!(
+        record["hostId"],
+        "urn:uuid:00000000-0000-4000-8000-000000000000"
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_refresh_server_failure_keeps_the_tokens() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![(
+        "/api/accounts/oauth/token",
+        503,
+        "{}".to_string(),
+    )]));
+    let (base, _) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now(), PLAN_SCOPES));
+    let err = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("ls "),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Network);
+    assert_eq!(read_record(&path)["refreshToken"], "refresh-1");
+}
+
+#[tokio::test]
+async fn chatgpt_without_plan_scope_sends_no_inference() {
+    let routes: Routes = Arc::default();
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(
+        &path,
+        signed_in_record(now() + 3600, "openid email profile"),
+    );
+    let err = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("ls "),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    assert!(log.lock().unwrap().is_empty());
+    let status = ai.chatgpt.status().await.unwrap();
+    assert!(status.signed_in && !status.plan_enabled);
+}
+
+#[tokio::test]
+async fn chatgpt_not_signed_in_is_a_missing_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, _) = chatgpt_client("http://127.0.0.1:9", &dir);
+    let err = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("ls "),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::NoKey);
+    let status = ai.chatgpt.status().await.unwrap();
+    assert_eq!(
+        status,
+        chatgpt::Status {
+            signed_in: false,
+            email: None,
+            plan_enabled: false
+        }
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_sign_out_revokes_and_keeps_the_registration() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let (base, log) = mock_shared(routes.clone()).await;
+    routes.lock().unwrap().extend([
+        (
+            "/.well-known/openid-configuration",
+            200,
+            json!({"revocation_endpoint": format!("{base}/oauth/revoke")}).to_string(),
+        ),
+        ("/oauth/revoke", 200, String::new()),
+    ]);
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 3600, PLAN_SCOPES));
+    let out = ai.chatgpt_sign_out().await.unwrap();
+    assert!(out.revoked);
+    let seen = log.lock().unwrap();
+    let revoke = seen.iter().find(|s| s.path == "/oauth/revoke").unwrap();
+    let f = form(revoke);
+    assert_eq!(f["token"], "refresh-1");
+    assert_eq!(f["token_type_hint"], "refresh_token");
+    assert_eq!(f["client_id"], "oaiapp_test");
+    let record = read_record(&path);
+    assert!(
+        record["accessToken"].is_null()
+            && record["refreshToken"].is_null()
+            && record["idToken"].is_null()
+    );
+    assert_eq!(record["clientId"], "oaiapp_test");
+    assert_eq!(
+        record["hostId"],
+        "urn:uuid:00000000-0000-4000-8000-000000000000"
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_sign_out_never_sends_the_token_to_another_origin() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![(
+        "/.well-known/openid-configuration",
+        200,
+        json!({"revocation_endpoint": "https://evil.example/revoke"}).to_string(),
+    )]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 3600, PLAN_SCOPES));
+    let out = ai.chatgpt_sign_out().await.unwrap();
+    assert!(!out.revoked);
+    assert_eq!(log.lock().unwrap().len(), 1);
+    assert!(read_record(&path)["refreshToken"].is_null());
+}
+
+#[tokio::test]
+async fn chatgpt_models_come_from_the_plan_catalog() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![(
+        "/v1/models",
+        200,
+        json!({"models": [
+            {"slug": "gpt-b", "display_name": "GPT B", "visibility": "list"},
+            {"slug": "gpt-hidden", "visibility": "hide"},
+            {"slug": "gpt-a", "display_name": "GPT A", "visibility": "list"}
+        ]})
+        .to_string(),
+    )]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 3600, PLAN_SCOPES));
+    let list = ai
+        .models(
+            &store_with(Provider::ChatGpt, None),
+            Provider::ChatGpt,
+            None,
+        )
+        .await
+        .unwrap();
+    let ids: Vec<_> = list
+        .models
+        .iter()
+        .map(|m| (m.id.as_str(), m.name.as_str()))
+        .collect();
+    assert_eq!(ids, vec![("gpt-b", "GPT B"), ("gpt-a", "GPT A")]);
+    assert_eq!(
+        log.lock().unwrap()[0].header("authorization"),
+        Some("Bearer access-1")
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_takes_no_api_key() {
+    let store = store_with(Provider::ChatGpt, None);
+    let err = key_save(&store, "chatgpt", "sk-x".into())
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    assert!(
+        store
+            .get(&Provider::ChatGpt.key_account())
+            .unwrap()
+            .is_none()
+    );
+    key_delete(&store, "chatgpt").await.unwrap();
+    // Another provider's key still saves.
+    key_save(&store, "openai", "sk-y".into()).await.unwrap();
+    assert!(key_status(&store, "openai").await.unwrap());
 }

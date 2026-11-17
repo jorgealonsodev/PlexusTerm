@@ -6,6 +6,7 @@
 //! only shows or types it, every command text is reduced to one line without control
 //! characters first, and assistant answers keep only line breaks and tabs.
 
+mod chatgpt;
 pub mod models;
 mod opencode;
 mod providers;
@@ -36,6 +37,9 @@ pub enum Provider {
     /// OpenCode Go: one key, models served over several API formats (see `opencode`).
     #[serde(rename = "opencode-go")]
     OpenCodeGo,
+    /// The user's ChatGPT plan through Sign in with ChatGPT (see `chatgpt`); no API key.
+    #[serde(rename = "chatgpt")]
+    ChatGpt,
 }
 
 impl Provider {
@@ -46,6 +50,7 @@ impl Provider {
             "openai" => Ok(Self::OpenAi),
             "openai-compatible" => Ok(Self::OpenAiCompatible),
             "opencode-go" => Ok(Self::OpenCodeGo),
+            "chatgpt" => Ok(Self::ChatGpt),
             other => Err(AiError::config(format!("Unknown AI provider \"{other}\"."))),
         }
     }
@@ -57,6 +62,7 @@ impl Provider {
             Self::OpenAi => "openai",
             Self::OpenAiCompatible => "openai-compatible",
             Self::OpenCodeGo => "opencode-go",
+            Self::ChatGpt => "chatgpt",
         }
     }
 
@@ -68,6 +74,7 @@ impl Provider {
             Self::OpenAi => "OpenAI",
             Self::OpenAiCompatible => "The OpenAI-compatible server",
             Self::OpenCodeGo => "OpenCode Go",
+            Self::ChatGpt => "ChatGPT",
         }
     }
 
@@ -278,6 +285,11 @@ pub struct Endpoints {
     pub models_dev: String,
     /// OpenCode Go plan usage (5-hour, weekly and monthly windows).
     pub opencode_go_usage: String,
+    /// Sign in with ChatGPT: `/api/accounts/authorize`, `/api/accounts/oauth/token` and
+    /// `/.well-known/openid-configuration` hang off it.
+    pub chatgpt_auth: String,
+    /// API root for the ChatGPT plan; `/responses` and `/models` hang off it.
+    pub chatgpt_api: String,
 }
 
 impl Default for Endpoints {
@@ -289,6 +301,8 @@ impl Default for Endpoints {
             opencode_go: "https://opencode.ai/inference/go/v1".into(),
             models_dev: "https://models.dev/api.json".into(),
             opencode_go_usage: "https://opencode.ai/zen/go/v1/usage".into(),
+            chatgpt_auth: "https://auth.openai.com".into(),
+            chatgpt_api: chatgpt::RESOURCE.into(),
         }
     }
 }
@@ -301,6 +315,8 @@ pub struct AiClient {
     assist_timeout: Duration,
     /// OpenCode Go model list (memory copy of the cache file).
     go_models: opencode::Catalog,
+    /// The ChatGPT plan sign-in.
+    chatgpt: chatgpt::ChatGptAuth,
 }
 
 impl Default for AiClient {
@@ -344,7 +360,13 @@ impl AiClient {
             complete_timeout: Duration::from_secs(8),
             assist_timeout: Duration::from_secs(120),
             go_models: opencode::Catalog::default(),
+            chatgpt: chatgpt::ChatGptAuth::default(),
         }
+    }
+
+    /// Where the ChatGPT sign-in is kept (set once the app paths are known).
+    pub fn set_chatgpt_file(&self, path: Option<PathBuf>) {
+        self.chatgpt.set_path(path);
     }
 
     /// Where the OpenCode Go model list is cached (set once the app paths are known).
@@ -358,6 +380,19 @@ impl AiClient {
         self.go_models
             .list(&self.http, &self.endpoints, refresh)
             .await
+    }
+
+    pub async fn chatgpt_sign_in(
+        &self,
+        open: impl FnOnce(&str) -> Result<(), String>,
+    ) -> Result<chatgpt::Status, AiError> {
+        self.chatgpt
+            .sign_in(&self.http, &self.endpoints, open)
+            .await
+    }
+
+    pub async fn chatgpt_sign_out(&self) -> Result<chatgpt::SignOut, AiError> {
+        self.chatgpt.sign_out(&self.http, &self.endpoints).await
     }
 
     #[cfg(test)]
@@ -439,7 +474,15 @@ impl AiClient {
     ) -> Result<providers::Reply, AiError> {
         let provider = config.provider;
         let task = prompt.task;
-        let key = load_key(secrets, provider).await?;
+        let key = if provider == Provider::ChatGpt {
+            Some(
+                self.chatgpt
+                    .access_token(&self.http, &self.endpoints)
+                    .await?,
+            )
+        } else {
+            load_key(secrets, provider).await?
+        };
         if provider.requires_key() && key.is_none() {
             return Err(AiError::new(
                 AiErrorKind::NoKey,
@@ -485,6 +528,13 @@ impl AiClient {
             .text()
             .await
             .map_err(|err| transport_error(provider, err))?;
+        if provider == Provider::ChatGpt {
+            if !(200..300).contains(&status) {
+                return Err(chatgpt::status_error(status, &body));
+            }
+            let value = chatgpt::stream_response(&body)?;
+            return providers::parse(call.shape, provider, &value);
+        }
         if !(200..300).contains(&status) {
             return Err(status_error(provider, status, &body, key.as_ref()));
         }
@@ -623,6 +673,11 @@ pub async fn key_status(secrets: &SharedSecrets, provider: &str) -> Result<bool,
 
 pub async fn key_save(secrets: &SharedSecrets, provider: &str, key: String) -> Result<(), AiError> {
     let provider = Provider::parse(provider)?;
+    if provider == Provider::ChatGpt {
+        return Err(AiError::config(
+            "The ChatGPT plan needs no API key: use \"Continue with ChatGPT\" in Settings > AI.",
+        ));
+    }
     let key = key.trim().to_string();
     if key.is_empty() {
         return Err(AiError::config("Enter an API key."));
@@ -635,19 +690,75 @@ pub async fn key_save(secrets: &SharedSecrets, provider: &str, key: String) -> R
 }
 
 pub async fn key_delete(secrets: &SharedSecrets, provider: &str) -> Result<(), AiError> {
-    let account = Provider::parse(provider)?.key_account();
+    let provider = Provider::parse(provider)?;
+    if provider == Provider::ChatGpt {
+        // Nothing is kept in the keyring for it; signing out is its own command.
+        return Ok(());
+    }
+    let account = provider.key_account();
     secrets::run(secrets, move |s| s.delete(&account))
         .await
         .map_err(keyring_error)
 }
 
 /// Whether an API key is saved for `provider`; the key itself never leaves the backend.
+/// For the ChatGPT plan: whether it is signed in with plan use enabled.
 #[tauri::command]
 pub async fn ai_key_status(
     provider: String,
+    app: AppHandle,
+    ai: State<'_, AiClient>,
     secrets: State<'_, SharedSecrets>,
 ) -> Result<bool, AiError> {
+    if Provider::parse(&provider)? == Provider::ChatGpt {
+        ai.set_chatgpt_file(chatgpt_path(&app));
+        return Ok(ai.chatgpt.status().await?.plan_enabled);
+    }
     key_status(secrets.inner(), &provider).await
+}
+
+/// The private app config file of the ChatGPT sign-in.
+fn chatgpt_path(app: &AppHandle) -> Option<PathBuf> {
+    crate::config_path(app, chatgpt::CREDENTIALS_FILE).ok()
+}
+
+/// Whether ChatGPT is signed in, with which account, and whether plan use is allowed.
+#[tauri::command]
+pub async fn ai_chatgpt_status(
+    app: AppHandle,
+    ai: State<'_, AiClient>,
+) -> Result<chatgpt::Status, AiError> {
+    ai.set_chatgpt_file(chatgpt_path(&app));
+    ai.chatgpt.status().await
+}
+
+/// Signs in with ChatGPT in the system browser; resolves once the browser comes back.
+#[tauri::command]
+pub async fn ai_chatgpt_sign_in(
+    app: AppHandle,
+    ai: State<'_, AiClient>,
+) -> Result<chatgpt::Status, AiError> {
+    ai.set_chatgpt_file(chatgpt_path(&app));
+    ai.chatgpt_sign_in(|url| {
+        tauri_plugin_opener::open_url(url, None::<&str>).map_err(|err| err.to_string())
+    })
+    .await
+}
+
+/// Ends a pending ChatGPT sign-in.
+#[tauri::command]
+pub fn ai_chatgpt_cancel(ai: State<'_, AiClient>) {
+    ai.chatgpt.cancel();
+}
+
+/// Revokes the ChatGPT session and forgets its tokens.
+#[tauri::command]
+pub async fn ai_chatgpt_sign_out(
+    app: AppHandle,
+    ai: State<'_, AiClient>,
+) -> Result<chatgpt::SignOut, AiError> {
+    ai.set_chatgpt_file(chatgpt_path(&app));
+    ai.chatgpt_sign_out().await
 }
 
 #[tauri::command]
@@ -721,6 +832,7 @@ pub async fn ai_complete(
     secrets: State<'_, SharedSecrets>,
 ) -> Result<CompleteResponse, AiError> {
     ai.set_go_cache(go_cache_path(&app));
+    ai.set_chatgpt_file(chatgpt_path(&app));
     ai.complete(secrets.inner(), &config, &request).await
 }
 
@@ -734,6 +846,7 @@ pub async fn ai_assist(
     secrets: State<'_, SharedSecrets>,
 ) -> Result<AssistResponse, AiError> {
     ai.set_go_cache(go_cache_path(&app));
+    ai.set_chatgpt_file(chatgpt_path(&app));
     ai.assist(secrets.inner(), &config, &request).await
 }
 

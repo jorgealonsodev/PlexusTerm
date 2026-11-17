@@ -91,9 +91,21 @@ impl AiClient {
                     "/chat/completions"
                 )
             ),
+            Provider::ChatGpt => format!(
+                "{}/models",
+                self.endpoints.chatgpt_api.trim_end_matches('/')
+            ),
             Provider::OpenCodeGo => unreachable!(),
         };
-        let key = load_key(secrets, provider).await?;
+        let key = if provider == Provider::ChatGpt {
+            Some(
+                self.chatgpt
+                    .access_token(&self.http, &self.endpoints)
+                    .await?,
+            )
+        } else {
+            load_key(secrets, provider).await?
+        };
         if provider.requires_key() && key.is_none() {
             return Err(AiError::new(
                 AiErrorKind::NoKey,
@@ -194,6 +206,15 @@ fn info(id: String, name: Option<&str>) -> ModelInfo {
 }
 
 fn parse(provider: Provider, value: &Value) -> Option<Vec<ModelInfo>> {
+    if provider == Provider::ChatGpt {
+        let listed = super::chatgpt::parse_models(value)?;
+        return Some(
+            listed
+                .into_iter()
+                .map(|(slug, name)| info(slug, name.as_deref()))
+                .collect(),
+        );
+    }
     if provider == Provider::Gemini {
         let models: Vec<GeminiModel> = serde_json::from_value(value.get("models")?.clone()).ok()?;
         return Some(
@@ -238,6 +259,7 @@ pub async fn ai_models(
 ) -> Result<ModelList, AiError> {
     let provider = Provider::parse(&provider)?;
     ai.set_go_cache(super::go_cache_path(&app));
+    ai.set_chatgpt_file(super::chatgpt_path(&app));
     ai.models(secrets.inner(), provider, base_url.as_deref())
         .await
 }
