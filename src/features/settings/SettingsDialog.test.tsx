@@ -59,6 +59,16 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "ai_chatgpt_sign_out") return chatgpt.signOut();
     if (cmd === "ai_chatgpt_cancel") return null;
     if (cmd === "ai_opencode_models") return go.models(args!.refresh!);
+    if (cmd === "ai_models" && args!.provider === "chatgpt") {
+      if (!chatgpt.status.planEnabled) throw { kind: "noKey", message: "Not signed in to ChatGPT." };
+      return {
+        models: [
+          { id: "gpt-6", name: "GPT-6", supported: true },
+          { id: "gpt-6-mini", name: "GPT-6 mini", supported: true },
+        ],
+        note: null,
+      };
+    }
     if (cmd === "ai_key_status") return keys.has(args!.provider!);
     if (cmd === "ai_key_save") keys.set(args!.provider!, args!.key!);
     if (cmd === "ai_key_delete") keys.delete(args!.provider!);
@@ -634,6 +644,25 @@ describe("SettingsDialog", () => {
         opener.openUrl.mockClear();
         fireEvent.click(usage);
         expect(opener.openUrl).toHaveBeenCalledWith("https://chatgpt.com/settings/usage");
+      });
+
+      it("lists the ChatGPT plan's models once signed in", async () => {
+        const { onSave } = openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        expect(await screen.findByText(/Not signed in to ChatGPT\./)).toBeTruthy();
+        expect(field("Model").tagName).toBe("INPUT");
+        const signedIn = { signedIn: true, email: "dev@example.com", planEnabled: true };
+        chatgpt.signIn = async () => (chatgpt.status = signedIn);
+        fireEvent.click(account().getByRole("button", { name: "Continue with ChatGPT" }));
+        await screen.findByRole("option", { name: "GPT-6 (gpt-6)" });
+        expect(invoke).toHaveBeenCalledWith("ai_models", { provider: "chatgpt" });
+        const model = field<HTMLSelectElement>("Model");
+        expect(model.tagName).toBe("SELECT");
+        expect([...model.options].map((o) => o.value)).toEqual(["", "gpt-6", "gpt-6-mini"]);
+        expect(screen.queryByRole("button", { name: "Refresh models" })).toBeTruthy();
+        fireEvent.change(model, { target: { value: "gpt-6-mini" } });
+        fireEvent.click(screen.getByRole("button", { name: "Close" }));
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiProvider: "chatgpt", aiModel: "gpt-6-mini" }));
       });
 
       it("waits for the browser sign-in with a Cancel button, and shows why it ended", async () => {

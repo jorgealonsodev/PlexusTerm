@@ -15,10 +15,11 @@ import {
   aiChatGptSignIn,
   aiChatGptSignOut,
   aiChatGptStatus,
+  aiModels,
   aiOpenCodeModels,
   describeAiError,
+  type AiModelInfo,
   type ChatGptStatus,
-  type GoModels,
 } from "../ai/aiClient";
 import { aiProviderLabel } from "../ai/ModelPicker";
 import { commandHistory } from "../history/historyStore";
@@ -190,12 +191,23 @@ const sectionLabel = (id: Section) => translate(`settings.sections.${id}`);
 const OPENCODE_MODELS_URL = "https://opencode.ai/inference/go/v1/models";
 
 /**
- * The OpenCode Go model picker (S7): the backend's list (24 h cache, Refresh asks again);
- * models PlexusTerm cannot talk to yet are shown disabled. Without a list the model is typed.
+ * A model picker over a backend list: OpenCode Go's (S7: 24 h cache, Refresh asks again) or the
+ * ChatGPT plan's. Models PlexusTerm cannot talk to yet are shown disabled. Without a list the
+ * model is typed; `modelsUrl` says where ids can be found.
  */
-function OpenCodeModelField({ value, onChange }: { value: string; onChange: (model: string) => void }) {
+function ListedModelField({
+  value,
+  onChange,
+  fetchModels,
+  modelsUrl,
+}: {
+  value: string;
+  onChange: (model: string) => void;
+  fetchModels: (refresh: boolean) => Promise<{ models: AiModelInfo[]; note: string | null }>;
+  modelsUrl?: string;
+}) {
   const t = useT();
-  const [list, setList] = useState<GoModels | null>(null);
+  const [list, setList] = useState<{ models: AiModelInfo[]; note: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const live = useRef(true);
@@ -203,7 +215,7 @@ function OpenCodeModelField({ value, onChange }: { value: string; onChange: (mod
   const load = (refresh: boolean) => {
     setBusy(true);
     setError(null);
-    aiOpenCodeModels(refresh)
+    fetchModels(refresh)
       .then((models) => live.current && setList(models))
       .catch((err) => live.current && setError(describeAiError(err)))
       .finally(() => live.current && setBusy(false));
@@ -253,7 +265,7 @@ function OpenCodeModelField({ value, onChange }: { value: string; onChange: (mod
       {busy && <span className="muted">{t("settings.ai.loadingModels")}</span>}
       {list?.note && <span className="muted">{list.note}</span>}
       {error && (
-        <span className="form-error">{t("settings.ai.modelsError", { error, url: OPENCODE_MODELS_URL })}</span>
+        <span className="form-error">{modelsUrl ? t("settings.ai.modelsError", { error, url: modelsUrl }) : error}</span>
       )}
     </div>
   );
@@ -350,10 +362,13 @@ const CHATGPT_USAGE_URL = "https://chatgpt.com/settings/usage";
  * The ChatGPT plan's account, in place of an API key (S8): who is signed in, whether the account
  * allowed plan use, and the browser sign-in. Signing in and out apply at once, not on Save.
  */
-function ChatGptAccountField() {
+function ChatGptAccountField({ onStatus }: { onStatus?: (status: ChatGptStatus) => void }) {
   const t = useT();
   /** Null while it is read. */
   const [status, setStatus] = useState<ChatGptStatus | null>(null);
+  useEffect(() => {
+    if (status) onStatus?.(status);
+  }, [status]);
   const [pending, setPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -695,6 +710,8 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [aiProvider, setAiProvider] = useState<AiProvider>(settings.aiProvider);
   const [aiBaseUrl, setAiBaseUrl] = useState(settings.aiBaseUrl);
   const [aiModel, setAiModel] = useState(settings.aiModel);
+  /** The ChatGPT account as last read; its model list is fetched again when it changes. */
+  const [chatgptAccount, setChatgptAccount] = useState("");
   const [aiHistoryContext, setAiHistoryContext] = useState(String(settings.aiHistoryContext));
   const [assistantShortcut, setAssistantShortcut] = useState(settings.assistantShortcut);
   const [shortcuts, setShortcuts] = useState(settings.shortcuts);
@@ -1713,7 +1730,20 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               </label>
             )}
             {aiProvider === "opencode-go" ? (
-              <OpenCodeModelField value={aiModel} onChange={setAiModel} />
+              <ListedModelField
+                value={aiModel}
+                onChange={setAiModel}
+                fetchModels={aiOpenCodeModels}
+                modelsUrl={OPENCODE_MODELS_URL}
+              />
+            ) : aiProvider === "chatgpt" ? (
+              // Read again whenever the account changes (signing in brings the plan's list).
+              <ListedModelField
+                key={chatgptAccount}
+                value={aiModel}
+                onChange={setAiModel}
+                fetchModels={() => aiModels("chatgpt")}
+              />
             ) : (
               <label className="field">
                 {t("settings.ai.model")}
@@ -1725,7 +1755,13 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 />
               </label>
             )}
-            {aiProvider === "chatgpt" ? <ChatGptAccountField /> : <ApiKeyField provider={aiProvider} />}
+            {aiProvider === "chatgpt" ? (
+              <ChatGptAccountField
+                onStatus={(s) => setChatgptAccount(`${s.signedIn}:${s.planEnabled}:${s.email ?? ""}`)}
+              />
+            ) : (
+              <ApiKeyField provider={aiProvider} />
+            )}
             <h3 className="settings__group">{t("settings.groups.chat")}</h3>
             <label className="check">
               <input type="checkbox" checked={aiSaveChats} onChange={(e) => setAiSaveChats(e.target.checked)} />
