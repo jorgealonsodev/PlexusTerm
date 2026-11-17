@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t as translate, useT } from "../../i18n/i18n";
 import { aiKeyStatus, aiModels, describeAiError, type AiModelInfo, type AiProvider } from "./aiClient";
 
-/** Provider names; "OpenAI-compatible" and "ChatGPT plan" describe what is used, so they are translated. */
+/** Provider names; "OpenAI-compatible" and "ChatGPT subscription" describe what is used, so they are translated. */
 const PROVIDER_NAMES: Record<Exclude<AiProvider, "openai-compatible" | "chatgpt">, string> = {
   anthropic: "Anthropic",
   gemini: "Gemini",
@@ -17,6 +17,9 @@ export function aiProviderLabel(provider: AiProvider): string {
   if (provider === "chatgpt") return translate("ai.providers.chatgpt");
   return PROVIDER_NAMES[provider];
 }
+
+/** A provider's name in the chat's model picker: the ChatGPT subscription is just "ChatGPT" there. */
+const pickerLabel = (provider: AiProvider) => (provider === "chatgpt" ? "ChatGPT" : aiProviderLabel(provider));
 
 const ORDER: AiProvider[] = ["anthropic", "gemini", "openai", "chatgpt", "opencode-go", "openai-compatible"];
 
@@ -129,8 +132,8 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
 
   const query = filter.trim().toLowerCase();
   const matches = (p: AiProvider, m: AiModelInfo) =>
-    !query || [m.name, m.id, aiProviderLabel(p)].some((s) => s.toLowerCase().includes(query));
-  const label = `${aiProviderLabel(provider)}${model ? ` · ${model}` : ""}`;
+    !query || [m.name, m.id, pickerLabel(p)].some((s) => s.toLowerCase().includes(query));
+  const label = `${pickerLabel(provider)}${model ? ` · ${model}` : ""}`;
 
   return (
     <div className="model-picker" ref={rootRef} onKeyDown={open ? onKey : undefined}>
@@ -165,10 +168,10 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
               const shown = g.models.filter((m) => matches(g.provider, m));
               const loading = !g.error && g.models.length === 0 && g.note === null;
               return (
-                <div key={g.provider} role="group" aria-label={aiProviderLabel(g.provider)}>
+                <div key={g.provider} role="group" aria-label={pickerLabel(g.provider)}>
                   {g.error && (
                     <p className="form-error model-picker__message">
-                      {t("ai.models.providerError", { provider: aiProviderLabel(g.provider), error: g.error })}
+                      {t("ai.models.providerError", { provider: pickerLabel(g.provider), error: g.error })}
                     </p>
                   )}
                   {shown.map((m) => {
@@ -191,13 +194,13 @@ export function ModelPicker({ provider, model, baseUrl, onSelect }: ModelPickerP
                         }}
                       >
                         <span className="model-picker__name" dir="auto">{m.name}</span>
-                        <span className="model-picker__provider">{aiProviderLabel(g.provider)}</span>
+                        <span className="model-picker__provider">{pickerLabel(g.provider)}</span>
                       </div>
                     );
                   })}
                   {loading && query === "" && (
                     <p className="muted model-picker__message">
-                      {t("ai.models.loadingProvider", { provider: aiProviderLabel(g.provider) })}
+                      {t("ai.models.loadingProvider", { provider: pickerLabel(g.provider) })}
                     </p>
                   )}
                   {g.note && <p className="muted model-picker__message">{g.note}</p>}

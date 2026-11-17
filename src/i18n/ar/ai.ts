@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "متوافق مع OpenAI",
     openaiCompatibleEndpoint: "نقطة النهاية المتوافقة مع OpenAI",
-    chatgpt: "خطة ChatGPT",
+    chatgpt: "اشتراك ChatGPT",
   },
   errors: {
     noKey: "لا يوجد مفتاح API محفوظ لهذا المزوّد.",

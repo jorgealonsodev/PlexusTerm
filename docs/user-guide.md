@@ -619,9 +619,9 @@ The **AI** section of Settings holds:
 - **Inline suggestions** (on by default): the grey suggestions above.
 - **Command history** (on by default): records commands and suggests from them. **Clear history** empties `history.json` at once.
 - **AI suggestions** (off by default): when the history has nothing for the typed line, ask the AI provider (see [AI suggestions](#ai-suggestions)).
-- **Provider**: Anthropic, Gemini, OpenAI, OpenAI-compatible, OpenCode Go or ChatGPT plan; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
-- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model; OpenCode Go and ChatGPT plan: pick one from the list, see [OpenCode Go](#opencode-go) and [ChatGPT plan](#chatgpt-plan)). Changing the provider while the model is still a provider default switches it to the new provider's default.
-- **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once. ChatGPT plan has no key: its **ChatGPT account** group signs in instead.
+- **Provider**: Anthropic, Gemini, OpenAI, OpenAI-compatible, OpenCode Go or ChatGPT subscription; **Base URL** for an OpenAI-compatible endpoint (for example `http://localhost:11434/v1` for Ollama).
+- **Model** (Anthropic: `claude-opus-5-5`, Gemini: `gemini-3.5-flash-lite`, OpenAI and compatible: fill in your model; OpenCode Go and ChatGPT subscription: pick one from the list, see [OpenCode Go](#opencode-go) and [ChatGPT subscription](#chatgpt-subscription)). Changing the provider while the model is still a provider default switches it to the new provider's default.
+- **API key**: stored in the system keyring, one per provider. The field only shows whether a key is saved; **Save key** and **Remove key** apply at once. ChatGPT subscription has no key: its **ChatGPT account** group signs in instead.
 - **History commands sent as context** (0-20, default 5).
 - **AI assistant** shortcut (default Ctrl+Shift+Space): changed in Settings → **Shortcuts**, under **AI assistant**.
 
@@ -643,7 +643,7 @@ With **AI suggestions** on, when the history has no suggestion for the typed lin
 | OpenAI | none: type your model | OpenAI API. |
 | OpenAI-compatible | none: type your model | Any endpoint with the OpenAI API at **Base URL**: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`), OpenRouter (`https://openrouter.ai/api/v1`). A key is optional; local servers usually need none. When the base URL is on `opencode.ai`, the OpenCode session header is sent too. |
 | OpenCode Go | none: pick a model from the list | Only the API key is needed: the model list and each model's API come from OpenCode (see below). |
-| ChatGPT plan | none: pick a model from the list | No API key: sign in with your ChatGPT account and the requests use your ChatGPT plan (see below). |
+| ChatGPT subscription | none: pick a model from the list | No API key: sign in with your ChatGPT account and the requests use your ChatGPT plan (see below). |
 
 API keys are stored only in the system keyring (one per provider), never in `settings.json`; Settings shows only whether a key is saved. Requests go from the PlexusTerm backend straight to the provider over HTTPS (or to the base URL you set), identified as `PlexusTerm/<version>`. Redirects are not followed, so a key is never sent on to another host; a redirect shows up as an error asking you to check the base URL.
 
@@ -657,9 +657,9 @@ Choose **OpenCode Go** as the provider and save your OpenCode API key; nothing e
 - Every request carries a session ID (`x-opencode-session`), as OpenCode asks: one per terminal pane for inline suggestions and one per AI chat pane.
 - OpenCode Go is meant for coding agents and monitors traffic; inline AI suggestions send many short requests. Settings shows this note when OpenCode Go is selected.
 
-### ChatGPT plan
+### ChatGPT subscription
 
-Choose **ChatGPT plan** as the provider to run the AI chat and AI suggestions on your ChatGPT Plus or Pro plan instead of an API key. It uses OpenAI's official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) for open-source apps.
+Choose **ChatGPT subscription** as the provider (shown as just **ChatGPT** in the chat header) to run the AI chat and AI suggestions on your ChatGPT Plus or Pro plan instead of an API key. It uses OpenAI's official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) for open-source apps.
 
 - **Continue with ChatGPT** opens your browser on OpenAI's sign-in page. The first time, OpenAI asks you to approve PlexusTerm and to let it use your plan; then the browser comes back to PlexusTerm on `http://127.0.0.1` and the account's email shows under **ChatGPT account**. **Cancel** stops a sign-in that is still waiting; it also stops on its own after 5 minutes.
 - If you do not allow plan use, the account stays signed in but **Plan use isn't enabled** is shown and nothing is sent; sign in again to allow it.

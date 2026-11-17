@@ -3,7 +3,7 @@ export const ai = {
     openaiCompatible: "OpenAI-compatible",
     /** The provider as the object of a sentence ("No API key is saved for …"). */
     openaiCompatibleEndpoint: "the OpenAI-compatible endpoint",
-    chatgpt: "ChatGPT plan",
+    chatgpt: "ChatGPT subscription",
   },
   errors: {
     noKey: "No API key is saved for this provider.",

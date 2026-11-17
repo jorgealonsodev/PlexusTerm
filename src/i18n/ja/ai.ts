@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 互換",
     openaiCompatibleEndpoint: "OpenAI 互換エンドポイント",
-    chatgpt: "ChatGPT プラン",
+    chatgpt: "ChatGPT サブスクリプション",
   },
   errors: {
     noKey: "このプロバイダーの API キーは保存されていません。",

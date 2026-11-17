@@ -529,7 +529,7 @@ describe("SettingsDialog", () => {
         "Anthropic",
         "Gemini",
         "OpenAI",
-        "ChatGPT plan",
+        "ChatGPT subscription",
         "OpenAI-compatible",
         "OpenCode Go",
       ]);

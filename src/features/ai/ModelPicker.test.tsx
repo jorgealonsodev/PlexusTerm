@@ -126,13 +126,13 @@ describe("ModelPicker (S10)", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("names the ChatGPT plan provider and lists its models once signed in with plan use", async () => {
-    expect(aiProviderLabel("chatgpt")).toBe("ChatGPT plan");
+  it("names the ChatGPT subscription in Settings but just ChatGPT in the chat, and lists its models", async () => {
+    expect(aiProviderLabel("chatgpt")).toBe("ChatGPT subscription");
     backend(["chatgpt"], { chatgpt: [{ id: "gpt-5.5", name: "GPT-5.5", supported: true }] });
-    renderPicker();
-    open();
+    render(<ModelPicker provider="chatgpt" model="gpt-6-luna" baseUrl="" onSelect={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "ChatGPT · gpt-6-luna" }));
     const list = await screen.findByRole("listbox", { name: "AI models" });
-    await waitFor(() => expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(["GPT-5.5ChatGPT plan"]));
+    await waitFor(() => expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(["GPT-5.5ChatGPT"]));
   });
 
   it("says when no provider has a key", async () => {

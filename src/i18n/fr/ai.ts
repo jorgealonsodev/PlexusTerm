@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "Compatible OpenAI",
     openaiCompatibleEndpoint: "le point de terminaison compatible OpenAI",
-    chatgpt: "Forfait ChatGPT",
+    chatgpt: "Abonnement ChatGPT",
   },
   errors: {
     noKey: "Aucune clé d'API n'est enregistrée pour ce fournisseur.",

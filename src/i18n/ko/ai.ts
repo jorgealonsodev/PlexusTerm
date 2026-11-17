@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 호환",
     openaiCompatibleEndpoint: "OpenAI 호환 엔드포인트",
-    chatgpt: "ChatGPT 요금제",
+    chatgpt: "ChatGPT 구독",
   },
   errors: {
     noKey: "이 공급자에 저장된 API 키가 없습니다.",

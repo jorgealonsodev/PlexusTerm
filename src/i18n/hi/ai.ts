@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI-संगत",
     openaiCompatibleEndpoint: "OpenAI-संगत एंडपॉइंट",
-    chatgpt: "ChatGPT प्लान",
+    chatgpt: "ChatGPT सदस्यता",
   },
   errors: {
     noKey: "इस प्रदाता के लिए कोई API कुंजी सहेजी नहीं गई है।",

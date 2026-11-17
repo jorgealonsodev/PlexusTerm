@@ -5,7 +5,7 @@ export const ai: Messages<typeof en> = {
   providers: {
     openaiCompatible: "OpenAI 兼容",
     openaiCompatibleEndpoint: "OpenAI 兼容端点",
-    chatgpt: "ChatGPT 套餐",
+    chatgpt: "ChatGPT 订阅",
   },
   errors: {
     noKey: "未为此提供商保存 API 密钥。",

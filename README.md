@@ -43,7 +43,7 @@ The AI is optional: nothing reaches an AI provider until you add a key. Once set
 | Anthropic, Gemini, OpenAI | Paste your API key in Settings → AI |
 | OpenAI-compatible | Ollama, LM Studio, OpenRouter or any server with the OpenAI API; a key is optional for local servers |
 | OpenCode Go | Only the key is needed; the model list comes from OpenCode |
-| ChatGPT plan | No API key: **Continue with ChatGPT** signs in with your ChatGPT Plus or Pro account (OpenAI's official Sign in with ChatGPT), and the AI features use your plan |
+| ChatGPT subscription | No API key: **Continue with ChatGPT** signs in with your ChatGPT Plus or Pro account (OpenAI's official Sign in with ChatGPT), and the AI features use your plan |
 
 Click the model name in the chat header to switch to any model of any provider you have a key for (or are signed in to).
 
