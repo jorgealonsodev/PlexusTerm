@@ -166,8 +166,10 @@ pub struct ChatGptAuth {
     path: Mutex<Option<PathBuf>>,
     /// Held for every read-modify-write of the record.
     lock: tokio::sync::Mutex<()>,
-    /// Ends the pending sign-in when dropped or sent to.
-    pending: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    /// The pending sign-in (its attempt number), ended when its sender is dropped or sent to.
+    pending: Mutex<Option<(u64, tokio::sync::oneshot::Sender<()>)>>,
+    /// Numbers sign-in attempts, so one never clears another's pending slot.
+    attempts: std::sync::atomic::AtomicU64,
 }
 
 fn now_secs() -> u64 {
@@ -241,7 +243,7 @@ impl ChatGptAuth {
 
     /// Ends a pending sign-in, if any.
     pub fn cancel(&self) {
-        if let Some(tx) = self
+        if let Some((_, tx)) = self
             .pending
             .lock()
             .unwrap_or_else(|p| p.into_inner())
@@ -269,8 +271,11 @@ impl ChatGptAuth {
             record
         };
         let (tx, mut cancelled) = tokio::sync::oneshot::channel();
+        let number = self
+            .attempts
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         // A new sign-in ends the previous one (its sender is dropped).
-        *self.pending.lock().unwrap_or_else(|p| p.into_inner()) = Some(tx);
+        *self.pending.lock().unwrap_or_else(|p| p.into_inner()) = Some((number, tx));
 
         let listener = bind_callback().await?;
         let port = listener
@@ -290,10 +295,13 @@ impl ChatGptAuth {
             }
         };
         drop(listener);
-        self.pending
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .take();
+        {
+            // Only this attempt's slot: a newer sign-in may have replaced it meanwhile.
+            let mut pending = self.pending.lock().unwrap_or_else(|p| p.into_inner());
+            if pending.as_ref().is_some_and(|(n, _)| *n == number) {
+                pending.take();
+            }
+        }
 
         if let Some(error) = params.get("error") {
             if error == "access_denied" {
@@ -356,11 +364,8 @@ impl ChatGptAuth {
                 "Another ChatGPT account signed in than the one this registration belongs to; the sign-in was not used.",
             ));
         }
-        let granted = tokens
-            .scope
-            .clone()
-            .or_else(|| params.get("scope").cloned())
-            .unwrap_or_default();
+        // Only the token response's granted scopes count (not the callback's).
+        let granted = tokens.scope.clone().unwrap_or_default();
 
         let _guard = self.lock.lock().await;
         let mut record = self.load()?;
@@ -747,29 +752,44 @@ async fn wait_callback(
     listener: &TcpListener,
     state: &str,
 ) -> Result<HashMap<String, String>, AiError> {
+    // Each connection is read on its own task, so one that sends nothing (a browser
+    // preconnect) never holds up the callback.
+    let (found_tx, mut found) = tokio::sync::mpsc::channel(1);
     loop {
-        let (mut socket, _) = listener
-            .accept()
-            .await
-            .map_err(|err| config_error(format!("The sign-in listener failed: {err}.")))?;
-        let target =
-            match tokio::time::timeout(CALLBACK_READ_TIMEOUT, read_target(&mut socket)).await {
-                Ok(Some(target)) => target,
-                _ => continue,
-            };
-        let (path, query) = target.split_once('?').unwrap_or((target.as_str(), ""));
-        if path != CALLBACK_PATH {
-            reply(&mut socket, "404 Not Found", "").await;
-            continue;
+        tokio::select! {
+            accepted = listener.accept() => {
+                let (socket, _) = accepted
+                    .map_err(|err| config_error(format!("The sign-in listener failed: {err}.")))?;
+                tokio::spawn(answer_callback(socket, state.to_string(), found_tx.clone()));
+            }
+            Some(params) = found.recv() => return Ok(params),
         }
-        let params = parse_query(query);
-        if params.get("state").map(String::as_str) != Some(state) {
-            reply(&mut socket, "400 Bad Request", "").await;
-            continue;
-        }
-        reply(&mut socket, "200 OK", DONE_PAGE).await;
-        return Ok(params);
     }
+}
+
+/// Answers one connection to the listener; sends the parameters of the right callback.
+async fn answer_callback(
+    mut socket: tokio::net::TcpStream,
+    state: String,
+    found: tokio::sync::mpsc::Sender<HashMap<String, String>>,
+) {
+    let Ok(Some(target)) =
+        tokio::time::timeout(CALLBACK_READ_TIMEOUT, read_target(&mut socket)).await
+    else {
+        return;
+    };
+    let (path, query) = target.split_once('?').unwrap_or((target.as_str(), ""));
+    if path != CALLBACK_PATH {
+        reply(&mut socket, "404 Not Found", "").await;
+        return;
+    }
+    let params = parse_query(query);
+    if params.get("state") != Some(&state) {
+        reply(&mut socket, "400 Bad Request", "").await;
+        return;
+    }
+    reply(&mut socket, "200 OK", DONE_PAGE).await;
+    let _ = found.send(params).await;
 }
 
 /// The request target of a `GET` request line.

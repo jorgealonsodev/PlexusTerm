@@ -2721,3 +2721,147 @@ async fn chatgpt_takes_no_api_key() {
     key_save(&store, "openai", "sk-y".into()).await.unwrap();
     assert!(key_status(&store, "openai").await.unwrap());
 }
+
+// ---- ChatGPT plan: regression tests from the independent verification ----
+#[tokio::test]
+async fn chatgpt_wrong_state_is_ignored_then_correct_state_signs_in() {
+    let routes: Routes = Arc::default();
+    let (base, _log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, _path) = chatgpt_client(&base, &dir);
+    let r = routes.clone();
+    let started = std::time::Instant::now();
+    let status = ai
+        .chatgpt_sign_in(move |url: &str| {
+            let q = chatgpt::parse_query(url.split_once('?').unwrap().1);
+            let nonce = q["nonce"].clone();
+            r.lock().unwrap().push((
+                "/api/accounts/oauth/token",
+                200,
+                json!({"access_token": "a", "refresh_token": "r",
+                    "id_token": id_token("oaiapp_new", &nonce, "user-1"),
+                    "expires_in": 3600, "scope": PLAN_SCOPES})
+                .to_string(),
+            ));
+            let redirect = q["redirect_uri"].clone();
+            let state = q["state"].clone();
+            tokio::spawn(async move {
+                // silent connection, then wrong state with access_denied, then good one
+                let origin = redirect
+                    .split("/auth/")
+                    .next()
+                    .unwrap()
+                    .trim_start_matches("http://")
+                    .to_string();
+                let _silent = tokio::net::TcpStream::connect(&origin).await.unwrap();
+                let bad = reqwest::get(format!("{redirect}?error=access_denied&state=wrong"))
+                    .await
+                    .unwrap();
+                assert_eq!(bad.status().as_u16(), 400);
+                let _ = reqwest::get(format!(
+                    "{redirect}?code=c&client_id=oaiapp_new&state={state}"
+                ))
+                .await;
+            });
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert!(status.signed_in && status.plan_enabled);
+    // The silent connection must not hold up the callback for its read timeout.
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_concurrent_refreshes_use_the_refresh_token_once() {
+    let routes: Routes = Arc::new(std::sync::Mutex::new(vec![
+        ("/api/accounts/oauth/token", 200,
+            json!({"access_token": "access-2", "refresh_token": "refresh-2", "expires_in": 3600, "scope": PLAN_SCOPES}).to_string()),
+        ("/v1/responses", 200, sse_completed("ok")),
+    ]));
+    let (base, log) = mock_shared(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    write_record(&path, signed_in_record(now() + 30, PLAN_SCOPES));
+    let store = store_with(Provider::ChatGpt, None);
+    let cfg = config(Provider::ChatGpt, "gpt-x");
+    let (l1, l2) = (line("ls "), line("ls "));
+    let (a, b) = tokio::join!(
+        ai.complete(&store, &cfg, &l1),
+        ai.complete(&store, &cfg, &l2)
+    );
+    a.unwrap();
+    b.unwrap();
+    let seen = log.lock().unwrap();
+    assert_eq!(
+        seen.iter()
+            .filter(|s| s.path == "/api/accounts/oauth/token")
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn chatgpt_refresh_network_failure_keeps_tokens() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client("http://127.0.0.1:9", &dir);
+    write_record(&path, signed_in_record(now() + 30, PLAN_SCOPES));
+    let before = std::fs::read(&path).unwrap();
+    let err = ai
+        .complete(
+            &store_with(Provider::ChatGpt, None),
+            &config(Provider::ChatGpt, "gpt-x"),
+            &line("ls "),
+        )
+        .await
+        .unwrap_err();
+    assert!(!err.message.contains("refresh-1") && !err.message.contains("access-1"));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[tokio::test]
+async fn chatgpt_wrong_audience_in_id_token_saves_nothing() {
+    let routes: Routes = Arc::default();
+    let (base, _log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    let err = ai
+        .chatgpt_sign_in(browser(
+            vec![("code", "c".into()), ("client_id", "oaiapp_new".into())],
+            Arc::default(),
+            routes,
+            "oaiapp_other",
+        ))
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    let rec = read_record(&path);
+    assert!(rec["accessToken"].is_null() && rec["clientId"].is_null());
+}
+
+#[tokio::test]
+async fn chatgpt_reauth_with_another_subject_keeps_old_tokens() {
+    let routes: Routes = Arc::default();
+    let (base, _log) = mock_shared(routes.clone()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (ai, path) = chatgpt_client(&base, &dir);
+    let mut rec = signed_in_record(now() + 3000, PLAN_SCOPES);
+    rec["subject"] = json!("someone-else");
+    write_record(&path, rec);
+    let before = std::fs::read(&path).unwrap();
+    let err = ai
+        .chatgpt_sign_in(browser(
+            vec![("code", "c".into())],
+            Arc::default(),
+            routes,
+            "oaiapp_test",
+        ))
+        .await
+        .unwrap_err();
+    assert_eq!(err.kind, AiErrorKind::Config);
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+}
