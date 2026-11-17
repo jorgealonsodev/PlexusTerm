@@ -9,8 +9,8 @@
 //! rotating refresh token is never used twice.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,11 @@ pub const PLAN_SCOPE: &str = "chatgpt.tokens.use.direct";
 const CALLBACK_PATH: &str = "/auth/callback";
 /// The port OpenAI's examples use; any free port works when it is taken.
 const PREFERRED_PORT: u16 = 1455;
+#[cfg(not(test))]
 const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+/// Short in tests, so the timeout itself can be tested.
+#[cfg(test)]
+const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(2);
 /// A connection to the callback listener must send its request line within this time.
 const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_CALLBACK_REQUEST: usize = 16 * 1024;
@@ -164,8 +168,8 @@ struct Claims {
 #[derive(Default)]
 pub struct ChatGptAuth {
     path: Mutex<Option<PathBuf>>,
-    /// Held for every read-modify-write of the record.
-    lock: tokio::sync::Mutex<()>,
+    /// Held for every read-modify-write of the record (shared with a refresh's own task).
+    lock: Arc<tokio::sync::Mutex<()>>,
     /// The pending sign-in (its attempt number), ended when its sender is dropped or sent to.
     pending: Mutex<Option<(u64, tokio::sync::oneshot::Sender<()>)>>,
     /// Numbers sign-in attempts, so one never clears another's pending slot.
@@ -196,6 +200,45 @@ fn expired_sign_in() -> AiError {
     )
 }
 
+fn damaged_file() -> AiError {
+    config_error(format!(
+        "PlexusTerm's ChatGPT sign-in file ({CREDENTIALS_FILE}) is damaged. Use \"Sign out\" in Settings > AI to start over."
+    ))
+}
+
+/// The saved record; a file that is not a record is reported, never taken as "signed out".
+fn load_from(path: &Path) -> Result<Record, AiError> {
+    let text = crate::storage::load(path)
+        .map_err(|err| config_error(format!("Could not read the ChatGPT sign-in: {err}.")))?;
+    match text {
+        None => Ok(Record::default()),
+        Some(text) => serde_json::from_str(&text).map_err(|_| damaged_file()),
+    }
+}
+
+fn save_to(path: &Path, record: &Record) -> Result<(), AiError> {
+    let text = serde_json::to_string_pretty(record)
+        .map_err(|_| config_error("Could not save the ChatGPT sign-in."))?;
+    crate::storage::save(path, &text)
+        .map_err(|err| config_error(format!("Could not save the ChatGPT sign-in: {err}.")))
+}
+
+/// Clears the pending slot of one sign-in attempt when that attempt ends, however it ends.
+struct PendingSlot<'a> {
+    auth: &'a ChatGptAuth,
+    number: u64,
+}
+
+impl Drop for PendingSlot<'_> {
+    fn drop(&mut self) {
+        // Only this attempt's slot: a newer sign-in may have replaced it meanwhile.
+        let mut pending = self.auth.pending.lock().unwrap_or_else(|p| p.into_inner());
+        if pending.as_ref().is_some_and(|(n, _)| *n == self.number) {
+            pending.take();
+        }
+    }
+}
+
 fn plan_not_enabled() -> AiError {
     config_error(
         "ChatGPT plan use isn't enabled for PlexusTerm. Use \"Continue with ChatGPT\" in Settings > AI and allow it.",
@@ -220,20 +263,20 @@ impl ChatGptAuth {
     }
 
     fn load(&self) -> Result<Record, AiError> {
-        let path = self.path()?;
-        let text = crate::storage::load(&path)
-            .map_err(|err| config_error(format!("Could not read the ChatGPT sign-in: {err}.")))?;
-        Ok(text
-            .and_then(|t| serde_json::from_str(&t).ok())
-            .unwrap_or_default())
+        load_from(&self.path()?)
     }
 
     fn save(&self, record: &Record) -> Result<(), AiError> {
-        let path = self.path()?;
-        let text = serde_json::to_string_pretty(record)
-            .map_err(|_| config_error("Could not save the ChatGPT sign-in."))?;
-        crate::storage::save(&path, &text)
-            .map_err(|err| config_error(format!("Could not save the ChatGPT sign-in: {err}.")))
+        save_to(&self.path()?, record)
+    }
+
+    /// Whether a sign-in is waiting for the browser.
+    #[cfg(test)]
+    pub(crate) fn sign_in_pending(&self) -> bool {
+        self.pending
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .is_some()
     }
 
     pub async fn status(&self) -> Result<Status, AiError> {
@@ -270,13 +313,6 @@ impl ChatGptAuth {
             }
             record
         };
-        let (tx, mut cancelled) = tokio::sync::oneshot::channel();
-        let number = self
-            .attempts
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        // A new sign-in ends the previous one (its sender is dropped).
-        *self.pending.lock().unwrap_or_else(|p| p.into_inner()) = Some((number, tx));
-
         let listener = bind_callback().await?;
         let port = listener
             .local_addr()
@@ -287,6 +323,14 @@ impl ChatGptAuth {
         let url = authorize_url(endpoints, &saved, &redirect_uri, &attempt);
         open(&url).map_err(|err| config_error(format!("Could not open the browser: {err}.")))?;
 
+        let (tx, mut cancelled) = tokio::sync::oneshot::channel();
+        let number = self
+            .attempts
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        // A new sign-in ends the previous one (its sender is dropped).
+        *self.pending.lock().unwrap_or_else(|p| p.into_inner()) = Some((number, tx));
+        let slot = PendingSlot { auth: self, number };
+
         let params = tokio::select! {
             params = wait_callback(&listener, &attempt.state) => params?,
             _ = &mut cancelled => return Err(config_error("ChatGPT sign-in was cancelled.")),
@@ -295,13 +339,7 @@ impl ChatGptAuth {
             }
         };
         drop(listener);
-        {
-            // Only this attempt's slot: a newer sign-in may have replaced it meanwhile.
-            let mut pending = self.pending.lock().unwrap_or_else(|p| p.into_inner());
-            if pending.as_ref().is_some_and(|(n, _)| *n == number) {
-                pending.take();
-            }
-        }
+        drop(slot);
 
         if let Some(error) = params.get("error") {
             if error == "access_denied" {
@@ -358,7 +396,7 @@ impl ChatGptAuth {
             .id_token
             .clone()
             .ok_or_else(|| AiError::bad_response(Provider::ChatGpt))?;
-        let claims = validate_id_token(&id_token, &client_id, &attempt.nonce, now_secs())?;
+        let claims = validate_id_token(&id_token, &client_id, Some(&attempt.nonce), now_secs())?;
         if saved.subject.as_ref().is_some_and(|s| *s != claims.sub) {
             return Err(config_error(
                 "Another ChatGPT account signed in than the one this registration belongs to; the sign-in was not used.",
@@ -388,8 +426,9 @@ impl ChatGptAuth {
         http: &reqwest::Client,
         endpoints: &Endpoints,
     ) -> Result<ApiKey, AiError> {
-        let _guard = self.lock.lock().await;
-        let mut record = self.load()?;
+        let path = self.path()?;
+        let guard = self.lock.clone().lock_owned().await;
+        let mut record = load_from(&path)?;
         if !record.signed_in() {
             return Err(not_signed_in());
         }
@@ -401,71 +440,23 @@ impl ChatGptAuth {
         {
             return Ok(ApiKey(token.clone()));
         }
-        let (Some(refresh), Some(client_id)) =
+        let (Some(refresh_token), Some(client_id)) =
             (record.refresh_token.clone(), record.client_id.clone())
         else {
             record.clear_tokens();
-            self.save(&record)?;
+            save_to(&path, &record)?;
             return Err(expired_sign_in());
         };
-        let (status, body) = post_form(
-            http,
-            &token_url(endpoints),
-            &[
-                ("grant_type", "refresh_token"),
-                ("client_id", &client_id),
-                ("refresh_token", &refresh),
-                ("resource", RESOURCE),
-            ],
-        )
-        .await?;
-        if !(200..300).contains(&status) {
-            let error = oauth_error(&body);
-            if error
-                .as_deref()
-                .is_some_and(|e| TERMINAL_REFRESH_ERRORS.contains(&e))
-            {
-                record.clear_tokens();
-                self.save(&record)?;
-                return Err(expired_sign_in());
-            }
-            if error.as_deref() == Some("invalid_client") {
-                return Err(config_error(
-                    "ChatGPT no longer accepts PlexusTerm's registration. Sign out and use \"Continue with ChatGPT\" again in Settings > AI.",
-                ));
-            }
-            return Err(match status {
-                500..=599 => AiError::new(
-                    AiErrorKind::Network,
-                    format!("ChatGPT's sign-in service is unavailable right now (HTTP {status})."),
-                ),
-                _ => AiError::new(
-                    AiErrorKind::Auth,
-                    format!(
-                        "ChatGPT did not renew the sign-in ({}).",
-                        error.unwrap_or_else(|| format!("HTTP {status}"))
-                    ),
-                ),
-            });
-        }
-        let tokens: TokenResponse =
-            serde_json::from_str(&body).map_err(|_| AiError::bad_response(Provider::ChatGpt))?;
-        record.access_token = Some(tokens.access_token.clone());
-        if let Some(replacement) = tokens.refresh_token {
-            record.refresh_token = Some(replacement);
-        }
-        if let Some(scope) = tokens.scope {
-            record.scopes = scope.split_whitespace().map(str::to_string).collect();
-        }
-        if let Some(id_token) = tokens.id_token {
-            record.id_token = Some(id_token);
-        }
-        record.expires_at = now_secs() + tokens.expires_in.unwrap_or(3600);
-        self.save(&record)?;
-        if !record.plan_enabled() {
-            return Err(plan_not_enabled());
-        }
-        Ok(ApiKey(tokens.access_token))
+        // The refresh runs on its own task holding the lock: once the rotating refresh token is
+        // sent, the answer is read and saved even when the request that asked is dropped.
+        let http = http.clone();
+        let url = token_url(endpoints);
+        tokio::spawn(async move {
+            let _guard = guard;
+            refresh(&http, &url, &path, record, &refresh_token, &client_id).await
+        })
+        .await
+        .map_err(|_| config_error("The ChatGPT sign-in could not be renewed; try again."))?
     }
 
     /// Revokes the renewable session, then forgets the tokens even when revocation failed.
@@ -475,16 +466,105 @@ impl ChatGptAuth {
         endpoints: &Endpoints,
     ) -> Result<SignOut, AiError> {
         self.cancel();
-        let _guard = self.lock.lock().await;
-        let mut record = self.load()?;
-        let revoked = match (&record.refresh_token, &record.client_id) {
-            (Some(refresh), Some(client_id)) => revoke(http, endpoints, refresh, client_id).await,
+        let path = self.path()?;
+        // The tokens are forgotten first, under the lock; the revocation then runs on a copy,
+        // so a stalled network never holds up the other requests.
+        let (refresh, client_id) = {
+            let _guard = self.lock.lock().await;
+            match load_from(&path) {
+                Ok(mut record) => {
+                    let copy = (record.refresh_token.clone(), record.client_id.clone());
+                    record.clear_tokens();
+                    save_to(&path, &record)?;
+                    copy
+                }
+                // A damaged file starts over: there is nothing that could be revoked.
+                Err(_) => {
+                    save_to(&path, &Record::default())?;
+                    return Ok(SignOut { revoked: false });
+                }
+            }
+        };
+        let revoked = match (refresh, client_id) {
+            (Some(refresh), Some(client_id)) => revoke(http, endpoints, &refresh, &client_id).await,
             _ => true,
         };
-        record.clear_tokens();
-        self.save(&record)?;
         Ok(SignOut { revoked })
     }
+}
+
+/// Renews the access token with the rotating refresh token and saves the new set.
+async fn refresh(
+    http: &reqwest::Client,
+    url: &str,
+    path: &Path,
+    mut record: Record,
+    refresh_token: &str,
+    client_id: &str,
+) -> Result<ApiKey, AiError> {
+    let (status, body) = post_form(
+        http,
+        url,
+        &[
+            ("grant_type", "refresh_token"),
+            ("client_id", client_id),
+            ("refresh_token", refresh_token),
+            ("resource", RESOURCE),
+        ],
+    )
+    .await?;
+    if !(200..300).contains(&status) {
+        let error = oauth_error(&body);
+        if error
+            .as_deref()
+            .is_some_and(|e| TERMINAL_REFRESH_ERRORS.contains(&e))
+        {
+            record.clear_tokens();
+            save_to(path, &record)?;
+            return Err(expired_sign_in());
+        }
+        if error.as_deref() == Some("invalid_client") {
+            return Err(config_error(
+                "ChatGPT no longer accepts PlexusTerm's registration. Sign out and use \"Continue with ChatGPT\" again in Settings > AI.",
+            ));
+        }
+        return Err(match status {
+            500..=599 => AiError::new(
+                AiErrorKind::Network,
+                format!("ChatGPT's sign-in service is unavailable right now (HTTP {status})."),
+            ),
+            _ => AiError::new(
+                AiErrorKind::Auth,
+                format!(
+                    "ChatGPT did not renew the sign-in ({}).",
+                    error.unwrap_or_else(|| format!("HTTP {status}"))
+                ),
+            ),
+        });
+    }
+    let tokens: TokenResponse =
+        serde_json::from_str(&body).map_err(|_| AiError::bad_response(Provider::ChatGpt))?;
+    record.access_token = Some(tokens.access_token.clone());
+    if let Some(replacement) = tokens.refresh_token {
+        record.refresh_token = Some(replacement);
+    }
+    if let Some(scope) = tokens.scope {
+        record.scopes = scope.split_whitespace().map(str::to_string).collect();
+    }
+    // A new ID token is kept only when it checks out for the same account (it becomes the
+    // next sign-in's `id_token_hint`); a refresh carries no nonce.
+    if let Some(id_token) = tokens.id_token
+        && validate_id_token(&id_token, client_id, None, now_secs())
+            .is_ok_and(|claims| record.subject.as_deref() == Some(claims.sub.as_str()))
+    {
+        record.id_token = Some(id_token);
+    }
+    record.expires_at = now_secs() + tokens.expires_in.unwrap_or(3600);
+    save_to(path, &record)?;
+    if !record.plan_enabled() {
+        return Err(plan_not_enabled());
+    }
+    Ok(ApiKey(tokens.access_token))
 }
 
 /// Values fresh for each sign-in attempt.
@@ -716,7 +796,7 @@ fn oauth_error(body: &str) -> Option<String> {
 fn validate_id_token(
     token: &str,
     client_id: &str,
-    nonce: &str,
+    nonce: Option<&str>,
     now: u64,
 ) -> Result<Claims, AiError> {
     let invalid = || config_error("ChatGPT sent a sign-in PlexusTerm could not verify.");
@@ -731,7 +811,7 @@ fn validate_id_token(
     let valid = claims.iss == ISSUER
         && audience_ok
         && claims.exp > now
-        && claims.nonce.as_deref() == Some(nonce)
+        && (nonce.is_none() || claims.nonce.as_deref() == nonce)
         && !claims.sub.is_empty();
     if valid { Ok(claims) } else { Err(invalid()) }
 }
@@ -1165,12 +1245,13 @@ mod tests {
             "iss": "https://auth.openai.com", "aud": "oaiapp_1", "exp": 2000,
             "nonce": "no", "sub": "user-1", "email": "a@b.c"
         });
-        let claims = validate_id_token(&id_token(good.clone()), "oaiapp_1", "no", 1000).unwrap();
+        let claims =
+            validate_id_token(&id_token(good.clone()), "oaiapp_1", Some("no"), 1000).unwrap();
         assert_eq!(claims.sub, "user-1");
         assert_eq!(claims.email.as_deref(), Some("a@b.c"));
         let mut list = good.clone();
         list["aud"] = serde_json::json!(["x", "oaiapp_1"]);
-        assert!(validate_id_token(&id_token(list), "oaiapp_1", "no", 1000).is_ok());
+        assert!(validate_id_token(&id_token(list), "oaiapp_1", Some("no"), 1000).is_ok());
         for (field, value) in [
             ("iss", serde_json::json!("https://evil.example")),
             ("aud", serde_json::json!("oaiapp_2")),
@@ -1181,11 +1262,11 @@ mod tests {
             let mut bad = good.clone();
             bad[field] = value;
             assert!(
-                validate_id_token(&id_token(bad), "oaiapp_1", "no", 1000).is_err(),
+                validate_id_token(&id_token(bad), "oaiapp_1", Some("no"), 1000).is_err(),
                 "{field} must be checked"
             );
         }
-        assert!(validate_id_token("not-a-jwt", "oaiapp_1", "no", 1000).is_err());
+        assert!(validate_id_token("not-a-jwt", "oaiapp_1", Some("no"), 1000).is_err());
     }
 
     #[test]

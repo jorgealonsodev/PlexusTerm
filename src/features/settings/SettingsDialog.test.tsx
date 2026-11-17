@@ -47,6 +47,8 @@ const chatgpt = vi.hoisted(() => {
   return {
     signedOut,
     status: signedOut,
+    /** Thrown by `ai_chatgpt_status` when set. */
+    statusError: null as unknown,
     signIn: async (): Promise<unknown> => signedOut,
     signOut: async (): Promise<unknown> => ({ revoked: true }),
   };
@@ -54,7 +56,10 @@ const chatgpt = vi.hoisted(() => {
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class { onmessage = (_message: unknown) => {}; },
   invoke: vi.fn(async (cmd: string, args?: { provider?: string; key?: string; refresh?: boolean }) => {
-    if (cmd === "ai_chatgpt_status") return chatgpt.status;
+    if (cmd === "ai_chatgpt_status") {
+      if (chatgpt.statusError) throw chatgpt.statusError;
+      return chatgpt.status;
+    }
     if (cmd === "ai_chatgpt_sign_in") return chatgpt.signIn();
     if (cmd === "ai_chatgpt_sign_out") return chatgpt.signOut();
     if (cmd === "ai_chatgpt_cancel") return null;
@@ -90,6 +95,7 @@ afterEach(() => {
   keys.clear();
   go.models = go.initial;
   chatgpt.status = chatgpt.signedOut;
+  chatgpt.statusError = null;
   chatgpt.signIn = async () => chatgpt.signedOut;
   chatgpt.signOut = async () => ({ revoked: true });
   vi.mocked(invoke).mockClear();
@@ -663,6 +669,34 @@ describe("SettingsDialog", () => {
         fireEvent.change(model, { target: { value: "gpt-6-mini" } });
         fireEvent.click(screen.getByRole("button", { name: "Close" }));
         expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ aiProvider: "chatgpt", aiModel: "gpt-6-mini" }));
+      });
+
+      it("reads the ChatGPT model list once when Settings opens on a signed-in account", async () => {
+        chatgpt.status = { signedIn: true, email: "dev@example.com", planEnabled: true };
+        render(
+          <SettingsDialog
+            settings={{ ...DEFAULT_SETTINGS, aiProvider: "chatgpt", aiModel: "gpt-6" }}
+            onSave={vi.fn()}
+            onCancel={vi.fn()}
+          />,
+        );
+        fireEvent.click(screen.getByRole("tab", { name: "AI" }));
+        await screen.findByRole("option", { name: "GPT-6 (gpt-6)" });
+        await account().findByText("Signed in as dev@example.com");
+        const reads = vi.mocked(invoke).mock.calls.filter(([cmd, args]) => cmd === "ai_models" && (args as { provider: string }).provider === "chatgpt");
+        expect(reads).toHaveLength(1);
+      });
+
+      it("offers Sign out when the ChatGPT sign-in cannot be read, to start over", async () => {
+        chatgpt.statusError = { kind: "config", message: "PlexusTerm's ChatGPT sign-in file (chatgpt-auth.json) is damaged." };
+        openAi();
+        fireEvent.change(field("Provider"), { target: { value: "chatgpt" } });
+        expect(await account().findByText(/is damaged/)).toBeTruthy();
+        chatgpt.signOut = async () => ({ revoked: false });
+        fireEvent.click(account().getByRole("button", { name: "Sign out" }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith("ai_chatgpt_sign_out"));
+        expect(await account().findByText(/remote revocation was not confirmed/)).toBeTruthy();
+        expect(account().queryByRole("button", { name: "Sign out" })).toBeNull();
       });
 
       it("waits for the browser sign-in with a Cancel button, and shows why it ended", async () => {

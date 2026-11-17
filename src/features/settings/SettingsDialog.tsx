@@ -373,6 +373,8 @@ function ChatGptAccountField({ onStatus }: { onStatus?: (status: ChatGptStatus) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** The saved sign-in could not be read (a damaged file): signing out starts over. */
+  const [unreadable, setUnreadable] = useState(false);
   /** A sign-in still waiting for the browser when the field goes away is ended with it. */
   const pendingRef = useRef(false);
 
@@ -384,6 +386,7 @@ function ChatGptAccountField({ onStatus }: { onStatus?: (status: ChatGptStatus) 
       .catch((err) => {
         if (!current) return;
         setStatus({ signedIn: false, email: null, planEnabled: false });
+        setUnreadable(true);
         setError(t("settings.ai.chatgpt.statusFailed", { error: describeAiError(err) }));
       });
     return () => {
@@ -415,6 +418,7 @@ function ChatGptAccountField({ onStatus }: { onStatus?: (status: ChatGptStatus) 
     Promise.resolve()
       .then(aiChatGptSignOut)
       .then(({ revoked }) => {
+        setUnreadable(false);
         setStatus({ signedIn: false, email: null, planEnabled: false });
         if (!revoked) setNote(t("settings.ai.chatgpt.signOutUnconfirmed"));
       })
@@ -452,7 +456,7 @@ function ChatGptAccountField({ onStatus }: { onStatus?: (status: ChatGptStatus) 
             {t("settings.ai.chatgpt.continue")}
           </button>
         )}
-        {status?.signedIn && (
+        {(status?.signedIn || unreadable) && (
           <button type="button" className="btn" disabled={busy || pending} onClick={signOut}>
             {t("settings.ai.chatgpt.signOut")}
           </button>
@@ -1736,8 +1740,9 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 fetchModels={aiOpenCodeModels}
                 modelsUrl={OPENCODE_MODELS_URL}
               />
-            ) : aiProvider === "chatgpt" ? (
-              // Read again whenever the account changes (signing in brings the plan's list).
+            ) : aiProvider === "chatgpt" && chatgptAccount ? (
+              // Read once the account is known, and again whenever it changes (signing in brings the
+              // plan's list); until then the model is shown as typed.
               <ListedModelField
                 key={chatgptAccount}
                 value={aiModel}
