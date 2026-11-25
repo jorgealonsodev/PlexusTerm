@@ -108,6 +108,8 @@ fn windows_proof(
     uninstaller: Option<&Path>,
 ) -> Option<Format> {
     let parent = exe.parent()?;
+    // Tauri's NSIS installer writes InstallLocation between quotes ("$INSTDIR").
+    let location = Path::new(location.to_str()?.trim_matches('"'));
     if location.canonicalize().ok()?.as_path() != parent
         || parent.join("plexusterm.exe").canonicalize().ok()?.as_path() != exe
     {
@@ -692,6 +694,13 @@ mod tests {
             windows_proof(&exe, dir.path(), false, Some(&uninstaller)),
             Some(Format::Nsis)
         );
+        // Tauri's NSIS installer writes InstallLocation between quotes ("$INSTDIR").
+        let quoted = PathBuf::from(format!("\"{}\"", dir.path().display()));
+        assert_eq!(
+            windows_proof(&exe, &quoted, false, Some(&uninstaller)),
+            Some(Format::Nsis)
+        );
+        assert_eq!(windows_proof(&exe, &quoted, true, None), Some(Format::Msi));
         assert_eq!(windows_proof(&exe, dir.path(), false, None), None);
         assert_eq!(windows_proof(&exe, &other, true, None), None);
         assert_eq!(windows_proof(&exe, dir.path(), false, Some(&exe)), None);
