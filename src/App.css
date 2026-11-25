@@ -3182,6 +3182,9 @@ body.is-dragging-path {
 }
 
 .tabbar--column {
+  /* Its own text size (Settings → Appearance, or Ctrl+wheel over it). */
+  --ui-scale: var(--tab-column-scale, 1);
+  font-size: calc(13px * var(--ui-scale));
   flex: none;
   flex-direction: column;
   width: 220px;

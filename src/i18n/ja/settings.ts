@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "セッションの同期",
     settingsSync: "設定の同期",
     devCommands: "コマンドとフォルダー",
-    devColumn: "タブ列",
+    devColumn: "タブ",
     bar: "ターミナル下のバー",
     fileLists: "ファイル一覧",
     viewer: "ビューアーとエディター",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "各ターミナルとファイルビューアーの下のバー（フォルダー、ブランチ、AI 使用量、DEV）。18〜48 px、既定は 22。文字もバーに合わせて大きくなります（最大 1.6 倍）。",
     focusBorderHelp: "キーボードフォーカスのあるペインを示す枠です。色は、別の色を選ばない限り配色のアクセントカラーです。強さは背景との混ぜ具合で、淡い線（10%）から本来の色（100%）まで変えられます。",
     viewerFontSizeHelp: "ファイルビューアーに表示されるファイルの文字サイズ(コードと Markdown、ピクセル)。ファイルのテキストの上で Ctrl を押しながらマウスホイールを回しても変わります。",
+    tabColumnFontSize: "DEV タブ列の文字サイズ",
+    tabColumnFontSizeHelp: "DEV モードのタブ列の文字サイズ（ピクセル）。列の上で Ctrl を押しながらマウスホイールを回しても変更できます。",
     explorerFontSizeHelp: "エクスプローラーと SFTP ブラウザーの文字サイズ(ピクセル)。上で Ctrl を押しながらマウスホイールを回しても変わります。",
     hideSidebar: "折りたたみ時にサイドバーを完全に隠す",
     sidebarAtStartup: "PlexusTerm 起動時のサイドバー",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} またはツールバーのボタンで、サイドバーをタブアイコンだけに折りたたみます。このオプションを有効にすると完全に隠します。",
     sidebarHelpNoShortcut:
       "ツールバーのボタンで、サイドバーをタブアイコンだけに折りたたみます。このオプションを有効にすると完全に隠します。",
+    devTabsLayout: "DEV モードのタブ",
+    devTabsColumn: "右側の列に表示",
+    devTabsBar: "上部のバーに表示",
     hideDevColumn: "折りたたむときに DEV タブ列を完全に隠す",
     devColumnAtStartup: "PlexusTerm 起動時の DEV タブ列",
     devColumnHelp:

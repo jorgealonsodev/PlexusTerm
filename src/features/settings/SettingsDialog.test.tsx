@@ -927,6 +927,21 @@ describe("SettingsDialog", () => {
       );
     });
 
+    it("chooses whether DEV mode puts the tabs in a column or in the bar at the top; the bar leaves the column options off", () => {
+      const { onSave } = setup();
+      const layout = screen.getByLabelText("DEV mode tabs") as HTMLSelectElement;
+      expect(layout.value).toBe("column");
+      expect([...layout.options].map((o) => o.textContent)).toEqual(["In a column at the right", "In the bar at the top"]);
+      const hide = screen.getByLabelText("Hide the DEV tab column completely when folded") as HTMLInputElement;
+      const startup = screen.getByLabelText("DEV tab column when PlexusTerm opens") as HTMLSelectElement;
+      expect(hide.disabled).toBe(false);
+      fireEvent.change(layout, { target: { value: "bar" } });
+      expect(hide.disabled).toBe(true);
+      expect(startup.disabled).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ devTabsLayout: "bar" }));
+    });
+
     it("chooses how many recent DEV mode folders to keep, and whether the bar under a DEV terminal names its folder", () => {
       const { onSave } = setup();
       fireEvent.click(screen.getByRole("tab", { name: "Terminal" }));

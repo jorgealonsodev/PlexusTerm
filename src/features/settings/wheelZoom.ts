@@ -1,14 +1,14 @@
 import type { FontStep } from "./settings";
 
 /** What Ctrl+wheel sizes: the text of the terminals, the AI chat, the Explorer or the file viewer it is over. */
-export type WheelZoomTarget = "terminal" | "chat" | "explorer" | "viewer";
+export type WheelZoomTarget = "terminal" | "chat" | "explorer" | "viewer" | "tabColumn";
 
 /** The scroll of one wheel notch, in pixels: a touchpad's small deltas add up to it for one step. */
 const NOTCH_PX = 50;
 
 /**
- * Ctrl+wheel over a terminal, the AI chat, the Explorer (and SFTP browser) or a file's text in
- * the file viewer makes its text bigger (wheel up) or smaller (wheel down), like Ctrl+= and Ctrl+-, and keeps
+ * Ctrl+wheel over a terminal, the AI chat, the Explorer (and SFTP browser), DEV mode's tab
+ * column or a file's text in the file viewer makes its text bigger (wheel up) or smaller (wheel down), like Ctrl+= and Ctrl+-, and keeps
  * the wheel from scrolling it. Returns the detach function.
  */
 export function attachWheelZoom(
@@ -27,7 +27,9 @@ export function attachWheelZoom(
         ? "terminal"
         : e.target.closest(".sidebar__panel.sftp")
           ? "explorer"
-          : null;
+          : e.target.closest(".tabbar--column")
+            ? "tabColumn"
+            : null;
     if (!where) return;
     e.preventDefault();
     e.stopPropagation();

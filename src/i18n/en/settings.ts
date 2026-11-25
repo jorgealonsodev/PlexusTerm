@@ -27,7 +27,7 @@ export const settings = {
     sessionSync: "Sync sessions",
     settingsSync: "Sync settings",
     devCommands: "Commands and folders",
-    devColumn: "Tab column",
+    devColumn: "Tabs",
     bar: "Bar under the terminal",
     fileLists: "File lists",
     viewer: "Viewer and editor",
@@ -119,6 +119,8 @@ export const settings = {
     paneFooterHeightHelp: "The bar under each terminal and file viewer (folder, branch, AI usage, DEV), from 18 to 48 px; 22 by default. Its text grows with it, up to 1.6 times its size.",
     focusBorderHelp: "The border that marks the pane with the keyboard focus. Its colour is the colour scheme's accent unless you choose another; the intensity mixes it with the background, from a faint line (10%) to the full colour (100%).",
     viewerFontSizeHelp: "Size of the text of a file in the file viewer (code and Markdown), in pixels. Ctrl with the mouse wheel over the file's text changes it too.",
+    tabColumnFontSize: "DEV tab column text size",
+    tabColumnFontSizeHelp: "Size of the text of DEV mode's tab column, in pixels. Ctrl with the mouse wheel over the column changes it too.",
     explorerFontSizeHelp: "Size of the text of the Explorer and the SFTP browser, in pixels. Ctrl with the mouse wheel over them changes it too.",
     hideSidebar: "Hide the sidebar completely when folded",
     sidebarAtStartup: "Sidebar when PlexusTerm opens",
@@ -129,6 +131,9 @@ export const settings = {
       "{shortcut} or the toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
     sidebarHelpNoShortcut:
       "The toolbar button folds the sidebar to its tab icons, or hides it completely with this option.",
+    devTabsLayout: "DEV mode tabs",
+    devTabsColumn: "In a column at the right",
+    devTabsBar: "In the bar at the top",
     hideDevColumn: "Hide the DEV tab column completely when folded",
     devColumnAtStartup: "DEV tab column when PlexusTerm opens",
     devColumnHelp:

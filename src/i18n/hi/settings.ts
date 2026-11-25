@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "सत्र सिंक करें",
     settingsSync: "सेटिंग्स सिंक करें",
     devCommands: "कमांड और फ़ोल्डर",
-    devColumn: "टैब कॉलम",
+    devColumn: "टैब",
     bar: "टर्मिनल के नीचे की पट्टी",
     fileLists: "फ़ाइल सूचियाँ",
     viewer: "व्यूअर और एडिटर",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "हर टर्मिनल और फ़ाइल व्यूअर के नीचे की पट्टी (फ़ोल्डर, ब्रांच, AI उपयोग, DEV), 18 से 48 px तक; डिफ़ॉल्ट 22। इसका टेक्स्ट इसके साथ बड़ा होता है, अपने आकार के 1.6 गुना तक।",
     focusBorderHelp: "वह सीमा जो कीबोर्ड फ़ोकस वाले पैन को चिह्नित करती है। जब तक आप कोई और रंग न चुनें, इसका रंग रंग योजना का एक्सेंट होता है; तीव्रता इसे पृष्ठभूमि के साथ मिलाती है, हल्की रेखा (10%) से पूरे रंग (100%) तक।",
     viewerFontSizeHelp: "फ़ाइल व्यूअर में फ़ाइल के टेक्स्ट (कोड और Markdown) का आकार, पिक्सेल में। फ़ाइल के टेक्स्ट के ऊपर Ctrl के साथ माउस व्हील घुमाने से भी यह बदलता है।",
+    tabColumnFontSize: "DEV टैब कॉलम का टेक्स्ट आकार",
+    tabColumnFontSizeHelp: "DEV मोड के टैब कॉलम के टेक्स्ट का आकार, पिक्सेल में। कॉलम के ऊपर Ctrl के साथ माउस व्हील घुमाने से भी यह बदलता है।",
     explorerFontSizeHelp: "एक्सप्लोरर और SFTP ब्राउज़र के टेक्स्ट का आकार, पिक्सेल में। उनके ऊपर Ctrl के साथ माउस व्हील घुमाने से भी यह बदलता है।",
     hideSidebar: "फ़ोल्ड करने पर साइडबार को पूरी तरह छिपाएँ",
     sidebarAtStartup: "PlexusTerm खुलने पर साइडबार",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} या टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
     sidebarHelpNoShortcut:
       "टूलबार बटन साइडबार को उसके टैब आइकन तक फ़ोल्ड करता है, या इस विकल्प के साथ उसे पूरी तरह छिपा देता है।",
+    devTabsLayout: "DEV मोड के टैब",
+    devTabsColumn: "दाईं ओर एक कॉलम में",
+    devTabsBar: "ऊपर की पट्टी में",
     hideDevColumn: "मोड़ने पर DEV टैब कॉलम को पूरी तरह छिपाएँ",
     devColumnAtStartup: "PlexusTerm खुलने पर DEV टैब कॉलम",
     devColumnHelp:

@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "同步会话",
     settingsSync: "同步设置",
     devCommands: "命令与文件夹",
-    devColumn: "标签列",
+    devColumn: "标签页",
     bar: "终端下方的栏",
     fileLists: "文件列表",
     viewer: "查看器与编辑器",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "每个终端和文件查看器下方的栏（文件夹、分支、AI 用量、DEV），18 到 48 px，默认 22。其文字随之变大，最多 1.6 倍。",
     focusBorderHelp: "标示键盘焦点所在窗格的边框。除非你选择其他颜色，否则使用配色方案的强调色；强度控制它与背景的混合，从淡淡的线条（10%）到完整颜色（100%）。",
     viewerFontSizeHelp: "文件查看器中文件文字的大小(代码和 Markdown,像素)。在文件文字上按住 Ctrl 滚动鼠标滚轮也可更改。",
+    tabColumnFontSize: "DEV 标签列文字大小",
+    tabColumnFontSizeHelp: "DEV 模式标签列的文字大小，单位为像素。在标签列上按住 Ctrl 并滚动鼠标滚轮也可更改。",
     explorerFontSizeHelp: "资源管理器和 SFTP 浏览器中文字的大小(像素)。在其上按住 Ctrl 滚动鼠标滚轮也可更改。",
     hideSidebar: "折叠时完全隐藏侧边栏",
     sidebarAtStartup: "PlexusTerm 启动时的侧边栏",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} 或工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
     sidebarHelpNoShortcut:
       "工具栏按钮可将侧边栏折叠为标签图标；启用此选项则完全隐藏。",
+    devTabsLayout: "DEV 模式下的标签页",
+    devTabsColumn: "在右侧的列中",
+    devTabsBar: "在顶部的栏中",
     hideDevColumn: "折叠时完全隐藏 DEV 标签列",
     devColumnAtStartup: "PlexusTerm 打开时的 DEV 标签列",
     devColumnHelp:

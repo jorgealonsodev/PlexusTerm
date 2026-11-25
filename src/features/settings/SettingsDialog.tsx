@@ -81,7 +81,7 @@ import {
   cleanHexColor,
   focusBorderCss,
   type AiProvider,
-  type TerminalSettings, type CursorShape, type SidebarAtStartup, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
+  type TerminalSettings, type CursorShape, type SidebarAtStartup, type DevTabsLayout, type ViewerPosition, type NewTerminalFolder, type AiUsageChoice } from "./settings";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { shortcutConflict, shortcutLabel, type ShortcutOverrides } from "../panes/shortcuts";
 import { isValidShortcut, shortcutFromEvent } from "./shortcutCapture";
@@ -623,6 +623,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [chatFontSize, setChatFontSize] = useState(String(settings.chatFontSize));
   const [viewerFontSize, setViewerFontSize] = useState(String(settings.viewerFontSize));
   const [explorerFontSize, setExplorerFontSize] = useState(String(settings.explorerFontSize));
+  const [tabColumnFontSize, setTabColumnFontSize] = useState(String(settings.tabColumnFontSize));
   const [focusBorderColor, setFocusBorderColor] = useState(settings.focusBorderColor);
   const [focusBorderStrength, setFocusBorderStrength] = useState(settings.focusBorderStrength);
   const [paneFooterHeight, setPaneFooterHeight] = useState(String(settings.paneFooterHeight));
@@ -666,6 +667,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
   const [sidebarAtStartup, setSidebarAtStartup] = useState(settings.sidebarAtStartup);
   const [devColumnHideWhenCollapsed, setDevColumnHideWhenCollapsed] = useState(settings.devColumnHideWhenCollapsed);
   const [devColumnAtStartup, setDevColumnAtStartup] = useState(settings.devColumnAtStartup);
+  const [devTabsLayout, setDevTabsLayout] = useState(settings.devTabsLayout);
   const [checkUpdates, setCheckUpdates] = useState(settings.checkUpdates);
   const [restoreTabs, setRestoreTabs] = useState(settings.restoreTabs);
   const [aiSaveChats, setAiSaveChats] = useState(settings.aiSaveChats);
@@ -771,6 +773,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
     const chatSize = Number.parseFloat(chatFontSize);
     const viewerSize = Number.parseFloat(viewerFontSize);
     const explorerSize = Number.parseFloat(explorerFontSize);
+    const tabColumnSize = Number.parseFloat(tabColumnFontSize);
     const recentLimit = Number.parseFloat(recentFolderLimit);
     const notifySeconds = Number.parseFloat(commandNotifySeconds);
     const context = Number.parseFloat(aiHistoryContext);
@@ -786,6 +789,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       chatFontSize: Number.isFinite(chatSize) ? clampChatFontSize(chatSize) : settings.chatFontSize,
       viewerFontSize: Number.isFinite(viewerSize) ? clampViewerFontSize(viewerSize) : settings.viewerFontSize,
       explorerFontSize: Number.isFinite(explorerSize) ? clampExplorerFontSize(explorerSize) : settings.explorerFontSize,
+      tabColumnFontSize: Number.isFinite(tabColumnSize) ? clampExplorerFontSize(tabColumnSize) : settings.tabColumnFontSize,
       focusBorderColor: cleanHexColor(focusBorderColor),
       focusBorderStrength: clampFocusBorderStrength(focusBorderStrength),
       paneFooterHeight: Number.isFinite(Number.parseFloat(paneFooterHeight))
@@ -836,6 +840,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
       devColumnCollapsed: settings.devColumnCollapsed,
       devColumnHideWhenCollapsed,
       devColumnAtStartup,
+      devTabsLayout,
       checkUpdates,
       restoreTabs,
       aiSaveChats,
@@ -1199,6 +1204,18 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
                 onChange={(e) => setExplorerFontSize(e.target.value)}
               />
             </label>
+            <label className="field field--size">
+              <span className="setting-title">
+                {t("settings.appearance.tabColumnFontSize")} <HelpTip text={t("settings.appearance.tabColumnFontSizeHelp")} />
+              </span>
+              <input
+                type="number"
+                min={MIN_EXPLORER_FONT_SIZE}
+                max={MAX_EXPLORER_FONT_SIZE}
+                value={tabColumnFontSize}
+                onChange={(e) => setTabColumnFontSize(e.target.value)}
+              />
+            </label>
             <h3 className="settings__group">{t("settings.groups.layout")}</h3>
             <label className="check">
               <input type="checkbox" checked={toolbarIconsOnly} onChange={(e) => setToolbarIconsOnly(e.target.checked)} />
@@ -1425,9 +1442,17 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
               />
             </label>
             <h3 className="settings__group">{t("settings.groups.devColumn")}</h3>
+            <label className="field">
+              {t("settings.appearance.devTabsLayout")}
+              <select value={devTabsLayout} onChange={(e) => setDevTabsLayout(e.target.value as DevTabsLayout)}>
+                <option value="column">{t("settings.appearance.devTabsColumn")}</option>
+                <option value="bar">{t("settings.appearance.devTabsBar")}</option>
+              </select>
+            </label>
             <label className="check">
               <input
                 type="checkbox"
+                disabled={devTabsLayout !== "column"}
                 checked={devColumnHideWhenCollapsed}
                 onChange={(e) => setDevColumnHideWhenCollapsed(e.target.checked)}
               />
@@ -1437,7 +1462,7 @@ export function SettingsDialog({ settings, onSave, onCancel, initialSection, onL
             </label>
             <label className="field">
               {t("settings.appearance.devColumnAtStartup")}
-              <select value={devColumnAtStartup} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
+              <select value={devColumnAtStartup} disabled={devTabsLayout !== "column"} onChange={(e) => setDevColumnAtStartup(e.target.value as SidebarAtStartup)}>
                 <option value="last">{t("settings.appearance.sidebarLast")}</option>
                 <option value="expanded">{t("settings.appearance.sidebarExpanded")}</option>
                 <option value="collapsed">{t("settings.appearance.sidebarCollapsed")}</option>

@@ -15,7 +15,7 @@ describe("attachWheelZoom", () => {
     document.body.innerHTML = "";
   });
   const setup = () => {
-    document.body.innerHTML = `<div class="terminal-pane"><canvas></canvas></div><section class="chat"><p></p></section><div class="sidebar__panel sftp"><ul><li></li></ul></div><section class="viewer"><header></header><div class="viewer__code"><span></span></div><article class="viewer__markdown"><em></em></article></section><nav></nav>`;
+    document.body.innerHTML = `<div class="terminal-pane"><canvas></canvas></div><section class="chat"><p></p></section><div class="sidebar__panel sftp"><ul><li></li></ul></div><section class="viewer"><header></header><div class="viewer__code"><span></span></div><article class="viewer__markdown"><em></em></article></section><nav></nav><div class="tabbar tabbar--column"><b></b></div><div class="tabbar"><i></i></div>`;
     const onStep = vi.fn();
     detach = attachWheelZoom(window, onStep);
     return {
@@ -27,8 +27,18 @@ describe("attachWheelZoom", () => {
       code: document.querySelector("span")!,
       markdown: document.querySelector("em")!,
       viewerBar: document.querySelector("header")!,
+      column: document.querySelector("b")!,
+      bar: document.querySelector("i")!,
     };
   };
+
+  it("sizes DEV mode's tab column over it, not over the usual tab bar", () => {
+    const { onStep, column, bar } = setup();
+    expect(wheel(column, -100).defaultPrevented).toBe(true);
+    expect(onStep).toHaveBeenLastCalledWith("tabColumn", "increase");
+    expect(wheel(bar, -100).defaultPrevented).toBe(false);
+    expect(onStep).toHaveBeenCalledTimes(1);
+  });
 
   it("sizes the Explorer's text over the Explorer or the SFTP browser", () => {
     const { onStep, explorer } = setup();

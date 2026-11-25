@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "مزامنة الجلسات",
     settingsSync: "مزامنة الإعدادات",
     devCommands: "الأوامر والمجلدات",
-    devColumn: "عمود علامات التبويب",
+    devColumn: "علامات التبويب",
     bar: "الشريط أسفل الطرفية",
     fileLists: "قوائم الملفات",
     viewer: "العارض والمحرر",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "الشريط أسفل كل طرفية وعارض ملفات (المجلد، الفرع، استخدام الذكاء الاصطناعي، DEV)، من 18 إلى 48 بكسل؛ 22 افتراضيًا. يكبر نصه معه حتى 1.6 ضعف حجمه.",
     focusBorderHelp: "الحدّ الذي يميّز اللوحة التي عليها تركيز لوحة المفاتيح. لونه هو لون التمييز في مخطط الألوان ما لم تختر لونًا آخر؛ وتمزجه الشدة مع الخلفية، من خط باهت (10%) إلى اللون الكامل (100%).",
     viewerFontSizeHelp: "حجم نص الملف في عارض الملفات (الشيفرة وMarkdown)، بالبكسل. يغيّره أيضًا الضغط على Ctrl مع عجلة الفأرة فوق نص الملف.",
+    tabColumnFontSize: "حجم نص عمود علامات تبويب DEV",
+    tabColumnFontSizeHelp: "حجم نص عمود علامات التبويب في وضع DEV، بالبكسل. يغيّره أيضًا الضغط على Ctrl مع تدوير عجلة الفأرة فوق العمود.",
     explorerFontSizeHelp: "حجم النص في المستكشف ومتصفح SFTP، بالبكسل. يغيّره أيضًا الضغط على Ctrl مع عجلة الفأرة فوقهما.",
     hideSidebar: "إخفاء الشريط الجانبي تمامًا عند طيّه",
     sidebarAtStartup: "الشريط الجانبي عند فتح PlexusTerm",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "يطوي {shortcut} أو زر شريط الأدوات الشريط الجانبي إلى أيقونات علاماته، أو يخفيه تمامًا مع هذا الخيار.",
     sidebarHelpNoShortcut:
       "يطوي زر شريط الأدوات الشريط الجانبي إلى أيقونات علاماته، أو يخفيه تمامًا مع هذا الخيار.",
+    devTabsLayout: "علامات التبويب في وضع DEV",
+    devTabsColumn: "في عمود على الجانب",
+    devTabsBar: "في الشريط العلوي",
     hideDevColumn: "إخفاء عمود علامات تبويب DEV بالكامل عند طيّه",
     devColumnAtStartup: "عمود علامات تبويب DEV عند فتح PlexusTerm",
     devColumnHelp:

@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "세션 동기화",
     settingsSync: "설정 동기화",
     devCommands: "명령 및 폴더",
-    devColumn: "탭 열",
+    devColumn: "탭",
     bar: "터미널 아래 막대",
     fileLists: "파일 목록",
     viewer: "뷰어 및 편집기",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "각 터미널과 파일 뷰어 아래 막대(폴더, 브랜치, AI 사용량, DEV)로 18~48px이며 기본값은 22입니다. 글자도 최대 1.6배까지 함께 커집니다.",
     focusBorderHelp: "키보드 포커스가 있는 창을 표시하는 테두리입니다. 다른 색을 고르지 않으면 색 구성표의 강조색을 사용하며, 강도는 배경과 섞는 정도로 옅은 선(10%)부터 원래 색(100%)까지입니다.",
     viewerFontSizeHelp: "파일 뷰어에 표시되는 파일 글자 크기(코드와 Markdown), 픽셀 단위. 파일 글자 위에서 Ctrl과 마우스 휠로도 바꿀 수 있습니다.",
+    tabColumnFontSize: "DEV 탭 열 글자 크기",
+    tabColumnFontSizeHelp: "DEV 모드 탭 열의 글자 크기(픽셀)입니다. 열 위에서 Ctrl을 누른 채 마우스 휠을 돌려도 바뀝니다.",
     explorerFontSizeHelp: "탐색기와 SFTP 브라우저의 글자 크기(픽셀)입니다. 그 위에서 Ctrl과 마우스 휠로도 바꿀 수 있습니다.",
     hideSidebar: "접을 때 사이드바를 완전히 숨기기",
     sidebarAtStartup: "PlexusTerm을 열 때 사이드바",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} 또는 도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
     sidebarHelpNoShortcut:
       "도구 모음 단추로 사이드바를 탭 아이콘만 남도록 접거나, 이 옵션을 사용하면 완전히 숨깁니다.",
+    devTabsLayout: "DEV 모드의 탭",
+    devTabsColumn: "오른쪽 열에 표시",
+    devTabsBar: "위쪽 막대에 표시",
     hideDevColumn: "접을 때 DEV 탭 열을 완전히 숨기기",
     devColumnAtStartup: "PlexusTerm을 열 때 DEV 탭 열",
     devColumnHelp:

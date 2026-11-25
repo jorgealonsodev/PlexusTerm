@@ -170,10 +170,14 @@ export interface TerminalSettings {
   viewerFontSize: number;
   /** Text size of the Explorer and the SFTP browser in pixels, 10..24; the interface's until chosen. */
   explorerFontSize: number;
+  /** Text size of DEV mode's tab column in pixels, 10..24 (Ctrl+wheel over it changes it too). */
+  tabColumnFontSize: number;
   /** Commands that turn a tab's DEV mode on when the command line runs them (S10). */
   devCommands: string[];
   /** Width in px of DEV mode's tab column, dragged by the user (S13); null keeps the default width. */
   tabColumnWidth: number | null;
+  /** Where DEV mode puts the tabs: in a column at the right (S13), or in the usual bar at the top. */
+  devTabsLayout: DevTabsLayout;
   /** DEV mode's tab column is folded to its icons (the toolbar button or its shortcut). */
   devColumnCollapsed: boolean;
   /** Folding hides DEV mode's tab column completely instead of leaving its icons. */
@@ -340,6 +344,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   chatFontSize: 13,
   viewerFontSize: 13,
   explorerFontSize: 13,
+  tabColumnFontSize: 13,
   devCommands: [...DEFAULT_DEV_COMMANDS],
   tabColumnWidth: null,
   shareRelayUrl: "",
@@ -355,6 +360,7 @@ export const DEFAULT_SETTINGS: TerminalSettings = {
   focusBorderColor: "",
   focusBorderStrength: 55,
   paneFooterHeight: 22,
+  devTabsLayout: "column",
   devColumnCollapsed: false,
   devColumnHideWhenCollapsed: false,
   devColumnAtStartup: "last",
@@ -492,6 +498,9 @@ export const AI_USAGE_CHOICES = ["auto", "claude", "codex", "agy", "opencodeGo",
 export type AiUsageChoice = (typeof AI_USAGE_CHOICES)[number];
 export type ViewerPosition = (typeof VIEWER_POSITIONS)[number];
 
+export const DEV_TABS_LAYOUTS = ["column", "bar"] as const;
+export type DevTabsLayout = (typeof DEV_TABS_LAYOUTS)[number];
+
 export const SIDEBAR_AT_STARTUP = ["last", "expanded", "collapsed"] as const;
 export type SidebarAtStartup = (typeof SIDEBAR_AT_STARTUP)[number];
 const sidebarAtStartupOf = (value: unknown): SidebarAtStartup =>
@@ -571,6 +580,9 @@ export function parseSettings(json: string | null): TerminalSettings {
         : sidebarAtStartupOf(value.sidebarAtStartup) === "collapsed",
     sidebarHideWhenCollapsed: bool(value.sidebarHideWhenCollapsed, d.sidebarHideWhenCollapsed),
     // DEV mode's tab column too, with its own choice.
+    devTabsLayout: (DEV_TABS_LAYOUTS as readonly unknown[]).includes(value.devTabsLayout)
+      ? (value.devTabsLayout as DevTabsLayout)
+      : d.devTabsLayout,
     devColumnCollapsed:
       sidebarAtStartupOf(value.devColumnAtStartup) === "last"
         ? bool(value.devColumnCollapsed, d.devColumnCollapsed)
@@ -624,6 +636,12 @@ export function parseSettings(json: string | null): TerminalSettings {
       clampExplorerFontSize,
       clampExplorerFontSize(size(value.uiFontSize, clampUiFontSize, d.uiFontSize)),
     ),
+    // Settings from before it existed keep the column at the interface's size.
+    tabColumnFontSize: size(
+      value.tabColumnFontSize,
+      clampExplorerFontSize,
+      clampExplorerFontSize(size(value.uiFontSize, clampUiFontSize, d.uiFontSize)),
+    ),
     devCommands: cleanDevCommands(value.devCommands),
     tabColumnWidth:
       typeof value.tabColumnWidth === "number" && Number.isFinite(value.tabColumnWidth)
@@ -660,6 +678,12 @@ export function stepFontSize(size: number, step: FontStep): number {
 }
 
 /** Ctrl+wheel over the Explorer or the SFTP browser changes their text only. */
+/** DEV mode's tab column uses the Explorer's range (10..24). */
+export function stepTabColumnFontSize(size: number, step: FontStep): number {
+  if (step === "reset") return DEFAULT_SETTINGS.tabColumnFontSize;
+  return clampExplorerFontSize(size + (step === "increase" ? 1 : -1));
+}
+
 export function stepExplorerFontSize(size: number, step: FontStep): number {
   if (step === "reset") return DEFAULT_SETTINGS.explorerFontSize;
   return clampExplorerFontSize(size + (step === "increase" ? 1 : -1));

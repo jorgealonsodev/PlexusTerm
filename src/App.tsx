@@ -51,7 +51,7 @@ import { local } from "./features/local/localClient";
 import { resolvePath, type FileLinks } from "./features/terminal/fileLinks";
 import type { Reveal } from "./features/files/FileTree";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize, stepViewerFontSize } from "./features/settings/settings";
+import { BASE_TEXT_SIZE, focusBorderCss, stepChatFontSize, stepExplorerFontSize, stepFontSize, stepTabColumnFontSize, stepViewerFontSize } from "./features/settings/settings";
 import { attachWheelZoom } from "./features/settings/wheelZoom";
 import { SETTINGS_SECTIONS, SettingsDialog, type SettingsSection } from "./features/settings/SettingsDialog";
 import { TelnetDialog } from "./features/telnet/TelnetDialog";
@@ -400,14 +400,15 @@ function AppContent() {
   const scheme = themeById(terminalSettings.settings.theme);
   useLayoutEffect(() => applyUiTheme(scheme), [scheme]);
   // The interface, the AI chat, the file viewer and the Explorer scale their text apart from the terminal (App.css: --ui-scale).
-  const { uiFontSize, chatFontSize, viewerFontSize, explorerFontSize } = terminalSettings.settings;
+  const { uiFontSize, chatFontSize, viewerFontSize, explorerFontSize, tabColumnFontSize } = terminalSettings.settings;
   useLayoutEffect(() => {
     const root = document.documentElement.style;
     root.setProperty("--ui-scale", String(uiFontSize / BASE_TEXT_SIZE));
     root.setProperty("--chat-scale", String(chatFontSize / BASE_TEXT_SIZE));
     root.setProperty("--viewer-scale", String(viewerFontSize / BASE_TEXT_SIZE));
     root.setProperty("--explorer-scale", String(explorerFontSize / BASE_TEXT_SIZE));
-  }, [uiFontSize, chatFontSize, viewerFontSize, explorerFontSize]);
+    root.setProperty("--tab-column-scale", String(tabColumnFontSize / BASE_TEXT_SIZE));
+  }, [uiFontSize, chatFontSize, viewerFontSize, explorerFontSize, tabColumnFontSize]);
   // The focused pane's border, as Settings → Appearance choose it.
   const { focusBorderColor, focusBorderStrength } = terminalSettings.settings;
   useLayoutEffect(() => {
@@ -692,6 +693,8 @@ function AppContent() {
   // DEV mode of the active tab (S10): its file lists stay at the project the CLI started in.
   const activeDev = activeTab ? dev.state[activeTab.key] : undefined;
   const devAnchor = activeDev ? (activeDev.root ?? activeDev.folder) : null;
+  /** DEV mode lays the tabs out as a column at the right (S13), unless Settings keep the usual bar. */
+  const devColumn = activeDev !== undefined && terminalSettings.settings.devTabsLayout === "column";
   const sftpSessionId = activeTab?.target.type === "ssh" ? activeSession.sessionId : null;
   /**
    * The DEV tab whose Explorer view is pinned (Pin Explorer view): the Explorer keeps showing its
@@ -1250,7 +1253,7 @@ function AppContent() {
 
   const { updateWith: updateSettingsWith } = terminalSettings;
   const settings = terminalSettings.settings;
-  // Ctrl+wheel sizes the text of the terminals, the AI chat, the Explorer or the file viewer under the pointer, like Ctrl+= / Ctrl+-.
+  // Ctrl+wheel sizes the text of the terminals, the AI chat, the Explorer, DEV mode's tab column or the file viewer under the pointer, like Ctrl+= / Ctrl+-.
   const updateSettingsRef = useRef(updateSettingsWith);
   updateSettingsRef.current = updateSettingsWith;
   useEffect(
@@ -1263,7 +1266,9 @@ function AppContent() {
               ? { explorerFontSize: stepExplorerFontSize(s.explorerFontSize, step) }
               : where === "viewer"
                 ? { viewerFontSize: stepViewerFontSize(s.viewerFontSize, step) }
-                : { fontSize: stepFontSize(s.fontSize, step) },
+                : where === "tabColumn"
+                  ? { tabColumnFontSize: stepTabColumnFontSize(s.tabColumnFontSize, step) }
+                  : { fontSize: stepFontSize(s.fontSize, step) },
         ),
       ),
     [],
@@ -1753,6 +1758,7 @@ function AppContent() {
         case "toggleSidebar":
           return updateSettingsWith((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }));
         case "toggleDevColumn":
+          if (terminalSettings.settings.devTabsLayout !== "column") return;
           return updateSettingsWith((s) => ({ devColumnCollapsed: !s.devColumnCollapsed }));
         case "recentFolders":
           // Under the toolbar, in the middle: the Explorer's button may be out of sight.
@@ -2097,7 +2103,7 @@ function AppContent() {
       className: recording ? "btn--recording" : undefined,
     },
     // DEV mode's tab column folds like the sidebar: to its icons, or away (Settings).
-    devColumn: activeDev
+    devColumn: devColumn
       ? {
           label: settings.devColumnCollapsed ? t("app.toolbar.showDevColumn") : t("app.toolbar.hideDevColumn"),
           title: settings.devColumnCollapsed
@@ -2356,8 +2362,8 @@ function AppContent() {
           />
         )}
         {/* DEV mode puts the tabs in a column at the right (S13); the workspace keeps its place in the tree. */}
-        <section className={`main${activeDev ? " main--dev" : ""}`}>
-          {!(activeDev && settings.devColumnCollapsed && settings.devColumnHideWhenCollapsed) && (
+        <section className={`main${devColumn ? " main--dev" : ""}`}>
+          {!(devColumn && settings.devColumnCollapsed && settings.devColumnHideWhenCollapsed) && (
           <TabBar
             tabs={state.tabs}
             activeKey={state.activeKey}
@@ -2365,7 +2371,7 @@ function AppContent() {
             attention={attentionTabs}
             dev={devTabs}
             busy={busyTabs}
-            column={activeDev !== undefined}
+            column={devColumn}
             collapsed={settings.devColumnCollapsed}
             details={tabDetails}
             hiddenPanes={hiddenPanes}

@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "Synchroniser les sessions",
     settingsSync: "Synchroniser les paramètres",
     devCommands: "Commandes et dossiers",
-    devColumn: "Colonne d’onglets",
+    devColumn: "Onglets",
     bar: "Barre sous le terminal",
     fileLists: "Listes de fichiers",
     viewer: "Visionneuse et éditeur",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "La barre sous chaque terminal et visionneuse de fichiers (dossier, branche, utilisation IA, DEV), de 18 à 48 px ; 22 par défaut. Son texte grandit avec elle, jusqu'à 1,6 fois sa taille.",
     focusBorderHelp: "La bordure qui marque le panneau qui a le focus clavier. Sa couleur est celle d'accent du jeu de couleurs, sauf si vous en choisissez une autre ; l'intensité la mélange avec le fond, d'un trait léger (10 %) à la couleur pleine (100 %).",
     viewerFontSizeHelp: "Taille du texte d’un fichier dans la visionneuse (code et Markdown), en pixels. Ctrl avec la molette de la souris au-dessus du texte du fichier la modifie aussi.",
+    tabColumnFontSize: "Taille du texte de la colonne d’onglets DEV",
+    tabColumnFontSizeHelp: "Taille du texte de la colonne d’onglets du mode DEV, en pixels. Ctrl avec la molette de la souris sur la colonne la modifie aussi.",
     explorerFontSizeHelp: "Taille du texte de l'Explorateur et du navigateur SFTP, en pixels. Ctrl avec la molette de la souris au-dessus la modifie aussi.",
     hideSidebar: "Masquer complètement la barre latérale une fois repliée",
     sidebarAtStartup: "Barre latérale à l’ouverture de PlexusTerm",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} ou le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
     sidebarHelpNoShortcut:
       "Le bouton de la barre d'outils replie la barre latérale sur les icônes de ses onglets, ou la masque complètement avec cette option.",
+    devTabsLayout: "Onglets en mode DEV",
+    devTabsColumn: "Dans une colonne à droite",
+    devTabsBar: "Dans la barre du haut",
     hideDevColumn: "Masquer entièrement la colonne d’onglets DEV une fois repliée",
     devColumnAtStartup: "Colonne d’onglets DEV à l’ouverture de PlexusTerm",
     devColumnHelp:

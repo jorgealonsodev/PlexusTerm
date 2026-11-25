@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_RULE } from "../terminal/highlightRules";
-import { cleanShareUrl, CURSOR_SHAPES, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS,
+import { stepTabColumnFontSize, cleanShareUrl, CURSOR_SHAPES, DEFAULT_FONT_FAMILY, DEFAULT_SETTINGS, focusBorderCss, FONT_WEIGHTS,
   FILE_LIST_REFRESH_SECONDS, LINE_HEIGHTS, parseSettings, serializeSettings, stepChatFontSize, stepFontSize } from "./settings";
 
 describe("parseSettings", () => {
@@ -105,8 +105,10 @@ describe("parseSettings", () => {
       chatFontSize: 13,
       viewerFontSize: 13,
       explorerFontSize: 13,
+      tabColumnFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
+      devTabsLayout: "column",
       devColumnCollapsed: false,
       devColumnHideWhenCollapsed: false,
       devColumnAtStartup: "last",
@@ -152,6 +154,12 @@ describe("parseSettings", () => {
     expect(at("collapsed", false)).toBe(true);
     expect(parseSettings(JSON.stringify({ devColumnAtStartup: "sideways" })).devColumnAtStartup).toBe("last");
     expect(parseSettings(JSON.stringify({ devColumnHideWhenCollapsed: true })).devColumnHideWhenCollapsed).toBe(true);
+  });
+
+  it("puts DEV mode's tabs in a column by default, or in the bar at the top", () => {
+    expect(parseSettings("{}").devTabsLayout).toBe("column");
+    expect(parseSettings(JSON.stringify({ devTabsLayout: "bar" })).devTabsLayout).toBe("bar");
+    expect(parseSettings(JSON.stringify({ devTabsLayout: "sideways" })).devTabsLayout).toBe("column");
   });
 
   it("keeps between 1 and 50 recent DEV mode folders, 10 by default", () => {
@@ -252,8 +260,10 @@ describe("parseSettings", () => {
       chatFontSize: 13,
       viewerFontSize: 13,
       explorerFontSize: 13,
+      tabColumnFontSize: 13,
       devCommands: ["claude", "codex", "agy", "opencode", "pi", "gentle-shell"],
       tabColumnWidth: null,
+      devTabsLayout: "column",
       devColumnCollapsed: false,
       devColumnHideWhenCollapsed: false,
       devColumnAtStartup: "last",
@@ -475,8 +485,10 @@ describe("serializeSettings", () => {
       chatFontSize: 17,
       viewerFontSize: 13,
       explorerFontSize: 13,
+      tabColumnFontSize: 13,
       devCommands: ["aider"],
       tabColumnWidth: 300,
+      devTabsLayout: "bar" as const,
       devColumnCollapsed: true,
       devColumnHideWhenCollapsed: true,
       devColumnAtStartup: "last" as const,
@@ -672,6 +684,18 @@ describe("interface and chat text sizes", () => {
     expect(parseSettings(JSON.stringify({ explorerFontSize: 99 })).explorerFontSize).toBe(24);
     expect(parseSettings(JSON.stringify({ explorerFontSize: 1 })).explorerFontSize).toBe(10);
     expect(parseSettings(JSON.stringify({ explorerFontSize: "big" })).explorerFontSize).toBe(13);
+  });
+
+  it("give DEV mode's tab column its own text size, the interface's until chosen, between 10 and 24", () => {
+    expect(DEFAULT_SETTINGS.tabColumnFontSize).toBe(13);
+    expect(parseSettings(JSON.stringify({ uiFontSize: 16 })).tabColumnFontSize).toBe(16);
+    expect(parseSettings(JSON.stringify({ uiFontSize: 16, tabColumnFontSize: 12 })).tabColumnFontSize).toBe(12);
+    expect(parseSettings(JSON.stringify({ tabColumnFontSize: 99 })).tabColumnFontSize).toBe(24);
+    expect(parseSettings(JSON.stringify({ tabColumnFontSize: 1 })).tabColumnFontSize).toBe(10);
+    expect(parseSettings(JSON.stringify({ tabColumnFontSize: "big" })).tabColumnFontSize).toBe(13);
+    expect(stepTabColumnFontSize(13, "increase")).toBe(14);
+    expect(stepTabColumnFontSize(10, "decrease")).toBe(10);
+    expect(stepTabColumnFontSize(20, "reset")).toBe(13);
   });
 
   it("default to 13 px and stay within their ranges", () => {

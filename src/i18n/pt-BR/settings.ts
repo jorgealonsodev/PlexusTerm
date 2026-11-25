@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "Sincronizar sessões",
     settingsSync: "Sincronizar configurações",
     devCommands: "Comandos e pastas",
-    devColumn: "Coluna de abas",
+    devColumn: "Abas",
     bar: "Barra sob o terminal",
     fileLists: "Listas de arquivos",
     viewer: "Visualizador e editor",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "A barra abaixo de cada terminal e visualizador de arquivos (pasta, branch, uso de IA, DEV), de 18 a 48 px; 22 por padrão. O texto cresce junto, até 1,6 vez o tamanho.",
     focusBorderHelp: "A borda que marca o painel com o foco do teclado. Sua cor é a de destaque do esquema de cores, a menos que você escolha outra; a intensidade a mistura com o fundo, de uma linha suave (10%) à cor plena (100%).",
     viewerFontSizeHelp: "Tamanho do texto de um arquivo no visualizador (código e Markdown), em pixels. Ctrl com a roda do mouse sobre o texto do arquivo também o altera.",
+    tabColumnFontSize: "Tamanho do texto da coluna de abas DEV",
+    tabColumnFontSizeHelp: "Tamanho do texto da coluna de abas do modo DEV, em pixels. Ctrl com a roda do mouse sobre a coluna também o altera.",
     explorerFontSizeHelp: "Tamanho do texto do explorador e do navegador SFTP, em pixels. Ctrl com a roda do mouse sobre eles também o altera.",
     hideSidebar: "Ocultar completamente a barra lateral quando recolhida",
     sidebarAtStartup: "Barra lateral ao abrir o PlexusTerm",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} ou o botão da barra de ferramentas recolhe a barra lateral aos ícones das abas, ou a oculta completamente com esta opção.",
     sidebarHelpNoShortcut:
       "O botão da barra de ferramentas recolhe a barra lateral aos ícones das abas, ou a oculta completamente com esta opção.",
+    devTabsLayout: "Abas no modo DEV",
+    devTabsColumn: "Em uma coluna à direita",
+    devTabsBar: "Na barra superior",
     hideDevColumn: "Ocultar totalmente a coluna de abas DEV ao recolhê-la",
     devColumnAtStartup: "Coluna de abas DEV ao abrir o PlexusTerm",
     devColumnHelp:

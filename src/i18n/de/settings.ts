@@ -30,7 +30,7 @@ export const settings: Messages<typeof en> = {
     sessionSync: "Sitzungen synchronisieren",
     settingsSync: "Einstellungen synchronisieren",
     devCommands: "Befehle und Ordner",
-    devColumn: "Tab-Spalte",
+    devColumn: "Tabs",
     bar: "Leiste unter dem Terminal",
     fileLists: "Dateilisten",
     viewer: "Betrachter und Editor",
@@ -122,6 +122,8 @@ export const settings: Messages<typeof en> = {
     paneFooterHeightHelp: "Die Leiste unter jedem Terminal und Dateibetrachter (Ordner, Branch, KI-Nutzung, DEV), von 18 bis 48 px; standardmäßig 22. Ihr Text wächst mit, bis zum 1,6-Fachen seiner Größe.",
     focusBorderHelp: "Der Rahmen, der den Bereich mit dem Tastaturfokus markiert. Seine Farbe ist die Akzentfarbe des Farbschemas, sofern du keine andere wählst; die Intensität mischt sie mit dem Hintergrund, von einer zarten Linie (10 %) bis zur vollen Farbe (100 %).",
     viewerFontSizeHelp: "Größe des Dateitextes im Dateibetrachter (Code und Markdown), in Pixeln. Strg mit dem Mausrad über dem Dateitext ändert sie ebenfalls.",
+    tabColumnFontSize: "Textgröße der DEV-Tab-Spalte",
+    tabColumnFontSizeHelp: "Größe des Textes der Tab-Spalte im DEV-Modus, in Pixeln. Strg mit dem Mausrad über der Spalte ändert sie ebenfalls.",
     explorerFontSizeHelp: "Größe des Textes im Explorer und im SFTP-Browser, in Pixeln. Strg mit dem Mausrad darüber ändert sie ebenfalls.",
     hideSidebar: "Seitenleiste beim Einklappen vollständig ausblenden",
     sidebarAtStartup: "Seitenleiste beim Start von PlexusTerm",
@@ -132,6 +134,9 @@ export const settings: Messages<typeof en> = {
       "{shortcut} oder die Schaltfläche in der Symbolleiste klappt die Seitenleiste auf ihre Tab-Symbole ein oder blendet sie mit dieser Option vollständig aus.",
     sidebarHelpNoShortcut:
       "Die Schaltfläche in der Symbolleiste klappt die Seitenleiste auf ihre Tab-Symbole ein oder blendet sie mit dieser Option vollständig aus.",
+    devTabsLayout: "Tabs im DEV-Modus",
+    devTabsColumn: "In einer Spalte rechts",
+    devTabsBar: "In der Leiste oben",
     hideDevColumn: "DEV-Tab-Spalte beim Einklappen ganz ausblenden",
     devColumnAtStartup: "DEV-Tab-Spalte beim Start von PlexusTerm",
     devColumnHelp:
