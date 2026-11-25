@@ -1079,6 +1079,16 @@ describe("LocalPanel repository of the selection", () => {
     await act(async () => answer({ root: "/home/me/app", branch: "main", dirty: true }));
     expect(footer()?.textContent).toBe("appmain*");
   });
+
+  it("reads the repository again when the window comes back (a branch switched in another app)", async () => {
+    mocked.repoInfo.mockResolvedValue({ root: "/home/me/app", branch: "feature", dirty: false });
+    render(panel({ devStyle: true, git: { enabled: true, visible: true, prompt: 0 } }));
+    fireEvent.click(await screen.findByText("notes.txt"));
+    await waitFor(() => expect(footer()?.textContent).toBe("appfeature"));
+    mocked.repoInfo.mockResolvedValue({ root: "/home/me/app", branch: "master", dirty: false });
+    act(() => window.dispatchEvent(new Event("focus")));
+    await waitFor(() => expect(footer()?.textContent).toBe("appmaster"));
+  });
 });
 
 /** As `answer`, waiting longer: these tests run while the whole suite loads the machine. */

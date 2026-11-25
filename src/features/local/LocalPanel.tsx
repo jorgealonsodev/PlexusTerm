@@ -24,6 +24,7 @@ import { indexGitStatus, rootDecoration } from "../files/gitStatus";
 import { useGitStatus, type GitStatusOptions } from "../files/useGitStatus";
 import { WorkspaceFolder, WorkspaceRoot } from "../files/WorkspaceFolder";
 import { parseWorkspaceFile, WORKSPACE_EXTENSION, workspaceFileText } from "../files/workspaceFile";
+import { useWindowReturns } from "../platform/useWindowReturns";
 
 interface LocalPanelProps {
   /** Folder of the active local terminal (OSC 7 or read from its shell); null while unknown. */
@@ -546,6 +547,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
   // The repository of the selected entry, as VS Code's status bar shows it (DEV mode, git status on).
   const [repo, setRepo] = useState<{ root: string; branch: string; dirty: boolean } | null>(null);
   const readRepo = devStyle && (git?.enabled ?? false) && selected !== null;
+  const returns = useWindowReturns();
   // Another entry (or none) clears it; reading the same entry again keeps it until the answer.
   useEffect(() => setRepo(null), [readRepo, selected]);
   useEffect(() => {
@@ -558,8 +560,9 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     return () => {
       live = false;
     };
-    // A prompt coming back lists the folders again, which bumps `loads`.
-  }, [readRepo, selected, loads]);
+    // A prompt coming back lists the folders again, which bumps `loads`; the window coming back
+    // (a branch switched in another app) bumps `returns`.
+  }, [readRepo, selected, loads, returns]);
   /** In DEV mode every folder shows as a root, the main one first, as in a VS Code workspace. */
   const asRoots = devStyle;
   const [mainOpen, setMainOpen] = useState(true);

@@ -54,6 +54,29 @@ describe("useGitBranch", () => {
     expect(invoke).toHaveBeenCalledTimes(3);
   });
 
+  it("reads it again when the window comes back (a branch switched in another app), not while hidden", async () => {
+    // Hooks of earlier tests are still mounted and read too: count this folder's reads only.
+    const reads = () => invoke.mock.calls.filter(([, args]) => (args as { path?: string })?.path === "/back").length;
+    answer({ git_branch: "main" });
+    const { result } = renderHook(() => useGitBranch(local, "/back", 0, true));
+    await settle();
+    expect(result.current).toBe("main");
+    answer({ git_branch: "master" });
+    act(() => window.dispatchEvent(new Event("focus")));
+    await settle();
+    expect(result.current).toBe("master");
+    expect(reads()).toBe(2);
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    await settle();
+    expect(reads()).toBe(2);
+    hidden.mockReturnValue(false);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    await settle();
+    expect(reads()).toBe(3);
+    hidden.mockRestore();
+  });
+
   it("asks the shell for its folder when it does not report one (OSC 7)", async () => {
     answer({ pty_cwd: "/srv/app", git_branch: "release" });
     const { result } = renderHook(() => useGitBranch(local, null, 0, true));

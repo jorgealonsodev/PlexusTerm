@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useWindowReturns } from "../platform/useWindowReturns";
 import type { GitStatusEntry } from "./gitStatus";
 
 /** A list reads its git status at most this often, however much the terminal prints. */
@@ -33,9 +34,9 @@ const keepSame =
 
 /**
  * The git status of the files under `root`, read with `read` when the folder changes, when the
- * list loads (also its periodic refresh), when the prompt comes back and while the terminal
- * prints, at most once every {@link GIT_STATUS_MIN_INTERVAL_MS} and only while visible. A failed
- * read shows no decorations.
+ * list loads (also its periodic refresh), when the prompt comes back, when the window comes back
+ * (another app may have switched branches) and while the terminal prints, at most once every
+ * {@link GIT_STATUS_MIN_INTERVAL_MS} and only while visible. A failed read shows no decorations.
  */
 export function useGitStatus(
   read: (root: string) => Promise<GitStatusEntry[]>,
@@ -96,7 +97,8 @@ export function useGitStatus(
     };
   }, [active, root]);
 
-  // The prompt came back or the list was loaded again.
+  // The prompt came back, the list was loaded again or the window came back.
+  const returns = useWindowReturns();
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -104,7 +106,7 @@ export function useGitStatus(
       return;
     }
     request.current();
-  }, [prompt, loads]);
+  }, [prompt, loads, returns]);
 
   // The terminal is printing.
   useEffect(() => {

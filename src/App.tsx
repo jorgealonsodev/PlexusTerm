@@ -2596,8 +2596,11 @@ function AppContent() {
                             prompt={paneMeta[paneId]?.prompts ?? 0}
                             // Only DEV mode reads and shows the branch (S10, L5).
                             enabled={tabDev !== undefined}
-                            // A CLI runs in it: its prompt does not come back, so it is watched.
-                            watch={tabDev?.cli != null && tabDev.pane === paneId}
+                            // Watched (read every few seconds) when a CLI runs in it, as its prompt does
+                            // not come back, and always in a local terminal: a branch switched in
+                            // another app (VS Code) shows without relying on the window's focus event,
+                            // which the Linux webview does not always send. A local read is one small file.
+                            watch={tab.target.type === "local" || (tabDev?.cli != null && tabDev.pane === paneId)}
                             onBranch={(branch) => updatePane(paneId, { branch })}
                           />
                           {paneIds(tab.layout).length > 1 && paneMeta[paneId]?.attention && (

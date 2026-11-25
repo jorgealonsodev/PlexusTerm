@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { local } from "../local/localClient";
 import { sftp } from "../sftp/sftpClient";
+import { useWindowReturns } from "../platform/useWindowReturns";
 import type { SessionTarget } from "../sessions/types";
 
 /**
@@ -38,9 +39,10 @@ const programFolderOf = (source: BranchSource) =>
 
 /**
  * The git branch of a pane's folder (the short commit when detached), or null outside a
- * repository. Read when the folder changes and each time `prompt` changes (the shell's prompt came
- * back, so a command may have switched branches). While `watch` (a CLI runs, so the prompt does not
- * come back) it is also read every BRANCH_WATCH_MS, in the folder of the running program: a branch
+ * repository. Read when the folder changes, each time `prompt` changes (the shell's prompt came
+ * back, so a command may have switched branches) and when the window comes back (another app may
+ * have switched them). While `watch` (a CLI runs, so the prompt does not come back, or a local
+ * terminal, where a read is cheap) it is also read every BRANCH_WATCH_MS, in the folder of the running program: a branch
  * switched or a worktree entered by the CLI shows at once.
  */
 export function useGitBranch(
@@ -51,6 +53,7 @@ export function useGitBranch(
   watch = false,
 ): string | null {
   const [branch, setBranch] = useState<string | null>(null);
+  const returns = useWindowReturns();
   const kind = source?.kind ?? null;
   const sessionId = source?.sessionId ?? null;
   useEffect(() => {
@@ -68,7 +71,7 @@ export function useGitBranch(
     return () => {
       live = false;
     };
-  }, [kind, sessionId, cwd, prompt, enabled]);
+  }, [kind, sessionId, cwd, prompt, enabled, returns]);
 
   useEffect(() => {
     if (!enabled || !watch || kind === null || sessionId === null) return;

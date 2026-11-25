@@ -87,6 +87,15 @@ describe("useGitStatus", () => {
     expect(read).toHaveBeenCalledTimes(3);
   });
 
+  it("reads again when the window comes back (a branch switched in another app)", async () => {
+    const { read } = setup();
+    await flush();
+    await act(async () => vi.advanceTimersByTime(GIT_STATUS_MIN_INTERVAL_MS));
+    act(() => window.dispatchEvent(new Event("focus")));
+    await flush();
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it("reads nothing while hidden or turned off, and nothing outside a folder", async () => {
     const hidden = setup({ visible: false });
     await flush();

@@ -309,6 +309,31 @@ describe("DEV mode (S10, S13)", () => {
     await waitFor(() => expect(document.querySelector("[role=tree]")).not.toBeNull());
   });
 
+  it("keeps the tabs in the bar at the top when Settings choose it, without the column's button", async () => {
+    await renderApp({ devTabsLayout: "bar" });
+    await run("claude");
+    expect(devOn()).toBe(true);
+    expect(within(tabBar()).getByRole("img", { name: "DEV mode" })).toBeTruthy();
+    expect(tabBar().classList.contains("tabbar--column")).toBe(false);
+    expect(document.querySelector(".main--dev")).toBeNull();
+    expect(screen.queryByRole("button", { name: /DEV tab column/ })).toBeNull();
+    await waitFor(() => expect(document.querySelector("[role=tree]")).not.toBeNull());
+  });
+
+  it("shows a branch switched in another app while the shell waits at its prompt (no CLI running)", async () => {
+    await renderApp();
+    fireEvent.click(devButton());
+    await settle();
+    expect(devOn()).toBe(true);
+    await screen.findByTitle(/^Git branch: main\./);
+    const reads = vi.mocked(invoke).getMockImplementation()!;
+    vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) =>
+      cmd === "git_branch" ? "master" : cmd === "pty_program_cwd" ? "/home/me/repo/src" : reads(cmd, args as never),
+    );
+    // No prompt and no focus event: the local terminal is read again on its own.
+    await screen.findByTitle(/^Git branch: master\./, undefined, { timeout: 4000 });
+  });
+
   it("turns off when the shell's prompt comes back, not on quiet output inside the CLI", async () => {
     await renderApp();
     await run("claude");
