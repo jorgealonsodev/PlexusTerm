@@ -215,6 +215,47 @@ describe("LocalPanel", () => {
     expect(mocked.createFile).not.toHaveBeenCalled();
   });
 
+  it("creates a new folder or file inside the selected folder, at the root otherwise", async () => {
+    render(panel({ devStyle: true }));
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "New file" }));
+    await type("New file name", "root.txt");
+    await waitFor(() => expect(mocked.createFile).toHaveBeenCalledWith("/home/me/root.txt"));
+
+    // The new file is selected: a file, so the next entry goes to the root too.
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await type("New folder name", "beside");
+    await waitFor(() => expect(mocked.mkdir).toHaveBeenCalledWith("/home/me/beside"));
+
+    fireEvent.click(screen.getByText("src"));
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await type("New folder name", "lib");
+    await waitFor(() => expect(mocked.mkdir).toHaveBeenCalledWith("/home/me/src/lib"));
+    // The new folder is selected, as in VS Code: the next entry goes inside it.
+    fireEvent.click(screen.getByRole("button", { name: "New file" }));
+    await type("New file name", "main.ts");
+    await waitFor(() => expect(mocked.createFile).toHaveBeenCalledWith("/home/me/src/lib/main.ts"));
+  });
+
+  it("offers New file and New folder in a folder's menu, creating inside it", async () => {
+    for (const devStyle of [false, true]) {
+      const { unmount } = render(panel({ devStyle }));
+      await screen.findByText("notes.txt");
+      fireEvent.contextMenu(screen.getByText("notes.txt"));
+      expect(screen.queryByRole("menuitem", { name: "New file" })).toBeNull();
+      expect(screen.queryByRole("menuitem", { name: "New folder" })).toBeNull();
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      await menu("src", "New folder");
+      await type("New folder name", `lib${devStyle}`);
+      await waitFor(() => expect(mocked.mkdir).toHaveBeenCalledWith(`/home/me/src/lib${devStyle}`));
+      await menu("src", "New file");
+      await type("New file name", `a${devStyle}.ts`);
+      await waitFor(() => expect(mocked.createFile).toHaveBeenCalledWith(`/home/me/src/a${devStyle}.ts`));
+      unmount();
+    }
+  });
+
   it("shows the command's error", async () => {
     mocked.list.mockRejectedValue("cannot list /home/me: Permission denied");
     render(panel());

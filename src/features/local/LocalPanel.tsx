@@ -287,18 +287,34 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     }
   };
 
-  const newEntry = async (kind: "folder" | "file") => {
-    const dir = current.current.path;
+  /**
+   * Creates a folder or file in `inside`, else in the selected folder, else in the listed folder,
+   * and selects it; in DEV mode the tree opens down to it.
+   */
+  const newEntry = async (kind: "folder" | "file", inside?: string) => {
+    const root = current.current.path;
+    const dir = inside ?? (selectedEntry?.kind === "dir" ? selectedEntry.path : root);
     const message = kind === "folder" ? t("sftp.dialog.newFolderName") : t("sftp.dialog.newFileName");
     const name = (await dialogs.prompt({ message, confirmLabel: t("sftp.dialog.create") }))?.trim();
-    if (dir === null || !name) return;
+    if (dir === null || root === null || !name) return;
     if (!validName(name)) {
       return setError(kind === "folder" ? t("sftp.error.invalidFolderName", { name }) : t("sftp.error.invalidFileName", { name }));
     }
     const target = joinPath(dir, name);
     const create = () => (kind === "folder" ? local.mkdir(target) : local.createFile(target));
-    if (await act(t("sftp.status.creating", { name }), create)) await navigate(dir);
+    if (!(await act(t("sftp.status.creating", { name }), create))) return;
+    await navigate(root);
+    // The new entry is selected, as in VS Code.
+    const created = await Promise.resolve()
+      .then(() => local.stat(target))
+      .catch(() => null);
+    setSelectedEntry(
+      created ?? { name, path: target, kind: kind === "folder" ? "dir" : "file", size: 0, modified: null, permissions: null, uid: null, gid: null, user: null, group: null },
+    );
+    if (devStyle && dir !== root) setTreeReveal({ path: target, id: --createdReveals.current });
   };
+  /** Ids of the reveals of created entries: negative, apart from the ones `reveal` brings. */
+  const createdReveals = useRef(0);
 
   const renameEntry = async (entry: SftpEntry | null) => {
     const dir = current.current.path;
@@ -437,6 +453,16 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
     return action !== undefined;
   };
 
+  /** New file and New folder, created inside the folder; none for a file. */
+  const createItems = (entry: SftpEntry): ContextMenuItem[] =>
+    entry.kind === "dir"
+      ? [
+          { label: t("sftp.panel.newFile"), onSelect: () => void newEntry("file", entry.path) },
+          { label: t("sftp.panel.newFolder"), onSelect: () => void newEntry("folder", entry.path) },
+          { separator: true },
+        ]
+      : [];
+
   /** DEV mode's menu: VS Code's Explorer menu, then PlexusTerm's own items. */
   const devMenuItems = (entry: SftpEntry, onRemove?: () => void): ContextMenuItem[] => {
     const isFile = entry.kind !== "dir";
@@ -450,6 +476,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
         disabled: !onOpenInTerminal,
       },
       { separator: true },
+      ...createItems(entry),
       { label: t("sftp.menu.cut"), shortcut: "Ctrl+X", onSelect: () => setClipboard({ mode: "cut", entry }) },
       { label: t("sftp.menu.copy"), shortcut: "Ctrl+C", onSelect: () => setClipboard({ mode: "copy", entry }) },
       { label: t("sftp.menu.paste"), shortcut: "Ctrl+V", onSelect: () => void paste(entry), disabled: !clipboard },
@@ -488,6 +515,7 @@ export function LocalPanel({ cwd, follow, onFollowChange, pinned = false, onPinn
       ...(isFile ? [] : [{ label: t("sftp.menu.openInTerminal"), onSelect: () => onOpenInTerminal?.(entry.path), disabled: !onOpenInTerminal }]),
       ...fileItems,
       { separator: true },
+      ...createItems(entry),
       { label: t("sftp.menu.rename"), onSelect: () => void renameEntry(entry) },
       { label: t("common.delete"), onSelect: () => void deleteEntry(entry), danger: true },
       { separator: true },
