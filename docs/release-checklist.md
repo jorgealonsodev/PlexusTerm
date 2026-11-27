@@ -26,7 +26,8 @@ Do this once; skip it on later releases.
       `packaging/winget/manifests/j/JorgeAlonso/PlexusTerm/` by hand
       (`wingetcreate submit <version folder>` or a manual pull request) and
       wait until it is merged. Until then the winget job of `packages.yml`
-      fails, because it can only update an existing package.
+      is skipped with a notice, because it can only update an existing
+      package.
 - [ ] **Repository secrets** (Settings > Secrets and variables > Actions):
 
       | Secret | Value |
@@ -35,6 +36,9 @@ Do this once; skip it on later releases.
       | `AUR_EMAIL` | Email for the AUR commits |
       | `AUR_SSH_PRIVATE_KEY` | Private key whose public half is on the AUR account |
       | `WINGET_TOKEN` | Classic personal access token of the account that owns this repository and the winget-pkgs fork, with the `public_repo` and `workflow` scopes |
+
+      Until the three `AUR_*` secrets are set, the AUR job of `packages.yml`
+      is skipped with a notice.
 
 ## 1. Prepare the release commit
 
